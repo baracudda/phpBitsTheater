@@ -1,0 +1,33 @@
+#default request if none specified (instead of directory listing)
+DirectoryIndex index.php
+
+#keep prying eyes out of our config files
+<files *.ini>
+	order allow,deny
+	deny from all
+</files>
+
+#keep prying eyes out of our pw files
+<files *.pw>
+	order allow,deny
+	deny from all
+</files>
+
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+
+	#phpBitsTheater framework redirection
+	RewriteCond %{REQUEST_FILENAME} !-f
+	RewriteCond %{REQUEST_FILENAME} !-d
+	RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]	
+
+</IfModule>
+
+#Please consider moving the contents of this file into 
+#your webserver's httpd.conf like so:
+#
+#    <Directory /www/this/folders/path>
+#    RewriteCond ...
+#    </Directory>
+#    
+#The resulting performance & security gains may be worth it.
