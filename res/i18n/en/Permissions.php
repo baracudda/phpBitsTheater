@@ -17,8 +17,7 @@ class Permissions extends ResPerms {
 				'auth' => array('label'=>'Authorization', 'desc'=>'Authorization Rights', ),
 				'config' => array('label'=>'Settings', 'desc'=>'Settings/Configuration/Preferences', ),
 				'accounts' => array('label'=>'Accounts', 'desc'=>'Membership Account Rights', ),
-				'sched' => array('label'=>'Schedule', 'desc'=>'Schedule of Events', ),
-			);
+	);
 			
 	public $auth = array(
 				'modify' => array('label'=>'Modify Permission Groups', 'desc'=>'Assign rights to groups.', ),
@@ -34,10 +33,6 @@ class Permissions extends ResPerms {
 				'modify' => array('label'=>'Modify Accounts', 'desc'=>'Modify any existing account.', ),
 				//no need for create right as everyone can create an account by registering
 				'delete' => array('label'=>'Delete Accounts', 'desc'=>'Remove any existing account.', ),
-			);
-			
-	public $sched = array(
-				'view' => array('label'=>'View Schedule', 'desc'=>'Able to view event schedule.', ),
 			);
 			
 			

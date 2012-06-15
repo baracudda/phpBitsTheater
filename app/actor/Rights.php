@@ -2,6 +2,7 @@
 namespace app\actor; 
 use app\Actor;
 use app\DbException;
+use app\config\Settings;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -22,7 +23,7 @@ class Rights extends Actor {
 		if (is_null($aGroupId) || $aGroupId==1)
 			return BITS_URL.'/rights';
 		if ($aGroupId===0) {
-			$this->scene->group = 0;
+			$this->scene->group = null;
 		} else {
 			$auth = $this->director->getProp('Auth');
 			$this->scene->groups = $auth->getGroupList();
@@ -36,7 +37,7 @@ class Rights extends Actor {
 		}
 		$this->scene->rights = $this->director->getProp('Permissions');
 		$this->scene->right_groups = $this->scene->rights->getPermissionRes('namespace');
-		$this->scene->assigned_rights = $this->scene->rights->getAssignedRights($this->scene->group);
+		$this->scene->assigned_rights = $this->scene->rights->getAssignedRights($aGroupId);
 		$this->scene->redirect = BITS_URL.'/rights';
 		$this->scene->next_action = BITS_URL.'/rights/modify';
 	}

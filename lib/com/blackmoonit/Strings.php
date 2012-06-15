@@ -47,33 +47,42 @@ class Strings {
 		$s .= "}";
 		return $s;
 	}
+
+	static public function randomSalt($aLen) {
+		$salt = str_repeat('.',$aLen);
+		for ($i = 0; $i<$aLen; $i++) {
+			$salt{$i} = substr("./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,63), 1);
+		}
+		return $salt;
+	}
 	
-	/* Blowfish pw encryption mechanism: 82 chars long. 60 char encryption + 22 char random salt
-	 * $pwhash = hasher($pw); //encrypts $pw and appends the generated random salt
+	/** Blowfish pw encryption mechanism: 76 chars long (60 char encryption + 16 char random salt)
+	 * $pwhash = hasher($pwInput); //encrypts $pw and appends the generated random salt
 	 * //safe now to store $pwhash in a database
-	 * if ($pwhash==hasher($pwInput, $pwhash)) { 
+	 * if (hasher($pwInput, $pwhash)) { 
 	 *     //authorized
 	 * } else {
 	 *     //not authorized
 	 * }
+	 * @param string $aPwInput - user supplied pw string
+	 * @param string $aEncryptedData - db stored encrypted pw string to compare against (optional)
 	 */
-	static public function hasher($info, $aEncryptedData = false) {
-		$theCryptStrenth = "08";
+	static public function hasher($aPwInput, $aEncryptedData = false) {
+		$theCryptoInfo = '$2a$08$'; //2a = Blowfish, 08 = crypto strength, append actual 22 char salt to end of this
 		//if encrypted data is passed, check it against input ($info)
 		if ($aEncryptedData) {
-			if (substr($aEncryptedData, 0, 60) == crypt($info, "$2a$".$theCryptStrenth."$".substr($aEncryptedData, 60))) {
+			$saltCrypto = substr($aEncryptedData,0,-16);
+			$saltPw = substr($aEncryptedData,-16);
+			if ($aEncryptedData==crypt($aPwInput.$saltPw,$saltCrypto).$saltPw) {
 				return true;
 			} else {
 				return false;
 			}
 		} else {
-			//make a salt and hash it with input, and add salt to end
-			$salt = "1234567890123456789012";
-			for ($i = 0; $i < 22; $i++) {
-				$salt{$i} = substr("./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0, 63), 1);
-			}
-			//return 82 char string (60 char hash & 22 char salt)
-			return crypt($info, "$2a$".$theCryptStrenth."$".$salt).$salt;
+			$saltPw = Strings::randomSalt(16);
+			$saltCrypto = $theCryptoInfo.Strings::randomSalt(22);
+			//return 76 char string (60 char hash & 16 char salt)
+			return crypt($aPwInput.$saltPw,$saltCrypto).$saltPw;
 		}
 	}
 
@@ -87,9 +96,9 @@ class Strings {
 		} else {
 			mt_srand((double)microtime()*10000); //optional for php 4.2.0 and up.
 			$charid = strtoupper(md5(uniqid(rand(),true)));
-			$guid = '{'.substr($charid, 0, 8).'-'.substr($charid, 8, 4).'-'
+			$guid = substr($charid, 0, 8).'-'.substr($charid, 8, 4).'-'
 					.substr($charid,12, 4).'-'.substr($charid,16, 4).'-'
-					.substr($charid,20,12).'}';
+					.substr($charid,20,12);
 			return $guid;
 		}
 	}
@@ -105,8 +114,8 @@ class Strings {
 	}
 
 	static public function debugLog($s) {
-		syslog(LOG_DEBUG,$s);
-		//syslog(LOG_ERR,$s);
+		//syslog(LOG_DEBUG,$s);
+		syslog(LOG_ERR,'[dbg] '.$s);
 	}
 
 	static public function getClassName($aName) {

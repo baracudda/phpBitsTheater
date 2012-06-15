@@ -6,11 +6,22 @@ use \PDO;
 class DbUtils {
 	private function __construct() {} //do not instantiate
 
+	/**
+	 * [dbconn]
+	 * driver = "mysql"
+	 * host = "localhost"
+	 * ;port = 3306
+	 * dbname = "mydatabase"
+	 * username = "server_bot"
+	 * password = "pw-for-server_bot"
+	 * 
+	 * @param array $aConfigData
+	 */
 	static private function cnvDbConnIni2Dns($aConfigData) {
-		$theDns = $aConfigData['dbconn']['dbtype'].':host='.$aConfigData['dbconn']['dbhost'].
-				((!empty($aConfigData['dbconn']['dbport'])) ? (';port='.$aConfigData['dbconn']['dbport']) : '' ).
+		$theDns = $aConfigData['dbconn']['driver'].':host='.$aConfigData['dbconn']['host'].
+				((!empty($aConfigData['dbconn']['port'])) ? (';port='.$aConfigData['dbconn']['port']) : '' ).
 				';dbname='.$aConfigData['dbconn']['dbname'];
-		return array('dns'=>$theDns,'usr'=>$aConfigData['dbconn']['dbuser'],'pwd'=>$aConfigData['dbconn']['dbpwrd']);
+		return array('dns'=>$theDns,'usr'=>$aConfigData['dbconn']['username'],'pwd'=>$aConfigData['dbconn']['password']);
 	}
 
 	/**
@@ -50,15 +61,17 @@ class DbUtils {
 		
 		$theDefaultConfig = array('dbopts','dbconn');
 		$theDefaultConfig['dbopts'] = array_fill_keys(array('table_prefix','dns_scheme','dns_value'),null);
-		$theDefaultConfig['dbconn'] = array_fill_keys(array('dbtype','dbhost','dbport','dbname','dbuser','dbpwrd'),null);
+		$theDefaultConfig['dbconn'] = array_fill_keys(array('driver','host','port','dbname','username','password'),null);
 
 		if ($theConfig = parse_ini_file($aConfigPath, TRUE)) {
 			$theConfig = array_replace_recursive($theDefaultConfig,$theConfig);
 			switch ($theConfig['dbopts']['dns_scheme']) {
 				case 'ini':
 					$theConfig = array_merge($theConfig,DbUtils::cnvDbConnIni2Dns($theConfig));
+					break;
 				case 'alias':
 					$theConfig['dns'] = $theConfig['dbopts']['dns_value'];
+					break;
 				default:
 					$theConfig['dns'] = $theConfig['dbopts']['dns_scheme'].':'.$theConfig['dbopts']['dns_value'];
 			}
@@ -124,6 +137,130 @@ class DbUtils {
 		$theResult->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
 		$theResult->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 		return $theResult;
+	}
+	
+	/*-----------------------------------------------------------------------------
+	 * Validation related methods
+	 *----------------------------------------------------------------------------*/
+
+	/**
+	 * Check to see if required field is set, throw an Exception if it is not set.
+	 * @param ArrayAccess $aDataRow - row data.
+	 * @param string $aFieldName - fieldname of required column.
+	 * @throws UnexpectedValueException - exception thrown if required column is missing data.
+	 */
+	static public function validateRequiredField(\ArrayAccess &$aDataRow, $aFieldName) {
+		if (!isset($aDataRow[$aFieldName])) {
+			throw new UnexpectedValueException("$aFieldName field missing", 417);
+		}
+	}
+
+	/**
+	 * Check all columns listed in $aFieldSet of $aDataRow against the $aValidateMethod.
+	 * @param Class $aObj
+	 * @param ArrayAccess $aDataRow
+	 * @param ArrayAccess $aFieldSet
+	 * @param string $aValidateMethod
+	 * @param ArrayAccess $aChildSetNames
+	 */
+	static public function validateRow($aObj, \ArrayAccess &$aDataRow, \ArrayAccess &$aFieldSet, $aValidateMethod, &$aChildSetNames=null) {
+		if (is_null($aDataRow))
+			return;
+		foreach ($aFieldSet as $theFieldName) {
+			if (method_exists($aObj,$aValidateMethod)) {
+				$aObj->$aValidateMethod($aDataRow,$theFieldName);
+			} else if (method_exists('DbUtils',$aValidateMethod)) {
+				DbUtils::$aValidateMethod($aDataRow,$theFieldName);
+			}
+		}
+		if (is_null($aChildSetNames))
+			return;
+		foreach ($aChildSetNames as $theChildName) {
+			if (isset($aDataRow[$theChildName]))
+				DbUtils::validateSet($aObj,$aDataRow[$theChildName],$aFieldSet,$aValidateMethod,$aChildSetNames);
+		}
+	}
+
+	/**
+	 * Validates an array of row-arrays.
+	 * @param Class $aObj - class containing validation functions other than those provided in this class.
+	 * @param ArrayAccess $aDataSet - array of row-arrays.
+	 * @param ArrayAccess $aFieldSet - array of fieldnames to determine which columns will be passed into the $aValidationMethod.
+	 * @param string $aValidateMethod - validation method to use.
+	 * @param ArrayAccess $aChildSetNames - some row data may contain child row set data, if column matches, recurse into it.
+	 */
+	static public function validateSet($aObj, \ArrayAccess &$aDataSet, &$aFieldSet, $aValidateMethod, &$aChildSetNames=null) {
+		if (is_null($aDataSet))
+			return;
+		foreach ($aDataSet as &$theDataRow) {
+			DbUtils::validateRow($aObj,$theDataRow,$aFieldSet,$aValidateMethod,$aChildSetNames);
+		}
+	}
+	
+	/*-----------------------------------------------------------------------------
+	 * Various useful conversion routines.
+	 *----------------------------------------------------------------------------*/
+
+	/**
+	 * In-place conversion from 32char BINARY text field into a well-formed UUID string
+	 * @param ArrayAccess $aDataRow
+	 * @param string $aFieldName
+	 */
+	static public function cnvTextId2UUIDField(\ArrayAccess &$aDataRow, $aFieldName) {
+		if (isset($aDataRow[$aFieldName])) {
+			$aDataRow[$aFieldName] = Strings::cnvTextId2UUID($aDataRow[$aFieldName]);
+		}
+	}
+	
+	/**
+	 * In-place conversion from convertion from UUID string into 32char BINARY text field.
+	 * @param ArrayAccess $aDataRow
+	 * @param string $aFieldName
+	 */
+	static public function cnvUUID2TextIdField(\ArrayAccess &$aDataRow, $aFieldName) {
+		if (isset($aDataRow[$aFieldName])) {
+			$aDataRow[$aFieldName] = Strings::cnvUUID2TextId($aDataRow[$aFieldName]);
+		}
+	}
+	
+	/**
+	 * In-place conversion from text field into a well-formed UTF8 string
+	 * @param ArrayAccess $aDataRow
+	 * @param string $aFieldName
+	 */
+	static public function cnvToUTF8Field(\ArrayAccess &$aDataRow, $aFieldName) {
+		if (isset($aDataRow[$aFieldName])) {
+			$aDataRow[$aFieldName] = utf8_encode($aDataRow[$aFieldName]);
+		}
+	}
+	
+	/**
+	 * In-place conversion from UTF-8 text field into a string
+	 * @param ArrayAccess $aDataRow
+	 * @param string $aFieldName
+	 */
+	static public function cnvFromUTF8Field(\ArrayAccess &$aDataRow, $aFieldName) {
+		if (isset($aDataRow[$aFieldName])) {
+			$aDataRow[$aFieldName] = utf8_decode($aDataRow[$aFieldName]);
+		}
+	}
+
+	/**
+	 * In-place conversion from UTF-8 text field into a string
+	 * @param ArrayAccess $aDataRow
+	 * @param string $aFieldName
+	 */
+	static public function cnvTimestampUnix2MySql(\ArrayAccess &$aDataRow, $aFieldName) {
+		if (isset($aDataRow[$aFieldName])) {
+			$aDataRow[$aFieldName] = Strings::cnvTimestampUnix2MySQL($aDataRow[$aFieldName]);
+		}
+	}
+	
+	/**
+	 * @return Returns a SQL datetime string representing now() in UTC.
+	 */
+	static public function utc_now() {
+		return gmdate("Y-m-d\TH:i:s\Z");
 	}
 	
 	

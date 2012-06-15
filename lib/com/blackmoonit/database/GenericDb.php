@@ -2,7 +2,7 @@
 namespace com\blackmoonit\database;
 use \PDO;
 use com\blackmoonit\AdamEve as BaseDbClass;
-use com\blackmoonit\DbUtils;
+use com\blackmoonit\database\DbUtils;
 {//begin namespace
 
 class GenericDb extends BaseDbClass {
@@ -14,7 +14,7 @@ class GenericDb extends BaseDbClass {
 	 * @link http://php.net/manual/pdo.construct.php
 	 */
 	public function connect($aDnsInfo) {
-		$this->db = DbUtils::getConnection($aDnsInfo);
+		$this->db = $this::getConnection($aDnsInfo);
 	}
 
 	/**
@@ -57,7 +57,7 @@ class GenericDb extends BaseDbClass {
 		foreach ($aSqlParams as $theKey=>$theValue) {
 			if (is_array($theValue))
 				continue;
-			if ($aParamTypes!=null) {
+			if ($aParamTypes!=null && array_key_exists($theKey,$aParamTypes)) {
 				$theParamType = $aParamTypes[$theKey];
 			} else {
 				$theParamType = PDO::PARAM_STR;
@@ -85,13 +85,13 @@ class GenericDb extends BaseDbClass {
 	 * @param array $aFieldList - fields we want formatted for SQL.
 	 * @param array $aTextIdFieldList - (optional) TextId fields require special attention for SELECT statements.
 	 */
-	public function getSqlFields(array $aFieldList, array $aTextIdFieldList = NULL) {
+	public function getSqlFields($aTableName, array $aFieldList, array $aTextIdFieldList = array()) {
 		$theResult = '';
 		foreach ($aFieldList as $theFieldname) {
 			if (!in_array($theFieldname, $aTextIdFieldList, true)) {
-				$theResult .= $theFieldname.', ';
+				$theResult .= $aTableName.'.'.$theFieldname.', ';
 			} else {
-				$theResult .= 'HEX('.$theFieldname.') as '.$theFieldname.', ';
+				$theResult .= 'HEX('.$aTableName.'.'.$theFieldname.') as '.$theFieldname.', ';
 			}
 		}
 		if (!empty($theResult))
@@ -119,6 +119,13 @@ class GenericDb extends BaseDbClass {
 			return substr($theResult,0,-2);
 		else
 			throw new InvalidArgumentException('invalid field listing');
+	}
+	
+	/**
+	 * @return Returns a SQL datetime string representing now() in UTC.
+	 */
+	public function utc_now() {
+		return 	DbUtils::utc_now();
 	}
 	
 }//class

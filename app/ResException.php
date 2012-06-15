@@ -4,6 +4,7 @@ use app\config\I18N;
 {//namespace begin
 
 class ResException extends \Exception {
+	public $contextMsg = '';
 	public $resName;
 	public $resClass;
 	public $resArgs;
@@ -20,7 +21,16 @@ class ResException extends \Exception {
 		$this->resErr = $e;
 	}
 	
-	public function getErrorMsg() {
+    public function setContextMsg($aMsg) {
+    	$this->contextMsg = $aMsg;
+    	return $this; //for chaining purposes
+    }
+	
+	public function getContextMsg() {
+		return $this->contextMsg;
+	}
+	
+    public function getErrorMsg() {
 		return $this->getMessage();
 	}
 	
@@ -46,15 +56,16 @@ class ResException extends \Exception {
 	}
 	
 	public function getDebugDisplay($aMsg=null) {
-		$s = "<br/>\n".'<div style="background-color:black">';
-		$this->msg .= $aMsg;
-		$s .= '<font color="red">'.str_replace("\n","<br/>\n",$this->msg)."</font><br/>\n";
-		$s .= '<font color="yellow">'.str_replace("\n","<br/>\n",$this->getErrorMsg())."</font><br/>\n";
-		$s .= '<font color="aqua">'.str_replace("\n","<br/>\n",$this->getDebugMsg())."</font><br/>\n";
-		$s .= '<font color="lime">Stack trace:<br/>'."\n".str_replace("\n","<br/>\n",$this->getTraceAsString())."</font><br/>\n";
+		$s = "<br/>\n".'<div id="container-error">';
+		$this->contextMsg .= $aMsg;
+		$s .= '<span class="msg-context">'.str_replace("\n","<br/>\n",$this->getContextMsg())."</span><br/>\n";
+		$s .= '<span class="msg-error">'.str_replace("\n","<br/>\n",$this->getErrorMsg())."</span><br/>\n";
+		$s .= '<span class="msg-debug">'.str_replace("\n","<br/>\n",$this->getDebugMsg())."</span><br/>\n";
+		$s .= '<span class="msg-trace">Stack trace:<br/>'."\n".str_replace("\n","<br/>\n",$this->getTraceAsString())."</span><br/>\n";
 		$s .= '</div>'."\n";
 		return $s;
 	}
+	
 	
 	public function debugPrint($aMsg=null) {
 		if ((defined('_DEBUG_APP') && constant('_DEBUG_APP')) || !class_exists('app\\config\\Settings')) {

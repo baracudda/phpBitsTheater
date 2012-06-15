@@ -3,12 +3,13 @@ use \com\blackmoonit\Widgets;
 $recite->includeMyHeader();
 
 $w = '<div align="left">'."\n";
-if ($recite->_dbError) {
-	$w .= $recite->_dbError;
-	$w .= $recite->old_vals;
-} else {
+if (!$v->permission_denied) {
 	$w .= 'All done!'."<br/>\n";
 	$w .= $v->continue_button;
+} else {
+	$w .= '<br/>';
+	$w .= 'Write Permission Denied, please give all files/folders Write access during install.<br />';
+	$w .= 'It is safe to grant Write access now and then refresh this page.<br />';
 }
 $w .= '</div>';
 

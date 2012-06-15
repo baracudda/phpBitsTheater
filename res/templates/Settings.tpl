@@ -9,9 +9,6 @@ class Settings extends \stdClass {
 
 	const PAGE_Landing = '/home';
 	
-	//the table name prefix prepended to all table names used by this app.
-	const TABLE_PREFIX = '%table_prefix%';
-
 }//end class
 
 }//end namespace

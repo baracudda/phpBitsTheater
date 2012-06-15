@@ -6,30 +6,40 @@ use \PDOException;
 class DbException extends PDOException {
 	public $contextMsg;
 	
-	public function __construct(PDOException $e, $aMsg = NULL) {
-		$theMsg = '';
-		$theCode = 0;
-		$thePrior = null;
+	public function __construct(PDOException $e, $aMsg='') {
 		if (isset($e)) {
-			$theMsg = $e->getMessage();
-			$theCode = $e->getCode();
-			$thePrior = $e->getPrevious();
+			$theArgs = $this::parseSqlStateMsg($e->getMessage());
+			if ($e->getPrevious()) {
+				$theArgs[] = $e->getPrevious();
+			}
+			call_user_func_array(array('parent','__construct'),$theArgs);
+			$this->setContextMsg($aMsg);
+		} else {
+			call_user_func_array(array('parent','__construct'),array($aMsg));
 		}
-		if (strstr($theMsg,'SQLSTATE[')) {
-			preg_match('/SQLSTATE\[(\w+)\] \[(\w+)\] (.*)/',$theMsg,$matches);
-			$theCode = ($matches[1] == 'HT000' ? $matches[2] : $matches[1]);
-			$theMsg = $matches[3];
-        }
-		parent::__construct($theMsg,$theCode,$thePrior);
-		$this->setContextMsg($aMsg);
 	}
     
     public function setContextMsg($aMsg) {
     	$this->contextMsg = $aMsg;
     	return $this; //for chaining purposes
     }
+    
+    static public function parseSqlStateMsg($aMsg) {
+		$theResult = array();
+    	if (strstr($aMsg,'SQLSTATE[') && preg_match('/SQLSTATE\[(\w+)\] \[(\w+)\] (.*)/',$aMsg,$matches)) {
+			$theResult[] = $matches[3];
+    		$theResult[] = ($matches[1] == 'HT000' ? $matches[2] : $matches[1]);
+        } else {
+        	$theResult[] = $aMsg;
+        }
+        return $theResult;
+    }
 	
-	public function getErrorMsg() {
+	public function getContextMsg() {
+		return $this->contextMsg;
+	}
+	
+    public function getErrorMsg() {
 		return $this->getMessage();
 	}
 	
@@ -38,12 +48,12 @@ class DbException extends PDOException {
 	}
 	
 	public function getDebugDisplay($aMsg=null) {
-		$s = "<br/>\n".'<div style="background-color:black">';
+		$s = "<br/>\n".'<div id="container-error">';
 		$this->contextMsg .= $aMsg;
-		$s .= '<font color="red">'.str_replace("\n","<br/>\n",$this->contextMsg)."</font><br/>\n";
-		$s .= '<font color="yellow">'.str_replace("\n","<br/>\n",$this->getErrorMsg())."</font><br/>\n";
-		$s .= '<font color="aqua">'.str_replace("\n","<br/>\n",$this->getDebugMsg())."</font><br/>\n";
-		$s .= '<font color="lime">Stack trace:<br/>'."\n".str_replace("\n","<br/>\n",$this->getTraceAsString())."</font><br/>\n";
+		$s .= '<span class="msg-context">'.str_replace("\n","<br/>\n",$this->getContextMsg())."</span><br/>\n";
+		$s .= '<span class="msg-error">'.str_replace("\n","<br/>\n",$this->getErrorMsg())."</span><br/>\n";
+		$s .= '<span class="msg-debug">'.str_replace("\n","<br/>\n",$this->getDebugMsg())."</span><br/>\n";
+		$s .= '<span class="msg-trace">Stack trace:<br/>'."\n".str_replace("\n","<br/>\n",$this->getTraceAsString())."</span><br/>\n";
 		$s .= '</div>'."\n";
 		return $s;
 	}

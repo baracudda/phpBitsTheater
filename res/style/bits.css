@@ -1,0 +1,143 @@
+/**
+ * BITS CSS STYLES
+ */
+
+/**
+ * General page style. 
+ */
+body {
+	background-color: LightSteelBlue;
+	margin:0px;
+	padding:0px;
+	color: black;
+	font-family:Arial, Helvetica, sans-serif;
+	font-size:11px;
+}
+
+#container-header {
+	background-color: Navy;
+	height: 80px;
+	width: 100%;
+	color: white;
+	font-weight: bolder;
+	font-size: 12px;
+	text-align: left;
+	text-indent: 3px;
+}
+#container-header a:link, #container-header a:active, #container-header a:visited {
+	color: LightSteelBlue;
+	text-decoration:none;
+}
+#container-header .title {
+	font-weight:bold;
+	font-size:24px;	
+}
+
+#container-body {
+	width:96%;
+	margin-left:auto;
+	margin-right:auto;
+}
+
+#container-footer {
+	font-size:12px;
+	text-align:center;
+	border:1px solid #00000000;
+	padding:5px;
+}
+
+/* Error Display */
+div#container-error {
+	background-color: black;
+}
+
+div#container-error .msg-context {
+	color: yellow;
+	font-size: 12px;
+}
+
+.msg-error {
+	color: red;
+	font-size: 12px;
+}
+
+div#container-error .msg-debug {
+	color: aqua;
+	font-size: 12px;
+}
+
+div#container-error .msg-trace {
+	color: lime;
+	font-size: 10px;
+}
+
+/* Data Entry/Display */
+.data-outline {
+	border:1px solid #000000;
+	font-size:11px;
+}
+
+.list-header {
+	background-color:#142c3e;
+	color:white;
+}
+
+.list-header A:link,a:visited,a:active,a:hover {
+	color:white;
+}
+
+tr.row1 {
+/*background:url('../images/row1.gif'); */
+}
+
+tr.row2 {
+/*background:url('../images/row2.gif'); */
+}
+
+tr.row-hover {
+/*background:url('../images/hover.jpg'); */
+}
+
+table.data-entry {
+	
+}
+
+table.data-entry .data-label {
+	font-size: 11px;
+	font-weight: bolder;
+	text-align: right;
+}
+
+table.data-entry .data-field {
+	
+}
+
+.smalltext {
+	font-size: x-small;
+	font-family: verdana, sans-serif;
+}
+
+.infotext {
+	font-size:9px;
+	font-style:italic;
+}
+
+/* main submit button */
+input.mainoption {
+	font-weight: bolder;
+}
+
+/* secondary submit button (usually a reset) */
+input.liteoption {
+}
+
+a:link,a:active,a:visited {
+	color: MidnightBlue;
+	text-decoration:none;
+}
+
+a:hover {
+	color: Purple;
+	text-decoration: underline;
+}
+

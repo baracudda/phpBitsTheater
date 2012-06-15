@@ -71,14 +71,14 @@ class Groups extends Model {
 			);
 			$theSql = "INSERT INTO {$this->tnGroups} ".
 					"(group_id, group_name, group_type) VALUES (:group_id, :group_name, :group_type)";
-			$theParamTypes = array(PDO::PARAM_INT,PDO::PARAM_STR,PDO::PARAM_INT);
+			$theParamTypes = array('group_id'=>\PDO::PARAM_INT,'group_name'=>\PDO::PARAM_STR,'group_type'=>\PDO::PARAM_INT);
 			return $this->execMultiDML($theSql,$default_data,$theParamTypes);
 		}
 	}
 	
 	public function getGroup($aId) {
 		$rs = $this->query($this->get_group,array('group_id'=>$aId));
-		return $rs->fetchRow();
+		return $rs->fetch();
 	}
 	
 	public function isEmpty($aTableName=null) {
@@ -115,10 +115,10 @@ class Groups extends Model {
 	}
 	
 	public function getAcctGroups($aAcctId) {
-		$r = $this->query($this->get_map_accts,array('acct_id',$aAcctId));
+		$r = $this->query($this->get_map_accts,array('acct_id'=>$aAcctId));
 		$theResult = array();
 		while ($row = $r->fetch()) {
-			$theResult[] = $row['group_id'];
+			$theResult[] = intval($row['group_id']);
 		}
 		return $theResult;
 	}

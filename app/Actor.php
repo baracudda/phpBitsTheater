@@ -25,6 +25,8 @@ class Actor extends BaseActor {
         call_user_func_array('parent::__construct',func_get_args());
 	}
    
+	//static public function _rest_handler() {}; //define this static function if Actor is actually a REST handler.
+	
 	public function setup(Director $aDirector, $anAction) {
 		parent::setup();
 		$this->director = $aDirector;
@@ -96,19 +98,46 @@ class Actor extends BaseActor {
 	}
 	
 	public function __get($aName) {
-		if ($aName=='config' && empty($this->config) && $this->director->canConnectDb()) {
-			try { 
-				$this->config = $this->director->getProp('Config');
-				return $this->config;
-			} catch (\Exception $e) {
+		//Strings::debugLog('actor->'.$aName.', is_empty='.empty($this->$aName).', canConnDb='.$this->director->canConnectDb());
+		switch ($aName) {
+			case 'config': 
+				if (empty($this->$aName) && $this->director->canConnectDb()) {
+					try { 
+						$theResult = $this->director->getProp('Config');
+						$this->config = $theResult;
+						return $theResult;
+					} catch (\Exception $e) {
+						syslog(LOG_ERR,'load config model failed: '.$e->getMessage());
+						return null;
+					}
+				}
+			default:
+				if ($this->director->isDebugging())
+					throw new \Exception('Cannot find actor->'.$aName.', check spelling.');
 				return null;
-			}
 		}
-		
 	}
 	
+	public function getProp($aName) {
+		return $this->director->getProp($aName);
+	}
+	
+	public function returnProp($aProp) {
+		$this->director->returnProp($aProp);
+	}
 
-
+	public function getRes($aName) {
+		return $this->director->getRes($aName);
+	}
+	
+	public function getMyUrl($aPage='', array $aQuery=array()) {
+		$theUrl = BITS_URL.$aPage;
+		if (!empty($aQuery)) {
+			$theUrl .= '?'.http_build_query($aQuery,'','&');
+		}
+		return $theUrl;
+	}
+	
 }//end class
 
 }//end namespace

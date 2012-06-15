@@ -1,6 +1,7 @@
 <?php
 namespace app\model; 
 use app\Model;
+use app\config\Settings;
 {//namespace begin
 
 abstract class AuthBase extends Model {
@@ -16,7 +17,7 @@ abstract class AuthBase extends Model {
 	
 	public function checkTicket() {
 		if ($this->director->isInstalled()) {
-			if ($this->director['app_id'] != \app\config\Settings::APP_ID) {
+			if ($this->director['app_id'] != Settings::APP_ID) {
 				$this->ripTicket();
 			}
 		}
@@ -32,14 +33,7 @@ abstract class AuthBase extends Model {
 	}
 		
 	public function registerAccount($aUserData) {
-		if ($this->canRegister($aUserData['account_name'],$aUserData['email'])==0) {
-			$accounts = $this->director->getProp('Accounts');
-			$accounts->add($aUserData);
-			$this->director->returnProp($accounts);
-			return true;
-		} else {
-			return false;
-		}
+		//overwrite this
 	}
 	
 	public function renderInstallOptions($anActor) {

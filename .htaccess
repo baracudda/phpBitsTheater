@@ -1,6 +1,3 @@
-#default request if none specified (instead of directory listing)
-DirectoryIndex index.php
-
 #keep prying eyes out of our config files
 <files *.ini>
 	order allow,deny
@@ -13,14 +10,12 @@ DirectoryIndex index.php
 	deny from all
 </files>
 
+#phpBitsTheater framework redirection
 <IfModule mod_rewrite.c>
 	RewriteEngine On
-
-	#phpBitsTheater framework redirection
 	RewriteCond %{REQUEST_FILENAME} !-f
 	RewriteCond %{REQUEST_FILENAME} !-d
-	RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]	
-
+	RewriteRule ^(.*)$ index.php?url=$1 [PT,QSA,L]	
 </IfModule>
 
 #Please consider moving the contents of this file into 

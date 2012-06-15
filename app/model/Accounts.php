@@ -2,7 +2,8 @@
 namespace app\model;
 use app\Model;
 use app\DbException;
-{
+use app\IllegalArgumentException;
+{//begin namespace
 
 class Accounts extends Model {
 	public $tnAccounts; const TABLE_Accounts = 'accounts';
@@ -30,10 +31,8 @@ class Accounts extends Model {
 	}
 	
 	public function getAccount($aAcctId) {
-		$row = null;
 		$rs = $this->query($this->sql_acct_get,array('acct_id'=>$aAcctId));
-		$row = $rs->fetchRow();
-		return $row;
+		return $rs->fetch();
 	}
 	
 	public function isEmpty($aTableName=null) {
@@ -42,9 +41,30 @@ class Accounts extends Model {
 		return parent::isEmpty($aTableName);
 	}
 	
+	public function getByName($aName) {
+		$theSql = "SELECT * FROM {$this->tnAccounts} WHERE account_name = :acct_name";
+		$theStatement = $this->query($theSql,array('acct_name'=>$aName));
+		return $theStatement->fetch();
+	}
+	
 	public function add($aData) {
-		if (!empty($aData))
-			return $this->execDML('acct_add',$aData);
+		$theResult = null;
+		if (!empty($aData)) {
+			if (!array_key_exists('account_id',$aData))
+				$aData['account_id'] = null;
+			if (!array_key_exists('external_id',$aData))
+				$aData['external_id'] = null;
+			if (!array_key_exists('account_name',$aData))
+				throw new IllegalArgumentException('account_name undefined');
+			$this->db->beginTransaction();
+			if ($this->execDML($this->sql_acct_add,$aData)==1) {
+				$theResult = $this->db->lastInsertId();
+				$this->db->commit();
+			} else {
+				$this->db->rollBack();
+			}
+		}
+		return $theResult;
 	}
 	
 	public function del($aAccountId) {

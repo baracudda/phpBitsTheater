@@ -1,21 +1,37 @@
 <?php
 use \com\blackmoonit\Widgets;
 $recite->includeMyHeader();
+$s = $v->getRes('account/msg_pw_nomatch');
+//print "<script>function checkPassword(p1,p2) { if (p1.value!=p2.value) {p2.setCustomValidity('\"'+p1.value+'\"!=\"'+p2.value+'\" $s');} else {p2.setCustomValidity('');} }</script>";
+print "<script>function checkPassword(p1,p2) { if (p1.value!=p2.value) {p2.setCustomValidity('$s');} else {p2.setCustomValidity('');} }</script>";
 
-if ($recite->_dbError) {
-	echo $recite->_dbError;
-} else {
+$w = '<h2>Register</h2>';
+if (isset($v->err_msg)) {
+	$w .= '<span class="msg-error">'.$v->err_msg.'</span>';
+}
+$w .= '<table class="data-entry">';
 
-$w = '<div align="left" class="contentHeader"><div class="contentHeaderText">Register</div>';
-$w .= 'name: '.Widgets::createTextBox('username',$recite->username,true)."<br/>\n";
-$w .= 'email: '.Widgets::createTextBox('username',$recite->email,true)."<br/>\n";
-$w .= 'pass: '.Widgets::createTextBox('password',$recite->password,true)."<br/>\n";
-$w .= 'confirm pass: '.Widgets::createTextBox('password_confirm',$recite->password_confirm,true)."<br/>\n";
-$w .= $recite->continue_button;
-$w .= "</div>\n";
+//make sure fields will not interfere with any login user/pw field in header
+$userKey = $v->getUsernameKey().'_reg';	
+$pwKey = $v->getPwInputKey().'_reg';
+$w .= '<tr><td class="data-label">'.$v->getRes('account/label_name').':</td><td class="data-field">'.
+		Widgets::createTextBox($userKey,$v->$userKey,true)."</td></tr>\n";
+$w .= '<tr><td class="data-label">'.$v->getRes('account/label_email').':</td><td class="data-field">'.
+		Widgets::createEmailBox('email',$recite->email,true)."</td></tr>\n";
+$w .= '<tr><td class="data-label">'.$v->getRes('account/label_pwinput').':</td><td class="data-field">'.
+		Widgets::createPassBox($pwKey,$v->$pwKey,true,60,120)."</td></tr>\n";
+$chkpwJs = "checkPassword(document.getElementById('{$pwKey}'), this);";
+$js = "onfocus=\"{$chkpwJs}\" oninput=\"{$chkpwJs}\"";
+$w .= '<tr><td class="data-label">'.$v->getRes('account/label_pwconfirm').':</td><td class="data-field">'.
+		Widgets::createPassBox('password_confirm',$recite->password_confirm,true,60,120,$js)."</td></tr>\n";
+$w .= '<tr><td class="data-label">'.$v->getRes('account/label_regcode').':</td><td class="data-field">'.
+		Widgets::createTextBox('reg_code',$recite->reg_code,true)."</td></tr>\n";
+$w .= '<tr><td class="data-label"></td><td class="data-field">'.
+		Widgets::createSubmitButton('button_register',$v->getRes('account/label_submit'));
+		
+$w .= "</table>\n";
 
-$form_html = Widgets::createHtmlForm($recite->form_name,$recite->next_action,$w,$v->redirect,false);
+$form_html = Widgets::createHtmlForm($recite->form_name,$recite->action_register,$w,$v->redirect,false);
 print $form_html;
 
-}
 $recite->includeMyFooter();

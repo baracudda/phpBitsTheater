@@ -10,7 +10,7 @@ if (empty($recite->_dbError)) {
 	$w .= 'The database failed to setup correctly. Please review logs and/or seek help.<br/>'."\n";
 	$w .= $recite->_dbError;
 	$w .= $recite->old_vals;
-	$w .= $recite->back_button;
+	//$w .= $recite->back_button;
 }
 $w .= '</div>';
 //even though there is no inputs here for the form, we need one for the Continue button to function

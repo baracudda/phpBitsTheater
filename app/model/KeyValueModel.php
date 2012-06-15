@@ -1,5 +1,7 @@
 <?php
-namespace app\model; 
+namespace app\model;
+use com\blackmoonit\Strings;
+use com\blackmoonit\FinallyBlock;
 use app\Model;
 use app\DbException;
 {//namespace begin
@@ -17,6 +19,17 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 	
 	public function setup($aDbConn) {
 		parent::setup($aDbConn);
+		$sql_value_select = "SELECT value FROM {$this->getTableName()} WHERE namespace = :ns AND mapkey = :key";
+		$sql_value_update = "UPDATE {$this->getTableName()} SET value=:new_value WHERE namespace = :ns AND mapkey = :key";
+		$sql_value_insert = "INSERT INTO {$this->getTableName()} ".
+				"(namespace, mapkey, value, val_def) VALUES (:ns, :key, :value, :default)";
+		try {
+			$this->value_select = $this->db->prepare($sql_value_select);
+			$this->value_update = $this->db->prepare($sql_value_update);
+			$this->value_insert = $this->db->prepare($sql_value_insert);
+		} catch (DbException $dbe) {
+			throw $dbe->setContextMsg('dbError@'.$this->getTableName().".".$aVarName."\n");
+		}
 	}
 	
 	public function cleanup() {
@@ -58,27 +71,6 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 		}
 	}
 	
-	public function __get($aVarName) {
-		try {
-			if ($aVarName=='value_select') {
-				$theSql = "SELECT value FROM {$this->getTableName()} WHERE namespace = :ns AND mapkey = :key";
-				$this->$aVarName = $theSql;
-				return $this->$aVarName;
-			} elseif ($aVarName=='value_update') {
-				$theSql = "UPDATE {$this->getTableName()} SET value=:new_value WHERE namespace = :ns AND mapkey = :key";
-				$this->$aVarName = $theSql;
-				return $this->$aVarName;
-			} elseif ($aVarName=='value_insert') {
-				$theSql = "INSERT INTO {$this->getTableName()} ".
-						"(namespace, mapkey, value, val_def) VALUES (:ns, :key, :value, :default)";
-				$this->$aVarName = $theSql;
-				return $this->$aVarName;
-			}
-		} catch (DbException $dbe) {
-			throw $dbe->setContextMsg('dbError@'.$this->getTableName().".".$aVarName."\n");
-		}
-	}
-	
 	public function splitKeyName($aKey) {
 		if (is_array($aKey))
 			return $aKey;
@@ -108,7 +100,10 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 			try {
 				$existing_data = $this->getMapData(array($aMapInfo['ns'],$aMapInfo['key']));
 				if (empty($existing_data)) {
-					return $this->execDML($this->value_insert,$aMapInfo);
+					$this->bindValues($this->value_insert,$aMapInfo);
+					$theResult = $theStatement->execute();
+					$theStatement->closeCursor();
+					return $theResult;
 				}
 			} catch (DbException $dbe) {
 				if ($this->exists($this->getTableName())) {
@@ -121,48 +116,55 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 	}
 
 	public function getMapData($aKey) {
-		$sa = $this->splitKeyName($aKey);
-		$sa[0] = $this->quote($sa[0],'text');
-		$sa[1] = $this->quote($sa[1],'text');
-		$theSql = "SELECT * FROM {$this->getTableName()} WHERE namespace = {$sa[0]} AND mapkey = {$sa[1]}";
-		return $this->getTheRow($theSql);
+		$theResult = null;
+		try {
+			$sa = $this->splitKeyName($aKey);
+			$theStatement = $this->value_select;
+			$this->bindValues($theStatement,array('ns'=>$sa[0],'key'=>$sa[1]));
+			if ($theStatement->execute()) {
+				$theResult = $theStatement->fetch();
+			}
+			$theStatement->closeCursor();
+		} catch (\PDOException $e) {
+			if ($this->exists($this->getTableName())) {
+				throw new DbException($e,'dbError@'.$this->getTableName().".getMapValue($aKey)\n");
+			}
+		}
+		return $theResult;
 	}
 
 	public function getMapValue($aKey) {
-		//Strings::debugLog($aKey);
-		if (empty($this->_mapdata[$aKey])) try {
-			$sa = $this->splitKeyName($aKey);
-			$rs = $this->query($this->value_select,array('ns'=>$sa[0], 'key'=>$sa[1]));
-			$row = $rs->fetchRow();
+		if (empty($this->_mapdata[$aKey])) {
+			$row = $this->getMapData($aKey);
 			$this->_mapdata[$aKey] = (isset($row['value']))?$row['value']:'';
-			$rs->closeCursor();
-		} catch (DbException $dbe) {
-			if ($this->exists($this->getTableName())) {
-				throw $dbe->setContextMsg('dbError@'.$this->getTableName().".getMapValue($aKey)\n");
-			} else {
-				return null;
-			}
 		}
+		//Strings::debugLog('key='.$aKey.' val='.$this->_mapdata[$aKey]);
 		return $this->_mapdata[$aKey];
 	}
 
 	public function setMapValue($aKey, $aNewValue) {
-		$this->_mapdata[$aKey] = $aNewValue;
-		if (is_null($this->value_update))
-			return;
-		$sa = $this->splitKeyName($aKey);
-		try {
-			$rs = $this->query($this->value_select,array('ns'=>$sa[0], 'key'=>$sa[1]));
-			$row = $rs->fetchRow();
-			if (isset($row['value'])) {
-				if ($row['value']!=$aNewValue)
-					$this->execDML($this->value_update,array('ns'=>$sa[0], 'key'=>$sa[1], 'new_value'=>$aNewValue));
-			} else {
-				$this->execDML($this->value_insert,array('ns'=>$sa[0],'key'=>$sa[1],'value'=>$aNewValue,'default'=>''));
-			}
-		} catch (DbException $dbe) {
-			if ($this->exists($this->getTableName())) {
-				throw $dbe->setContextMsg('dbError@'.$this->getTableName().".setMapValue($aKey,$aNewValue)\n");
+		$old_value = $this->getMapValue($aKey);
+		if ($old_value != $aNewValue) {
+			$this->_mapdata[$aKey] = $aNewValue;
+			$theFinally = new FinallyBlock(function() {
+				try {
+					$this->value_update->closeCursor();
+					$this->value_insert->closeCursor();
+				} catch (\Exception $e) {
+					//works or not, don't care
+				}
+			});
+			if (!is_null($this->value_update) && !is_null($this->value_insert)) try {
+				$sa = $this->splitKeyName($aKey);
+				$this->bindValues($this->value_update,array('ns'=>$sa[0], 'key'=>$sa[1], 'new_value'=>$aNewValue));
+				if (!$this->value_update->execute()) {
+					$this->bindValues($this->value_insert,array('ns'=>$sa[0],'key'=>$sa[1],'value'=>$aNewValue,'default'=>''));
+					$this->value_insert->execute();
+				}
+			} catch (\PDOException $e) {
+				if ($this->exists($this->getTableName())) {
+					throw new DbException($e2,'dbError@'.$this->getTableName().".setMapValue($aKey,$aNewValue)\n");
+				}
 			}
 		}
 	}

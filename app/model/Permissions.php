@@ -51,7 +51,8 @@ class Permissions extends Model {
 					$this->_permCache[$aNamespace]['allow'][$row['permission']][] = $row['group_id'];
 				}
 				$r->closeCursor();
-				$r = $r->execute(array('ns'=>$aNamespace,'value'=>self::VALUE_Deny));
+				$this->bindValues($r,array('ns'=>$aNamespace,'value'=>self::VALUE_Deny));
+				$r->execute();
 				while ($row = $r->fetch()) {
 					if (empty($this->_permCache[$aNamespace]['deny'][$row['permission']]))
 						$this->_permCache[$aNamespace]['deny'][$row['permission']] = array();
@@ -62,8 +63,13 @@ class Permissions extends Model {
 				//use default empty arrays which will mean all permissions will be not allowed
 			}
 		}
-		if (is_null($acctInfo))
+		if (empty($acctInfo)) {
 			$acctInfo =& $this->director->account_info; 
+		}
+		//Strings::debugLog('acctinfo:'.Strings::debugStr($acctInfo));
+		if (!empty($acctInfo) && !empty($acctInfo['groups']) && !(array_search(1,$acctInfo['groups'],true)===false)) {
+			return true; //group 1 is always allowed everything
+		}
 		//check deny first
 		if (!empty($this->_permCache[$aNamespace]['deny'][$aPermission])) {
 			if (count(array_intersect($this->_permCache[$aNamespace]['deny'][$aPermission],$acctInfo['groups']))>0)
@@ -88,7 +94,7 @@ class Permissions extends Model {
 	public function getAssignedRights($aGroupId) {
 		$r = $this->query($this->sql_get_group,array('group_id'=>$aGroupId));
 		$ar = array();
-		while ($row = $r->fetchRow()) {
+		while ($row = $r->fetch()) {
 			$ar[$row['namespace']][$row['permission']] = ($row['value']==self::VALUE_Allow)?'allow':'deny';
 		}
 		return $ar;
@@ -96,7 +102,7 @@ class Permissions extends Model {
 	
 	public function modifyGroupRights($aScene) {
 		$theGroupId = $aScene->group_id;
-		$this->execDML('del_group',array('group_id'=>$theGroupId));
+		$this->execDML($this->sql_del_group,array('group_id'=>$theGroupId));
 		$right_groups = $this->getPermissionRes('namespace');
 		foreach ($right_groups as $ns => $nsInfo) {
 			foreach ($this->getPermissionRes($ns) as $theRight => $theRightInfo) {

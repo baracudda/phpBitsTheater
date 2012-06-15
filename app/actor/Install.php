@@ -17,9 +17,7 @@ class Install extends Actor {
 		$thePW = BITS_ROOT; //default pw is the folder path
 		if (file_exists($aPwFile)) {
 			//load first line as pw
-			$f = fopen($aPwFile,'r');
-			$thePW = trim(fgets($f));
-			fclose($f);
+			$thePW = trim(file_get_contents($aPwFile));
 		}
 		//Strings::debugLog('file:'.$aPwFile.', '.$thePW);
 		return $thePW;
@@ -49,14 +47,9 @@ class Install extends Actor {
 			foreach ($aVars as $theVarName) {
 				$tpl = str_replace('%'.$theVarName.'%',$this->scene->$theVarName,$tpl);
 			}
-			$f = fopen($dst,'w');
-			if (!fwrite($f,$tpl)) {
-				$this->scene->permission_denied = true;
+			if (file_put_contents($dst,$tpl)) {
+				return $dst;
 			}
-			fclose($f);
-			return $dst;
-		} else {
-			$this->scene->permission_denied = true;
 		}
 		return false;
 	}
@@ -159,7 +152,7 @@ class Install extends Actor {
 			try {
 				$this->scene->connected = DbUtils::getPDOConnection(DbUtils::readDbConnInfo(BITS_DB_INFO));
 				$this->scene->next_action = BITS_URL.'/install/auth1';
-			} catch (PDOException $e) {
+			} catch (\PDOException $e) {
 				$this->scene->next_action = BITS_URL.'/install/db1';
 				$this->scene->connected = false;
 				$this->scene->_dbError = $e->getDebugDisplay('Connection error');
@@ -170,6 +163,8 @@ class Install extends Actor {
 				//if dbconn failed, delete the file so it can be attempted again
 				$this->scene->permission_denied = !unlink($dst);
 			}
+		} else {
+			$this->scene->permission_denied = true;
 		}
 	}
 
@@ -224,30 +219,30 @@ class Install extends Actor {
 	
 	protected function installSettings($aNewAppId) {
 		$this->scene->app_id = $aNewAppId;
-		$theDbConnInfo = DbUtils::readDbConnInfo(BITS_DB_INFO);
-		$this->scene->table_prefix = $theDbConnInfo['dbopts']['table_prefix'];
-		$theVarNames = array('app_id','table_prefix');
-		$this->installConfigTpl('Settings','.php',$theVarNames);		
+		$theVarNames = array('app_id');
+		return $this->installConfigTpl('Settings','.php',$theVarNames);		
 	}
 
 	public function allFinished() {
 		if (!$this->checkInstallPw()) return BITS_URL;
 		$this->scene->next_action = BITS_URL.'/rights';
-		if ($this->scene->_dbError==false) {
-			//do something to signify finished
-			$this->installSettings(Strings::createGUID());
+		//do something to signify finished
+		if ($this->installSettings(Strings::createGUID())) {
 			//see where to go from here
 			$accounts = $this->director->getProp('Accounts');
 			if ($accounts->isEmpty()) {
-				if (Auth::ALLOW_REGISTRATION)
-					$this->scene->next_action = $this->conifg['auth/register_url'];
-				else
+				if (Auth::ALLOW_REGISTRATION) {
+					$this->scene->next_action = $this->config['auth/register_url'];
+				} else {
 					$this->scene->next_action = $this->config['auth/login_url'];
+				}
 			}
 			$this->director->returnProp($accounts);
+		} else {
+			$this->scene->permission_denied = true;
 		}
 	}
-	
+	/*
 	public function resetDb($pw) {
 		if (!$this->director->isInstalled() || !$this->director->canConnectDb())
 			return BITS_URL;
@@ -267,7 +262,7 @@ class Install extends Actor {
 			return BITS_URL;
 		}
 	}
-		
+	*/
 }//end class
 
 }//end namespace

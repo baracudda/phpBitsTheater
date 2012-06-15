@@ -65,7 +65,7 @@ class Menus extends Actor {
 			if (isset($submenu)) {
 				foreach ($submenu as $theMenuName => $theMenuItem) {
 					if ($this->isMenuItemRemoved($theMenuName,$theMenuItem)) {
-						unset($submen[$theMenuName]);
+						unset($submenu[$theMenuName]);
 					}
 				}
 			}
@@ -78,7 +78,10 @@ class Menus extends Actor {
 			$theLink = $this->getLink($aMenuItem['link']);
 			if (empty($theLink))
 				return true;
-			$aMenuItem['link'] = str_replace('%account_id%',$this->director->account_info['account_id'],$theLink);
+			if (!$this->director->isGuest())
+				$aMenuItem['link'] = str_replace('%account_id%',$this->director->account_info['account_id'],$theLink);
+			else
+				$aMenuItem['link'] = $theLink;
 		}
 		return false;
 	}

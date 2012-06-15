@@ -1,6 +1,7 @@
 <?php
 namespace app;
 use com\blackmoonit\AdamEve;
+use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\Strings;
 use app\DbException as DbErr;
 use app\ResException;
@@ -10,6 +11,7 @@ use app\config\I18N;
 
 class Director extends AdamEve implements \ArrayAccess {
 	public $account_info = null;//array('account_id'=>-1, 'account_name'=>'', 'email'=>'', 'groups'=>array(), 'tz'=>'',);
+	public $table_prefix = ''; //prefix for every table used by this app
 	public $dbConn = null; //single database connection to share with anyone using getModel()
 	protected $_propMaster = array(); //cache models created so app doesn't need to create 12 instances of any single model
 	protected $_resMaster = array(); //cache of res classes
@@ -107,7 +109,7 @@ class Director extends AdamEve implements \ArrayAccess {
 				if ($this->isInstalled()) {
 					$this['played'] = \app\config\Settings::APP_ID; //app_id -> play_id -> "played"
 				}
-				//Strings::debugLog('raiseCurtain: '.$anActorClass.', '.$anAction.', '.debugStr($aQuery));
+				//Strings::debugLog('raiseCurtain: '.$anActorClass.', '.$anAction.', '.Strings::debugStr($aQuery));
 				$anActorClass::perform($this,$anAction,$aQuery);
 				return true;
 			} else {
@@ -144,7 +146,9 @@ class Director extends AdamEve implements \ArrayAccess {
 	
 	public function getModel($aModelClass) {
 		if (empty($this->dbConn) && $this->canConnectDb()) {
-			$this->dbConn = \app\Model::getConnection();
+			$theDbInfo = DbUtils::readDbConnInfo(BITS_DB_INFO);
+			$this->table_prefix = $theDbInfo['dbopts']['table_prefix'];
+			$this->dbConn = \app\Model::getConnection($theDbInfo);
 		}
 		if (is_string($aModelClass)) {
 			$theModelClass = 'app\\model\\'.$aModelClass;
@@ -188,18 +192,19 @@ class Director extends AdamEve implements \ArrayAccess {
 	public function getRes($aResName) {
 		//explode on "\" or "/"
 		$theResUri = explode('/',str_replace('\\','/',$aResName));
-		//array_shift($theResUri);//remove the beginning res/%blah%
 		if (count($theResUri)>=2) {
 			$theResClassName = Strings::getClassName(array_shift($theResUri));
 			$theRes = array_shift($theResUri);
 		} else {
 			$theResClassName = 'Resources';
 			$theRes = array_shift($theResUri);
-		}		
-		$theArgs = $theResUri; //whatever's left
+		}
 		try {
 			$theResClass = I18N::findClassNamespace($theResClassName);
-			return $this->loadRes($theResClass,$theRes,$theArgs);
+			if (!empty($theResUri))
+				return $this->loadRes($theResClass,$theRes,$theResUri);
+			else
+				return $this->loadRes($theResClass,$theRes);
 		} catch (ResException $re) {
 			if (I18N::LANG==I18N::DEFAULT_LANG && I18N::REGION==I18N::DEFAULT_REGION) {
 				throw $re;
@@ -210,20 +215,25 @@ class Director extends AdamEve implements \ArrayAccess {
 		}
 	}
 	
-	protected function loadRes($aResClass, $aRes, $args=array()) {
+	protected function loadRes($aResClass, $aRes, $args=null) {
 		if (empty($this->_resMaster[$aResClass])) {
 			$this->_resMaster[$aResClass] = new $aResClass($this);
 		}
 		$resObj = $this->_resMaster[$aResClass];
 		if (is_callable(array($resObj,$aRes))) {
 			try {
-				return $resObj->$aRes($args);
+				return call_user_func_array(array($resObj,$aRes),$args);
 			} catch (\Exception $e) {
 				throw new ResException($aRes,$aResClass,$args,$e);
 			}
 		} else {
 			if (isset($resObj->$aRes)) {
-				return $resObj->$aRes;
+				if (isset($args)) {
+					//Strings::debugLog('b: '.$resObj->$aRes.Strings::debugStr($args));
+					return call_user_func_array(array('com\blackmoonit\Strings','format'),array_merge(array($resObj->$aRes),$args));
+				} else {
+					return $resObj->$aRes;
+				}
 			} else {
 				throw new ResException($aRes);
 			}
@@ -239,8 +249,9 @@ class Director extends AdamEve implements \ArrayAccess {
 	public function admitAudience() {
 		if ($this->canCheckTickets()) {
 			$this->auth = $this->getProp('Auth'); //director will close this on cleanup
-			$this->auth->checkTicket($this);
+			return $this->auth->checkTicket($this);
 		}
+		return false;
 	}
 	
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
@@ -262,8 +273,8 @@ class Director extends AdamEve implements \ArrayAccess {
 		if (!$this->isGuest() && isset($this->auth)) {
 			$this->auth->ripTicket($this);
 			unset($this->account_info);
-			return BITS_URL;
 		}
+		return BITS_URL;
 	}
 	
 	public function getForumUrl() {

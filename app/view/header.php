@@ -7,6 +7,9 @@ print '<title>phpBitsTheater MicroFramework </title>'."\n";
 $aCssPattern = '<link rel="stylesheet" type="text/css" href="'.BITS_RES.'/style/%s">'."\n";
 $aScriptPattern = '<script type="text/javascript" src="'.BITS_LIB.'/%s" language="javascript"></script>'."\n";
 
+//Theme
+printf($aCssPattern,'bits.css');
+
 //apycom menu
 printf($aCssPattern,'apycom/menu.css');
 printf($aScriptPattern,'apycom/jquery.js');
@@ -21,40 +24,32 @@ printf($aScriptPattern,'apycom/menu.js');
 
 print "</head>\n";
 
-print "<body>\n";
-
-print '<div align="center"><div id="bodyContainer">'."\n"; //these two need to be matched in the footer.php
-print '<div style="text-align:left"><table width="100%">'."\n";
-print '  <tr valign="top">'."\n";
-
+print '<body>'."\n";
+print '<table id="container-header" width="100%">'."\n";
+print '  <tr valign="center">'."\n";
 //logo
-print '    <td>'."\n";
+print '    <td width=80px>'."\n";
 print '      <a href="'.BITS_URL.'">';
-print '      <div align="left"><img src="'.BITS_RES.'/images/blackmoonit_logo.png" border="0"></div>';
+print '        <img height="72" width="72" title="logo" src="'.BITS_RES.'/images/blackmoonit_logo.png" border="0">';
 print '      </a>'."\n";
 print '    </td>'."\n";
-
-print '  </tr>'."\n";
-
-print '  <tr>'."\n";
-//login info
 print '    <td>'."\n";
-print '      <div align="left"><div style="font-size:12px; text-align:left; padding: 5px;">';
-print $recite->cueActor('Account','buildAuthArea');
-print "      </div></div>\n";
+print '      <a href="'.BITS_URL.'">';
+print '        <span class="title">phpBitsTheater</span>';
+print '      </a>'."\n";
 print '    </td>'."\n";
-print '    <td></td>';
+//login info
+print '    <td align="right">'."\n";
+print $recite->cueActor('Account','buildAuthArea');
+print '    </td>'."\n";
 print '  </tr>'."\n";
-
-
-print '</table></div>'."\n";
-print "<br/>\n";
+print '</table>'."\n";
 
 //menu
-print '<table width="100%" cellpadding="0" cellspacing="0" border="0">'."\n";
+print '<table id="container-header" width="100%" cellpadding="0" cellspacing="0" border="0">'."\n";
 print '  <tr><td>'."\n";
 print $recite->cueActor('Menus','buildAppMenu');
 print '  </td></tr>'."\n";
 print '</table>'."\n";
 
-print "<br/>\n";
+print '<div id="container-body">'."\n"; //this needs to be matched in the footer.php

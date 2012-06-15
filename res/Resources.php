@@ -1,6 +1,7 @@
 <?php
 namespace res;
 use com\blackmoonit\AdamEve as BaseResources;
+use app\IllegalArgumentException;
 {//begin namespace
 
 class Resources extends BaseResources {
@@ -15,9 +16,9 @@ class Resources extends BaseResources {
 	/**
 	 * Descendants want to merge translated labels with their static definitions in ancestor.
 	 */
-	function res_array_merge(&$res1, &$res2) {
+	function res_array_merge(array &$res1, &$res2) {
 		if (!is_array($res1)) {
-			throw new \IllegalArgumentException('res_array_merge requires first param to be an array');
+			throw new IllegalArgumentException('res_array_merge requires first param to be an array');
 		}
 		if (!is_array($res2)) {
 			$res1[] = $res2;

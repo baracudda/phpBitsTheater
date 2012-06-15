@@ -12,12 +12,13 @@ use app\Director;
  * Base class for Models.
  */
 class Model extends BaseModel {
+	public $myAppNamespace;
 	public $tbl_;
 	public $director;
-	public $myAppNamespace;
 	
 	public function __construct(Director $aDirector, $aDbConn) {
-		$this->tbl_ = Settings::TABLE_PREFIX;
+		$this->myAppNamespace = strtolower($this->name);
+		$this->tbl_ = $aDirector->table_prefix;
 		$this->director = $aDirector;
 		$this->_setupArgCount = 1;
 		parent::__construct($aDbConn);
@@ -27,8 +28,6 @@ class Model extends BaseModel {
 	 * $aDbConn - use this connection. If null, create a new one.
 	 */
 	public function setup($aDbConn) {
-		$this->myAppNamespace = strtolower($this->name);
-
 		if (is_null($aDbConn))
 			$this->connect($this->getDbConnInfo());
 		else {
@@ -72,7 +71,7 @@ class Model extends BaseModel {
 				$this->bindValues($theStatement,$aParamValues,$aParamTypes);
 				return $theStatement->execute();
 			}
-		} catch (PDOException $pdoe) {
+		} catch (\PDOException $pdoe) {
 			throw new DbException($pdoe);
 		}
 	}
@@ -93,9 +92,10 @@ class Model extends BaseModel {
 			} else {
 				$theStatement = $this->db->prepare($aSql);
 				$this->bindValues($theStatement,$aParamValues,$aParamTypes);
-				return $theStatement->execute();
+				$theStatement->execute();
+				return $theStatement;
 			}
-		} catch (PDOException $pdoe) {
+		} catch (\PDOException $pdoe) {
 			throw new DbException($pdoe);
 		}
 	}
@@ -103,9 +103,11 @@ class Model extends BaseModel {
 	/**
 	 * combination query & fetch a single row, returns null if errored
 	 */
-	public function getTheRow($aSql) {
-		$r = $this->query($aSql);
-		$theResult = $r->fetch();
+	public function getTheRow($aSql, $aParamValues=null, $aParamTypes=null) {
+		$theResult = null;
+		$r = $this->query($aSql,$aParamValues,$aParamTypes);
+		if ($r)
+			$theResult = $r->fetch();
 		$r->closeCursor();
 		return $theResult;
 	}
@@ -128,7 +130,7 @@ class Model extends BaseModel {
 	 */	
 	public function isEmpty($aTableName) {
 		$r = $this->query("SELECT 1 FROM $aTableName WHERE EXISTS(SELECT * FROM $aTableName LIMIT 1)");
-		return ($r->fetchRow()==null);
+		return ($r->fetch()==null);
 	}
 	
 	//===== Parameterized queries =====	
@@ -142,7 +144,7 @@ class Model extends BaseModel {
 	public function prepareSQL($aParamSql) {
 		try {
 			return $this->db->prepare($aParamSql);
-		} catch (PDOException $pdoe) {
+		} catch (\PDOException $pdoe) {
 			throw new DbException($pdoe, 'Preparing: '.$aParamSql);
 		}
 	}
@@ -162,7 +164,7 @@ class Model extends BaseModel {
 				$theStatement->execute();
 				$theStatement->closeCursor();
 			}
-		} catch (PDOException $pdoe) {
+		} catch (\PDOException $pdoe) {
 			throw new DbException($pdoe);
 		}
 	}
@@ -187,7 +189,10 @@ class Model extends BaseModel {
 		return $theModels;
 	}
 	
-
+	public function getRes($aName) {
+		return $this->director->getRes($aName);
+	}
+	
 }//end class
 
 }//end namespace

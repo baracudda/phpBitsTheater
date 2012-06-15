@@ -70,7 +70,7 @@ class AdamEve extends \stdClass {
 	}
 	
 	public function isCallable($aMethodName) {
-		return is_callable(array($this,$aMethodName),true);
+		return is_callable(array($this,$aMethodName));
 	}
 	
 }//end class

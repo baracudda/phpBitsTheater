@@ -115,19 +115,20 @@ class Scene extends BaseScene {
 	 * Constructor that will call __construct%numargs%(...) if any are passed in
 	 */
 	public function __construct() {
+		$this->me = new \ReflectionClass($this);
 		$this->_setupArgCount = 2;
         call_user_func_array('parent::__construct',func_get_args());
 	}
    
 	public function setup($anActor, $anAction) {
 		parent::setup();
-		$this->me = new \ReflectionClass($this);
 		$this->_actor = $anActor;
 		$this->_director =& $anActor->director;
 		$this->_config = $anActor->config;
 		$this->_action = $anAction;
 		$this->_dbError = false;
 		$this->setupDefaults();
+		$this->setupGetVars();
 		$this->setupPostVars();
 	}
 
@@ -149,6 +150,13 @@ class Scene extends BaseScene {
 		$this->page_footer = $this->getViewPath($this->actor_view_path.'footer');
 		$this->app_header = $this->getViewPath($this->view_path.'header');
 		$this->app_footer = $this->getViewPath($this->view_path.'footer');
+	}
+	
+	protected function setupGetVars() {
+		//grab all _GET vars and incorporate them
+		foreach ($_GET as $key => $val) {
+			$this->$key = $val;
+		}
 	}
 	
 	protected function setupPostVars() {

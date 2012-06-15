@@ -42,7 +42,7 @@ function unregisterGlobals() {
  * Route the URL requested to the approprate actor.
  */
 function route_request($aUrl) {
-	$director = new Director();
+	global $director; //exposed as a Global Var so legacy systems can interface with us
 	$urlPathList = array();
 	$urlPathList = explode("/",$aUrl);
 	/*passing in the ?url= (which .htaccess gives us) rather than $_SERVER['REQUEST_URI']
@@ -53,7 +53,7 @@ function route_request($aUrl) {
 	}
 	*/
 	//what is left in urlPath is the virtual sections
-	if ($director->isDebugging() || true)
+	if ($director->isDebugging())
 		Strings::debugLog('aUrl='.implode('/',$urlPathList));
 		
 	$theActorClass = array_shift($urlPathList);
@@ -67,6 +67,8 @@ function route_request($aUrl) {
 		}
 	} elseif (!$director->isInstalled() && class_exists('\\app\\actor\\Install')) {
 		\app\actor\Install::perform($director,'install',array());
+	} elseif ($director->isInstalled() && empty($aUrl)) {
+		header('Location: '.BITS_URL.Settings::PAGE_Landing);
 	} else {
 		throw new FourOhFourExit($aUrl);
 	}
@@ -75,5 +77,7 @@ function route_request($aUrl) {
 //Strings::debugLog('uri:'.$_SERVER['REQUEST_URI']);
 removeMagicQuotes();
 unregisterGlobals();
+global $director;
+$director = new Director();
 route_request(REQUEST_URL);
 }//end namespace

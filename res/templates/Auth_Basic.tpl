@@ -1,7 +1,6 @@
 <?php
 namespace app\model; 
 use app\model\AuthBase;
-use app\config\Settings;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -17,29 +16,22 @@ class Auth extends AuthBase {
 	const KEY_userinfo = 'ticketholder';
 	const KEY_pwinput = 'pwinput';
 	const KEY_cookie = 'seasontickets';
-	const KEY_pwhash = 'ticketmaster';
+	const KEY_keyid = 'ticketmaster';
 	const KEY_app_id = 'venue_id';
 
 	public $tnAuth;
-	protected $sql_get_auth;
-	protected $sql_add_auth;
-	protected $pt_add_auth;
+	protected $tnAuthCookie;
 	protected $sql_register;
 	protected $pt_register;
 		
 	public function setup($aDbConn) {
 		parent::setup($aDbConn);
-		$this->tnAuth = Settings::TABLE_PREFIX.'auth';
-		$this->sql_get_auth = "SELECT account_id, account_name, email, pwhash FROM {$this->tnAuth} WHERE ".
-				"account_name = :acctname OR email = :email";
-		$this->sql_add_auth = "INSERT INTO {$this->tnAuth} ".
-				"(email, account_id, verified, is_reset, _created) VALUES ".
-				"(:email, :account_id, :verified, :curr_ts, :_created)";
-		$this->pt_add_auth = array(PDO::PARAM_STR,PDO::PARAM_INT,PDO::PARAM_STR,PDO::PARAM_STR,PDO::PARAM_STR);
+		$this->tnAuth = $this->tbl_.'auth';
+		$this->tnAuthCookie = $this->tbl_.'auth_cookie';
 		$this->sql_register = "INSERT INTO {$this->tnAuth} ".
-				"(email, account_id, account_name, pwhash, verified, _created) VALUES ".
-				"(:email, :acct_id, :acct_name, :pwhash, :ts, NOW())";
-		$this->pt_register = array(PDO::PARAM_INT,PDO::PARAM_STR,PDO::PARAM_STR,PDO::PARAM_STR,PDO::PARAM_INT);
+				"(email, account_id, pwhash, verified, _created) VALUES ".
+				"(:email, :acct_id, :pwhash, :ts, NOW())";
+		$this->pt_register = array(\PDO::PARAM_STR,\PDO::PARAM_INT,\PDO::PARAM_STR,\PDO::PARAM_STR,\PDO::PARAM_STR);
 	}
 	
 	public function cleanup() {
@@ -52,39 +44,97 @@ class Auth extends AuthBase {
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnAuth} ".
 				"( email NCHAR(255) NOT NULL PRIMARY KEY COLLATE utf8_unicode_ci". //store as typed, but collate as case-insensitive
 				", account_id INT NOT NULL".							//link to Accounts
-				", pwhash CHAR(85) CHARACTER SET ascii COLLATE ascii_bin".	//blowfish hash of pw & its salt
-				", verified INT".										//unix timestamp when acct was verified
+				", pwhash CHAR(85) CHARACTER SET ascii NOT NULL COLLATE ascii_bin".	//blowfish hash of pw & its salt
+				", verified DATETIME".									//UTC when acct was verified
 				", is_reset INT".										//force pw reset in effect since this unix timestamp (if set)
 				", _created TIMESTAMP NOT NULL DEFAULT 0".
-				", _changed TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP".
+				", _changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".
 				", INDEX IdxAcctId (account_id)".
 				") CHARACTER SET utf8 COLLATE utf8_bin";
+			$this->execDML($theSql);
+			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnAuthCookie} ".
+				"( account_id INT NOT NULL".							//link to Accounts
+				", keyid CHAR(128) CHARACTER SET ascii NOT NULL COLLATE ascii_bin".
+				", _changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".
+				", INDEX IdxAcctIdKeyId (account_id, keyid)".
+				") CHARACTER SET utf8 COLLATE utf8_bin";
+			$this->execDML($theSql);
 		}
-		$this->execDML($theSql);
 	}
 	
 	public function setupPermissions($aScene, $modelPermissions) {
 		parent::setupPermissions($aScene,$modelPermissions);
-		$modelPermissions->registerPermission($this->myAppNamespace,'create'); //add permission groups
-		$modelPermissions->registerPermission($this->myAppNamespace,'delete'); //remove existing permission groups
+		$modelPermissions->registerPermission($this->myAppNamespace,'create'); //add users
+		$modelPermissions->registerPermission($this->myAppNamespace,'modify'); //change existing users
+		$modelPermissions->registerPermission($this->myAppNamespace,'delete'); //remove existing users
 	}
 	
-	public function getAuthData($aUserInfo) {
-		$theValues = array('acctname'=>strtolower($aUserInfo),'email'=>strtolower($aUserInfo));
-		return $this->query($this->sql_get_auth,$theValues)->fetch();
+	public function isEmpty($aTableName=null) {
+		if ($aTableName==null)
+			$aTableName = $this->tnAuth;
+		return parent::isEmpty($aTableName);
+	}
+	
+	public function getAuthByEmail($aEmail) {
+		$theSql = "SELECT account_id, email, pwhash FROM {$this->tnAuth} WHERE email = :email";
+		return $this->getTheRow($theSql,array('email'=>$aEmail));
+	}
+	
+	public function getAuthById($aId) {
+		$theSql = "SELECT account_id, email, pwhash FROM {$this->tnAuth} WHERE account_id=:id";
+		return $this->getTheRow($theSql,array('id'=>$aId),array(\PDO::PARAM_INT));
+	}
+	
+	private function updateCookie($aAcctId) {
+		$keyid = Strings::randomSalt(128);
+		$theSql = "INSERT INTO {$this->tnAuthCookie} (account_id, keyid) VALUES (:account_id, :keyid)";
+		$this->execDML($theSql,array('account_id'=>$aAcctId, 'keyid'=>$keyid),array(\PDO::PARAM_INT, \PDO::PARAM_STR));
+		//expires in 1 month
+		$delta = 2629743;
+		setcookie(self::KEY_userinfo, $aAcctId, time() + $delta);
+		setcookie(self::KEY_keyid, $keyid, time() + $delta);
+		setcookie(self::KEY_app_id, $this->director['app_id']);
 	}
 
 	public function checkTicket() {
 		if ($this->director->canConnectDb()) {
+			$dbAcct = $this->director->getProp('Accounts');
+			if (isset($this->director[self::KEY_userinfo])) {
+				$acct_id = $this->director[self::KEY_userinfo];
+				//Strings::debugLog('userid:'.$acct_id);
+				$dbAccts = $this->director->getProp('Accounts');
+				$this->director->account_info = $dbAccts->getAccount($acct_id);
+				$this->director->returnProp($dbAccts);
+				if (!empty($this->director->account_info)) {
+					$authdata = $this->getAuthById($acct_id);
+					$this->director->account_info['email'] = $authdata['email'];
+					$this->director->account_info['groups'] = $this->belongsToGroups($acct_id);
+					return;
+				} else {
+					//Strings::debugLog('ripTicket');
+					$this->ripTicket();
+				}
+			}
 			if (isset($_POST[self::KEY_userinfo])) {
-				$userinfo = strtolower($_POST[self::KEY_userinfo]);
+				//Strings::debugLog('user:'.$_POST[self::KEY_userinfo].' pw:'.$_POST[self::KEY_pwinput]);
+				$userinfo = $_POST[self::KEY_userinfo];
 				$pwinput = $_POST[self::KEY_pwinput];
-				$authdata = $this->getAuthData($userinfo);
-				if (isset($authdata)) {
+				unset($_POST[self::KEY_pwinput]);
+				$authdata = null;
+				if ($acctdata = $dbAcct->getByName($userinfo)) {
+					//Strings::debugLog('getByName:'.Strings::debugStr($acctdata));
+					$authdata = $this->getAuthById($acctdata['account_id']);
+				} else {
+					$authdata = $this->getAuthByEmail($userinfo);
+				}
+				if (!empty($authdata)) {
 					//check pwinput against crypted one
 					$pwhash = $authdata['pwhash'];
-					if ($pwhash == Strings::hasher($pwinput,$pwhash)) {
+					//Strings::debugLog('  db:'.$pwhash);
+					//Strings::debugLog('check:'.Strings::debugStr(Strings::hasher($pwinput,$pwhash)));
+					if (Strings::hasher($pwinput,$pwhash)) {
 						//authorized, load acct data
+						$this->director[self::KEY_userinfo] = $authdata['account_id'];
 						$accounts = $this->director->getProp('Accounts');
 						$this->director->account_info = $accounts->getAccount($authdata['account_id']);
 						$this->director->returnProp($accounts);
@@ -93,10 +143,7 @@ class Auth extends AuthBase {
 							$this->director->account_info['groups'] = $this->belongsToGroups($authdata['account_id']);
 							//if user asked to remember, save a cookie
 							if (isset($_POST[self::KEY_cookie])) {
-								//expires in 1 month
-								setcookie(self::KEY_userinfo, $authdata['account_name'], time() + 2629743);
-								setcookie(self::KEY_pwhash, $pwhash, time() + 2629743);
-								setcookie(self::KEY_app_id, $this->director['app_id']);
+								$this->updateCookie($authdata['account_id']);
 							}
 						}
 					} else {
@@ -107,24 +154,22 @@ class Auth extends AuthBase {
 				}
 				unset($userinfo);
 				unset($pwinput);
-			} elseif (!empty($_COOKIE[self::KEY_userinfo]) && !empty($_COOKIE[self::KEY_pwhash])) {
-				$userinfo = strtolower($_COOKIE[self::KEY_userinfo]);
-				$pwhash = $_COOKIE[self::KEY_pwhash];
-				$authdata = $this->getAuthData($userinfo);
-				if (isset($authdata)) {
-					//check pwhash against saved one
-					if ($pwhash == $authdata['pwhash']) {
+			} elseif (!empty($_COOKIE[self::KEY_userinfo]) && !empty($_COOKIE[self::KEY_keyid])) {
+				$acct_id = $_COOKIE[self::KEY_userinfo];
+				$keyid = $_COOKIE[self::KEY_keyid];
+				$theSql = "SELECT account_id, keyid FROM {$this->tnAuthCookie} WHERE account_id=:id AND keyid=:keyid";
+				$baked = $this->getTheRow($theSql,array('id'=>$acct_id,'keyid'=>$keyid),array(\PDO::PARAM_INT,\PDO::PARAM_STR));
+				if ($baked) {
+					$theSql = "DELETE FROM {$this->tnAuthCookie} WHERE account_id=:id AND keyid=:keyid";
+					$this->execDML($theSql,array('id'=>$acct_id,'keyid'=>$keyid),array(\PDO::PARAM_INT,\PDO::PARAM_STR));
+					$authdata = $this->getAuthById($acct_id);
+					if (isset($authdata)) {
 						//authorized, load acct data
-						$accounts = $this->director->getProp('Accounts');
-						$this->director->account_info = $accounts->getAccount($authdata['account_id']);
-						$this->director->returnProp($accounts);
+						$this->director->account_info = $dbAcct->getAccount($acct_id);
 						if (isset($this->director->account_info)) {
 							$this->director->account_info['email'] = $authdata['email'];
-							$this->director->account_info['groups'] = $this->belongsToGroups($authdata['account_id']);
-							//update cookie - expires in 1 month
-							setcookie(self::KEY_userinfo, $authdata['account_name'], time() + 2629743);
-							setcookie(self::KEY_pwhash, $pwhash, time() + 2629743);
-							setcookie(self::KEY_app_id, $this->director['app_id']);
+							$this->director->account_info['groups'] = $this->belongsToGroups($acct_id);
+							$this->updateCookie($acct_id);
 						}
 					} else {
 						$aDirector->account_info = null;
@@ -132,7 +177,6 @@ class Auth extends AuthBase {
 					unset($authdata);
 				}
 				unset($userinfo);
-				unset($pwhash);
 			} else {
 				parent::checkTicket();
 			}
@@ -141,69 +185,60 @@ class Auth extends AuthBase {
 	
 	public function ripTicket() {
 		setcookie(self::KEY_userinfo);
-		setcookie(self::KEY_pwhash);
+		setcookie(self::KEY_keyid);
 		setcookie(self::KEY_app_id);
 		parent::ripTicket();
 	}
 	
 	public function canRegister($aAcctName, $aEmailAddy) {
-		// check if username exists
-		$theParam = strtolower($aAcctName);
-		$theSql = "SELECT account_name FROM {$this->tnAuth} WHERE account_name = :acctname";
-		$authdata = $this->query($theSql,array('acctname'=>$theParam))->fetch();
-		if (isset($authdata) && ($authdata['account_name']===$theParam)) {
-			return REGISTRATION_NAME_TAKEN;
+		$dbAccts = $this->director->getProp('Accounts');
+		if ($dbAccts->getByName($aAcctName)) {
+			return self::REGISTRATION_NAME_TAKEN;
+		} else if ($this->getAuthByEmail($aEmailAddy)) {
+			return self::REGISTRATION_EMAIL_TAKEN;
+		} else {
+			return self::REGISTRATION_SUCCESS;
 		}
-		//check to see if email is taken
-		$theParam = strtolower($aEmailAddy);
-		$theSql = "SELECT email FROM {$this->tnAuth} WHERE email = :email";
-		$authdata = $this->query($theSql,array('email'=>$theParam))->fetch();
-		if (isset($authdata) && ($authdata['email']===$theParam)) {
-			return REGISTRATION_EMAIL_TAKEN;
-		}
-		return REGISTRATION_SUCCESS;
 	}
 		
+	/**
+	 * keys: email, acct_id, acct_name, pwinput, verified_timestamp
+	 * @see app\model.AuthBase::registerAccount()
+	 */
 	public function registerAccount($aUserData) {
-		if (parent::registerAccount($aUserData)) {
-			$theValues = array(
-					'email'		=> strtolower($aUserData['email']),
-					'acct_id'	=> $aUserData['account_id'],
-					'acct_name'	=> strtolower($aUserData['account_name']),
-					'pwhash'	=> Strings::hasher($aUserData['pw']),
-					'ts'		=> now(),
-			);
-			$this->execDML($this->sql_register,$theValues,$this->pt_register);
-			return true;
-		} else {
-			return false;
+		$isEmpty = $this->isEmpty();
+		$theValues = array(
+				'email'		=> $aUserData['email'],
+				'acct_id'	=> $aUserData['account_id'],
+				'pwhash'	=> Strings::hasher($aUserData['pwinput']),
+				'ts'		=> $aUserData['verified_timestamp'],
+		);
+		$theResult = $this->execDML($this->sql_register,$theValues,$this->pt_register);
+		if ($theResult && $isEmpty) {
+			$dbGroupMap = $this->director->getProp('Groups');
+			$dbGroupMap->addAcctMap(1,$aUserData['account_id']);
+			$this->director->returnProp($dbGroupMap);
 		}
 	}
 
-	public function addAuthAccount($aData) {	
-		if (empty($aData)) 
-			return;
-		return $this->execDML($this->sql_add_auth,$aData,$this->pt_add_auth);
-	}
-	
 	/**
 	 * Return currently logged in person's group memberships.
 	 */
-	public function belongsToGroups($acctInfo) {
-		if (empty($acctInfo) || empty($acctInfo['account_id']))
+	public function belongsToGroups($aAcctId) {
+		if (empty($aAcctId))
 			return array();
-		$groups = $this->director->getProp('Groups');
-		$theResult = $groups->getAcctGroups($authdata['account_id']);
-		$this->director->returnProp($groups);
+		$dbGroups = $this->director->getProp('Groups');
+		$theResult = $dbGroups->getAcctGroups($aAcctId);
+		$this->director->returnProp($dbGroups);
 		return $theResult;
 	}
 	
 	public function getGroupList() {
-		$groups = $this->director->getProp('Groups');
-		$theSql = "SELECT * FROM {$groups->tnGroups} ";
-		$r = $groups->query($theSql);
+		$dbGroups = $this->director->getProp('Groups');
+		$theSql = "SELECT * FROM {$dbGroups->tnGroups} ";
+		$r = $dbGroups->query($theSql);
 		$theResult = $r->fetchAll();
-		$this->director->returnProp($groups);
+		$this->director->returnProp($dbGroups);
 		return $theResult;
 	}
 

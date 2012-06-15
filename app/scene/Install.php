@@ -59,7 +59,8 @@ class Install extends Scene {
 	
 	public function getDbTypes() {
 		//return $this->getRes('install/db_types');
-		return \PDO::getAvailableDrivers();
+		$theList = \PDO::getAvailableDrivers();
+		return array_combine($theList,$theList);
 	}
 
 }//end class
