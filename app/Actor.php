@@ -51,9 +51,6 @@ class Actor extends BaseActor {
 	}
 	
 	static public function perform(Director $aDirector, $anAction, array $aQuery=array()) {
-		if (!is_array($aQuery)) {
-			Strings::debugLog('query not array:'.$anAction.'/'.$aQuery);
-		}
 		$myClass = get_called_class();
 		$theActor = new $myClass($aDirector,$anAction);
 		$theResult = $aDirector->admitAudience();
@@ -116,6 +113,14 @@ class Actor extends BaseActor {
 					throw new \Exception('Cannot find actor->'.$aName.', check spelling.');
 				return null;
 		}
+	}
+	
+	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
+		return $this->director->isAllowed($aNamespace,$aPermission,$acctInfo);
+	}
+
+	public function isGuest() {
+		return $this->director->isGuest();
 	}
 	
 	public function getProp($aName) {

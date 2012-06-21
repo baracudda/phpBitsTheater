@@ -1,5 +1,6 @@
 <?php
 namespace app\actor; 
+use app\SystemExit;
 use app\Actor;
 use app\model\Auth;
 use app\model\Accounts;
@@ -11,12 +12,20 @@ class Account extends Actor {
 	const DEFAULT_ACTION = 'register';
 
 	public function view($aAcctId=null) {
-		if (empty($aAcctId)) {
-			return $this->config['auth/register_url'];
-		} else {
-			//for now
+		if ($this->director->isGuest()) {
 			return $this->config['auth/register_url'];
 		}
+		$this->scene->dbAccounts = $this->getProp('Accounts');
+		if (!empty($aAcctId) && $this->isAllowed('account','modify')) {
+			$this->scene->ticket_info = $this->scene->dbAccounts->getAccount($aAcctId);
+			$dbAuth = $this->getProp('Auth');
+			$authdata = $dbAuth->getAuthById($aAcctId);
+			$this->scene->ticket_info['email'] = $authdata['email'];
+		} else {
+			$this->scene->ticket_info = $this->director->account_info;
+		}
+		$this->scene->action_modify = BITS_URL.'/account/modify';
+		$this->scene->redirect = BITS_URL.'/account/view';
 	}
 	
 	public function register($aTask='data-entry') {
@@ -95,7 +104,50 @@ class Account extends Actor {
 		$this->scene->action_logout = $this->config['auth/logout_url'];
 		
 	}
-
+	
+	public function modify() {
+		$dbAccts = $this->getProp('Accounts');
+		$theAcctId = $this->scene->ticket_num;
+		$dbAuth = $this->getProp('Auth');
+		$pwKeyOld = $this->scene->getPwInputKey().'_old';
+		if ($dbAuth->isCallable('cudo') && $dbAuth->cudo($theAcctId,$this->scene->$pwKeyOld)) {
+			//if current pw checked out ok, see if its our own acct or have rights to modify other's accounts.
+			if ($theAcctId==$this->director->account_info['account_id'] || $this->isAllowed('account','modify')) {
+				$theOldEmail = trim($this->scene->ticket_email);
+				$theNewEmail = trim($this->scene->email);
+				/* !== returned TRUE, === retruend FALSE, but strcmp() returned 0 (meaning they are the same) O.o 
+				$b1 = ($theOldEmail!==$theNewEmail);
+				$b2 = ($theOldEmail===$theNewEmail);
+				$b3 = (strcmp($theOldEmail,$theNewEmail)!=0);
+				Strings::debugLog('b:'.$b1.','.$b2.',',$b3);
+				Strings::debugLog(Strings::bin2hex($theOldEmail));
+				Strings::debugLog(Strings::bin2hex($theNewEmail));
+				/* */
+				if (strcmp($theOldEmail,$theNewEmail)!=0) {
+					//Strings::debugLog('email is not 0:'.strcmp($theOldEmail,$theNewEmail));
+					if ($dbAuth->getAuthByEmail($theNewEmail)) {
+						return $this->getMyUrl('/account/view',
+								array('err_msg'=>$this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email'))));
+					} else {
+						$theSql = 'UPDATE '.$dbAuth->tnAuth.' SET email = :email WHERE account_id=:acct_id';
+						$dbAuth->execDML($theSql,array('acct_id'=>$theAcctId, 'email'=>$theNewEmail));
+					}
+				}
+				$pwKeyNew = $this->scene->getPwInputKey().'_new';
+				if (!empty($this->scene->$pwKeyNew) && $this->scene->$pwKeyNew===$this->scene->password_confirm) {
+					$thePwHash = Strings::hasher($this->scene->$pwKeyNew);
+					$theSql = 'UPDATE '.$dbAuth->tnAuth.' SET pwhash = :pwhash WHERE account_id=:acct_id';
+					$dbAuth->execDML($theSql,array('acct_id'=>$theAcctId, 'pwhash'=>$thePwHash));
+				}
+				return $this->getMyUrl('/account/view',
+						array('err_msg'=>$this->getRes('account/msg_update_success')));
+			}
+		} else {
+			return $this->getMyUrl('/account/view',
+					array('err_msg'=>$this->getRes('generic/msg_permission_denied')));
+		}
+	}
+	
 }//end class
 
 }//end namespace

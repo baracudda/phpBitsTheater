@@ -7,8 +7,9 @@ class MenuInfo extends ResMenuInfo {
 
 	public $menu_main_info = array(
 				'home' => array('label'=>'Home', 'icon'=>'&res@menu_info/icon_home', ),
-				'admin' => array('label'=>'Admin', 'icon'=>'&res@menu_info/icon_admin', 'subtext'=>'nuts &amp; bolts',),
+				'casnodes' => array('label'=>'Nodes', 'subtext'=>'Definition & Status',),
 				'account' => array('label'=>'My Account', 'icon'=>'&res@menu_info/icon_account', 'subtext'=>'me, myself, &amp; I', ),
+				'admin' => array('label'=>'Admin', 'icon'=>'&res@menu_info/icon_admin', 'subtext'=>'nuts &amp; bolts',),
 			);
 
 	public $menu_account_info = array(
@@ -19,6 +20,10 @@ class MenuInfo extends ResMenuInfo {
 				'config' => array('label'=>'Settings', ),
 				'rights' => array('label'=>'Permissions', ),
 			);
+			
+	public $menu_casnodes_info = array(
+				'addnode' => array('label'=>'Add Node', ),
+			);
 
 	public function setup() {
 		parent::setup();
@@ -28,6 +33,8 @@ class MenuInfo extends ResMenuInfo {
 		unset($this->menu_account_info);
 		$this->res_array_merge($this->menu_admin,$this->menu_admin_info);
 		unset($this->menu_admin_info);
+		$this->res_array_merge($this->menu_casnodes,$this->menu_casnodes_info);
+		unset($this->menu_casnodes_info);
 	}
 		
 }//end class

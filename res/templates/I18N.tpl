@@ -34,7 +34,7 @@ final class I18N extends \stdClass {
 			$theClass = 'res\\'.self::LANG.'\\'.self::REGION.'\\'.$aResourceClass;
 		elseif (file_exists(self::PATH_LANG.$aResourceClass.'.php'))
 			$theClass = 'res\\'.self::LANG.'\\'.$aResourceClass;
-		elseif (file_exists(GEMS_RES_PATH.$aResourceClass.'.php'))
+		elseif (file_exists(BITS_RES_PATH.$aResourceClass.'.php'))
 			$theClass = 'res\\'.$aResourceClass;
 		else
 			$theClass = 'res\\Resources';
@@ -59,10 +59,10 @@ final class I18N extends \stdClass {
 			$theClass = 'res\\'.self::DEFAULT_LANG.'\\'.self::DEFAULT_REGION.'\\'.$aResourceClass;
 		elseif (file_exists(self::DEFAULT_PATH_LANG.$aResourceClass.'.php'))
 			$theClass = 'res\\'.self::DEFAULT_LANG.'\\'.$aResourceClass;
-		elseif (file_exists(GEMS_RES_PATH.$aResourceClass.'.php'))
+		elseif (file_exists(BITS_RES_PATH.$aResourceClass.'.php'))
 			$theClass = 'res\\'.$aResourceClass;
 		else
-			$theClass = 'res\\Resources2';
+			$theClass = 'res\\Resources';
 		return $theClass;
 	}
 

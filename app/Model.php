@@ -193,6 +193,14 @@ class Model extends BaseModel {
 		return $this->director->getRes($aName);
 	}
 	
+	public function getProp($aName) {
+		return $this->director->getProp($aName);
+	}
+	
+	public function returnProp($aModel) {
+		$this->director->returnProp($aModel);
+	}
+	
 }//end class
 
 }//end namespace

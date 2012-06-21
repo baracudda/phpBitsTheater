@@ -1,9 +1,8 @@
 <?php
 namespace res;
-use res\Resources;
 {//begin namespace
 
-class MenuInfo extends Resources {
+class MenuInfoBase extends Resources {
 	
 	public function setup() {//strings that require concatination need to be defined during setup()
 		parent::setup();
@@ -21,6 +20,7 @@ class MenuInfo extends Resources {
 						'filter' => '&right@auth/config', //example only.  submenus with all filtered off, should remove themselves
 					), 
 				'account' => array(
+						'link' => BITS_URL.'/account/view/%account_id%', 
 						'filter' => '&method@isGuest/false',
 					), 
 				/*
@@ -38,11 +38,11 @@ class MenuInfo extends Resources {
 		$this->menu_admin = array(
 				'config' => array(
 						'link' => BITS_URL.'/config/edit', 
-						'filter' => 'account/view',
+						'filter' => 'config/modify',
 					), 
 				'rights' => array(
 						'link' => BITS_URL.'/rights/', 
-						'filter' => 'account/view',
+						'filter' => 'rights/modify',
 					), 
 			);
 	

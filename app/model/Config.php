@@ -42,6 +42,10 @@ class Config extends KeyValueModel {
 		return $this[$aNamespace.'/'.$aKey];
 	}
 	
+	public function setConfigValue($aNamespace, $aKey, $aValue) {
+		$this[$aNamespace.'/'.$aKey] = $aValue;
+	}
+	
 }//end class
 
 }//end namespace

@@ -2,11 +2,12 @@
 namespace app\actor; 
 use app\Actor;
 use app\ResException;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
  * menus are arrays['link','filter','label','icon','subtext']
- * if link is empty, it will be a submenu, if submenus result in no items, main item will be removed too.
+ * if link is empty (or hasSubmenu is true), it will be a submenu, if submenus result in no items, main item will be removed too.
  */
 class Menus extends Actor {
 	const ALLOW_URL_ACTIONS = false;
@@ -26,7 +27,7 @@ class Menus extends Actor {
 			return $aLink;	
 	}
 	
-	protected function isAllowed($aFilter) {
+	protected function isMenuAllowed($aFilter) {
 		if (empty($aFilter))
 			return true;
 		if ($aFilter{0}=='&') {
@@ -47,13 +48,13 @@ class Menus extends Actor {
 		if (!empty($aMenuItem['filter'])) {
 			$theList = explode(',',$aMenuItem['filter']);
 			foreach ($theList as $theFilter) {
-				if (!$this->isAllowed($theFilter)) {
+				if (!$this->isMenuAllowed($theFilter)) {
 					return true;
 				}
 			}
 		}
-		//recursive call in case of submenu items so that if menu ends up empty, return false
-		if (empty($aMenuItem['link'])) {
+		//recursive call in case of submenu items so that if menu ends up empty, return true
+		if (empty($aMenuItem['link']) || !empty($aMenuItem['hasSubmenu'])) {
 			//get submenu and filter it
 			$resName = 'menu_info/menu_'.$aMenuName;
 			try {
@@ -70,7 +71,7 @@ class Menus extends Actor {
 				}
 			}
 			if (empty($submenu)) {
-				return true;
+				return empty($aMenuItem['link']);
 			} else {
 				$aMenuItem['submenu'] = $submenu;
 			}
@@ -88,6 +89,7 @@ class Menus extends Actor {
 	
 	public function buildMenuFromRes($aRes) {
 		$theMenu = $this->scene->getRes($aRes);
+		//Strings::debugLog(Strings::debugStr($theMenu));
 		//process the menu array/tree first, anything left will be rendered
 		foreach ($theMenu as $theMenuName => &$theMenuItem) {
 			if ($this->isMenuItemRemoved($theMenuName,$theMenuItem)) {

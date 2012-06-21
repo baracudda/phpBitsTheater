@@ -2,8 +2,7 @@
 use \com\blackmoonit\Widgets;
 $recite->includeMyHeader();
 
-$w = 'Home Page Content'."\n";
+$w = '<h2>Home Page Content.<h2>'."<br /><br />\n";
 
 print $w;
-
 $recite->includeMyFooter();

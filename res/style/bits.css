@@ -7,11 +7,11 @@
  */
 body {
 	background-color: LightSteelBlue;
-	margin:0px;
-	padding:0px;
+	margin: 0px;
+	padding: 0px;
 	color: black;
-	font-family:Arial, Helvetica, sans-serif;
-	font-size:11px;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 12px;
 }
 
 #container-header {
@@ -26,7 +26,7 @@ body {
 }
 #container-header a:link, #container-header a:active, #container-header a:visited {
 	color: LightSteelBlue;
-	text-decoration:none;
+	text-decoration: none;
 }
 #container-header .title {
 	font-weight:bold;
@@ -73,8 +73,8 @@ div#container-error .msg-trace {
 
 /* Data Entry/Display */
 .data-outline {
-	border:1px solid #000000;
-	font-size:11px;
+	border: 1px solid #000000;
+	font-size: 11px;
 }
 
 .list-header {
@@ -86,11 +86,18 @@ div#container-error .msg-trace {
 	color:white;
 }
 
+tr.rowh {
+	background-color: Navy;
+	color: LightSteelBlue;
+	text-decoration: underline;
+}
+
 tr.row1 {
 /*background:url('../images/row1.gif'); */
 }
 
 tr.row2 {
+	background-color: #C0C0C0;
 /*background:url('../images/row2.gif'); */
 }
 
@@ -118,8 +125,8 @@ table.data-entry .data-field {
 }
 
 .infotext {
-	font-size:9px;
-	font-style:italic;
+	font-size: 10px;
+	font-style: italic;
 }
 
 /* main submit button */
@@ -133,7 +140,7 @@ input.liteoption {
 
 a:link,a:active,a:visited {
 	color: MidnightBlue;
-	text-decoration:none;
+	text-decoration: none;
 }
 
 a:hover {

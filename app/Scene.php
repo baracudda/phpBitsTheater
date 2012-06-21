@@ -4,6 +4,8 @@ use com\blackmoonit\AdamEve as BaseScene;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use app\config\I18N;
+use \InvalidArgumentException;
+use \ReflectionClass;
 {//begin namespace
 
 /**
@@ -98,7 +100,7 @@ class Scene extends BaseScene {
 	//get/set functions: ($this, $name, $value), returning what should be get/set.
 	public function defineProperty($aName, $aGetMethod, $aSetMethod, $aDefaultValue=null) {
 		if ((isset($aGetMethod) && !is_callable($aGetMethod)) || (isset($aSetMethod) && !is_callable($aSetMethod)))
-			throw new \InvalidArgumentException('Property '.$aName.' defined with invalid get/set methods.');
+			throw new InvalidArgumentException('Property '.$aName.' defined with invalid get/set methods.');
 		if (property_exists($this,$aName)) {
 			if (empty($aDefaultValue))
 				$aDefaultValue = $this->$aName;
@@ -115,7 +117,7 @@ class Scene extends BaseScene {
 	 * Constructor that will call __construct%numargs%(...) if any are passed in
 	 */
 	public function __construct() {
-		$this->me = new \ReflectionClass($this);
+		$this->me = new ReflectionClass($this);
 		$this->_setupArgCount = 2;
         call_user_func_array('parent::__construct',func_get_args());
 	}
@@ -140,7 +142,7 @@ class Scene extends BaseScene {
 	protected function setupDefaults() {
 		$this->on_set_session_var = function ($thisScene, $aName, $aValue) { $thisScene->_director[$aName] = $aValue; return $aValue; };
 		unset($this->name); //unwanted ancestor var
-		$this->defineProperty('_dbResult_next_id',function ($thisScene, $aName, $aValue) { return $aValue++; },null,1);
+		$this->defineProperty('_row_class',function ($thisScene, $aName, $aValue) { $thisScene->_row_class = $aValue+1; return ($aValue%2)?'"row1"':'"row2"'; },null,1);
 		$this->checkMobileDevice();
 
 		$this->form_name = 'form_'.$this->_action;
@@ -176,6 +178,15 @@ class Scene extends BaseScene {
 
 	public function strip_spaces($aName) {
 		$this->$aName = Strings::strip_spaces($this->$aName);
+	}
+	
+	public function nullIfEmptyStr($aName) {
+		if (isset($this->$aName)) {
+			$s = trim($this->$aName);
+			return ($s!=='') ? $s : null;
+		} else {
+			return null;
+		}
 	}
 	
 	public function pushDbResult($aDbResult, $aResultName=null) {

@@ -4,6 +4,7 @@ use com\blackmoonit\Strings;
 use com\blackmoonit\FinallyBlock;
 use app\Model;
 use app\DbException;
+use \PDOExeption;
 {//namespace begin
 
 abstract class KeyValueModel extends Model implements \ArrayAccess {
@@ -19,14 +20,14 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 	
 	public function setup($aDbConn) {
 		parent::setup($aDbConn);
-		$sql_value_select = "SELECT value FROM {$this->getTableName()} WHERE namespace = :ns AND mapkey = :key";
-		$sql_value_update = "UPDATE {$this->getTableName()} SET value=:new_value WHERE namespace = :ns AND mapkey = :key";
-		$sql_value_insert = "INSERT INTO {$this->getTableName()} ".
+		$this->sql_value_select = "SELECT value FROM {$this->getTableName()} WHERE namespace = :ns AND mapkey = :key";
+		$this->sql_value_update = "UPDATE {$this->getTableName()} SET value=:new_value WHERE namespace = :ns AND mapkey = :key";
+		$this->sql_value_insert = "INSERT INTO {$this->getTableName()} ".
 				"(namespace, mapkey, value, val_def) VALUES (:ns, :key, :value, :default)";
 		try {
-			$this->value_select = $this->db->prepare($sql_value_select);
-			$this->value_update = $this->db->prepare($sql_value_update);
-			$this->value_insert = $this->db->prepare($sql_value_insert);
+			$this->value_select = $this->db->prepare($this->sql_value_select);
+			$this->value_update = $this->db->prepare($this->sql_value_update);
+			$this->value_insert = $this->db->prepare($this->sql_value_insert);
 		} catch (DbException $dbe) {
 			throw $dbe->setContextMsg('dbError@'.$this->getTableName().".".$aVarName."\n");
 		}
@@ -60,9 +61,7 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 		$default_data = $this->getDefaultData($aScene);
 		if (!empty($default_data)) {
 			if ($this->isEmpty($this->getTableName())) {
-				$theSql = "INSERT INTO {$this->getTableName()} ".
-						"(namespace, mapkey, value, val_def) VALUES (:ns, :key, :value, :default)";
-				$this->execMultiDML($theSql,$default_data);
+				$this->execMultiDML($this->sql_value_insert,$default_data);
 			} else {
 				foreach ($default_data as $mapInfo) {
 					$this->defineMapValue($mapInfo);
@@ -125,7 +124,7 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 				$theResult = $theStatement->fetch();
 			}
 			$theStatement->closeCursor();
-		} catch (\PDOException $e) {
+		} catch (PDOException $e) {
 			if ($this->exists($this->getTableName())) {
 				throw new DbException($e,'dbError@'.$this->getTableName().".getMapValue($aKey)\n");
 			}
@@ -146,22 +145,27 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 		$old_value = $this->getMapValue($aKey);
 		if ($old_value != $aNewValue) {
 			$this->_mapdata[$aKey] = $aNewValue;
-			$theFinally = new FinallyBlock(function() {
-				try {
-					$this->value_update->closeCursor();
-					$this->value_insert->closeCursor();
-				} catch (\Exception $e) {
-					//works or not, don't care
+			$theFinally = new FinallyBlock(function($aModel) {
+				if (!is_null($aModel->value_update)) {
+					$aModel->value_update->closeCursor();
 				}
-			});
+				if (!is_null($aModel->value_insert)) {
+					$aModel->value_insert->closeCursor();
+				}
+			},$this);
 			if (!is_null($this->value_update) && !is_null($this->value_insert)) try {
 				$sa = $this->splitKeyName($aKey);
 				$this->bindValues($this->value_update,array('ns'=>$sa[0], 'key'=>$sa[1], 'new_value'=>$aNewValue));
-				if (!$this->value_update->execute()) {
+				$this->value_update->execute();
+				if ($this->value_update->rowCount()<1) {
+					if ($this->isNoResults($this->sql_value_select,array('ns'=>'namespace','key'=>$sa[0]))) {
+						$this->execDML($this->sql_value_insert,
+								array('ns'=>'namespace','key'=>$sa[0],'value'=>null,'default'=>null));
+					}
 					$this->bindValues($this->value_insert,array('ns'=>$sa[0],'key'=>$sa[1],'value'=>$aNewValue,'default'=>''));
 					$this->value_insert->execute();
 				}
-			} catch (\PDOException $e) {
+			} catch (PDOException $e) {
 				if ($this->exists($this->getTableName())) {
 					throw new DbException($e2,'dbError@'.$this->getTableName().".setMapValue($aKey,$aNewValue)\n");
 				}

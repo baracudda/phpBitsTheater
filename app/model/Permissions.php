@@ -17,7 +17,7 @@ class Permissions extends Model {
 		$this->sql_get_namespace = "SELECT * FROM {$this->tnPermissions} WHERE namespace = :ns AND value = :value";
 		$this->sql_get_group = "SELECT * FROM {$this->tnPermissions} WHERE group_id = :group_id";
 		$this->sql_del_group = "DELETE FROM {$this->tnPermissions} WHERE group_id = :group_id";
-		$this->sql_add_right = "INSERT INTO {$this->tnPermissions} (namespace, permission, group_id, value) VALUES (?,?,?,?)";
+		$this->sql_add_right = "INSERT INTO {$this->tnPermissions} (namespace, permission, group_id, value) VALUES (:ns,:perm,:group_id,:value)";
 	}
 	
 	public function isEmpty($aTableName=null) {
@@ -66,8 +66,12 @@ class Permissions extends Model {
 		if (empty($acctInfo)) {
 			$acctInfo =& $this->director->account_info; 
 		}
+		if (empty($acctInfo)) {
+			return false; //if still no account, nothing to check against, return false.
+		}
 		//Strings::debugLog('acctinfo:'.Strings::debugStr($acctInfo));
-		if (!empty($acctInfo) && !empty($acctInfo['groups']) && !(array_search(1,$acctInfo['groups'],true)===false)) {
+		//Strings::debugLog('perms:'.Strings::debugStr($this->_permCache));
+		if (!empty($acctInfo['groups']) && !(array_search(1,$acctInfo['groups'],true)===false)) {
 			return true; //group 1 is always allowed everything
 		}
 		//check deny first
@@ -76,6 +80,7 @@ class Permissions extends Model {
 				return false;
 		}
 		//check allow next
+		//Strings::debugLog($aNamespace.'/'.$aPermission.'&allow:'.Strings::debugStr(array_intersect($this->_permCache[$aNamespace]['allow'][$aPermission],$acctInfo['groups'])));
 		if (!empty($this->_permCache[$aNamespace]['allow'][$aPermission])) {
 			if (count(array_intersect($this->_permCache[$aNamespace]['allow'][$aPermission],$acctInfo['groups']))>0)
 				return true;
@@ -110,9 +115,9 @@ class Permissions extends Model {
 				$theAssignment = $aScene->$varName;
 				//Strings::debugLog($varName.'='.$theAssignment);
 				if ($theAssignment=='allow') {
-					$this->query($this->sql_add_right,array($ns, $theRight, $theGroupId, self::VALUE_Allow)); 
+					$this->query($this->sql_add_right,array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$theGroupId, 'value'=>self::VALUE_Allow)); 
 				} elseif ($theAssignment=='deny') {
-					$this->query($this->sql_add_right,array($ns, $theRight, $theGroupId, self::VALUE_Deny)); 
+					$this->query($this->sql_add_right,array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$theGroupId, 'value'=>self::VALUE_Deny)); 
 				}
 			}//end foreach
 		}//end foreach

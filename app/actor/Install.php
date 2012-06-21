@@ -36,9 +36,9 @@ class Install extends Actor {
 			return false;
 	}
 	
-	protected function installConfigTpl($aTemplateName, $aNewExtension, $aVars) {
+	protected function installTemplate($aDestPath, $aTemplateName, $aNewExtension, $aVars) {
 		//copy the .tpl to .php and fill in the vars
-		$dst = BITS_PATH.'app'.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.$aTemplateName.$aNewExtension;
+		$dst = $aDestPath.$aTemplateName.$aNewExtension;
 		if (file_exists($dst))
 			return $dst;
 		$src = BITS_RES_PATH.'templates'.DIRECTORY_SEPARATOR.$aTemplateName.'.tpl';
@@ -52,6 +52,11 @@ class Install extends Actor {
 			}
 		}
 		return false;
+	}
+
+	protected function installConfigTpl($aTemplateName, $aNewExtension, $aVars) {
+		return $this->installTemplate(BITS_PATH.'app'.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR,
+				$aTemplateName.$aNewExtension,$aVars);
 	}
 
 	public function install() {
@@ -220,7 +225,8 @@ class Install extends Actor {
 	protected function installSettings($aNewAppId) {
 		$this->scene->app_id = $aNewAppId;
 		$theVarNames = array('app_id');
-		return $this->installConfigTpl('Settings','.php',$theVarNames);		
+		return $this->installConfigTpl('Settings','.php',$theVarNames) &&
+				$this->installTemplate(BITS_RES_PATH,'MenuInfo','.php',$theVarNames);
 	}
 
 	public function allFinished() {
@@ -242,7 +248,7 @@ class Install extends Actor {
 			$this->scene->permission_denied = true;
 		}
 	}
-	/*
+	
 	public function resetDb($pw) {
 		if (!$this->director->isInstalled() || !$this->director->canConnectDb())
 			return BITS_URL;
@@ -262,7 +268,7 @@ class Install extends Actor {
 			return BITS_URL;
 		}
 	}
-	*/
+		
 }//end class
 
 }//end namespace

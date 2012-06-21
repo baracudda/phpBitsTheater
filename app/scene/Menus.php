@@ -43,7 +43,7 @@ class Menus extends Scene {
 
 	public function renderMenuItem($aMenuItem,$aSubLevel=0) {
 		$isLast = (isset($aMenuItem['last']));
-		$isSubMenu = (empty($aMenuItem['link']) && isset($aMenuItem['submenu']));
+		$isSubMenu = ((empty($aMenuItem['link']) || !empty($aMenuItem['hasSubmenu'])) && isset($aMenuItem['submenu']));
 		$theLink = $this->getText($aMenuItem,'link');
 		$theItem = sprintf('<a href="%1$s" %3$s><span>%2$s</span></a>',
 				$theLink,$this->getMenuDisplay($aMenuItem),($isSubMenu)?'class="parent"':(($isLast)?'class="last"':''));

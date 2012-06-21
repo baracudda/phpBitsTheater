@@ -55,7 +55,7 @@ class Auth extends AuthBase {
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnAuthCookie} ".
 				"( account_id INT NOT NULL".							//link to Accounts
 				", keyid CHAR(128) CHARACTER SET ascii NOT NULL COLLATE ascii_bin".
-				", _changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".
+				", _changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP".
 				", INDEX IdxAcctIdKeyId (account_id, keyid)".
 				") CHARACTER SET utf8 COLLATE utf8_bin";
 			$this->execDML($theSql);
@@ -210,14 +210,23 @@ class Auth extends AuthBase {
 		$theValues = array(
 				'email'		=> $aUserData['email'],
 				'acct_id'	=> $aUserData['account_id'],
-				'pwhash'	=> Strings::hasher($aUserData['pwinput']),
+				'pwhash'	=> Strings::hasher($aUserData[self::KEY_pwinput]),
 				'ts'		=> $aUserData['verified_timestamp'],
 		);
 		$theResult = $this->execDML($this->sql_register,$theValues,$this->pt_register);
-		if ($theResult && $isEmpty) {
-			$dbGroupMap = $this->director->getProp('Groups');
-			$dbGroupMap->addAcctMap(1,$aUserData['account_id']);
-			$this->director->returnProp($dbGroupMap);
+		if ($theResult) {
+			$dbGroupMap = $this->getProp('Groups');
+			$dbGroupMap->addAcctMap(1*$isEmpty,$aUserData['account_id']);
+			$this->returnProp($dbGroupMap);
+		}
+	}
+	
+	public function cudo($aAcctId, $aPwInput) {
+		$theAuthData = $this->getAuthById($aAcctId);
+		if (!empty($theAuthData['pwhash'])) {
+			return (Strings::hasher($aPwInput,$theAuthData['pwhash']));
+		} else {
+			return false;
 		}
 	}
 

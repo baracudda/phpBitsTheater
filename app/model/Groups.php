@@ -67,7 +67,7 @@ class Groups extends Model {
 					array('group_id'=>2,'group_name'=>$group_names[2],'group_type'=>self::GROUPTYPE_admin),
 					array('group_id'=>3,'group_name'=>$group_names[3],'group_type'=>self::GROUPTYPE_privileged),
 					array('group_id'=>4,'group_name'=>$group_names[4],'group_type'=>self::GROUPTYPE_restricted),
-					array('group_id'=>5,'group_name'=>$group_names[5],'group_type'=>self::GROUPTYPE_guest),
+					array('group_id'=>0,'group_name'=>$group_names[5],'group_type'=>self::GROUPTYPE_guest),
 			);
 			$theSql = "INSERT INTO {$this->tnGroups} ".
 					"(group_id, group_name, group_type) VALUES (:group_id, :group_name, :group_type)";

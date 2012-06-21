@@ -57,8 +57,10 @@ class Widgets {
 	}
 	
 	static public function createInputBox($aWidgetName, $aType='text', $aValue='', $isRequired=false, $aSize=60, $aMaxLen=255, $aJsEvents='') {
-		return Strings::format('<input type="%2$s" name="%1$s" id="%1$s" value="%3$s" size="%5$d" maxlength="%6$d" %7$s%4$s />',
-				$aWidgetName,$aType,$aValue,($isRequired)?' required':'',$aSize,$aMaxLen,$aJsEvents);
+		$attr_size = (!is_null($aSize)) ? " size=\"$aSize\"" : '';
+		$attr_maxlen = (!is_null($aMaxLen)) ? " maxlength=\"$aMaxLen\"" : '';
+		return Strings::format('<input type="%2$s" name="%1$s" id="%1$s" value="%3$s"%5$s%6$s%7$s%4$s />',
+				$aWidgetName,$aType,$aValue,($isRequired)?' required':'',$attr_size,$attr_maxlen,$aJsEvents);
 	}
 	
 	static public function createPassBox($aWidgetName, $aValue='', $isRequired=false, $aSize=60, $aMaxLen=255, $aJsEvents='') {
@@ -73,8 +75,20 @@ class Widgets {
 		return Widgets::createInputBox($aWidgetName,'text',$aValue,$isRequired,$aSize,$aMaxLen,$aJsEvents);
 	}
 	
-	static public function createTextArea($aWidgetName, $aValue, $isRequired=false, $aRows=3, $aCols=40, $aWrap='physical') {
-		return Strings::format('<textarea name="%1$s" id="%1$s" value="%2$s" rows="%4$d" cols="%5$d" wrap="%6$s"%3$s />',
+	/**
+	 * HTML 5 number input, if you need FLOAT input, be sure to specify STEP or else Chrome will not work right.
+	 */
+	static public function createNumericBox($aWidgetName, $aValue='', $isRequired=false, $aSize=10, $aStep=null, $aMin=null, $aMax=null, $aJsEvents='') {
+		$attr_size = (!is_null($aSize)) ? Strings::format(" size=\"%d\"",$aSize) : '';
+		$attr_step = (!is_null($aStep)) ? Strings::format(" step=\"%f\"",$aStep) : '';
+		$attr_min = (!is_null($aMin)) ? Strings::format(" min=\"%f\"",$aMin) : '';
+		$attr_max = (!is_null($aMax)) ? Strings::format(" max=\"%f\"",$aMax) : '';
+		return Strings::format('<input type="number" name="%1$s" id="%1$s" value="%2$s"%4$s%5$s%6$s%7$s%8$s%3$s />',
+				$aWidgetName,$aValue,($isRequired)?' required':'',$attr_size,$attr_step,$attr_min,$attr_max,$aJsEvents);
+	}
+	
+	static public function createTextArea($aWidgetName, $aValue, $isRequired=false, $aRows=3, $aCols=40, $aWrap='soft') {
+		return Strings::format('<textarea name="%1$s" id="%1$s" rows="%4$d" cols="%5$d" wrap="%6$s"%3$s >%2$s</textarea>',
 				$aWidgetName,$aValue,($isRequired)?' required':'',$aRows,$aCols,$aWrap);
 	}
 	

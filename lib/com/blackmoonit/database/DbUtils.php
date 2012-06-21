@@ -1,6 +1,9 @@
 <?php
 namespace com\blackmoonit\database;
 use \PDO;
+use \InvalidArgumentException;
+use \RuntimeException;
+use \UnexpectedValueException;
 {//begin namespace
 
 class DbUtils {
@@ -67,7 +70,7 @@ class DbUtils {
 			$theConfig = array_replace_recursive($theDefaultConfig,$theConfig);
 			switch ($theConfig['dbopts']['dns_scheme']) {
 				case 'ini':
-					$theConfig = array_merge($theConfig,DbUtils::cnvDbConnIni2Dns($theConfig));
+					$theConfig = array_merge($theConfig,self::cnvDbConnIni2Dns($theConfig));
 					break;
 				case 'alias':
 					$theConfig['dns'] = $theConfig['dbopts']['dns_value'];
@@ -89,7 +92,7 @@ class DbUtils {
 	static public function getDbConnInfo($aDnsScheme, $aDnsValue) {
 		switch ($aDnsScheme) {
 			case 'ini':
-				return DbUtils::getDnsFromIniFile($aDnsValue);
+				return self::getDnsFromIniFile($aDnsValue);
 			case 'alias':
 				return $aDnsValue;
 			default:
@@ -120,7 +123,7 @@ class DbUtils {
 		if (!$theConfig = parse_ini_file($aConfigFilename, TRUE)) {
 			throw new RuntimeException('Unable to import '.$aConfigFilename.'.');
 		}
-		return DbUtils::cnvDbConnIni2Dns($theConfig);
+		return self::cnvDbConnIni2Dns($theConfig);
 	}
 	
 	/**
@@ -145,11 +148,11 @@ class DbUtils {
 
 	/**
 	 * Check to see if required field is set, throw an Exception if it is not set.
-	 * @param ArrayAccess $aDataRow - row data.
+	 * @param array $aDataRow - row data.
 	 * @param string $aFieldName - fieldname of required column.
 	 * @throws UnexpectedValueException - exception thrown if required column is missing data.
 	 */
-	static public function validateRequiredField(\ArrayAccess &$aDataRow, $aFieldName) {
+	static public function validateRequiredField(&$aDataRow, $aFieldName) {
 		if (!isset($aDataRow[$aFieldName])) {
 			throw new UnexpectedValueException("$aFieldName field missing", 417);
 		}
@@ -158,42 +161,45 @@ class DbUtils {
 	/**
 	 * Check all columns listed in $aFieldSet of $aDataRow against the $aValidateMethod.
 	 * @param Class $aObj
-	 * @param ArrayAccess $aDataRow
-	 * @param ArrayAccess $aFieldSet
+	 * @param array $aDataRow
+	 * @param array $aFieldSet
 	 * @param string $aValidateMethod
-	 * @param ArrayAccess $aChildSetNames
+	 * @param array $aChildSetNames
 	 */
-	static public function validateRow($aObj, \ArrayAccess &$aDataRow, \ArrayAccess &$aFieldSet, $aValidateMethod, &$aChildSetNames=null) {
+	static public function validateRow($aObj, &$aDataRow, &$aFieldSet, $aValidateMethod, &$aChildSetNames=null) {
 		if (is_null($aDataRow))
 			return;
 		foreach ($aFieldSet as $theFieldName) {
 			if (method_exists($aObj,$aValidateMethod)) {
 				$aObj->$aValidateMethod($aDataRow,$theFieldName);
 			} else if (method_exists('DbUtils',$aValidateMethod)) {
-				DbUtils::$aValidateMethod($aDataRow,$theFieldName);
+				self::$aValidateMethod($aDataRow,$theFieldName);
 			}
 		}
 		if (is_null($aChildSetNames))
 			return;
 		foreach ($aChildSetNames as $theChildName) {
-			if (isset($aDataRow[$theChildName]))
-				DbUtils::validateSet($aObj,$aDataRow[$theChildName],$aFieldSet,$aValidateMethod,$aChildSetNames);
+			if (isset($aDataRow[$theChildName])) {
+				$theChild = $aDataRow[$theChildName];
+				self::validateSet($aObj,$theChild,$aFieldSet,$aValidateMethod,$aChildSetNames);
+				$aDataRow[$theChildName] = $theChild;
+			}
 		}
 	}
 
 	/**
 	 * Validates an array of row-arrays.
 	 * @param Class $aObj - class containing validation functions other than those provided in this class.
-	 * @param ArrayAccess $aDataSet - array of row-arrays.
-	 * @param ArrayAccess $aFieldSet - array of fieldnames to determine which columns will be passed into the $aValidationMethod.
+	 * @param array $aDataSet - array of row-arrays.
+	 * @param array $aFieldSet - array of fieldnames to determine which columns will be passed into the $aValidationMethod.
 	 * @param string $aValidateMethod - validation method to use.
-	 * @param ArrayAccess $aChildSetNames - some row data may contain child row set data, if column matches, recurse into it.
+	 * @param array $aChildSetNames - some row data may contain child row set data, if column matches, recurse into it.
 	 */
-	static public function validateSet($aObj, \ArrayAccess &$aDataSet, &$aFieldSet, $aValidateMethod, &$aChildSetNames=null) {
+	static public function validateSet($aObj, &$aDataSet, &$aFieldSet, $aValidateMethod, &$aChildSetNames=null) {
 		if (is_null($aDataSet))
 			return;
 		foreach ($aDataSet as &$theDataRow) {
-			DbUtils::validateRow($aObj,$theDataRow,$aFieldSet,$aValidateMethod,$aChildSetNames);
+			self::validateRow($aObj,$theDataRow,$aFieldSet,$aValidateMethod,$aChildSetNames);
 		}
 	}
 	
@@ -203,10 +209,10 @@ class DbUtils {
 
 	/**
 	 * In-place conversion from 32char BINARY text field into a well-formed UUID string
-	 * @param ArrayAccess $aDataRow
+	 * @param array $aDataRow
 	 * @param string $aFieldName
 	 */
-	static public function cnvTextId2UUIDField(\ArrayAccess &$aDataRow, $aFieldName) {
+	static public function cnvTextId2UUIDField(&$aDataRow, $aFieldName) {
 		if (isset($aDataRow[$aFieldName])) {
 			$aDataRow[$aFieldName] = Strings::cnvTextId2UUID($aDataRow[$aFieldName]);
 		}
@@ -214,10 +220,10 @@ class DbUtils {
 	
 	/**
 	 * In-place conversion from convertion from UUID string into 32char BINARY text field.
-	 * @param ArrayAccess $aDataRow
+	 * @param access $aDataRow
 	 * @param string $aFieldName
 	 */
-	static public function cnvUUID2TextIdField(\ArrayAccess &$aDataRow, $aFieldName) {
+	static public function cnvUUID2TextIdField(&$aDataRow, $aFieldName) {
 		if (isset($aDataRow[$aFieldName])) {
 			$aDataRow[$aFieldName] = Strings::cnvUUID2TextId($aDataRow[$aFieldName]);
 		}
@@ -225,10 +231,10 @@ class DbUtils {
 	
 	/**
 	 * In-place conversion from text field into a well-formed UTF8 string
-	 * @param ArrayAccess $aDataRow
+	 * @param access $aDataRow
 	 * @param string $aFieldName
 	 */
-	static public function cnvToUTF8Field(\ArrayAccess &$aDataRow, $aFieldName) {
+	static public function cnvToUTF8Field(&$aDataRow, $aFieldName) {
 		if (isset($aDataRow[$aFieldName])) {
 			$aDataRow[$aFieldName] = utf8_encode($aDataRow[$aFieldName]);
 		}
@@ -236,10 +242,10 @@ class DbUtils {
 	
 	/**
 	 * In-place conversion from UTF-8 text field into a string
-	 * @param ArrayAccess $aDataRow
+	 * @param access $aDataRow
 	 * @param string $aFieldName
 	 */
-	static public function cnvFromUTF8Field(\ArrayAccess &$aDataRow, $aFieldName) {
+	static public function cnvFromUTF8Field(&$aDataRow, $aFieldName) {
 		if (isset($aDataRow[$aFieldName])) {
 			$aDataRow[$aFieldName] = utf8_decode($aDataRow[$aFieldName]);
 		}
@@ -247,10 +253,10 @@ class DbUtils {
 
 	/**
 	 * In-place conversion from UTF-8 text field into a string
-	 * @param ArrayAccess $aDataRow
+	 * @param access $aDataRow
 	 * @param string $aFieldName
 	 */
-	static public function cnvTimestampUnix2MySql(\ArrayAccess &$aDataRow, $aFieldName) {
+	static public function cnvTimestampUnix2MySql(&$aDataRow, $aFieldName) {
 		if (isset($aDataRow[$aFieldName])) {
 			$aDataRow[$aFieldName] = Strings::cnvTimestampUnix2MySQL($aDataRow[$aFieldName]);
 		}

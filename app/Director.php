@@ -210,7 +210,7 @@ class Director extends AdamEve implements \ArrayAccess {
 				throw $re;
 			} else {
 				$theResClass = I18N::findDefaultClassNamespace($theResClassName);
-				return $this->loadRes($theResClass,$theRes,$theArgs);
+				return $this->loadRes($theResClass,$theRes,$theResUri);
 			}
 		}
 	}
@@ -260,7 +260,7 @@ class Director extends AdamEve implements \ArrayAccess {
 		else
 			return false;
 	}
-
+	
 	public function isGuest() {
 		if ($this->auth->isCallable('isGuest')) {
 			return $this->auth->isGuest();

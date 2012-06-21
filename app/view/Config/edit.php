@@ -2,25 +2,19 @@
 use \com\blackmoonit\Widgets;
 $recite->includeMyHeader();
 
-echo '<div align="center" class="contentHeader">';
-echo '  <div class="contentHeaderText">GEMS Settings: </div>';
-echo "</div>\n";
-$w = '';
+$w = "<h1 align=\"center\">Configuration Settings</h1>\n";
 foreach ($v->config_areas as $ns => $nsInfo) {
-	$w .= '<div align="left" class="contentHeader">';
-	//$w .= '  <div class="contentHeaderText">'.$nsInfo['label'].' ('.$nsInfo['desc'].')</div>';
-	$w .= '  <div class="contentHeaderText">'.$nsInfo['label'].'</div>';
-	$w .= "</div>\n";
-	$w .= '<table border="0" align="center" width="100%" cellspacing="1" cellpadding="5" class="dataOutline" style="margin-top: 1px;">'."\n";
-	$w .= '  <thead><tr class="listHeader">'."\n";
+	$v->_row_class = 1; //reset row counter back to 1 for each table created (resets the row formatting)
+	$w .= "<h2>{$nsInfo['label']}</h2>";
+	$w .= '<table class="data-entry">'."\n";
+	$w .= '  <thead><tr class="rowh">'."\n";
 	$w .= '    <th>Setting</th><th>Value</th><th>Description</th>'."\n";
 	$w .= "  </tr></thead>\n";
 	$w .= "  <tbody>\n";
-	$i = 0;
 	foreach ($v->getRes('config/'.$ns) as $theSetting => $theSettingInfo) {
 		$theWidgetName = $ns.'__'.$theSetting;
-		$cellLabel = '<td align="right" width="15%"><label for="'.$theWidgetName.'" >'.$theSettingInfo['label'].'</label></td>';
-		$cellInput = '<td align="left" width="40%">';
+		$cellLabel = '<td width="15%" class="data-label"><label for="'.$theWidgetName.'" >'.$theSettingInfo['label'].'</label></td>';
+		$cellInput = '<td width="40%" class="data-field">';
 		$theValue = $v->config->getConfigValue($ns,$theSetting);
 		if (empty($theSettingInfo['input']) || $theSettingInfo['input']=='string') {
 			$cellInput .= Widgets::createTextBox($theWidgetName,$theValue);
@@ -28,18 +22,16 @@ foreach ($v->config_areas as $ns => $nsInfo) {
 			$cellInput .= Widgets::createCheckBox($theWidgetName,$theValue,($theValue==true));
 		}
 		$cellInput .= '</td>';
-		$cellDesc = '<td align="left">'.$theSettingInfo['desc'].'</td>';
+		$cellDesc = '<td width="45%">'.$theSettingInfo['desc'].'</td>';
 
-		//next statement alternates the row color
-		$bcolor = 'class="row'.((++$i%2)+1).'"';
-		$w .= '  <tr '.$bcolor.'>'.$cellLabel.$cellInput.$cellDesc."</tr>\n";
+		$w .= '  <tr class='.$v->_row_class.'>'.$cellLabel.$cellInput.$cellDesc."</tr>\n";
 	}//end foreach
 	$w .= "  </tbody>\n";
     $w .= "</table><br/>\n";
 }//end foreach
-$w .= '<div align="left">'."<br/>\n";
+$w .= "<br/>\n";
 $w .= $v->save_button;
-$w .= '</div>'."<br/>\n";
+$w .= "<br/>\n";
 $w .= "<br/>\n";
 
 $form_html = Widgets::createHtmlForm($recite->form_name,$recite->next_action,$w,$v->redirect,false);

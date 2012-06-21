@@ -8,11 +8,28 @@ use com\blackmoonit\Widgets;
 class Config extends Actor {
 	const DEFAULT_ACTION = 'edit';
 
+	private function getConfigAreas() {
+		$theAreas = array();
+		$theNamespaces = $this->getRes('config/namespace');
+		foreach ($theNamespaces as $ns=>$nsInfo) {
+			if (empty($nsInfo['group_id']) || in_array($nsInfo['group_id'],$this->director->account_info['groups'])) {
+				$theAreas[$ns] = $nsInfo;
+			}
+		}
+		return $theAreas;
+	}
+	
 	public function edit() {
 		if (!$this->director->isAllowed('config','modify'))
 			return BITS_URL.Settings::PAGE_Landing;
 		$this->scene->config = $this->config;
-		$this->scene->config_areas = $this->director->getRes('config/namespace');
+		$this->scene->config_areas = $this->getConfigAreas();
+		$theNamespaces = $this->getRes('config/namespace');
+		foreach ($theNamespaces as $ns=>$nsInfo) {
+			if (empty($nsInfo['group_id']) || in_array($nsInfo['group_id'],$this->director->account_info['groups'])) {
+				$this->scene->config_areas[$ns] = $nsInfo;
+			}
+		}
 		$this->scene->redirect = BITS_URL.Settings::PAGE_Landing;
 		$this->scene->next_action = BITS_URL.'/config/modify';
 		$theText = $this->scene->getRes('generic/save_button_text');
@@ -25,13 +42,14 @@ class Config extends Actor {
 	
 		$v =& $this->scene;
 		$v->config = $this->config;
-		$v->config_areas = $this->director->getRes('config/namespace');
+		$v->config_areas = $this->getConfigAreas();
 		foreach ($v->config_areas as $ns => $nsInfo) {
 			foreach ($v->getRes('config/'.$ns) as $theSetting => $theSettingInfo) {
 				$theWidgetName = $ns.'__'.$theSetting;
-				$theValue = $v->config->getConfigValue($ns,$theSetting);
-				if ($v->$theWidgetName != $theValue) {
-					$v->config[$ns.'/'.$theSetting] = $v->$theWidgetName;
+				$theNewValue = $v->$theWidgetName;
+				$theOldValue = $v->config->getConfigValue($ns,$theSetting);
+				if ($theNewValue != $theOldValue) {
+					$v->config[$ns.'/'.$theSetting] = $theNewValue;
 				}
 			}
 		}
