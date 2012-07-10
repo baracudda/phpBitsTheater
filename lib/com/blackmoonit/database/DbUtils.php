@@ -1,5 +1,6 @@
 <?php
 namespace com\blackmoonit\database;
+use com\blackmoonit\Strings;
 use \PDO;
 use \InvalidArgumentException;
 use \RuntimeException;
@@ -172,7 +173,7 @@ class DbUtils {
 		foreach ($aFieldSet as $theFieldName) {
 			if (method_exists($aObj,$aValidateMethod)) {
 				$aObj->$aValidateMethod($aDataRow,$theFieldName);
-			} else if (method_exists('DbUtils',$aValidateMethod)) {
+			} else if (method_exists(__CLASS__,$aValidateMethod)) {
 				self::$aValidateMethod($aDataRow,$theFieldName);
 			}
 		}
