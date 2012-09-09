@@ -1,7 +1,5 @@
 <?php
-namespace app;
-use app\Director;
-use app\config\Settings;
+namespace com\blackmoonit\bits_theater;
 use com\blackmoonit\Strings;
 {//begin namespace
 
@@ -45,32 +43,26 @@ function route_request($aUrl) {
 	global $director; //exposed as a Global Var so legacy systems can interface with us
 	$urlPathList = array();
 	$urlPathList = explode("/",$aUrl);
-	/*passing in the ?url= (which .htaccess gives us) rather than $_SERVER['REQUEST_URI']
-	//remove static path segments until we reach virtual sections
-	$staticPath = explode("/",BITS_URL);
-	foreach ($staticPath as $pathSegment) {
-		array_shift($urlPath);
+	//passing in the ?url= (which .htaccess gives us) rather than $_SERVER['REQUEST_URI']
+	if ($director->isDebugging()) {
+		Strings::debugLog('aUrl='.$aUrl);
 	}
-	*/
-	//what is left in urlPath is the virtual sections
-	if ($director->isDebugging())
-		Strings::debugLog('aUrl='.implode('/',$urlPathList));
-		
 	$theActorClass = array_shift($urlPathList);
 	$theAction = array_shift($urlPathList);
 	$theQuery = $urlPathList; //whatever is left
+	//last one would have the ?queryvar=1&var2="blah" stuff to parse... somehow
 	if (!empty($theActorClass)) {
-		$theActorClass = 'app\\actor\\'.Strings::getClassName($theActorClass);
+		$theActorClass = BITS_BASE_NAMESPACE.'\\app\\actor\\'.Strings::getClassName($theActorClass);
 		$theAction = Strings::getMethodName($theAction);
 		if (!$director->raiseCurtain($theActorClass,$theAction,$theQuery)) {
-			throw new FourOhFourExit($aUrl);
+			throw new app\FourOhFourExit($aUrl);
 		}
-	} elseif (!$director->isInstalled() && class_exists('\\app\\actor\\Install')) {
-		\app\actor\Install::perform($director,'install',array());
+	} elseif (!$director->isInstalled() && class_exists(BITS_BASE_NAMESPACE.'\\app\\actor\\Install')) {
+		app\actor\Install::perform($director,'install',array());
 	} elseif ($director->isInstalled() && empty($aUrl)) {
-		header('Location: '.BITS_URL.Settings::PAGE_Landing);
+		header('Location: '.BITS_URL.app\config\Settings::PAGE_Landing);
 	} else {
-		throw new FourOhFourExit($aUrl);
+		throw new app\FourOhFourExit($aUrl);
 	}
 }
 
@@ -78,6 +70,6 @@ function route_request($aUrl) {
 removeMagicQuotes();
 unregisterGlobals();
 global $director;
-$director = new Director();
+$director = new app\Director();
 route_request(REQUEST_URL);
 }//end namespace

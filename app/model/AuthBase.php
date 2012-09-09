@@ -1,7 +1,7 @@
 <?php
-namespace app\model; 
-use app\Model;
-use app\config\Settings;
+namespace com\blackmoonit\bits_theater\app\model; 
+use com\blackmoonit\bits_theater\app\Model;
+use com\blackmoonit\bits_theater\app\config\Settings;
 {//namespace begin
 
 abstract class AuthBase extends Model {

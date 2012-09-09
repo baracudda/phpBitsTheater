@@ -1,6 +1,5 @@
 <?php
-namespace app\model; 
-use app\model\AuthBase;
+namespace com\blackmoonit\bits_theater\app\model;
 use com\blackmoonit\Strings;
 {//namespace begin
 

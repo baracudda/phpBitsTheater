@@ -1,7 +1,7 @@
 <?php
-namespace res\en;
-use res\Resources;
-{
+namespace com\blackmoonit\bits_theater\res\en;
+use com\blackmoonit\bits_theater\res\Resources;
+{//begin namespace
 
 class Account extends Resources {
 

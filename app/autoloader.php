@@ -1,5 +1,5 @@
 <?php
-namespace app;
+namespace com\blackmoonit\bits_theater\app;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -11,10 +11,11 @@ function autoloader($aClassName){
 	//debugLog('al1: '.$aClassName);
 	if (!Strings::beginsWith($aClassName,__NAMESPACE__)) return;
 	//convert namespace format ns\sub-ns\classname into folder paths
-	$theClassNamePath = BITS_PATH.str_replace('\\', DIRECTORY_SEPARATOR, $aClassName).'.php';
+	$theClassNamePath = BITS_APP_PATH.str_replace('\\', DIRECTORY_SEPARATOR, 
+			Strings::strstr_after($aClassName,__NAMESPACE__.'\\')).'.php';
 	//debugLog('al: '.$theClassNamePath);
 	if (is_file($theClassNamePath)) {
-		return include_once $theClassNamePath;
+		return include_once($theClassNamePath);
 	}
 }
 

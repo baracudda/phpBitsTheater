@@ -1,6 +1,6 @@
 <?php
-namespace app\model; 
-use app\model\KeyValueModel;
+namespace com\blackmoonit\bits_theater\app\model; 
+use com\blackmoonit\bits_theater\app\model\KeyValueModel;
 {//namespace begin
 
 class Config extends KeyValueModel {

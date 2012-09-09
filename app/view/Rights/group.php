@@ -1,6 +1,5 @@
 <?php
 use com\blackmoonit\Widgets;
-use app\model\Auth;
 $recite->includeMyHeader();
 
 echo "<h1 align=\"center\">Assign Rights for Group: {$v->group['group_name']}</h1>\n";
@@ -21,8 +20,7 @@ foreach ($v->right_groups as $ns => $nsInfo) {
 	$w .= "  </tr></thead>\n";
 	$w .= "  <tbody>\n";
 	foreach ($v->rights->getPermissionRes($ns) as $theRight => $theRightInfo) {
-		if (Auth::TYPE!='basic' && $ns=='auth' && $theRight!='modify')
-			continue;
+		//if (Auth::TYPE!='basic' && $ns=='auth' && $theRight!='modify') continue;
 		$cellLabel = '<td width="20%" class="data-label">'.$theRightInfo['label'].'</td>';
 		$cellInput = '<td width="20%" align="center">'.Widgets::createRadioSet($ns.'__'.$theRight,$v->getShortRightValues(),
 				$v->getRightValue($v->assigned_rights,$ns,$theRight),'right',"&nbsp;&nbsp;").'</td>';

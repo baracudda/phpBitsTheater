@@ -1,10 +1,9 @@
 <?php
-namespace app;
+namespace com\blackmoonit\bits_theater\app;
 use com\blackmoonit\AdamEve as BaseScene;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
-use app\config\I18N;
-use \InvalidArgumentException;
+use IllegalArgumentException;
 use \ReflectionClass;
 {//begin namespace
 
@@ -78,7 +77,7 @@ class Scene extends BaseScene {
 		//	return $this->$aName;
 		} else {
 			return null; //value not set yet, no need to toss an exception unless debugging something special
-			//throw new \InvalidArgumentException("Property {$aName} does not exist.");
+			//throw new IllegalArgumentException("Property {$aName} does not exist.");
 		}
 	}
 	
@@ -100,7 +99,7 @@ class Scene extends BaseScene {
 	//get/set functions: ($this, $name, $value), returning what should be get/set.
 	public function defineProperty($aName, $aGetMethod, $aSetMethod, $aDefaultValue=null) {
 		if ((isset($aGetMethod) && !is_callable($aGetMethod)) || (isset($aSetMethod) && !is_callable($aSetMethod)))
-			throw new InvalidArgumentException('Property '.$aName.' defined with invalid get/set methods.');
+			throw new IllegalArgumentException('Property '.$aName.' defined with invalid get/set methods.');
 		if (property_exists($this,$aName)) {
 			if (empty($aDefaultValue))
 				$aDefaultValue = $this->$aName;
@@ -140,13 +139,19 @@ class Scene extends BaseScene {
 	}
 	
 	protected function setupDefaults() {
-		$this->on_set_session_var = function ($thisScene, $aName, $aValue) { $thisScene->_director[$aName] = $aValue; return $aValue; };
-		unset($this->name); //unwanted ancestor var
-		$this->defineProperty('_row_class',function ($thisScene, $aName, $aValue) { $thisScene->_row_class = $aValue+1; return ($aValue%2)?'"row1"':'"row2"'; },null,1);
+		$this->on_set_session_var = function ($thisScene, $aName, $aValue) { 
+				$thisScene->_director[$aName] = $aValue; 
+				return $aValue; 
+		};
+		unset($this->name); //unwanted ancestor var, may be confused for some context related data
+		$this->defineProperty('_row_class',function ($thisScene, $aName, $aValue) { 
+				$thisScene->_row_class = $aValue+1; 
+				return ($aValue%2)?'"row1"':'"row2"'; 
+		},null,1);
 		$this->checkMobileDevice();
 
 		$this->form_name = 'form_'.$this->_action;
-		$this->view_path = BITS_PATH.'app'.DIRECTORY_SEPARATOR.'view'.DIRECTORY_SEPARATOR;
+		$this->view_path = BITS_APP_PATH.'view'.DIRECTORY_SEPARATOR;
 		$this->actor_view_path = $this->view_path.$this->_actor->name.DIRECTORY_SEPARATOR;
 		$this->page_header = $this->getViewPath($this->actor_view_path.'header');
 		$this->page_footer = $this->getViewPath($this->actor_view_path.'footer');
@@ -258,7 +263,7 @@ class Scene extends BaseScene {
 		if (!file_exists($myHeader))
 			$myHeader = $this->app_header;
 		if (file_exists($myHeader)) {
-			$recite =& $this; $v =& $recite; //$this, $recite, $v are all the same
+			$recite =& $this; $v =& $this; //$this, $recite, $v are all the same
 			$myView = $myHeader;
 			include_once($myHeader);
 		}
@@ -269,7 +274,7 @@ class Scene extends BaseScene {
 		if (!file_exists($myFooter))
 			$myFooter = $this->app_footer;
 		if (file_exists($myFooter)) {
-			$recite =& $this; $v =& $recite; //$this, $recite, $v are all the same
+			$recite =& $this; $v =& $this; //$this, $recite, $v are all the same
 			$myView = $myFooter;
 			include_once($myFooter);
 		}

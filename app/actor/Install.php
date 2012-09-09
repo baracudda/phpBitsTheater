@@ -1,11 +1,7 @@
 <?php
-namespace app\actor; 
-use app\Actor;
-use app\config\Settings;
-use app\scene\Install as MyScene;
-use app\model\SetupDb;
-use app\model\Auth;
-use app\DbException;
+namespace com\blackmoonit\bits_theater\app\actor; 
+use com\blackmoonit\bits_theater\app\Actor;
+use com\blackmoonit\bits_theater\app\DbException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\database\DbUtils;
 {//namespace begin
@@ -25,7 +21,7 @@ class Install extends Actor {
 		
 	protected function checkInstallPw() {
 		//check to see if posted the correct pw
-		$theDefinedPw = $this->getDefinedPw(MyScene::INSTALL_PW_FILENAME);
+		$theDefinedPw = $this->getDefinedPw($this->scene->INSTALL_PW_FILENAME);
 		$theInputPw = $this->scene->installpw;
 		//Strings::debugLog('d:'.$this->director['installpw'].' s:'.$_SESSION['installpw'].' p:'.$_POST['installpw']);
 		//Strings::debugLog('sess:'.session_id().':'.$this->director['installpw'].' s:'.$_SESSION['installpw']);
@@ -55,8 +51,7 @@ class Install extends Actor {
 	}
 
 	protected function installConfigTpl($aTemplateName, $aNewExtension, $aVars) {
-		return $this->installTemplate(BITS_PATH.'app'.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR,
-				$aTemplateName.$aNewExtension,$aVars);
+		return $this->installTemplate(BITS_APP_PATH.'config'.¦,$aTemplateName.$aNewExtension,$aVars);
 	}
 
 	public function install() {
@@ -67,9 +62,9 @@ class Install extends Actor {
 				$b = $config->exists();
 				$this->director->returnProp($config);
 				if ($b)
-					return BITS_URL.Settings::PAGE_Landing;
+					return $this->getHomePage();
 			} catch (DbException $dbe) {
-				return BITS_URL.Settings::PAGE_Landing;
+				return $this->getHomePage();
 			}
 		}	
 	
@@ -119,13 +114,12 @@ class Install extends Actor {
 		$sa = explode('/',$this->scene->lang_type);
 		$this->scene->lang = $sa[0];
 		$this->scene->region = $sa[1];
-		$this->scene->path_lang = BITS_RES_PATH.'i18n'.DIRECTORY_SEPARATOR.$this->scene->lang.DIRECTORY_SEPARATOR;
-		$this->scene->path_region = $this->scene->path_lang.DIRECTORY_SEPARATOR.$this->scene->region.DIRECTORY_SEPARATOR;
+		$this->scene->path_lang = BITS_RES_PATH.'i18n'.¦.$this->scene->lang.¦;
+		$this->scene->path_region = $this->scene->path_lang.¦.$this->scene->region.¦;
 		$this->scene->default_lang = 'en';
 		$this->scene->default_region = 'US';
-		$this->scene->default_path_lang = BITS_RES_PATH.'i18n'.DIRECTORY_SEPARATOR.$this->scene->default_lang.DIRECTORY_SEPARATOR;
-		$this->scene->default_path_region = $this->scene->default_path_lang.DIRECTORY_SEPARATOR.
-				$this->scene->default_region.DIRECTORY_SEPARATOR;
+		$this->scene->default_path_lang = BITS_RES_PATH.'i18n'.¦.$this->scene->default_lang.¦;
+		$this->scene->default_path_region = $this->scene->default_path_lang.¦.$this->scene->default_region.¦;
 		
 		return $this->installConfigTpl('I18N','.php',$theVarNames);
 	}
@@ -175,7 +169,7 @@ class Install extends Actor {
 
 	protected function getAuthTypes() {
 		$theAuthTypes = array();
-		$defAuthClassPattern = BITS_RES_PATH.'templates'.DIRECTORY_SEPARATOR.'Auth_*.tpl';
+		$defAuthClassPattern = BITS_RES_PATH.'templates'.¦.'Auth_*.tpl';
 		//Strings::debugLog($defAuthClassPattern);
 		//Strings::debugLog(Strings::debugStr(glob($defAuthClassPattern)));
 		foreach (glob($defAuthClassPattern) as $auth_filename) {
@@ -193,8 +187,8 @@ class Install extends Actor {
 
 	protected function installAuth($aAuthType) {
 		//copy the auth type class out of lib/authtype into app/model
-		$src = BITS_RES_PATH.'templates'.DIRECTORY_SEPARATOR.'Auth_'.$aAuthType.'.tpl';
-		$dst = BITS_PATH.'app'.DIRECTORY_SEPARATOR.'model'.DIRECTORY_SEPARATOR.'Auth.php';
+		$src = BITS_RES_PATH.'templates'.¦.'Auth_'.$aAuthType.'.tpl';
+		$dst = BITS_APP_PATH.'model'.¦.'Auth.php';
 		return copy($src,$dst);
 	}
 	
@@ -235,13 +229,15 @@ class Install extends Actor {
 		//do something to signify finished
 		if ($this->installSettings(Strings::createGUID())) {
 			//see where to go from here
-			$accounts = $this->director->getProp('Accounts');
+			$accounts = $this->getProp('Accounts');
 			if ($accounts->isEmpty()) {
-				if (Auth::ALLOW_REGISTRATION) {
+				$dbAuth = $this->getProp('Auth');
+				if ($dbAuth->ALLOW_REGISTRATION) {
 					$this->scene->next_action = $this->config['auth/register_url'];
 				} else {
 					$this->scene->next_action = $this->config['auth/login_url'];
 				}
+				$this->returnProp($dbAuth);
 			}
 			$this->director->returnProp($accounts);
 		} else {
@@ -250,23 +246,7 @@ class Install extends Actor {
 	}
 	
 	public function resetDb($pw) {
-		if (!$this->director->isInstalled() || !$this->director->canConnectDb())
-			return BITS_URL;
-		//HIGHLY DANGEROUS!!!!!!!!!!!!
-		if ($this->isDebugging() || $pw=='MonkeyUnkle') {
-			try {
-				$accts = $this->director->getProp('Accounts');
-				$theSql = 'drop table bits_accounts, bits_auth, bits_config, bits_groups, bits_groups_map';
-				$accts->execDML($theSql);
-			} catch (DbException $dbe) {
-				//do not care if some tables were missing, means they were already dropped
-			}
-			foreach (glob(BITS_PATH.'app/config/*.*') as $theConfig) {
-				unlink($theConfig);
-			}
-			unlink(BITS_PATH.'app/model/Auth.php');
-			return BITS_URL;
-		}
+		//debug function, does nothing now
 	}
 		
 }//end class

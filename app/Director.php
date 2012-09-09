@@ -1,15 +1,13 @@
 <?php
-namespace app;
-use com\blackmoonit\AdamEve;
-use com\blackmoonit\database\DbUtils;
+namespace com\blackmoonit\bits_theater\app;
+use com\blackmoonit\AdamEve as BaseDirector;
 use com\blackmoonit\Strings;
-use app\DbException as DbErr;
-use app\ResException;
-use res\Resources;
-use app\config\I18N;
+use com\blackmoonit\database\DbUtils;
+use \ArrayAccess;
+use \ReflectionClass;
 {//begin namespace
 
-class Director extends AdamEve implements \ArrayAccess {
+class Director extends BaseDirector implements ArrayAccess {
 	public $account_info = null;//array('account_id'=>-1, 'account_name'=>'', 'email'=>'', 'groups'=>array(), 'tz'=>'',);
 	public $table_prefix = ''; //prefix for every table used by this app
 	public $dbConn = null; //single database connection to share with anyone using getModel()
@@ -30,7 +28,7 @@ class Director extends AdamEve implements \ArrayAccess {
 		if (session_id() === "")
 			session_start();
 		if ($this->isInstalled()) {
-			$this['app_id'] = \app\config\Settings::APP_ID;
+			$this['app_id'] = config\Settings::APP_ID;
 		}
 	}
 
@@ -82,11 +80,11 @@ class Director extends AdamEve implements \ArrayAccess {
 	}
 	
 	public function isInstalled() {
-		return class_exists('app\\config\\Settings');
+		return class_exists(BITS_BASE_NAMESPACE.'\\app\\config\\Settings');
 	}
 
 	public function canCheckTickets() {
-		return $this->canConnectDb() && class_exists('\\app\\model\\Auth');
+		return $this->canConnectDb() && class_exists(BITS_BASE_NAMESPACE.'\\app\\model\\Auth');
 	}
 	
 	public function canConnectDb() {
@@ -94,7 +92,7 @@ class Director extends AdamEve implements \ArrayAccess {
 	}
 	
 	public function canGetRes() {
-		return class_exists('\\app\\config\\I18N');
+		return class_exists(BITS_BASE_NAMESPACE.'\\app\\config\\I18N');
 	}
 	
 	//===== Actor methods =====
@@ -107,7 +105,7 @@ class Director extends AdamEve implements \ArrayAccess {
 			$methodExists = method_exists($anActorClass,$anAction) && is_callable(array($anActorClass,$anAction));
 			if ($methodExists && $anActorClass::ALLOW_URL_ACTIONS) {
 				if ($this->isInstalled()) {
-					$this['played'] = \app\config\Settings::APP_ID; //app_id -> play_id -> "played"
+					$this['played'] = config\Settings::APP_ID; //app_id -> play_id -> "played"
 				}
 				//Strings::debugLog('raiseCurtain: '.$anActorClass.', '.$anAction.', '.Strings::debugStr($aQuery));
 				$anActorClass::perform($this,$anAction,$aQuery);
@@ -121,7 +119,7 @@ class Director extends AdamEve implements \ArrayAccess {
 	}
 	
 	public function cue($aScene, $anActorName, $anAction, $args=array()) {
-		$anActorClass = '\\app\\actor\\'.$anActorName;
+		$anActorClass = BITS_BASE_NAMESPACE.'\\app\\actor\\'.$anActorName;
 		//Strings::debugLog('rC: class='.$anActorClass.', exist?='.class_exists($anActorClass));
 		if (class_exists($anActorClass)) {
 			if (empty($anAction))
@@ -148,11 +146,11 @@ class Director extends AdamEve implements \ArrayAccess {
 		if (empty($this->dbConn) && $this->canConnectDb()) {
 			$theDbInfo = DbUtils::readDbConnInfo(BITS_DB_INFO);
 			$this->table_prefix = $theDbInfo['dbopts']['table_prefix'];
-			$this->dbConn = \app\Model::getConnection($theDbInfo);
+			$this->dbConn = Model::getConnection($theDbInfo);
 		}
 		if (is_string($aModelClass)) {
-			$theModelClass = 'app\\model\\'.$aModelClass;
-		} elseif ($aModelClass instanceof \ReflectionClass) {
+			$theModelClass = BITS_BASE_NAMESPACE.'\\app\\model\\'.$aModelClass;
+		} elseif ($aModelClass instanceof ReflectionClass) {
 			$theModelClass = $aModelClass->getName();
 		}
 		if (empty($this->_propMaster[$theModelClass])) {
@@ -196,20 +194,20 @@ class Director extends AdamEve implements \ArrayAccess {
 			$theResClassName = Strings::getClassName(array_shift($theResUri));
 			$theRes = array_shift($theResUri);
 		} else {
-			$theResClassName = 'Resources';
+			$theResClassName = BITS_BASE_NAMESPACE.'\\res\\Resources';
 			$theRes = array_shift($theResUri);
 		}
 		try {
-			$theResClass = I18N::findClassNamespace($theResClassName);
+			$theResClass = config\I18N::findClassNamespace($theResClassName);
 			if (!empty($theResUri))
 				return $this->loadRes($theResClass,$theRes,$theResUri);
 			else
 				return $this->loadRes($theResClass,$theRes);
 		} catch (ResException $re) {
-			if (I18N::LANG==I18N::DEFAULT_LANG && I18N::REGION==I18N::DEFAULT_REGION) {
+			if (config\I18N::LANG==config\I18N::DEFAULT_LANG && config\I18N::REGION==config\I18N::DEFAULT_REGION) {
 				throw $re;
 			} else {
-				$theResClass = I18N::findDefaultClassNamespace($theResClassName);
+				$theResClass = config\I18N::findDefaultClassNamespace($theResClassName);
 				return $this->loadRes($theResClass,$theRes,$theResUri);
 			}
 		}

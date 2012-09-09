@@ -1,6 +1,6 @@
 <?php
-namespace res\en;
-use res\Resources;
+namespace com\blackmoonit\bits_theater\res\en;
+use com\blackmoonit\bits_theater\res\Resources;
 {
 
 class Install extends Resources {

@@ -1,7 +1,7 @@
 <?php
-namespace res;
+namespace com\blackmoonit\bits_theater\res;
 use com\blackmoonit\AdamEve as BaseResources;
-use app\IllegalArgumentException;
+use com\blackmoonit\bits_theater\app\IllegalArgumentException;
 {//begin namespace
 
 class Resources extends BaseResources {

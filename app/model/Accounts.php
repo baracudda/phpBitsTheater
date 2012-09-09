@@ -1,8 +1,8 @@
 <?php
-namespace app\model;
-use app\Model;
-use app\DbException;
-use app\IllegalArgumentException;
+namespace com\blackmoonit\bits_theater\app\model;
+use com\blackmoonit\bits_theater\app\Model;
+use com\blackmoonit\bits_theater\app\DbException;
+use com\blackmoonit\bits_theater\app\IllegalArgumentException;
 {//begin namespace
 
 class Accounts extends Model {

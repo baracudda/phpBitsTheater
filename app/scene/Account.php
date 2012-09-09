@@ -1,7 +1,7 @@
 <?php
-namespace app\scene; 
-use app\Scene;
-use app\model\Auth;
+namespace com\blackmoonit\bits_theater\app\scene; 
+use com\blackmoonit\bits_theater\app\Scene;
+use com\blackmoonit\bits_theater\app\model\Auth;
 {//namespace begin
 
 class Account extends Scene {

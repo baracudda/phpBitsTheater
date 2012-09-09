@@ -1,5 +1,5 @@
 <?php
-namespace res;
+namespace com\blackmoonit\bits_theater\res;
 {//begin namespace
 
 class MenuInfoBase extends Resources {

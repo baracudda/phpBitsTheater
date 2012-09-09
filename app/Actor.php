@@ -1,9 +1,9 @@
 <?php
-namespace app;
+namespace com\blackmoonit\bits_theater\app;
 use com\blackmoonit\AdamEve as BaseActor;
 use com\blackmoonit\Strings;
-use app\Director;
-use app\Scene;
+use \ReflectionClass;
+use \BadMethodCallException;
 {//begin namespace
 
 /*
@@ -13,7 +13,7 @@ class Actor extends BaseActor {
 	const DEFAULT_ACTION = '';
 	const ALLOW_URL_ACTIONS = true;
 	public $director = null;	//session vars can be accessed like property (ie. director->some_session_var; )
-	//public $config = null;	//config model used essentially like property (ie. config->some_key; )
+	//public $config = null;	//config model used essentially like property (ie. config->some_key; ) Dynamically created when accessed for 1st time.
 	public $scene = null;		//scene ui interface used like properties (ie. scene->some_var; (which can be functions))
 	protected $action = null;
 
@@ -31,14 +31,14 @@ class Actor extends BaseActor {
 		parent::setup();
 		$this->director = $aDirector;
 		$this->action = $anAction;
-		$me = new \ReflectionClass($this);
+		$me = new ReflectionClass($this);
 		$myShortClassName = $me->getShortName();
 		unset($me);  
-		$theSceneClass = '\\app\\scene\\'.$myShortClassName.'\\'.$anAction;
+		$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\scene\\'.$myShortClassName.'\\'.$anAction;
 		if (!class_exists($theSceneClass))
-			$theSceneClass = '\\app\\scene\\'.$myShortClassName;
+			$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\scene\\'.$myShortClassName;
 		if (!class_exists($theSceneClass))
-			$theSceneClass = '\\app\\Scene';
+			$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\Scene';
 		$this->scene = new $theSceneClass($this,$anAction);
 	}
 
@@ -66,7 +66,7 @@ class Actor extends BaseActor {
 	}
 	
 	public function renderView($anAction=null) {
-		if (!$this->bHasBeenSetup) throw new \BadMethodCallException('setup() must be called first.');
+		if (!$this->bHasBeenSetup) throw new BadMethodCallException('setup() must be called first.');
 		if (empty($anAction))
 			$anAction = $this->action;
 		$recite =& $this->scene; $v =& $recite; //$this->scene, $recite, $v are all the same
@@ -82,7 +82,7 @@ class Actor extends BaseActor {
 	 * @param aViewName - renders app/view/%name%.php, defaults to currently running action if name is empty.
 	 */
 	public function renderFragment($aViewName=null) {
-		if (!$this->bHasBeenSetup) throw new \BadMethodCallException('setup() must be called first.');
+		if (!$this->bHasBeenSetup) throw new BadMethodCallException('setup() must be called first.');
 		if (empty($aViewName))
 			$aViewName = $this->action;
 		$recite =& $this->scene; $v =& $recite; //$this->scene, $recite, $v are all the same
@@ -141,6 +141,21 @@ class Actor extends BaseActor {
 			$theUrl .= '?'.http_build_query($aQuery,'','&');
 		}
 		return $theUrl;
+	}
+
+	public function getAppId() {
+		return $this->director['played'];
+	}
+	
+	public function getHomePage() {
+		return BITS_URL.config\Settings::getLandingPage();
+	}
+	
+	public function throwPermissionDenied($aMsg='') {
+		if ($aMsg==='') {
+			$aMsg = getRes('generic/msg_permission_denied');
+		}
+		throw new SystemExit($aMsg,500);
 	}
 	
 }//end class

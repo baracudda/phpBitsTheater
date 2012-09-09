@@ -1,9 +1,9 @@
 <?php
-namespace app\model;
+namespace com\blackmoonit\bits_theater\app\model;
 use com\blackmoonit\Strings;
 use com\blackmoonit\FinallyBlock;
-use app\Model;
-use app\DbException;
+use com\blackmoonit\bits_theater\app\Model;
+use com\blackmoonit\bits_theater\app\DbException;
 use \PDOExeption;
 {//namespace begin
 

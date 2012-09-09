@@ -1,13 +1,14 @@
 <?php
-namespace app\actor; 
-use app\Actor;
-use app\ResException;
+namespace com\blackmoonit\bits_theater\app\actor; 
+use com\blackmoonit\bits_theater\app\Actor;
+use com\blackmoonit\bits_theater\app\ResException;
 use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
  * menus are arrays['link','filter','label','icon','subtext']
- * if link is empty (or hasSubmenu is true), it will be a submenu, if submenus result in no items, main item will be removed too.
+ * if link is empty (or hasSubmenu is true), it will be a submenu, 
+ * if submenus result in no items, main item will be removed too.
  */
 class Menus extends Actor {
 	const ALLOW_URL_ACTIONS = false;

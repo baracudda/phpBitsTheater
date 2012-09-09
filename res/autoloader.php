@@ -1,6 +1,5 @@
 <?php
-namespace res;
-use app\config\I18N;
+namespace com\blackmoonit\bits_theater\res;
 use com\blackmoonit\Strings;
 {//begin namespace
 

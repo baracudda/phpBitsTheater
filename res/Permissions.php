@@ -1,6 +1,5 @@
 <?php
-namespace res;
-use res\Resources;
+namespace com\blackmoonit\bits_theater\res;
 {//begin namespace
 
 class Permissions extends Resources {

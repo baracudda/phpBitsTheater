@@ -1,8 +1,6 @@
 <?php
-namespace app\actor; 
-use app\Actor;
-use app\DbException;
-use app\config\Settings;
+namespace com\blackmoonit\bits_theater\app\actor; 
+use com\blackmoonit\bits_theater\app\Actor;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -11,7 +9,7 @@ class Rights extends Actor {
 	
 	public function groups() {
 		if (!$this->director->isAllowed('permissions','modify'))
-			return BITS_URL.Settings::PAGE_Landing;
+			return $this->getHomePage();
 		$auth = $this->director->getProp('Auth');
 		$this->scene->groups = $auth->getGroupList();
 		$this->director->returnProp($auth);
@@ -19,9 +17,9 @@ class Rights extends Actor {
 	
 	public function group($aGroupId) {
 		if (!$this->director->isAllowed('permissions','modify'))
-			return BITS_URL.Settings::PAGE_Landing;
+			return $this->getHomePage();
 		if (is_null($aGroupId) || $aGroupId==1)
-			return BITS_URL.'/rights';
+			return $this->getMyUrl('/rights');
 		if ($aGroupId===0) {
 			$this->scene->group = null;
 		} else {
@@ -38,15 +36,15 @@ class Rights extends Actor {
 		$this->scene->rights = $this->director->getProp('Permissions');
 		$this->scene->right_groups = $this->scene->rights->getPermissionRes('namespace');
 		$this->scene->assigned_rights = $this->scene->rights->getAssignedRights($aGroupId);
-		$this->scene->redirect = BITS_URL.'/rights';
-		$this->scene->next_action = BITS_URL.'/rights/modify';
+		$this->scene->redirect = $this->getMyUrl('/rights');
+		$this->scene->next_action = $this->getMyUrl('/rights/modify');
 	}
 	
 	public function modify() {
 		if (!$this->director->isAllowed('permissions','modify'))
-			return BITS_URL.Settings::PAGE_Landing;
+			return $this->getHomePage();
 		if (is_null($this->scene->group_id) || $this->scene->group_id==1)
-			return BITS_URL.'/rights';
+			return $this->getMyUrl('/rights');
 		//do update of DB
 		//print('<pre>');var_dump($this->scene);print('</pre>');
 		$rights = $this->director->getProp('Permissions');

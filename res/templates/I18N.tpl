@@ -1,5 +1,5 @@
 <?php
-namespace app\config;
+namespace com\blackmoonit\bits_theater\app\config;
 {//begin namespace
 
 final class I18N extends \stdClass {
@@ -38,7 +38,7 @@ final class I18N extends \stdClass {
 			$theClass = 'res\\'.$aResourceClass;
 		else
 			$theClass = 'res\\Resources';
-		return $theClass;
+		return BITS_BASE_NAMESPACE.'\\'.$theClass;
 	}
 
 	static public function findDefaultClassNamespace($aResourceClass) {
@@ -63,7 +63,7 @@ final class I18N extends \stdClass {
 			$theClass = 'res\\'.$aResourceClass;
 		else
 			$theClass = 'res\\Resources';
-		return $theClass;
+		return BITS_BASE_NAMESPACE.'\\'.$theClass;
 	}
 
 }//end class

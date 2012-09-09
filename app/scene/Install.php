@@ -1,6 +1,6 @@
 <?php
-namespace app\scene; 
-use app\Scene;
+namespace com\blackmoonit\bits_theater\app\scene; 
+use com\blackmoonit\bits_theater\app\Scene;
 {//namespace begin
 
 class Install extends Scene {

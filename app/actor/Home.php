@@ -1,8 +1,6 @@
 <?php
-namespace app\actor; 
-use app\Actor;
-use app\model\Accounts;
-use app\config\Settings;
+namespace com\blackmoonit\bits_theater\app\actor; 
+use com\blackmoonit\bits_theater\app\Actor;
 {//namespace begin
 
 class Home extends Actor {

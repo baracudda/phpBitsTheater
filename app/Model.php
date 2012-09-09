@@ -1,11 +1,8 @@
 <?php
-namespace app;
+namespace com\blackmoonit\bits_theater\app;
 use com\blackmoonit\database\GenericDb as BaseModel;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\Strings;
-use app\config\Settings;
-use app\DbException;
-use app\Director;
 {//begin namespace
 
 /*
@@ -173,14 +170,14 @@ class Model extends BaseModel {
 	//===== static helper functions =====
 	
 	static public function getModelClassPattern() {
-		return BITS_PATH.'app'.DIRECTORY_SEPARATOR.'model'.DIRECTORY_SEPARATOR.'*.php';
+		return BITS_APP_PATH.'model'.¦.'*.php';
 	}
 	
 	static public function getAllModelClassInfo() {
 		$theModels = array();
 		foreach (glob(self::getModelClassPattern()) as $theModelFile) {
 			$theModelClass = str_replace('.php','',basename($theModelFile));
-			$classInfo = new \ReflectionClass('\\app\\model\\'.$theModelClass);
+			$classInfo = new \ReflectionClass(__NAMESPACE__.'\\model\\'.$theModelClass);
 			if (!$classInfo->isAbstract()) {
 			    $theModels[] = $classInfo;
 			}

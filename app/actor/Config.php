@@ -1,7 +1,6 @@
 <?php
-namespace app\actor; 
-use app\Actor;
-use app\config\Settings;
+namespace com\blackmoonit\bits_theater\app\actor; 
+use com\blackmoonit\bits_theater\app\Actor;
 use com\blackmoonit\Widgets;
 {//namespace begin
 
@@ -21,7 +20,7 @@ class Config extends Actor {
 	
 	public function edit() {
 		if (!$this->director->isAllowed('config','modify'))
-			return BITS_URL.Settings::PAGE_Landing;
+			return $this->getHomePage();
 		$this->scene->config = $this->config;
 		$this->scene->config_areas = $this->getConfigAreas();
 		$theNamespaces = $this->getRes('config/namespace');
@@ -30,16 +29,15 @@ class Config extends Actor {
 				$this->scene->config_areas[$ns] = $nsInfo;
 			}
 		}
-		$this->scene->redirect = BITS_URL.Settings::PAGE_Landing;
-		$this->scene->next_action = BITS_URL.'/config/modify';
+		$this->scene->redirect = $this->getHomePage();
+		$this->scene->next_action = $this->getMyUrl('/config/modify');
 		$theText = $this->scene->getRes('generic/save_button_text');
 		$this->scene->save_button = '<br/>'.Widgets::createSubmitButton('submit_save',$theText)."\n";
 	}
 	
 	public function modify() {
 		if (!$this->director->isAllowed('config','modify'))
-			return BITS_URL.Settings::PAGE_Landing;
-	
+			return $this->getHomePage();
 		$v =& $this->scene;
 		$v->config = $this->config;
 		$v->config_areas = $this->getConfigAreas();
@@ -53,11 +51,9 @@ class Config extends Actor {
 				}
 			}
 		}
-		
 		return $this->scene->redirect;
 	}
 	
-
 }//end class
 
 }//end namespace

@@ -1,8 +1,8 @@
 <?php
-namespace app\model;
+namespace com\blackmoonit\bits_theater\app\model;
 use com\blackmoonit\Strings;
-use app\Model;
-use app\DbException;
+use com\blackmoonit\bits_theater\app\Model;
+use com\blackmoonit\bits_theater\app\DbException;
 {//namespace begin
 
 class Permissions extends Model {

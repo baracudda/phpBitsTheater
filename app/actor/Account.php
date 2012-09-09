@@ -1,10 +1,6 @@
 <?php
-namespace app\actor; 
-use app\SystemExit;
-use app\Actor;
-use app\model\Auth;
-use app\model\Accounts;
-use app\config\Settings;
+namespace com\blackmoonit\bits_theater\app\actor;
+use com\blackmoonit\bits_theater\app\Actor;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -24,8 +20,8 @@ class Account extends Actor {
 		} else {
 			$this->scene->ticket_info = $this->director->account_info;
 		}
-		$this->scene->action_modify = BITS_URL.'/account/modify';
-		$this->scene->redirect = BITS_URL.'/account/view';
+		$this->scene->action_modify = $this->getMyUrl('/account/modify');
+		$this->scene->redirect = $this->getMyUrl('/account/view');
 	}
 	
 	public function register($aTask='data-entry') {
@@ -33,15 +29,15 @@ class Account extends Actor {
 		//make sure user/pw reg fields will not interfere with any login user/pw field in header
 		$userKey = $this->scene->getUsernameKey().'_reg';
 		$pwKey = $this->scene->getPwInputKey().'_reg';
-		if ($aTask==='new' && $this->scene->reg_code===Settings::APP_ID &&
+		if ($aTask==='new' && $this->scene->reg_code===$this->getAppId() &&
 				$this->scene->$pwKey===$this->scene->password_confirm) {
 			$dbAuth = $this->getProp('Auth');
 			$theRegResult = $dbAuth->canRegister($this->scene->$userKey,$this->scene->email);
 			switch ($theRegResult) {
-			case Auth::REGISTRATION_EMAIL_TAKEN:
+			case $dbAuth::REGISTRATION_EMAIL_TAKEN:
 				return $this->getMyUrl('/account/register',
 						array('err_msg'=>$this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email'))));
-			case Auth::REGISTRATION_NAME_TAKEN:
+			case $dbAuth::REGISTRATION_NAME_TAKEN:
 				return $this->getMyUrl('/account/register',
 						array('err_msg'=>$this->getRes('account/msg_acctexists/'.$this->getRes('account/label_name'))));
 			default: //create new acct
@@ -49,7 +45,7 @@ class Account extends Actor {
 				$theNewId = $dbAccts->add($theNewAcct);
 				if (!empty($theNewId)) {
 					$verified_ts = null;
-					if ($this->scene->reg_code===Settings::APP_ID) {
+					if ($this->scene->reg_code===$this->getAppId()) {
 						$verified_ts = $dbAccts->utc_now();
 					}
 					$theNewAcct = array(
@@ -59,20 +55,20 @@ class Account extends Actor {
 							'verified_timestamp' => $verified_ts,
 					);
 					$dbAuth->registerAccount($theNewAcct);
-					return BITS_URL.'/rights';
+					return $this->getMyUrl('/rights');
 				}
 			}//end switch
 		} else {
 			//$this->scene->err_msg = $_SERVER['QUERY_STRING'];
 			//$this->scene->err_msg = array_key_exists('err_msg',$_GET)?$_GET['err_msg']:null;
 			$this->scene->form_name = 'register_user';
-			$this->scene->action_register = BITS_URL.'/account/register/new';
-			$this->scene->post_key = Settings::APP_ID;
+			$this->scene->action_register = $this->getMyUrl('/account/register/new');
+			$this->scene->post_key = $this->getAppId();
 			if ($dbAccts->isEmpty()) {
-				$this->scene->redirect = BITS_URL.'/rights';
-				$this->scene->reg_code = Settings::APP_ID;
+				$this->scene->redirect = $this->getMyUrl('/rights');
+				$this->scene->reg_code = $this->getAppId();
 			} else {
-				$this->scene->redirect = BITS_URL.Settings::PAGE_Landing;
+				$this->scene->redirect = $this->getHomePage();
 			}
 		}
 	}
@@ -82,10 +78,10 @@ class Account extends Actor {
 			if ($this->scene->redirect)
 				return $this->scene->redirect;
 			else
-				return BITS_URL.Settings::PAGE_Landing;
+				return $this->getHomePage();
 		} else {
 			$this->scene->action_login = $this->config['auth/login_url'];
-			$this->scene->redirect = BITS_URL.Settings::PAGE_Landing;
+			$this->scene->redirect = $this->getHomePage();
 		}
 	}
 	
