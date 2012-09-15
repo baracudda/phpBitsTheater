@@ -1,4 +1,20 @@
 <?php
+/*
+ * Copyright (C) 2012 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace com\blackmoonit\database;
 use com\blackmoonit\Strings;
 use \PDO;
@@ -269,8 +285,39 @@ class DbUtils {
 	static public function utc_now() {
 		return gmdate("Y-m-d\TH:i:s\Z");
 	}
-	
-	
+
+	/**
+	 * Convert unfetched rows from a result set and fetch them all into array form.
+	 * @param PDOStatement|array $aRowSet - result set or an array
+	 * @param string $aFieldNameKey - fieldname to use as key entries.
+	 * @param string $aFieldNameValue - fieldname to use as values, if omitted, use entire row array
+	 */
+	static public function cnvRowsToArray(&$aRowSet, $aFieldNameKey, $aFieldNameValue=null) {
+		$theArray = NULL;
+		if (!empty($aRowSet)) {
+			$theResult = array();
+			
+			$doMap = function(&$aResults,&$aRow,$aKeyName,$aValueName=null) { 
+					if ($aValueName) {
+						$aResults[$aRow[$aKeyName]] = $aRow[$aValueName];
+					} else {
+						$aResults[$aRow[$aKeyName]] = $aRow;
+					}
+			};			
+			
+			if (is_array($aRowSet)) {
+				foreach($aRowSet as $theRow) {
+					$doMap($theResult,$theRow,$aFieldNameKey,$aFieldNameValue);
+				}
+			} else {
+				while($theRow = $aRowSet->fetch()) {
+					$doMap($theResult,$theRow,$aFieldNameKey,$aFieldNameValue);
+				}
+			}
+		}
+		return $theResult;
+	}
+
 }//class
 
 }//namespace

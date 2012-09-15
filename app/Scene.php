@@ -1,9 +1,24 @@
 <?php
+/*
+ * Copyright (C) 2012 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace com\blackmoonit\bits_theater\app;
 use com\blackmoonit\AdamEve as BaseScene;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
-use IllegalArgumentException;
 use \ReflectionClass;
 {//begin namespace
 
@@ -28,6 +43,7 @@ use \ReflectionClass;
  * echo $test->myProp; //prints "7" (5+1 is 6 which becomes $value in call to "set" function which actually sets myProp to 6+1) 
  */
 class Scene extends BaseScene {
+	const _SetupArgCount = 2; //number of args required to call the setup() method.
 	public $me = null;
 	public $_actor = null;
 	public $_director = null;
@@ -112,19 +128,11 @@ class Scene extends BaseScene {
 		unset($this->_properties[$aName]);
 	}
 
-	/**
-	 * Constructor that will call __construct%numargs%(...) if any are passed in
-	 */
-	public function __construct() {
-		$this->me = new ReflectionClass($this);
-		$this->_setupArgCount = 2;
-        call_user_func_array('parent::__construct',func_get_args());
-	}
-   
 	public function setup($anActor, $anAction) {
 		parent::setup();
+		$this->me = new ReflectionClass($this);
 		$this->_actor = $anActor;
-		$this->_director =& $anActor->director;
+		$this->_director = $anActor->director;
 		$this->_config = $anActor->config;
 		$this->_action = $anAction;
 		$this->_dbError = false;
@@ -143,7 +151,6 @@ class Scene extends BaseScene {
 				$thisScene->_director[$aName] = $aValue; 
 				return $aValue; 
 		};
-		unset($this->name); //unwanted ancestor var, may be confused for some context related data
 		$this->defineProperty('_row_class',function ($thisScene, $aName, $aValue) { 
 				$thisScene->_row_class = $aValue+1; 
 				return ($aValue%2)?'"row1"':'"row2"'; 
@@ -152,11 +159,13 @@ class Scene extends BaseScene {
 
 		$this->form_name = 'form_'.$this->_action;
 		$this->view_path = BITS_APP_PATH.'view'.DIRECTORY_SEPARATOR;
-		$this->actor_view_path = $this->view_path.$this->_actor->name.DIRECTORY_SEPARATOR;
+		$this->actor_view_path = $this->view_path.$this->_actor->mySimpleClassName.DIRECTORY_SEPARATOR;
 		$this->page_header = $this->getViewPath($this->actor_view_path.'header');
 		$this->page_footer = $this->getViewPath($this->actor_view_path.'footer');
 		$this->app_header = $this->getViewPath($this->view_path.'header');
 		$this->app_footer = $this->getViewPath($this->view_path.'footer');
+		
+		$this->myIconStyle = "none";
 	}
 	
 	protected function setupGetVars() {
@@ -280,12 +289,64 @@ class Scene extends BaseScene {
 		}
 	}
 	
-	public function getRes($aName) {
-		return $this->_director->getRes($aName);
+	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
+		return $this->_director->isAllowed($aNamespace,$aPermission,$acctInfo);
 	}
+
+	public function isGuest() {
+		return $this->_director->isGuest();
+	}
+	
+	public function getProp($aName) {
+		return $this->_director->getProp($aName);
+	}
+	
+	public function returnProp($aProp) {
+		$this->_director->returnProp($aProp);
+	}
+	
+	public function getRes($aResName) {
+		return $this->_director->getRes($aResName);
+	}
+	
+	/**
+	 * Same as cueActor() but for myself.
+	 * @param string $anAction
+	 * @param array $args
+	 */
+	public function renderFragment($anAction, $args=array()) {
+		try {
+			$theActor = $this->_actor;
+			$theMethod = new ReflectionMethod($theActor,$anAction);
+			//if no exception, call the method
+			$theMethod->setAccessible(true); //protected from direct "raiseCurtain" calls, but ok for cue() or render*().
+			$args['aScene'] = $aScene; //append the scene of our caller as last param in case called method wants it
+			$theResult = $theMethod->invokeArgs($theActor,$args);
+			if (empty($theResult)) {
+				$s = $theActor->renderFragment($anAction);
+				unset($theActor);
+				return $s;
+			} else {
+				header('Location: '.$theResult);
+			}
+		} catch (ReflectionException $e) {
+			//no method to call, just ignore it
+		}
+	}
+
+	/**
+	 * Render a fragment and return the string rather than automatically pass it to the output.
+	 * @param string $anActorName
+	 * @param string $anAction
+	 * @param array $args
+	 */
 	
 	public function cueActor($anActorName, $anAction, $args=array()) {
 		return $this->_director->cue($this,$anActorName,$anAction,$args);
+	}
+	
+	public function getHomePage() {
+		return $this->_actor->getHomePage();
 	}
 	
 }//end class

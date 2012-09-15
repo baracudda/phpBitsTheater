@@ -1,10 +1,28 @@
 <?php
+/*
+ * Copyright (C) 2012 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace com\blackmoonit\bits_theater\app;
 use com\blackmoonit\AdamEve as BaseDirector;
 use com\blackmoonit\Strings;
 use com\blackmoonit\database\DbUtils;
 use \ArrayAccess;
 use \ReflectionClass;
+use \ReflectionMethod;
+use \ReflectionException;
 {//begin namespace
 
 class Director extends BaseDirector implements ArrayAccess {
@@ -15,14 +33,6 @@ class Director extends BaseDirector implements ArrayAccess {
 	protected $_resMaster = array(); //cache of res classes
 	protected $auth = null; //cache of Auth model
 
-	/*
-	 * Constructor that will call __construct%numargs%(...) if any are passed in
-	 */
-	public function __construct() {
-		$this->_setupArgCount = 0;
-        call_user_func_array('parent::__construct',func_get_args());
-	}
-   
 	public function setup() {
 		parent::setup();
 		if (session_id() === "")
@@ -124,18 +134,23 @@ class Director extends BaseDirector implements ArrayAccess {
 		if (class_exists($anActorClass)) {
 			if (empty($anAction))
 				$anAction = $anActorClass::DEFAULT_ACTION;
-			$methodExists = method_exists($anActorClass,$anAction) && is_callable(array($anActorClass,$anAction));
-			if ($methodExists) {
+			try {
+				$theMethod = new ReflectionMethod($anActorClass,$anAction);
+				//if no exception, instantiate the class and call the method
 				$theActor = new $anActorClass($this,$anAction);
-				$theActor->scene->_scene = $aScene;
-				$theResult = call_user_func_array(array($theActor,$anAction),$args);
+				$theMethod->setAccessible(true); //protected from direct "raiseCurtain" calls, but ok for cue().
+				$args['aScene'] = $aScene; //append the scene of our caller as last param in case called method wants it
+				$theResult = $theMethod->invokeArgs($theActor,$args);
 				if (empty($theResult)) {
-					$s = $theActor->renderFragment();
+					$s = $theActor->renderFragment($anAction);
 					unset($theActor);
 					return $s;
 				} else {
 					header('Location: '.$theResult);
 				}
+			} catch (ReflectionException $e) {
+				//no method to call, just ignore it
+				
 			}
 		}
 	}
@@ -192,13 +207,13 @@ class Director extends BaseDirector implements ArrayAccess {
 		$theResUri = explode('/',str_replace('\\','/',$aResName));
 		if (count($theResUri)>=2) {
 			$theResClassName = Strings::getClassName(array_shift($theResUri));
+			$theResClass = config\I18N::findClassNamespace($theResClassName);
 			$theRes = array_shift($theResUri);
 		} else {
-			$theResClassName = BITS_BASE_NAMESPACE.'\\res\\Resources';
+			$theResClass = BITS_BASE_NAMESPACE.'\\res\\Resources';
 			$theRes = array_shift($theResUri);
 		}
 		try {
-			$theResClass = config\I18N::findClassNamespace($theResClassName);
 			if (!empty($theResUri))
 				return $this->loadRes($theResClass,$theRes,$theResUri);
 			else

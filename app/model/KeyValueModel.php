@@ -1,4 +1,20 @@
 <?php
+/*
+ * Copyright (C) 2012 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace com\blackmoonit\bits_theater\app\model;
 use com\blackmoonit\Strings;
 use com\blackmoonit\FinallyBlock;
@@ -9,6 +25,7 @@ use \PDOExeption;
 
 abstract class KeyValueModel extends Model implements \ArrayAccess {
 	const TABLE_NAME = 'map'; //excluding prefix
+	const MAPKEY_NAME = 'mapkey';
 	protected $_mapdata = array();
 	//protected $value_select; auto-created on first use
 	//protected $value_update; auto-created on first use
@@ -20,10 +37,12 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 	
 	public function setup($aDbConn) {
 		parent::setup($aDbConn);
-		$this->sql_value_select = "SELECT value FROM {$this->getTableName()} WHERE namespace = :ns AND mapkey = :key";
-		$this->sql_value_update = "UPDATE {$this->getTableName()} SET value=:new_value WHERE namespace = :ns AND mapkey = :key";
+		$this->sql_value_select = "SELECT value FROM {$this->getTableName()} WHERE namespace = :ns AND ".
+				static::MAPKEY_NAME." = :key";
+		$this->sql_value_update = "UPDATE {$this->getTableName()} SET value=:new_value WHERE namespace = :ns AND ".
+				static::MAPKEY_NAME." = :key";
 		$this->sql_value_insert = "INSERT INTO {$this->getTableName()} ".
-				"(namespace, mapkey, value, val_def) VALUES (:ns, :key, :value, :default)";
+				"(namespace, ".static::MAPKEY_NAME.", value, val_def) VALUES (:ns, :key, :value, :default)";
 		try {
 			$this->value_select = $this->db->prepare($this->sql_value_select);
 			$this->value_update = $this->db->prepare($this->sql_value_update);
@@ -44,10 +63,10 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 		case 'mysql': default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->getTableName()} ".
 				"( namespace CHAR(40) NULL COLLATE utf8_unicode_ci".
-				", mapkey CHAR(40) NOT NULL COLLATE utf8_unicode_ci".
+				", ".static::MAPKEY_NAME." CHAR(40) NOT NULL COLLATE utf8_unicode_ci".
 				", value NVARCHAR(250) NULL".
 				", val_def NVARCHAR(250) NULL".
-				", PRIMARY KEY (namespace, mapkey)".
+				", PRIMARY KEY (namespace, ".static::MAPKEY_NAME.")".
 				") CHARACTER SET utf8 COLLATE utf8_bin";
 		}
 		$this->execDML($theSql);

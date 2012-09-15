@@ -1,8 +1,24 @@
 <?php
+/*
+ * Copyright (C) 2012 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace com\blackmoonit\database;
-use \PDO;
 use com\blackmoonit\AdamEve as BaseDbClass;
 use com\blackmoonit\database\DbUtils;
+use \PDO;
 {//begin namespace
 
 class GenericDb extends BaseDbClass {
@@ -101,7 +117,7 @@ class GenericDb extends BaseDbClass {
 	}
 	
 	/**
-	 * Return SQL format for INSERT/UPDATE value field list. 
+	 * Return SQL format for INSERT value field list. 
 	 * @param array $aFieldList - fields we want returned from SQL SELECT statement.
 	 * @param array $aTextIdFieldList - (optional) TextId fields require special attention.
 	 * @throws InvalidArgumentException - if the fieldlist is empty.
@@ -117,6 +133,27 @@ class GenericDb extends BaseDbClass {
 		}
 		if (!empty($theResult))
 			return substr($theResult,0,-2);
+		else
+			throw new InvalidArgumentException('invalid field listing');
+	}
+	
+	/**
+	 * Return SQL format for UPDATE field list. 
+	 * @param array $aUpdateParams - index keys are fields we want UPDATEd (values contain their new data).
+	 * @param array $aTextIdFieldList - (optional) TextId fields require special attention.
+	 * @throws InvalidArgumentException - if the fieldlist is empty.
+	 */
+	public function getSqlUpdateFields(array $aUpdateParams, array $aTextIdFieldList = NULL) {
+		$theResult = '';
+		foreach ($aUpdateParams as $theFieldname=>$theNewValue) {
+			if (!in_array($theFieldname, $aTextIdFieldList, true)) {
+				$theResult .= $theFieldname.'=:'.$theFieldname.', ';
+			} else {
+				$theResult .= $theFieldName.'=UNHEX(:'.$theFieldname.'), ';
+			}
+		}
+		if (!empty($theResult))
+			return substr('SET '.$theResult,0,-2);
 		else
 			throw new InvalidArgumentException('invalid field listing');
 	}

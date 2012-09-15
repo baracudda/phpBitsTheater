@@ -1,26 +1,44 @@
 <?php
+/*
+ * Copyright (C) 2012 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace com\blackmoonit;
+use \stdClass as BaseClass;
+use \ReflectionClass;
 {//begin namespace
 
-/*
+/**
  * Root class most others will derive from to provide core object funcitonality.
  */
-class AdamEve extends \stdClass {
+class AdamEve extends BaseClass {
+	const _SetupArgCount = 0; //number of args required to call the setup() method.
 	protected $bHasBeenSetup = false;
 	protected $bHasBeenCleanup = false;
-	protected $_setupArgCount = -1; //number of args required to call the setup() method.
 	public $myClassName;
-	public $name;
+	public $mySimpleClassName;
 
-	/*
+	/**
 	 * Constructor that will call __construct%numargs%(...) if any are passed in
 	 */
 	public function __construct() {
 		$this->myClassName = get_class($this);
-		$this->name = basename(str_replace('\\',DIRECTORY_SEPARATOR,$this->myClassName));
+		$this->mySimpleClassName = basename(str_replace('\\',DIRECTORY_SEPARATOR,$this->myClassName));
 		$theArgs = func_get_args();
 		$numArgs = func_num_args();
-		if ($numArgs==$this->_setupArgCount) {
+		if ($numArgs==static::_SetupArgCount) {
 			call_user_func_array(array($this,'setup'),$theArgs);
 		} else if (method_exists($this,$theMethod='__construct'.$numArgs)) {
 			call_user_func_array(array($this,$theMethod),$theArgs);
@@ -37,7 +55,6 @@ class AdamEve extends \stdClass {
     
     public function setup() {
 		$this->bHasBeenSetup = true;
-		unset($this->_setupArgCount);
     }
 
 	public function cleanup() {
@@ -54,7 +71,7 @@ class AdamEve extends \stdClass {
 	}	
 
 	public function get_class_constants($aFilter) {
-    	$reflect = new \ReflectionClass(get_calling_class());
+    	$reflect = new ReflectionClass(get_calling_class());
 	    $arr = $reflect->getConstants();
 	    $theResult = array();
 	    foreach ($arr as $key => $value) {

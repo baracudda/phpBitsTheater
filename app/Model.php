@@ -1,27 +1,43 @@
 <?php
+/*
+ * Copyright (C) 2012 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace com\blackmoonit\bits_theater\app;
 use com\blackmoonit\database\GenericDb as BaseModel;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\Strings;
 {//begin namespace
 
-/*
+/**
  * Base class for Models.
  */
 class Model extends BaseModel {
+	const _SetupArgCount = 1; //number of args required to call the setup() method.
 	public $myAppNamespace;
 	public $tbl_;
 	public $director;
 	
 	public function __construct(Director $aDirector, $aDbConn) {
-		$this->myAppNamespace = strtolower($this->name);
+		$this->myAppNamespace = strtolower($this->mySimpleClassName);
 		$this->tbl_ = $aDirector->table_prefix;
 		$this->director = $aDirector;
-		$this->_setupArgCount = 1;
 		parent::__construct($aDbConn);
 	}
 
-	/*
+	/**
 	 * $aDbConn - use this connection. If null, create a new one.
 	 */
 	public function setup($aDbConn) {
@@ -30,7 +46,6 @@ class Model extends BaseModel {
 		else {
 			$this->db = $aDbConn;
 		}
-		
 		parent::setup();
 	}
 	
@@ -166,6 +181,29 @@ class Model extends BaseModel {
 		}
 	}
 	
+	/**
+	 * Perform an INSERT query and return the new Auto-Inc ID field value for it.
+	 * Params should be ordered array with ? params OR associative array with :label params.
+	 * @param string $aSql - SQL statement (may be parameterized).
+	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too. 
+	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
+	 * @throws DbException if there is an error.
+	 * @return Returns the lastInsertId().
+	 */
+	public function addAndGetId($aSql, $aParamValues=null, $aParamTypes=null) {
+		$theResult = null;
+		if (!empty($aSql)) {
+			$this->db->beginTransaction();
+			if ($this->execDML($aSql,$aParamValues,$aParamTypes)==1) {
+				$theResult = $this->db->lastInsertId();
+				$this->db->commit();
+			} else {
+				$this->db->rollBack();
+			}
+		}
+		return $theResult;
+	}
+	
 	
 	//===== static helper functions =====
 	
@@ -196,6 +234,10 @@ class Model extends BaseModel {
 	
 	public function returnProp($aModel) {
 		$this->director->returnProp($aModel);
+	}
+
+	static public function cnvRowsToArray($aRowSet, $aFieldNameKey, $aFieldNameValue=null) {
+		return DbUtils::cnvRowsToArray($aRowSet,$aFieldNameKey,$aFieldNameValue);
 	}
 	
 }//end class

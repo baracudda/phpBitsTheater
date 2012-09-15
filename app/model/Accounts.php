@@ -1,4 +1,20 @@
 <?php
+/*
+ * Copyright (C) 2012 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace com\blackmoonit\bits_theater\app\model;
 use com\blackmoonit\bits_theater\app\Model;
 use com\blackmoonit\bits_theater\app\DbException;
@@ -44,6 +60,12 @@ class Accounts extends Model {
 	public function getByName($aName) {
 		$theSql = "SELECT * FROM {$this->tnAccounts} WHERE account_name = :acct_name";
 		$theStatement = $this->query($theSql,array('acct_name'=>$aName));
+		return $theStatement->fetch();
+	}
+	
+	public function getByExternalId($aExternalId) {
+		$theSql = "SELECT * FROM {$this->tnAccounts} WHERE external_id = :external_id";
+		$theStatement = $this->query($theSql,array('external_id'=>$aExternalId));
 		return $theStatement->fetch();
 	}
 	

@@ -1,4 +1,20 @@
 <?php
+/*
+ * Copyright (C) 2012 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace com\blackmoonit\bits_theater\app;
 use com\blackmoonit\AdamEve as BaseActor;
 use com\blackmoonit\Strings;
@@ -10,6 +26,7 @@ use \BadMethodCallException;
  * Base class for all Actors in the app.
  */
 class Actor extends BaseActor {
+	const _SetupArgCount = 2; //number of args required to call the setup() method.
 	const DEFAULT_ACTION = '';
 	const ALLOW_URL_ACTIONS = true;
 	public $director = null;	//session vars can be accessed like property (ie. director->some_session_var; )
@@ -17,26 +34,15 @@ class Actor extends BaseActor {
 	public $scene = null;		//scene ui interface used like properties (ie. scene->some_var; (which can be functions))
 	protected $action = null;
 
-	/*
-	 * Constructor that will call __construct%numargs%(...) if any are passed in
-	 */
-	public function __construct() {
-		$this->_setupArgCount = 2;
-        call_user_func_array('parent::__construct',func_get_args());
-	}
-   
 	//static public function _rest_handler() {}; //define this static function if Actor is actually a REST handler.
 	
 	public function setup(Director $aDirector, $anAction) {
 		parent::setup();
 		$this->director = $aDirector;
 		$this->action = $anAction;
-		$me = new ReflectionClass($this);
-		$myShortClassName = $me->getShortName();
-		unset($me);  
-		$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\scene\\'.$myShortClassName.'\\'.$anAction;
+		$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\scene\\'.$this->mySimpleClassName.'\\'.$anAction;
 		if (!class_exists($theSceneClass))
-			$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\scene\\'.$myShortClassName;
+			$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\scene\\'.$this->mySimpleClassName;
 		if (!class_exists($theSceneClass))
 			$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\Scene';
 		$this->scene = new $theSceneClass($this,$anAction);
@@ -156,6 +162,10 @@ class Actor extends BaseActor {
 			$aMsg = getRes('generic/msg_permission_denied');
 		}
 		throw new SystemExit($aMsg,500);
+	}
+	
+	public function getMyAccountID() {
+		return $this->director->account_info['account_id'];
 	}
 	
 }//end class

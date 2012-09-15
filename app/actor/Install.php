@@ -1,4 +1,20 @@
 <?php
+/*
+ * Copyright (C) 2012 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace com\blackmoonit\bits_theater\app\actor; 
 use com\blackmoonit\bits_theater\app\Actor;
 use com\blackmoonit\bits_theater\app\DbException;
@@ -115,11 +131,11 @@ class Install extends Actor {
 		$this->scene->lang = $sa[0];
 		$this->scene->region = $sa[1];
 		$this->scene->path_lang = BITS_RES_PATH.'i18n'.¦.$this->scene->lang.¦;
-		$this->scene->path_region = $this->scene->path_lang.¦.$this->scene->region.¦;
+		$this->scene->path_region = $this->scene->path_lang.$this->scene->region.¦;
 		$this->scene->default_lang = 'en';
 		$this->scene->default_region = 'US';
 		$this->scene->default_path_lang = BITS_RES_PATH.'i18n'.¦.$this->scene->default_lang.¦;
-		$this->scene->default_path_region = $this->scene->default_path_lang.¦.$this->scene->default_region.¦;
+		$this->scene->default_path_region = $this->scene->default_path_lang.$this->scene->default_region.¦;
 		
 		return $this->installConfigTpl('I18N','.php',$theVarNames);
 	}

@@ -21,9 +21,9 @@ class Account extends Resources {
 	public $msg_acctexists = '%1$s already exists. Please use a different one.';
 	public $msg_update_success = 'Successfully updated the account.';
 	
-	public function setup() {
-		parent::setup();
-		$this->label_modify = $this->_director->getRes('generic/save_button_text');
+	public function setup($aDirector) {
+		parent::setup($aDirector);
+		$this->label_modify = $this->getRes('generic/save_button_text');
 	}
 	
 }//end class
