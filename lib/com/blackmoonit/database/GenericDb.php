@@ -56,7 +56,7 @@ class GenericDb extends BaseDbClass {
 		foreach ($aSqlParams as $theKey=>$theValue) {
 			$theStatement->bindValue($theKey,$theValue);
 		}
-		return ($theStatement->execute() && !$theStatement->fetch());
+		return ($theStatement->execute() && ($theStatement->fetch()===FALSE) );
 	}
 	
 	/**

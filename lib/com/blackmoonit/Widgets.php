@@ -143,7 +143,7 @@ class Widgets {
 	}
 	
 	static public function createImageTag($aIconFilename, $altText='', $aIconStyle='', $bAltText_asTooltip=false) {
-		$theWidget = '<img src="'.BITS_RES.'/images/icons/'.$aIconFilename.'" border="0"';
+		$theWidget = '<img src="'.BITS_RES.'/images/'.$aIconFilename.'" border="0"';
 		if (!empty($altText))
 			$theWidget .= " alt=\"{$altText}\"";
 		if (!empty($aIconStyle))

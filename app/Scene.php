@@ -20,6 +20,8 @@ use com\blackmoonit\AdamEve as BaseScene;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use \ReflectionClass;
+use \ReflectionMethod;
+use com\blackmoonit\exceptions\IllegalArgumentException;
 {//begin namespace
 
 /**
@@ -129,7 +131,6 @@ class Scene extends BaseScene {
 	}
 
 	public function setup($anActor, $anAction) {
-		parent::setup();
 		$this->me = new ReflectionClass($this);
 		$this->_actor = $anActor;
 		$this->_director = $anActor->director;
@@ -139,6 +140,8 @@ class Scene extends BaseScene {
 		$this->setupDefaults();
 		$this->setupGetVars();
 		$this->setupPostVars();
+
+		$this->bHasBeenSetup = true;
 	}
 
 	public function cleanup() {
@@ -347,6 +350,17 @@ class Scene extends BaseScene {
 	
 	public function getHomePage() {
 		return $this->_actor->getHomePage();
+	}
+	
+	public function getSiteURL($aRelativeURL='') {
+		$theResult = BITS_URL;
+		if (!empty($aRelativeURL)) {
+			$theArgs = (is_array($aRelativeURL)) ? $aRelativeURL : func_get_args();
+			foreach ($theArgs as $pathPart) {
+				$theResult .= ((!empty($pathPart) && $pathPart[0]!='/') ? '/' : '' ) . $pathPart;
+			}
+		}
+		return $theResult;
 	}
 	
 }//end class

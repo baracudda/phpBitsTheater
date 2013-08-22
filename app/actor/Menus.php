@@ -17,7 +17,7 @@
 
 namespace com\blackmoonit\bits_theater\app\actor; 
 use com\blackmoonit\bits_theater\app\Actor;
-use com\blackmoonit\bits_theater\app\ResException;
+use com\blackmoonit\bits_theater\res\ResException;
 use com\blackmoonit\Strings;
 {//namespace begin
 

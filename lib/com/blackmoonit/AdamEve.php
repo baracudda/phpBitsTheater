@@ -40,22 +40,25 @@ class AdamEve extends BaseClass {
 		$numArgs = func_num_args();
 		if ($numArgs==static::_SetupArgCount) {
 			call_user_func_array(array($this,'setup'),$theArgs);
-		} else if (method_exists($this,$theMethod='__construct'.$numArgs)) {
+		} else if (method_exists($this,$theMethod='setup'.$numArgs)) {
 			call_user_func_array(array($this,$theMethod),$theArgs);
+		} else {
+			$this->bHasBeenSetup = true;
 		}
 	}
 	
-	/* example constructor of 1 argument
-    function __construct1($arg1) {}
-    */
+	/* example setup() of _SetupArgCount arguments
+	 * function setup($agr1, $arg2, ... $argN) {}
+	 */
+
+	/* example setup() of 1 argument
+	 * function setup1($arg1) {}
+	 */
     
-	/* example constructor of 3 arguments
-    function __construct3($arg1, $arg2, $arg3) {}
-    */
+	/* example setup() of 3 arguments
+	 * function setup3($arg1, $arg2, $arg3) {}
+	 */
     
-    public function setup() {
-		$this->bHasBeenSetup = true;
-    }
 
 	public function cleanup() {
 		$this->bHasBeenCleanup = true;

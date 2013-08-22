@@ -31,6 +31,12 @@ class Strings {
     		return null;
 	}
 	
+	/**
+	 * Check to see if string begins with substring.
+	 * @param string $str - string to check
+	 * @param string $sub - needle to check for in $str
+	 * @return boolean Returns TRUE if $str begins with $sub.
+	 */
 	static public function beginsWith($str, $sub) {
 	    return (strncmp($str, $sub, strlen($sub)) == 0);
 	}

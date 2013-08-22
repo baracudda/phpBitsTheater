@@ -18,12 +18,15 @@
 namespace com\blackmoonit\bits_theater\app\model;
 use com\blackmoonit\Strings;
 use com\blackmoonit\FinallyBlock;
+use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\bits_theater\app\Model;
-use com\blackmoonit\bits_theater\app\DbException;
+use com\blackmoonit\exceptions\IllegalArgumentException;
+use com\blackmoonit\exceptions\DbException;
+use \ArrayAccess;
 use \PDOExeption;
 {//namespace begin
 
-abstract class KeyValueModel extends Model implements \ArrayAccess {
+abstract class KeyValueModel extends Model implements ArrayAccess {
 	const TABLE_NAME = 'map'; //excluding prefix
 	const MAPKEY_NAME = 'mapkey';
 	protected $_mapdata = array();
@@ -35,8 +38,8 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 		return $this->tbl_.static::TABLE_NAME;
 	}
 	
-	public function setup($aDbConn) {
-		parent::setup($aDbConn);
+	public function setup(Director $aDirector, $aDbConn) {
+		parent::setup($aDirector, $aDbConn);
 		$this->sql_value_select = "SELECT value FROM {$this->getTableName()} WHERE namespace = :ns AND ".
 				static::MAPKEY_NAME." = :key";
 		$this->sql_value_update = "UPDATE {$this->getTableName()} SET value=:new_value WHERE namespace = :ns AND ".
@@ -118,7 +121,8 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 			try {
 				$existing_data = $this->getMapData(array($aMapInfo['ns'],$aMapInfo['key']));
 				if (empty($existing_data)) {
-					$this->bindValues($this->value_insert,$aMapInfo);
+					$theStatement = $this->value_insert;
+					$this->bindValues($theStatement,$aMapInfo);
 					$theResult = $theStatement->execute();
 					$theStatement->closeCursor();
 					return $theResult;
@@ -198,7 +202,7 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 		if (!empty($aKey)) {
 			$this->setMapValue($aKey,$aValue);
 		} else {
-			throw new InvalidArgumentException('key required, v:'.$aValue);
+			throw new IllegalArgumentException('key required, v:'.$aValue);
 		}
 	}
 
@@ -217,8 +221,11 @@ abstract class KeyValueModel extends Model implements \ArrayAccess {
 
 	//----- IMPLEMENTS handled -----
 	
-	public function exists() {
-		return parent::exists($this->getTableName());
+	public function exists($aTableName = NULL) {
+		if (empty($aTableName)) {
+			$aTableName = $this->getTableName();
+		}
+		return parent::exists($aTableName);
 	}
 
 }//end class

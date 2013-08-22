@@ -10,7 +10,6 @@ class MenuInfo extends ResMenuInfo {
 	
 		$menu_main_info = array(
 				'home' => array('label'=>'Home', 'icon'=>'&res@menu_info/icon_home', ),
-				'casnodes' => array('label'=>'Nodes', 'subtext'=>'Definition & Status',),
 				'account' => array('label'=>'My Account', 'icon'=>'&res@menu_info/icon_account', 'subtext'=>'me, myself, &amp; I', ),
 				'admin' => array('label'=>'Admin', 'icon'=>'&res@menu_info/icon_admin', 'subtext'=>'nuts &amp; bolts',),
 		);
@@ -26,11 +25,6 @@ class MenuInfo extends ResMenuInfo {
 				'rights' => array('label'=>'Permissions', ),
 		);
 		$this->res_array_merge($this->menu_admin,$menu_admin_info);
-		
-		$menu_casnodes_info = array(
-				'addnode' => array('label'=>'Add Node', ),
-		);
-		$this->res_array_merge($this->menu_casnodes,$menu_casnodes_info);
 	}
 		
 }//end class

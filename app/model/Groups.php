@@ -33,8 +33,8 @@ class Groups extends Model {
 	protected $get_map_groups;
 	protected $get_map_accts;
 
-	public function setup($aDbConn) {
-		parent::setup($aDbConn);
+	public function setup(Director $aDirector, $aDbConn) {
+		parent::setup($aDirector, $aDbConn);
 		$this->tnGroups = $this->tbl_.'groups';
 		$this->tnGroupMap = $this->tbl_.'groups_map';
 		try {
@@ -48,8 +48,8 @@ class Groups extends Model {
 		}
 	}
 	
-	public function cleanup() {
-		parent::cleanup();
+	protected function getTableName() {
+		return $this->tnGroups;
 	}
 	
 	public function setupModel() {
@@ -95,12 +95,6 @@ class Groups extends Model {
 	public function getGroup($aId) {
 		$rs = $this->query($this->get_group,array('group_id'=>$aId));
 		return $rs->fetch();
-	}
-	
-	public function isEmpty($aTableName=null) {
-		if ($aTableName==null)
-			$aTableName = $this->tnGroups;
-		return parent::isEmpty($aTableName);
 	}
 	
 	public function add($aGroupData) {

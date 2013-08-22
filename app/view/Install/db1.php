@@ -5,16 +5,16 @@ $recite->includeMyHeader();
 $w = '<div align="left">'."\n";
 $w .= '<h3>Database Info:</h3><br />'."\n";
 $w .= '<br />';
-$w .= 'Table Prefix: '.Widgets::createTextBox('table_prefix',$recite->table_prefix,true)."<br/>\n";
+$w .= 'Table Prefix: '.Widgets::createTextBox('table_prefix',$recite->table_prefix)."<br/>\n";
 $w .= '<br />'."\n";
 $w .= "<hr />\n";
-$w .= 'phpBitsTheater uses PHP\'s PDO database classes, please specify how to specify the DNS:<br />';
+$w .= 'This site uses PHP\'s PDO database classes, please specify how to specify the DNS:<br />';
 $w .= '<br />';
 
 $theDnsSchemes = array(
-		'alias' => 'Alias in php.ini',
-		'uri' => 'URI',
 		'ini' => 'INI file',
+		'uri' => 'URI',
+		'alias' => 'Alias in php.ini',
 );
 $w .= '<table><tr><td>'.Widgets::createRadioSet('dns_scheme',$theDnsSchemes,'ini','right',"<br />").' </td>';
 $w .= '<td> Alias/Uri: '.Widgets::createTextBox('dns_value',$recite->dns_value)."</td></tr></table><br/>\n";

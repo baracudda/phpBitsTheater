@@ -38,7 +38,6 @@ class CalendarEntry extends AdamEve {
 	public $id;        //e.g. UID:%starttime%-%raidid%@twguild.org
 	
 	public function setup($aName, $aDtStart, $aDuration) {
-		parent::setup();
 		$this->name = $aName;
     	//start time
     	if (is_object($aDtStart) && $aDtStart instanceof DateTime) {
@@ -60,6 +59,8 @@ class CalendarEntry extends AdamEve {
 		//end time
 		$this->dtEnd = new DateTime('@'.$this->dtStart->getTimestamp());
 		$this->dtEnd->add($this->duration); 
+
+		$this->bHasBeenSetup = true;
 	}
 	
 	public function setOrganizer($aOrganizerArray) {

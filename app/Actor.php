@@ -20,6 +20,9 @@ use com\blackmoonit\AdamEve as BaseActor;
 use com\blackmoonit\Strings;
 use \ReflectionClass;
 use \BadMethodCallException;
+use \Exception;
+use com\blackmoonit\exceptions\FourOhFourExit;
+use com\blackmoonit\exceptions\SystemExit;
 {//begin namespace
 
 /*
@@ -29,15 +32,15 @@ class Actor extends BaseActor {
 	const _SetupArgCount = 2; //number of args required to call the setup() method.
 	const DEFAULT_ACTION = '';
 	const ALLOW_URL_ACTIONS = true;
-	public $director = null;	//session vars can be accessed like property (ie. director->some_session_var; )
-	//public $config = null;	//config model used essentially like property (ie. config->some_key; ) Dynamically created when accessed for 1st time.
-	public $scene = null;		//scene ui interface used like properties (ie. scene->some_var; (which can be functions))
-	protected $action = null;
+	public $director = NULL; //session vars can be accessed like property (ie. director->some_session_var; )
+	//public $config = NULL; //config model used essentially like property (ie. config->some_key; ) Dynamically created when accessed for 1st time.
+	public $scene = NULL; //scene ui interface used like properties (ie. scene->some_var; (which can be functions))
+	protected $action = NULL;
+	protected $renderThisView = NULL; // REST service actions may wish to render a single view e.g. JSONoutput.php or XMLout.php
 
 	//static public function _rest_handler() {}; //define this static function if Actor is actually a REST handler.
 	
 	public function setup(Director $aDirector, $anAction) {
-		parent::setup();
 		$this->director = $aDirector;
 		$this->action = $anAction;
 		$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\scene\\'.$this->mySimpleClassName.'\\'.$anAction;
@@ -46,6 +49,7 @@ class Actor extends BaseActor {
 		if (!class_exists($theSceneClass))
 			$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\Scene';
 		$this->scene = new $theSceneClass($this,$anAction);
+		$this->bHasBeenSetup = true;
 	}
 
 	public function cleanup() {
@@ -67,7 +71,7 @@ class Actor extends BaseActor {
 		if ($theResult)
 			header('Location: '.$theResult);
 		else
-			$theActor->renderView();
+			$theActor->renderView($theActor->renderThisView);
 		$theActor = null;
 	}
 	
@@ -104,19 +108,19 @@ class Actor extends BaseActor {
 		//Strings::debugLog('actor->'.$aName.', is_empty='.empty($this->$aName).', canConnDb='.$this->director->canConnectDb());
 		switch ($aName) {
 			case 'config': 
-				if (empty($this->$aName) && $this->director->canConnectDb()) {
+				if (empty($this->$aName) && $this->director->canConnectDb() && $this->director->isInstalled()) {
 					try { 
 						$theResult = $this->director->getProp('Config');
 						$this->config = $theResult;
 						return $theResult;
-					} catch (\Exception $e) {
+					} catch (Exception $e) {
 						syslog(LOG_ERR,'load config model failed: '.$e->getMessage());
 						return null;
 					}
 				}
 			default:
 				if ($this->director->isDebugging())
-					throw new \Exception('Cannot find actor->'.$aName.', check spelling.');
+					throw new Exception('Cannot find actor->'.$aName.', check spelling.');
 				return null;
 		}
 	}

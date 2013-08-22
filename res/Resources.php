@@ -18,7 +18,7 @@
 namespace com\blackmoonit\bits_theater\res;
 use com\blackmoonit\AdamEve as BaseResources;
 use com\blackmoonit\Strings;
-use com\blackmoonit\bits_theater\app\IllegalArgumentException;
+use com\blackmoonit\exceptions\IllegalArgumentException;
 {//begin namespace
 
 class Resources extends BaseResources {
@@ -26,10 +26,10 @@ class Resources extends BaseResources {
 	protected $_director = null;
 	
 	public function setup($aDirector) {
-		parent::setup();
 		if (empty($aDirector))
 			throw new IllegalArgumentException('Director is null.');
 		$this->_director = $aDirector;
+		$this->bHasBeenSetup = true;
 	}
 
 	/**

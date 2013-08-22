@@ -17,6 +17,7 @@
 
 namespace com\blackmoonit\bits_theater;
 use com\blackmoonit\Strings;
+use com\blackmoonit\exceptions\FourOhFourExit;
 {//begin namespace
 
 /*
@@ -69,14 +70,14 @@ function route_request($aUrl) {
 		$theActorClass = BITS_BASE_NAMESPACE.'\\app\\actor\\'.Strings::getClassName($theActorClass);
 		$theAction = Strings::getMethodName($theAction);
 		if (!$director->raiseCurtain($theActorClass,$theAction,$theQuery)) {
-			throw new app\FourOhFourExit($aUrl);
+			throw new FourOhFourExit($aUrl);
 		}
 	} elseif (!$director->isInstalled() && class_exists(BITS_BASE_NAMESPACE.'\\app\\actor\\Install')) {
 		app\actor\Install::perform($director,'install',array());
 	} elseif ($director->isInstalled() && empty($aUrl)) {
 		header('Location: '.BITS_URL.app\config\Settings::PAGE_Landing);
 	} else {
-		throw new app\FourOhFourExit($aUrl);
+		throw new FourOhFourExit($aUrl);
 	}
 }
 

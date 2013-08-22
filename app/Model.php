@@ -19,41 +19,42 @@ namespace com\blackmoonit\bits_theater\app;
 use com\blackmoonit\database\GenericDb as BaseModel;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\Strings;
+use \ReflectionClass;
+use \PDOException;
+use com\blackmoonit\exceptions\DbException;
 {//begin namespace
 
 /**
  * Base class for Models.
  */
 class Model extends BaseModel {
-	const _SetupArgCount = 1; //number of args required to call the setup() method.
+	const _SetupArgCount = 2; //number of args required to call the setup() method.
 	public $myAppNamespace;
 	public $tbl_;
 	public $director;
 	
-	public function __construct(Director $aDirector, $aDbConn) {
-		$this->myAppNamespace = strtolower($this->mySimpleClassName);
-		$this->tbl_ = $aDirector->table_prefix;
-		$this->director = $aDirector;
-		parent::__construct($aDbConn);
-	}
-
 	/**
-	 * $aDbConn - use this connection. If null, create a new one.
+	 * Setup Model for use.
+	 * @param Director $aDirector - site director object
+	 * @param array $aDbConn - use this connection. If null, create a new one.
 	 */
-	public function setup($aDbConn) {
+	public function setup(Director $aDirector, $aDbConn) {
+		$this->myAppNamespace = strtolower($this->mySimpleClassName);
+		$this->director = $aDirector;
+		$this->tbl_ = $this->director->table_prefix;
 		if (is_null($aDbConn))
 			$this->connect($this->getDbConnInfo());
 		else {
 			$this->db = $aDbConn;
 		}
-		parent::setup();
+		$this->bHasBeenSetup = true;
 	}
 	
 	public function cleanup() {
 		unset($this->db);
-		unset($this->myAppNamespace);
-		unset($this->director);
 		unset($this->tbl_);
+		unset($this->director);
+		unset($this->myAppNamespace);
 		parent::cleanup();
 	}
 	
@@ -83,7 +84,7 @@ class Model extends BaseModel {
 				$this->bindValues($theStatement,$aParamValues,$aParamTypes);
 				return $theStatement->execute();
 			}
-		} catch (\PDOException $pdoe) {
+		} catch (PDOException $pdoe) {
 			throw new DbException($pdoe);
 		}
 	}
@@ -107,7 +108,7 @@ class Model extends BaseModel {
 				$theStatement->execute();
 				return $theStatement;
 			}
-		} catch (\PDOException $pdoe) {
+		} catch (PDOException $pdoe) {
 			throw new DbException($pdoe);
 		}
 	}
@@ -128,7 +129,7 @@ class Model extends BaseModel {
 	 * Return TRUE if specified table exists.
 	 * @param string $aTableName
 	 */
-	public function exists($aTableName) {
+	protected function exists($aTableName) {
 		try {
 			$this->query("SELECT 1 FROM $aTableName WHERE 1=0");
 			return true;
@@ -156,7 +157,7 @@ class Model extends BaseModel {
 	public function prepareSQL($aParamSql) {
 		try {
 			return $this->db->prepare($aParamSql);
-		} catch (\PDOException $pdoe) {
+		} catch (PDOException $pdoe) {
 			throw new DbException($pdoe, 'Preparing: '.$aParamSql);
 		}
 	}
@@ -176,7 +177,7 @@ class Model extends BaseModel {
 				$theStatement->execute();
 				$theStatement->closeCursor();
 			}
-		} catch (\PDOException $pdoe) {
+		} catch (PDOException $pdoe) {
 			throw new DbException($pdoe);
 		}
 	}
@@ -215,13 +216,18 @@ class Model extends BaseModel {
 		$theModels = array();
 		foreach (glob(self::getModelClassPattern()) as $theModelFile) {
 			$theModelClass = str_replace('.php','',basename($theModelFile));
-			$classInfo = new \ReflectionClass(__NAMESPACE__.'\\model\\'.$theModelClass);
+			$classInfo = new ReflectionClass(__NAMESPACE__.'\\model\\'.$theModelClass);
 			if (!$classInfo->isAbstract()) {
 			    $theModels[] = $classInfo;
 			}
 			unset($classInfo);
 		}
 		return $theModels;
+	}
+	
+	static public function isExistant($aModelName) {
+		$theModelFile = __NAMESPACE__.'\\model\\'.$aModelName.'.php';
+		return file_exists($theModelFile);
 	}
 	
 	public function getRes($aName) {

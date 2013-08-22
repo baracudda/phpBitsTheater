@@ -27,8 +27,8 @@ class Permissions extends Model {
 
 	public $tnPermissions; const TABLE_Permissions = 'permissions';
 
-	public function setup($aDbConn) {
-		parent::setup($aDbConn);
+	public function setup(Director $aDirector, $aDbConn) {
+		parent::setup($aDirector, $aDbConn);
 		$this->tnPermissions = $this->tbl_.self::TABLE_Permissions;
 		$this->sql_get_namespace = "SELECT * FROM {$this->tnPermissions} WHERE namespace = :ns AND value = :value";
 		$this->sql_get_group = "SELECT * FROM {$this->tnPermissions} WHERE group_id = :group_id";
@@ -36,10 +36,8 @@ class Permissions extends Model {
 		$this->sql_add_right = "INSERT INTO {$this->tnPermissions} (namespace, permission, group_id, value) VALUES (:ns,:perm,:group_id,:value)";
 	}
 	
-	public function isEmpty($aTableName=null) {
-		if ($aTableName==null)
-			$aTableName = $this->tnPermissions;
-		return parent::isEmpty($aTableName);
+	protected function getTableName() {
+		return $this->tnPermissions;
 	}
 	
 	public function setupModel() {

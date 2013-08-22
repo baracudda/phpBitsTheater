@@ -1,11 +1,35 @@
 <?php
-print '<html>'."\n";
-print '<head>'."\n";
-print '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">'."\n";
-print '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'."\n";
-//include($recite->getViewPath($recite->view_path.'header_jquery_validator');
+print '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'."\n";
+print '<html xmlns="http://www.w3.org/1999/xhtml">'."\n";
+print '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">'."\n";
+
+//typical resource patterns
+$aCssPattern = '<link rel="stylesheet" type="text/css" href="'.BITS_RES.'/style/%s">'."\n";
+$aScriptPattern = '<script type="text/javascript" src="'.BITS_LIB.'/%s" language="javascript"></script> //'."\n";
+
+//Theme
+printf($aCssPattern,'bits.css');
+
 print '</head>'."\n";
 
 print '<body bgcolor="Silver">'."\n";
-print '<img height="72" width="72" title="logo" style="float:left" src="'.BITS_RES.'/images/blackmoonit_logo.png"><h1><b>phpBitsTheater INSTALLATION</b></h1>'."\n";
+
+print '<table id="container-header" width="100%">'."\n";
+print '  <tr valign="center">'."\n";
+//logo
+print '    <td width=80px>'."\n";
+print '      <a href="'.BITS_URL.'">';
+print '        <img height="72" width="72" title="logo" src="'.BITS_RES.'/images/site_logo.jpg" border="0">';
+print '      </a>'."\n";
+print '    </td>'."\n";
+print '    <td>'."\n";
+print '      <a href="'.BITS_URL.'">';
+print '        <span class="title">phpBitsTheater MicroFramework Installation</span>';
+print '      </a>'."\n";
+print '    </td>'."\n";
+print '  </tr>'."\n";
+print '</table>'."\n";
+
 print '<hr><br />'."\n";
+print '<div id="container-body">'."\n"; //this needs to be matched in the footer.php
+

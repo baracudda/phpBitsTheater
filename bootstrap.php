@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-/**
+/*
  * You are highly encouraged to find/replace this namespace with your own. (search for *.php and *.tpl)
  */
 namespace com\blackmoonit\bits_theater;
@@ -50,7 +50,6 @@ define('BITS_DB_INFO',BITS_CFG_PATH.'_dbconn_.ini');
 /**********************************
  * load required modules
  **********************************/
-require_once(BITS_APP_PATH.'AppExceptions.php');
 //lib autoloader first
 require_once(BITS_LIB_PATH.'autoloader.php');
 //app autoloader next most frequent & priority

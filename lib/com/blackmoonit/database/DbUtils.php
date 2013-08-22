@@ -38,9 +38,16 @@ class DbUtils {
 	 * @param array $aConfigData
 	 */
 	static private function cnvDbConnIni2Dns($aConfigData) {
-		$theDns = $aConfigData['dbconn']['driver'].':host='.$aConfigData['dbconn']['host'].
-				((!empty($aConfigData['dbconn']['port'])) ? (';port='.$aConfigData['dbconn']['port']) : '' ).
-				';dbname='.$aConfigData['dbconn']['dbname'];
+		switch ($aConfigData['dbconn']['driver']) {
+			case 'sqlite':
+				$theDns = $aConfigData['dbconn']['driver'].':'.$aConfigData['dbconn']['host'];
+				break;
+			case 'mysql':
+			default:
+				$theDns = $aConfigData['dbconn']['driver'].':host='.$aConfigData['dbconn']['host'].
+						((!empty($aConfigData['dbconn']['port'])) ? (';port='.$aConfigData['dbconn']['port']) : '' ).
+						';dbname='.$aConfigData['dbconn']['dbname'];
+		}
 		return array('dns'=>$theDns,'usr'=>$aConfigData['dbconn']['username'],'pwd'=>$aConfigData['dbconn']['password']);
 	}
 
@@ -150,10 +157,10 @@ class DbUtils {
 	 */
 	static public function getPDOConnection($aDnsInfo) {
 		$theResult = null;
-		if (is_array($aDnsInfo))
+		if (!empty($aDnsInfo['usr']) && !empty($aDnsInfo['pwd']))
 			$theResult = new PDO($aDnsInfo['dns'],$aDnsInfo['usr'],$aDnsInfo['pwd']);
 		else
-			$theResult = new PDO($aDnsInfo,'','');
+			$theResult = new PDO($aDnsInfo['dns']);
 		$theResult->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
 		$theResult->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 		return $theResult;
@@ -310,12 +317,20 @@ class DbUtils {
 					$doMap($theResult,$theRow,$aFieldNameKey,$aFieldNameValue);
 				}
 			} else {
-				while($theRow = $aRowSet->fetch()) {
+				while(($theRow = $aRowSet->fetch()) !== FALSE) {
 					$doMap($theResult,$theRow,$aFieldNameKey,$aFieldNameValue);
 				}
 			}
 		}
 		return $theResult;
+	}
+	
+	static public function getColumnFrom2dArray($aKeyName, array &$aArray) {
+		return array_map(
+				function($val) use ($aKeyName) {
+					return $val[$aKeyName];
+				}
+				,$aArray);
 	}
 
 }//class

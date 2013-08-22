@@ -17,37 +17,14 @@
 
 namespace com\blackmoonit\bits_theater\app\actor; 
 use com\blackmoonit\bits_theater\app\Actor;
-use com\blackmoonit\bits_theater\app\DbException;
+use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\database\DbUtils;
 {//namespace begin
 
 class Install extends Actor {
 	const DEFAULT_ACTION = 'install';
-	
-	protected function getDefinedPw($aPwFile) {
-		$thePW = BITS_ROOT; //default pw is the folder path
-		if (file_exists($aPwFile)) {
-			//load first line as pw
-			$thePW = trim(file_get_contents($aPwFile));
-		}
-		//Strings::debugLog('file:'.$aPwFile.', '.$thePW);
-		return $thePW;
-	}
 		
-	protected function checkInstallPw() {
-		//check to see if posted the correct pw
-		$theDefinedPw = $this->getDefinedPw($this->scene->INSTALL_PW_FILENAME);
-		$theInputPw = $this->scene->installpw;
-		//Strings::debugLog('d:'.$this->director['installpw'].' s:'.$_SESSION['installpw'].' p:'.$_POST['installpw']);
-		//Strings::debugLog('sess:'.session_id().':'.$this->director['installpw'].' s:'.$_SESSION['installpw']);
-		//Strings::debugLog('args:'.$theDefinedPw.', '.$theInputPw.', '.$this->scene->installpw);
-		if ($theDefinedPw==$theInputPw) 
-			return $theDefinedPw;
-		else 
-			return false;
-	}
-	
 	protected function installTemplate($aDestPath, $aTemplateName, $aNewExtension, $aVars) {
 		//copy the .tpl to .php and fill in the vars
 		$dst = $aDestPath.$aTemplateName.$aNewExtension;
@@ -67,22 +44,14 @@ class Install extends Actor {
 	}
 
 	protected function installConfigTpl($aTemplateName, $aNewExtension, $aVars) {
-		return $this->installTemplate(BITS_APP_PATH.'config'.¦,$aTemplateName.$aNewExtension,$aVars);
+		return $this->installTemplate(BITS_APP_PATH.'config'.¦,$aTemplateName,$aNewExtension,$aVars);
 	}
 
 	public function install() {
 		//avoid installing more than once
-		if ($this->director->canConnectDb() && $this->director->canCheckTickets() && $this->director->isInstalled()) {
-			try {
-				$config = $this->director->getProp('Config');
-				$b = $config->exists();
-				$this->director->returnProp($config);
-				if ($b)
-					return $this->getHomePage();
-			} catch (DbException $dbe) {
+		if ($this->director->canCheckTickets() && $this->director->isInstalled()) {
 				return $this->getHomePage();
-			}
-		}	
+		}
 	
 		//make sure we start off with a fresh session
 		$this->director->resetSession();
@@ -91,13 +60,13 @@ class Install extends Actor {
 		
 		//next action in the install sequence
 		if (!$this->director->canGetRes())
-			$this->scene->next_action = BITS_URL.'/install/lang1';
+			$this->scene->next_action = $this->scene->getSiteURL('install/lang1');
 		elseif (!$this->director->canConnectDb())
-			$this->scene->next_action = BITS_URL.'/install/db1';
+			$this->scene->next_action = $this->scene->getSiteURL('install/db1');
 		elseif (!$this->director->canCheckTickets())
-			$this->scene->next_action = BITS_URL.'/install/auth1';
+			$this->scene->next_action = $this->scene->getSiteURL('install/auth1');
 		else
-			$this->scene->next_action = BITS_URL.'/install/setupDb';
+			$this->scene->next_action = $this->scene->getSiteURL('install/setupDb');
 	}
 	
 	protected function getLangTypes() {
@@ -109,7 +78,7 @@ class Install extends Actor {
 				$theValueFile = $theRegionFolder.DIRECTORY_SEPARATOR.'lang_item_choice.html';
 				if (is_file($theValueFile)) {
 					$theKey = basename($theLangFolder).'/'.basename($theRegionFolder);
-					$theResUrl = BITS_URL.'/res/i18n/'.$theKey;
+					$theResUrl = $this->scene->getSiteURL('res/i18n/'.$theKey);
 					$theValue = str_replace('%path%',$theResUrl,file_get_contents($theValueFile));
 					$theTypes[$theKey] = $theValue;
 				}
@@ -119,8 +88,8 @@ class Install extends Actor {
 	}
 
 	public function lang1() {
-		if (!$this->checkInstallPw()) return BITS_URL;
-		$this->scene->next_action = BITS_URL.'/install/lang2';
+		if (!$this->scene->checkInstallPw()) return $this->scene->getSiteURL('install');
+		$this->scene->next_action = $this->scene->getSiteURL('install/lang2');
 		$this->scene->lang_types = $this->getLangTypes();
 	}
 	
@@ -130,35 +99,35 @@ class Install extends Actor {
 		$sa = explode('/',$this->scene->lang_type);
 		$this->scene->lang = $sa[0];
 		$this->scene->region = $sa[1];
-		$this->scene->path_lang = BITS_RES_PATH.'i18n'.¦.$this->scene->lang.¦;
-		$this->scene->path_region = $this->scene->path_lang.$this->scene->region.¦;
+		$this->scene->path_lang = addslashes(BITS_RES_PATH.'i18n'.¦.$this->scene->lang.¦);
+		$this->scene->path_region = $this->scene->path_lang.addslashes($this->scene->region.¦);
 		$this->scene->default_lang = 'en';
 		$this->scene->default_region = 'US';
-		$this->scene->default_path_lang = BITS_RES_PATH.'i18n'.¦.$this->scene->default_lang.¦;
-		$this->scene->default_path_region = $this->scene->default_path_lang.$this->scene->default_region.¦;
+		$this->scene->default_path_lang = addslashes(BITS_RES_PATH.'i18n'.¦.$this->scene->default_lang.¦);
+		$this->scene->default_path_region = $this->scene->default_path_lang.addslashes($this->scene->default_region.¦);
 		
 		return $this->installConfigTpl('I18N','.php',$theVarNames);
 	}
 	
 	public function lang2() {
-		if (!$this->checkInstallPw()) return BITS_URL;
+		if (!$this->scene->checkInstallPw()) return $this->scene->getSiteURL();
 		$this->scene->lang_types = $this->getLangTypes();
 		$this->scene->permission_denied = !$this->installLang($this->scene->lang_type);
 		if ($this->scene->permission_denied) {
-			$this->scene->next_action = BITS_URL.'/install/lang1';
+			$this->scene->next_action = $this->scene->getSiteURL('install/lang1');
 		} else {
-			$this->scene->next_action = BITS_URL.'/install/db1';
+			$this->scene->next_action = $this->scene->getSiteURL('install/db1');
 		}
 	}
 	
 	public function db1() {
-		if (!$this->checkInstallPw()) return BITS_URL;
-		$this->scene->next_action = BITS_URL.'/install/db2';
+		if (!$this->scene->checkInstallPw()) return $this->scene->getSiteURL();
+		$this->scene->next_action = $this->scene->getSiteURL('install/db2');
 		$this->scene->db_types = $this->scene->getDbTypes();
 	}
 
 	public function db2() {
-		if (!$this->checkInstallPw()) return BITS_URL;
+		if (!$this->scene->checkInstallPw()) return $this->scene->getSiteURL();
 
 		$this->scene->strip_spaces('table_prefix');
 		$theVarNames = array('table_prefix','dns_scheme','dns_value','dbhost','dbtype','dbname','dbuser','dbpwrd');
@@ -166,11 +135,12 @@ class Install extends Actor {
 			//copy completed, now try to connect to the db and prove it works
 			try {
 				$this->scene->connected = DbUtils::getPDOConnection(DbUtils::readDbConnInfo(BITS_DB_INFO));
-				$this->scene->next_action = BITS_URL.'/install/auth1';
+				$this->scene->next_action = $this->scene->getSiteURL('install/auth1');
 			} catch (\PDOException $e) {
-				$this->scene->next_action = BITS_URL.'/install/db1';
+				$ex = new DbException($e);
+				$this->scene->next_action = $this->scene->getSiteURL('install/db1');
 				$this->scene->connected = false;
-				$this->scene->_dbError = $e->getDebugDisplay('Connection error');
+				$this->scene->_dbError = $ex->getDebugDisplay('Connection error');
 				$this->scene->old_vals = $this->scene->createHiddenPosts(array('dns_scheme', 'dns_value', 
 						'table_prefix','dbhost','dbtype','dbname','dbuser','dbpwrd'));
 			}
@@ -196,8 +166,8 @@ class Install extends Actor {
 	}
 
 	public function auth1() {
-		if (!$this->checkInstallPw()) return BITS_URL;
-		$this->scene->next_action = BITS_URL.'/install/auth2';
+		if (!$this->scene->checkInstallPw()) return $this->scene->getSiteURL();
+		$this->scene->next_action = $this->scene->getSiteURL('install/auth2');
 		$this->scene->auth_types = $this->getAuthTypes();
 	}
 
@@ -209,8 +179,8 @@ class Install extends Actor {
 	}
 	
 	public function auth2() {
-		if (!$this->checkInstallPw()) return BITS_URL;
-		$this->scene->next_action = BITS_URL.'/install/setupDb';
+		if (!$this->scene->checkInstallPw()) return $this->scene->getSiteURL();
+		$this->scene->next_action = $this->scene->getSiteURL('install/setupDb');
 		$this->scene->permission_denied = !$this->installAuth($this->scene->auth_type);
 		if ($this->director->canCheckTickets()) {
 			$this->scene->auth_model = $this->director->getProp('Auth');
@@ -219,9 +189,25 @@ class Install extends Actor {
 	}
 	
 	public function setupDb() {
-		if (!$this->checkInstallPw()) return BITS_URL;
-		$this->scene->next_action = BITS_URL.'/install/allFinished';
+		if (!$this->scene->checkInstallPw()) return $this->scene->getSiteURL();
+		$this->scene->next_action = $this->scene->getSiteURL('install/allFinished');
 		//auth and db configs are installed, lets create our database
+		$theSetupDb = $this->director->getProp('SetupDb');
+		try {
+			$theSetupDb->setupModels($this->scene);
+		} catch (DbException $dbe) {
+			$this->scene->_dbError = $dbe->getDebugDisplay();
+			$this->scene->popDbResults();
+		}
+		$this->director->returnProp($theSetupDb);
+	}
+	
+	/**
+	 * URL: %site%/install/resetup_db
+	 */
+	public function resetupDb() {
+		if (!$this->director->isInstalled()) return $this->scene->getSiteURL();
+		//lets re-create our database
 		$theSetupDb = $this->director->getProp('SetupDb');
 		try {
 			$theSetupDb->setupModels($this->scene);
@@ -240,8 +226,8 @@ class Install extends Actor {
 	}
 
 	public function allFinished() {
-		if (!$this->checkInstallPw()) return BITS_URL;
-		$this->scene->next_action = BITS_URL.'/rights';
+		if (!$this->scene->checkInstallPw()) return $this->scene->getSiteURL();
+		$this->scene->next_action = $this->scene->getSiteURL('config');
 		//do something to signify finished
 		if ($this->installSettings(Strings::createGUID())) {
 			//see where to go from here

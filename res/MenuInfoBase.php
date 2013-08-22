@@ -22,6 +22,7 @@ class MenuInfoBase extends Resources {
 	
 	public function setup($aDirector) {
 		parent::setup($aDirector);
+		$this->bHasBeenSetup = false; //set back to true at end of this method
 		//strings that require concatination need to be defined during setup()		
 		
 		$this->icon_home = BITS_RES.'/images/menu/home.png';
@@ -69,6 +70,8 @@ class MenuInfoBase extends Resources {
 						'filter' => 'account/view',
 					), 
 			);
+
+		$this->bHasBeenSetup = true;
 	}
 		
 }//end class

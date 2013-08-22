@@ -23,6 +23,8 @@ use \ArrayAccess;
 use \ReflectionClass;
 use \ReflectionMethod;
 use \ReflectionException;
+use \Exception;
+use com\blackmoonit\bits_theater\res\ResException;
 {//begin namespace
 
 class Director extends BaseDirector implements ArrayAccess {
@@ -34,12 +36,15 @@ class Director extends BaseDirector implements ArrayAccess {
 	protected $auth = null; //cache of Auth model
 
 	public function setup() {
-		parent::setup();
-		if (session_id() === "")
+		if (session_id() === "") try {
 			session_start();
+		} catch (Exception $e) {
+			$this->resetSession();
+		}
 		if ($this->isInstalled()) {
 			$this['app_id'] = config\Settings::APP_ID;
 		}
+		$this->bHasBeenSetup = true;
 	}
 
 	public function cleanup() {
@@ -86,7 +91,9 @@ class Director extends BaseDirector implements ArrayAccess {
 		//throw new \Exception('resetSession');
 		session_unset();
 		session_destroy();
-		session_start();
+		session_write_close();
+		setcookie(session_name(),'',0,'/');
+		session_regenerate_id(true);
 	}
 	
 	public function isInstalled() {
@@ -236,7 +243,7 @@ class Director extends BaseDirector implements ArrayAccess {
 		if (is_callable(array($resObj,$aRes))) {
 			try {
 				return call_user_func_array(array($resObj,$aRes),$args);
-			} catch (\Exception $e) {
+			} catch (Exception $e) {
 				throw new ResException($aRes,$aResClass,$args,$e);
 			}
 		} else {

@@ -24,12 +24,16 @@ use com\blackmoonit\bits_theater\app\IllegalArgumentException;
 class Accounts extends Model {
 	public $tnAccounts; const TABLE_Accounts = 'accounts';
 
-	public function setup($aDbConn) {
-		parent::setup($aDbConn);
+	public function setup(Director $aDirector, $aDbConn) {
+		parent::setup($aDirector, $aDbConn);
 		$this->tnAccounts = $this->tbl_.self::TABLE_Accounts;
 		$this->sql_acct_get = "SELECT * FROM {$this->tnAccounts} WHERE account_id = :acct_id";
 		$this->sql_acct_add = "INSERT INTO {$this->tnAccounts} ".
 				"(account_id, account_name, external_id) VALUES (:account_id, :account_name, :external_id) ";
+	}
+	
+	protected function getTableName() {
+		return $this->tnAccounts;
 	}
 	
 	public function setupModel() {
@@ -49,12 +53,6 @@ class Accounts extends Model {
 	public function getAccount($aAcctId) {
 		$rs = $this->query($this->sql_acct_get,array('acct_id'=>$aAcctId));
 		return $rs->fetch();
-	}
-	
-	public function isEmpty($aTableName=null) {
-		if ($aTableName==null)
-			$aTableName = $this->tnAccounts;
-		return parent::isEmpty($aTableName);
 	}
 	
 	public function getByName($aName) {

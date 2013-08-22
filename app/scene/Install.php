@@ -53,16 +53,35 @@ class Install extends Scene {
 		
 	}
 	
+	protected function getDefinedPw() {
+		$thePW = BITS_ROOT; //default pw is the folder path (since outsiders should not know it)
+		$thePwFilePath = BITS_ROOT.¦.self::INSTALL_PW_FILENAME;
+		if (file_exists($thePwFilePath)) {
+			//load as pw
+			$thePW = trim(file_get_contents($thePwFilePath));
+		}
+		//Strings::debugLog('file:'.$aPwFile.', '.$thePW);
+		return $thePW;
+	}
+	
+	public function checkInstallPw() {
+		//check to see if posted the correct pw
+		$theDefinedPw = $this->getDefinedPw();
+		$theInputPw = $this->installpw;
+		//print('args: '.$theDefinedPw.', '.$theInputPw.' = '.($theDefinedPw===$theInputPw?'true':'false')); exit;
+		return ($theDefinedPw===$theInputPw);
+	}
+	
 	//jquery form validation rules - not really needed with html5
 	public function validate_form_db1() {
 		//using microsoft jquery validator
 		return array(
 			'rules' => array(
-					'table_prefix' => 'required',
+					//'table_prefix' => 'required',
 					'dbhost' => 'required',
-					'dbname' => 'required',
-					'dbuser' => 'required',
-					'dbpwrd' => 'required',
+					//'dbname' => 'required',
+					//'dbuser' => 'required',
+					//'dbpwrd' => 'required',
 			),'messages' => array(
 					'table_prefix' => 'A table prefix will prevent table name collisions.',
 					'dbhost' => 'Where is the database located?',
