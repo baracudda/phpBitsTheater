@@ -16,8 +16,9 @@
  */
 
 namespace com\blackmoonit\bits_theater\app\model;
+use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\bits_theater\app\Model;
-use com\blackmoonit\bits_theater\app\DbException;
+use com\blackmoonit\exceptions\DbException;
 {
 
 class Groups extends Model {
@@ -90,6 +91,12 @@ class Groups extends Model {
 			$theParamTypes = array('group_id'=>\PDO::PARAM_INT,'group_name'=>\PDO::PARAM_STR,'group_type'=>\PDO::PARAM_INT);
 			return $this->execMultiDML($theSql,$default_data,$theParamTypes);
 		}
+	}
+	
+	public function isEmpty($aTableName=null) {
+		if ($aTableName==null)
+			$aTableName = $this->tnGroups;
+		return parent::isEmpty($aTableName);
 	}
 	
 	public function getGroup($aId) {

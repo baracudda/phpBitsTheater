@@ -16,6 +16,7 @@
  */
 
 namespace com\blackmoonit\bits_theater\app\model;
+use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -39,8 +40,8 @@ class Auth extends AuthBase {
 	protected $sql_register;
 	protected $pt_register;
 		
-  public function setup(Director $aDirector, $aDbConn) {
-    parent::setup($aDirector, $aDbConn);
+	public function setup(Director $aDirector, $aDbConn) {
+		parent::setup($aDirector, $aDbConn);
 		$this->tnAuth = $this->tbl_.'auth';
 		$this->tnAuthCookie = $this->tbl_.'auth_cookie';
 		$this->sql_register = "INSERT INTO {$this->tnAuth} ".

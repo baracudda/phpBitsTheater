@@ -16,9 +16,10 @@
  */
 
 namespace com\blackmoonit\bits_theater\app\model;
-use com\blackmoonit\Strings;
+use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\bits_theater\app\Model;
-use com\blackmoonit\bits_theater\app\DbException;
+use com\blackmoonit\exceptions\DbException;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 class Permissions extends Model {
@@ -51,6 +52,12 @@ class Permissions extends Model {
 				", UNIQUE KEY IdxGroupPermissions (group_id, namespace, permission)".
 				") CHARACTER SET utf8 COLLATE utf8_bin";
 		$this->execDML($theSql);
+	}
+	
+	public function isEmpty($aTableName=null) {
+		if ($aTableName==null)
+			$aTableName = $this->tnPermissions;
+		return parent::isEmpty($aTableName);
 	}
 	
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {

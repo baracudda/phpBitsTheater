@@ -16,9 +16,10 @@
  */
 
 namespace com\blackmoonit\bits_theater\app\model;
+use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\bits_theater\app\Model;
-use com\blackmoonit\bits_theater\app\DbException;
-use com\blackmoonit\bits_theater\app\IllegalArgumentException;
+use com\blackmoonit\exceptions\IllegalArgumentException;
+use com\blackmoonit\exceptions\DbException;
 {//begin namespace
 
 class Accounts extends Model {
@@ -48,6 +49,12 @@ class Accounts extends Model {
 				") CHARACTER SET utf8 COLLATE utf8_bin";
 		}
 		$this->execDML($theSql);
+	}
+	
+	public function isEmpty($aTableName=null) {
+		if ($aTableName==null)
+			$aTableName = $this->tnAccounts;
+		return parent::isEmpty($aTableName);
 	}
 	
 	public function getAccount($aAcctId) {

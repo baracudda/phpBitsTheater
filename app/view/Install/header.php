@@ -19,7 +19,7 @@ print '  <tr valign="center">'."\n";
 //logo
 print '    <td width=80px>'."\n";
 print '      <a href="'.BITS_URL.'">';
-print '        <img height="72" width="72" title="logo" src="'.BITS_RES.'/images/site_logo.jpg" border="0">';
+print '        <img height="72" width="72" title="logo" src="'.BITS_RES.'/images/site_logo.png" border="0">';
 print '      </a>'."\n";
 print '    </td>'."\n";
 print '    <td>'."\n";
