@@ -67,6 +67,10 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 		return $s;
 	}
 	
+	public function getDebugCheck() {
+		return $this->mDebugCheck;
+	}
+
 	/**
 	 * Pass in a CONST name to check or a function/method name to check for "is debugging".
 	 * Default is to check the _DEBUG_APP const.
@@ -79,6 +83,10 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 		return $this;
 	}
 	
+	public function getCssFileUrl() {
+		return $this->mCssFileUrl;
+	}
+
 	/**
 	 * If headers have not yet been sent and debug output must occur, this CSS file will be loaded.
 	 * @param string $aCssFileUrl - Url for CSS to print pretty errors while debugging.
@@ -90,6 +98,10 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 		return $this;
 	}
 	
+	public function getFileRoot() {
+		return $this->mFileRoot;
+	}
+
 	/**
 	 * If defined, trace output will str_replace the param with "[%site]".
 	 * @param string $aFileRoot - This path will be replaced with "[%site]" in debug output.

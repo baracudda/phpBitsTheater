@@ -65,29 +65,41 @@ class DbException extends PDOException implements IDebuggableException {
 	public function getContextMsg() {
 		return $this->mDebuggableExceptionTrait->getContextMsg();
 	}
-	
-    public function getErrorMsg() {
+
+	public function getErrorMsg() {
 		return $this->mDebuggableExceptionTrait->getErrorMsg();
 	}
 	
 	public function getDebugMsg() {
 		return 'SQL ErrCode ('.$this->getCode().')';
 	}
-	
-    public function getDebugDisplay($aMsg=null) {
-    	return $this->mDebuggableExceptionTrait->getDebugDisplay($aMsg);
+
+	public function getDebugDisplay($aMsg=null) {
+		return $this->mDebuggableExceptionTrait->getDebugDisplay($aMsg);
 	}
 	
-    public function setDebugCheck($aDebugCheck) {
-    	return $this->mDebuggableExceptionTrait->setDebugCheck($aDebugCheck);
+	public function getDebugCheck() {
+		return $this->mDebuggableExceptionTrait->getDebugCheck();
 	}
 	
-    public function setCssFileUrl($aCssFileUrl) {
-    	return $this->mDebuggableExceptionTrait->setCssFileUrl($aCssFileUrl);
+	public function setDebugCheck($aDebugCheck) {
+		return $this->mDebuggableExceptionTrait->setDebugCheck($aDebugCheck);
 	}
 	
-    public function setFileRoot($aFileRoot) {
-    	return $this->mDebuggableExceptionTrait->setFileRoot($aFileRoot);
+	public function getCssFileUrl() {
+		return $this->mDebuggableExceptionTrait->getCssFileUrl();
+	}
+	
+	public function setCssFileUrl($aCssFileUrl) {
+		return $this->mDebuggableExceptionTrait->setCssFileUrl($aCssFileUrl);
+	}
+	
+	public function getFileRoot() {
+		return $this->mDebuggableExceptionTrait->getFileRoot();
+	}
+	
+	public function setFileRoot($aFileRoot) {
+		return $this->mDebuggableExceptionTrait->setFileRoot($aFileRoot);
 	}
 	
 	public function debugPrint($aMsg=null) {

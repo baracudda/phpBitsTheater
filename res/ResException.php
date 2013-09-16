@@ -19,7 +19,7 @@ namespace com\blackmoonit\bits_theater\res;
 use com\blackmoonit\exceptions\DebuggableExceptionTrait;
 use com\blackmoonit\exceptions\IDebuggableException;
 use \Exception;
-use com\istresearch\argos\app\config\I18N;
+use com\blackmoonit\bits_theater\app\config\I18N;
 {//begin namespace
 
 /**
@@ -80,6 +80,18 @@ class ResException extends Exception implements IDebuggableException {
 	
 	public function getDebugDisplay($aMsg=null) {
 		return $this->mDebuggableExceptionTrait->getDebugDisplay($aMsg);
+	}
+	
+	public function setDebugCheck($aDebugCheck) {
+		return $this->mDebuggableExceptionTrait->setDebugCheck($aDebugCheck);
+	}
+	
+	public function setCssFileUrl($aCssFileUrl) {
+		return $this->mDebuggableExceptionTrait->setCssFileUrl($aCssFileUrl);
+	}
+	
+	public function setFileRoot($aFileRoot) {
+		return $this->mDebuggableExceptionTrait->setFileRoot($aFileRoot);
 	}
 	
 	public function debugPrint($aMsg=null) {
