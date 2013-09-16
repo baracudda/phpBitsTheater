@@ -49,6 +49,18 @@ class SystemExit extends Exception implements IDebuggableException {
 		return $this->mDebuggableExceptionTrait->getDebugDisplay($aMsg);
 	}
 	
+    public function setDebugCheck($aDebugCheck) {
+    	return $this->mDebuggableExceptionTrait->setDebugCheck($aDebugCheck);
+	}
+	
+    public function setCssFileUrl($aCssFileUrl) {
+    	return $this->mDebuggableExceptionTrait->setCssFileUrl($aCssFileUrl);
+	}
+	
+    public function setFileRoot($aFileRoot) {
+    	return $this->mDebuggableExceptionTrait->setFileRoot($aFileRoot);
+	}
+	
 	public function debugPrint($aMsg=null) {
 		return $this->mDebuggableExceptionTrait->debugPrint($aMsg);
 	}

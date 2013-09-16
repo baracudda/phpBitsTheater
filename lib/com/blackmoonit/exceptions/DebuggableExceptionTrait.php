@@ -25,6 +25,9 @@ use com\blackmoonit\Strings;
 class DebuggableExceptionTrait extends \stdClass implements IDebuggableException {
 	private $mException;
 	protected $mContextMsg = '';
+	protected $mDebugCheck = '_DEBUG_APP';
+	protected $mCssFileUrl = null;
+	protected $mFileRoot = null;
 	
 	public function __construct($aException) {
 		$this->mException = $aException;
@@ -56,14 +59,62 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 		$s .= '<span class="msg-context">'.str_replace("\n","<br/>\n",$this->getContextMsg())."</span><br/>\n";
 		$s .= '<span class="msg-error">'.str_replace("\n","<br/>\n",$this->getErrorMsg())."</span><br/>\n";
 		$s .= '<span class="msg-debug">'.str_replace("\n","<br/>\n",$this->getDebugMsg())."</span><br/>\n";
-		$s .= '<span class="msg-trace">Stack trace:<br/>'."\n".str_replace("\n","<br/>\n",
-				$this->mException->getTraceAsString())."</span><br/>\n";
+		$theTrace = str_replace("\n","<br/>\n",$this->mException->getTraceAsString());
+		if ($this->mFileRoot)
+			$theTrace = str_replace($this->mFileRoot,'[%site]',$theTrace);
+		$s .= '<span class="msg-trace">Stack trace:<br/>'."\n".$theTrace."</span><br/>\n";
 		$s .= '</div>'."\n";
 		return $s;
 	}
 	
+	/**
+	 * Pass in a CONST name to check or a function/method name to check for "is debugging".
+	 * Default is to check the _DEBUG_APP const.
+	 * @param string $aDebugCheck - CONST or function/method to check that returns TRUE or FALSE.
+	 * @return Returns $this to support chaining.
+	 */
+	public function setDebugCheck($aDebugCheck) {
+		if (!empty($aDebugCheck))
+			$this->mDebugCheck = $aDebugCheck;
+		return $this;
+	}
+	
+	/**
+	 * If headers have not yet been sent and debug output must occur, this CSS file will be loaded.
+	 * @param string $aCssFileUrl - Url for CSS to print pretty errors while debugging.
+	 * @return Returns $this to support chaining.
+	 */
+	public function setCssFileUrl($aCssFileUrl) {
+		if (!empty($aCssFileUrl))
+			$this->mCssFileUrl = $aCssFileUrl;
+		return $this;
+	}
+	
+	/**
+	 * If defined, trace output will str_replace the param with "[%site]".
+	 * @param string $aFileRoot - This path will be replaced with "[%site]" in debug output.
+	 * @return Returns $this to support chaining.
+	 */
+	public function setFileRoot($aFileRoot) {
+		if (!empty($aFileRoot))
+			$this->mFileRoot = $aFileRoot;
+		return $this;
+	}
+	
+	protected function isDebugging() {
+		return (is_string($this->mDebugCheck) && defined($this->mDebugCheck) && constant($this->mDebugCheck)) || 
+				(is_callable($this->mDebugCheck) && call_user_func($this->mDebugCheck));
+	}
+
 	public function debugPrint($aMsg=null) {
-		if ((defined('_DEBUG_APP') && constant('_DEBUG_APP')) || !class_exists('config\\Settings')) {
+		if ($this->isDebugging()) {
+			if (!headers_sent()) {
+				print('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'."\n");
+				print('<html xmlns="http://www.w3.org/1999/xhtml">'."\n");
+				print('<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">'."\n");
+				if (!empty($this->mCssFileUrl))
+					print('<link rel="stylesheet" type="text/css" href="'.$this->mCssFileUrl.'">'."\n");
+			}
 			print($this->getDebugDisplay($aMsg));
 		} else {
 			Strings::debugLog($this->getDebugMsg().': '.$this->getErrorMsg());

@@ -24,6 +24,9 @@ interface IDebuggableException {
 	public function getContextMsg();
 	public function getErrorMsg();
 	public function getDebugDisplay($aMsg = NULL);
+	public function setDebugCheck($aDebugCheck);
+	public function setCssFileUrl($aCssFileUrl);
+	public function setFileRoot($aFileRoot);	
 	public function debugPrint($aMsg = NULL);
 	
 }//class

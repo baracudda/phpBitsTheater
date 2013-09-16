@@ -49,26 +49,25 @@ body {
 /* Error Display */
 div#container-error {
 	background-color: black;
+	font-family: Lucidatypewriter, Courier New, monospace;
+	font-size: 14px;
 }
 
 div#container-error .msg-context {
 	color: yellow;
-	font-size: 12px;
 }
 
 .msg-error {
-	color: red;
-	font-size: 12px;
+	color: #FF3366;
+	font-weight: bolder;
 }
 
 div#container-error .msg-debug {
 	color: aqua;
-	font-size: 12px;
 }
 
 div#container-error .msg-trace {
 	color: lime;
-	font-size: 10px;
 }
 
 /* Data Entry/Display */

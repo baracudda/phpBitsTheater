@@ -26,6 +26,7 @@ use \DateInterval;
  */
 class CalendarEntry extends AdamEve {
 	const _SetupArgCount = 3; //number of args required to call the setup() method.
+	
 	public $name;
 	public $dtStart;   //always in UTC
 	public $duration;
@@ -39,14 +40,14 @@ class CalendarEntry extends AdamEve {
 	
 	public function setup($aName, $aDtStart, $aDuration) {
 		$this->name = $aName;
-    	//start time
-    	if (is_object($aDtStart) && $aDtStart instanceof DateTime) {
-	    	$this->dtStart = $aDtStart;
-    	} else {
-    		$this->dtStart = new DateTime($aDtStart);
-    	}
-    	//duration
-    	if (is_object($aDuration) && $aDuration instanceof DateInterval) {
+		//start time
+		if (is_object($aDtStart) && $aDtStart instanceof DateTime) {
+			$this->dtStart = $aDtStart;
+		} else {
+			$this->dtStart = new DateTime($aDtStart);
+		}
+		//duration
+		if (is_object($aDuration) && $aDuration instanceof DateInterval) {
 			$this->duration = $aDuration;
 		} else if (is_numeric($aDuration)) {
 			$intPart = intval($aDuration);
@@ -81,4 +82,5 @@ class CalendarEntry extends AdamEve {
 	}
 	
 }//end class
+
 }//end namespace

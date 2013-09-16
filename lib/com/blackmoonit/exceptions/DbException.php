@@ -29,9 +29,9 @@ use \PDOException;
 class DbException extends PDOException implements IDebuggableException {
 	private $mDebuggableExceptionTrait;
 		
-	public function __construct(PDOException $e, $aMsg='') {
+	public function __construct($e, $aMsg='') {
 		$this->mDebuggableExceptionTrait = new DebuggableExceptionTrait($this);
-		if (isset($e)) {
+		if (isset($e) && $e instanceof PDOException) {
 			$theArgs = self::parseSqlStateMsg($e->getMessage());
 			if ($e->getPrevious()) {
 				if (count($theArgs)<2) {
@@ -76,6 +76,18 @@ class DbException extends PDOException implements IDebuggableException {
 	
     public function getDebugDisplay($aMsg=null) {
     	return $this->mDebuggableExceptionTrait->getDebugDisplay($aMsg);
+	}
+	
+    public function setDebugCheck($aDebugCheck) {
+    	return $this->mDebuggableExceptionTrait->setDebugCheck($aDebugCheck);
+	}
+	
+    public function setCssFileUrl($aCssFileUrl) {
+    	return $this->mDebuggableExceptionTrait->setCssFileUrl($aCssFileUrl);
+	}
+	
+    public function setFileRoot($aFileRoot) {
+    	return $this->mDebuggableExceptionTrait->setFileRoot($aFileRoot);
 	}
 	
 	public function debugPrint($aMsg=null) {

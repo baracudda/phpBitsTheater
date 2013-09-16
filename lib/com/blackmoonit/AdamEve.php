@@ -57,8 +57,7 @@ class AdamEve extends BaseClass {
     
 	/* example setup() of 3 arguments
 	 * function setup3($arg1, $arg2, $arg3) {}
-	 */
-    
+   */
 
 	public function cleanup() {
 		$this->bHasBeenCleanup = true;

@@ -34,6 +34,9 @@ try {
 } catch (SystemExit $se) {
 	/* do nothing */
 } catch (IDebuggableException $e) {
+	$e->setDebugCheck(function() {
+			return (!class_exists(BITS_BASE_NAMESPACE.'\\app\\config\\Settings') || _DEBUG_APP);
+		})->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(BITS_ROOT);
 	$e->debugPrint();
 	if (ini_get('log_errors')) {
 		Strings::debugLog($e->getMessage().' c_stk: '.$e->getTraceAsString());
@@ -44,8 +47,10 @@ try {
 	if (is_callable(array($e,'debugPrint'))) {
 		$e->debugPrint();
 	} else if (ini_get('display_errors')) {
-		print $e->getMessage()."<br />\n";
-		print str_replace("\n","<br />\n",$e->getTraceAsString());
+		print($e->getMessage()."<br />\n");
+		$theTrace = str_replace("\n","<br />\n",$e->getTraceAsString());
+		$theTrace = str_replace(BITS_ROOT,'[%site]',$theTrace);
+		print($theTrace);
 	}
 	if (ini_get('log_errors')) {
 		Strings::debugLog($e->getMessage().' cs: '.$e->getTraceAsString());

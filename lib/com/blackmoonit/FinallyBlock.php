@@ -57,6 +57,17 @@ class FinallyBlock {
 			throw $eErr;
 		}
 	}
+	
+	static public function forDbCursor($aPdoStatement) {
+		return new self(__NAMESPACE__ .'\FinallyBlock::closeCursor',$aPdoStatement);
+	}
+	
+	static public function closeCursor($aPdoStatement) {
+		if ($aPdoStatement) {
+			$aPdoStatement->closeCursor();
+		}
+	}
+	
 }//end class
 
 }//namespace
