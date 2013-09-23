@@ -207,15 +207,12 @@ class Install extends Actor {
 	 */
 	public function resetupDb() {
 		if (!$this->director->isInstalled()) return $this->scene->getSiteURL();
+		if (!$this->isAllowed('config','modify')) return $this->scene->getSiteURL();
 		//lets re-create our database
 		$theSetupDb = $this->director->getProp('SetupDb');
-		try {
-			$theSetupDb->setupModels($this->scene);
-		} catch (DbException $dbe) {
-			$this->scene->_dbError = $dbe->getDebugDisplay();
-			$this->scene->popDbResults();
-		}
+		$theSetupDb->setupModels($this->scene);
 		$this->director->returnProp($theSetupDb);
+		return $this->scene->getSiteURL('install/allFinished');
 	}
 	
 	protected function installSettings($aNewAppId) {
