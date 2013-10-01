@@ -158,6 +158,10 @@ class Scene extends BaseScene {
 				$thisScene->_row_class = $aValue+1; 
 				return ($aValue%2)?'"row1"':'"row2"'; 
 		},null,1);
+		$this->defineProperty('_rowClass',function ($thisScene, $aName, $aValue) { 
+				$thisScene->_rowClass = $aValue+1; 
+				return ($aValue%2)?'row1':'row2'; 
+		},null,1);
 		$this->checkMobileDevice();
 
 		$this->form_name = 'form_'.$this->_action;

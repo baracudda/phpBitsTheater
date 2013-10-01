@@ -60,7 +60,14 @@ class Config extends Actor {
 		foreach ($v->config_areas as $ns => $nsInfo) {
 			foreach ($v->getRes('config/'.$ns) as $theSetting => $theSettingInfo) {
 				$theWidgetName = $ns.'__'.$theSetting;
-				$theNewValue = $v->$theWidgetName;
+				switch ($theSettingInfo['input']) {
+					case 'boolean':
+						$theNewValue = (!empty($v->$theWidgetName)) ? 1 : 0;
+						break;
+					case 'string':
+					default:
+						$theNewValue = $v->$theWidgetName;
+				}
 				$theOldValue = $v->config->getConfigValue($ns,$theSetting);
 				if ($theNewValue != $theOldValue) {
 					$v->config[$ns.'/'.$theSetting] = $theNewValue;

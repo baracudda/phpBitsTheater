@@ -19,7 +19,7 @@ foreach ($v->config_areas as $ns => $nsInfo) {
 		if (empty($theSettingInfo['input']) || $theSettingInfo['input']=='string') {
 			$cellInput .= Widgets::createTextBox($theWidgetName,$theValue);
 		} elseif ($theSettingInfo['input']=='boolean') {
-			$cellInput .= Widgets::createCheckBox($theWidgetName,$theValue,($theValue==true));
+			$cellInput .= Widgets::createCheckBox($theWidgetName,$theValue,!empty($theValue));
 		}
 		$cellInput .= '</td>';
 		$cellDesc = '<td width="45%">'.$theSettingInfo['desc'].'</td>';
