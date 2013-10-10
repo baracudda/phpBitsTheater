@@ -78,13 +78,6 @@ class Auth extends AuthBase {
 		}
 	}
 	
-	public function setupPermissions($aScene, $modelPermissions) {
-		parent::setupPermissions($aScene,$modelPermissions);
-		$modelPermissions->registerPermission($this->myAppNamespace,'create'); //add users
-		$modelPermissions->registerPermission($this->myAppNamespace,'modify'); //change existing users
-		$modelPermissions->registerPermission($this->myAppNamespace,'delete'); //remove existing users
-	}
-	
 	public function isEmpty($aTableName=null) {
 		if ($aTableName==null)
 			$aTableName = $this->tnAuth;

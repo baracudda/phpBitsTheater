@@ -352,11 +352,20 @@ class Scene extends BaseScene {
 		return $this->_director->cue($this,$anActorName,$anAction,$args);
 	}
 	
+	/**
+	 * Return the site home page.
+	 */
 	public function getHomePage() {
 		return $this->_actor->getHomePage();
 	}
 	
-	public function getSiteURL($aRelativeURL='') {
+	/**
+	 * Returns the URL for this site appended with relative path info.
+	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
+	 * equating to path segments.
+	 * @return string - returns the site domain + relative path URL.
+	 */
+	public function getSiteURL($aRelativeURL='', $_=null) {
 		$theResult = BITS_URL;
 		if (!empty($aRelativeURL)) {
 			$theArgs = (is_array($aRelativeURL)) ? $aRelativeURL : func_get_args();

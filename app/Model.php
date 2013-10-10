@@ -29,7 +29,6 @@ use com\blackmoonit\exceptions\DbException;
  */
 class Model extends BaseModel {
 	const _SetupArgCount = 2; //number of args required to call the setup() method.
-	public $myAppNamespace;
 	public $tbl_;
 	public $director;
 	
@@ -39,7 +38,6 @@ class Model extends BaseModel {
 	 * @param array $aDbConn - use this connection. If null, create a new one.
 	 */
 	public function setup(Director $aDirector, $aDbConn) {
-		$this->myAppNamespace = strtolower($this->mySimpleClassName);
 		$this->director = $aDirector;
 		$this->tbl_ = $this->director->table_prefix;
 		if (is_null($aDbConn))
@@ -54,8 +52,11 @@ class Model extends BaseModel {
 		unset($this->db);
 		unset($this->tbl_);
 		unset($this->director);
-		unset($this->myAppNamespace);
 		parent::cleanup();
+	}
+	
+	static public function newModel($aModelClassName, Director $aDirector) {
+		return new $aModelClassName($aDirector, $aDirector->dbConn);
 	}
 	
 	public function isConnected() {

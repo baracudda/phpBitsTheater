@@ -22,6 +22,13 @@ class Strings {
 
 	private function __construct() {} //do not instantiate
 
+	/**
+	 * Return everything after $aNeedle is found in $aHaystack.
+	 * @param string $aHaystack - string to search through.
+	 * @param string $aNeedle - string to find.
+	 * @param boolean $bCaseInsensitive - (optional) default FALSE.
+	 * @return string|NULL - Returns rest of haystack after needle, else NULL.
+	 */
 	static public function strstr_after($aHaystack, $aNeedle, $bCaseInsensitive=false) {
     	$strpos = ($bCaseInsensitive) ? 'stripos' : 'strpos';
 	    $thePos = $strpos($aHaystack,$aNeedle);
@@ -35,22 +42,40 @@ class Strings {
 	 * Check to see if string begins with substring.
 	 * @param string $str - string to check
 	 * @param string $sub - needle to check for in $str
-	 * @return boolean Returns TRUE if $str begins with $sub.
+	 * @return boolean - Returns TRUE if $str begins with $sub.
 	 */
 	static public function beginsWith($str, $sub) {
 	    return (strncmp($str, $sub, strlen($sub)) == 0);
 	}
 	
-	static public function format() {
+	/**
+	 * Alias for sprintf.
+	 * @param string $aFormat - format to use, e.g. "Row %d".
+	 * @param mixed $args - set of args used by the format (as many as needed)
+	 * @return string - Returns formatted string.
+	 * @link http://php.net/manual/en/function.sprintf.php
+	 */
+	static public function format($aFormat, $args) {
 		return call_user_func_array('sprintf',func_get_args());
 	}
 
-	static public function exportStr($var) {
+	/**
+	 * Captures the var_export() of what is passed in.
+	 * @param mixed $aVar - variable to capture export output
+	 * @param string $aNewLineReplacement - (optional) default is space ' '.
+	 * @return string Returns the captured export output as string.
+	 */
+	static public function exportStr($aVar, $aNewLineReplacement=' ') {
 		ob_start();
-		var_export($var);
-		return str_replace("\n",' ',ob_get_clean());
+		var_export($aVar);
+		return str_replace("\n",$aNewLineReplacement,ob_get_clean());
 	}
 	
+	/**
+	 * Used in pre-html5 JS form validation.
+	 * @param array $aArray - the array to encode.
+	 * @return string - Returns string to be used in validate script.
+	 */
 	static public function phpArray2jsArray($aArray) {
 		$s = '{';
 		foreach ($aArray as $key=>$val) {
@@ -70,7 +95,12 @@ class Strings {
 		return $s;
 	}
 
-	static public function randomSalt($aLen) {
+	/**
+	 * Generate a random string of variable length.
+	 * @param int $aLen - (optional) length of the random string, default 16.
+	 * @return string - Returns the randomly generated string.
+	 */
+	static public function randomSalt($aLen=16) {
 		$salt = str_repeat('.',$aLen);
 		for ($i = 0; $i<$aLen; $i++) {
 			$salt{$i} = substr("./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,63), 1);
@@ -78,16 +108,18 @@ class Strings {
 		return $salt;
 	}
 	
-	/** Blowfish pw encryption mechanism: 76 chars long (60 char encryption + 16 char random salt)
+	/** 
+	 * Blowfish pw encryption mechanism: 76 chars long (60 char encryption + 16 char random salt)
+	 * <pre>
 	 * $pwhash = hasher($pwInput); //encrypts $pw and appends the generated random salt
 	 * //safe now to store $pwhash in a database
-	 * if (hasher($pwInput, $pwhash)) { 
-	 *     //authorized
-	 * } else {
-	 *     //not authorized
-	 * }
+	 * $isAuthorized = hasher($pwInput, $pwhash); 
+	 * </pre>
 	 * @param string $aPwInput - user supplied pw string
 	 * @param string $aEncryptedData - db stored encrypted pw string to compare against (optional)
+	 * @return mixed - If only the password is passed in, the encrypted result is returned.
+	 * If both the password and encrypted data are passed in, TRUE is returned if they "match",
+	 * else FALSE is returned.
 	 */
 	static public function hasher($aPwInput, $aEncryptedData = false) {
 		$theCryptoInfo = '$2a$08$'; //2a = Blowfish, 08 = crypto strength, append actual 22 char salt to end of this
@@ -101,17 +133,28 @@ class Strings {
 				return false;
 			}
 		} else {
-			$saltPw = Strings::randomSalt(16);
-			$saltCrypto = $theCryptoInfo.Strings::randomSalt(22);
+			$saltPw = self::randomSalt(16);
+			$saltCrypto = $theCryptoInfo.self::randomSalt(22);
 			//return 76 char string (60 char hash & 16 char salt)
 			return crypt($aPwInput.$saltPw,$saltCrypto).$saltPw;
 		}
 	}
 
+	/**
+	 * Converts all spaces in the input string into underscores ("_")
+	 * @param string $aValue - string to convert.
+	 * @return string - Returns the string with all spaces as "_".
+	 */
 	static public function strip_spaces($aValue) {
 		return str_replace(' ','_',trim($aValue));
 	}
 	
+	/**
+	 * Generates a new UUID (aka GUID). Removes enclosing "{ }", if present.
+	 * @return string - Returns the generated UUID (36 chars).
+	 * @see Strings::createUUID()
+	 * @see Strings::createTextId()
+	 */
 	static public function createGUID() {
 		if (function_exists('com_create_guid')) {
 			return trim(com_create_guid(), '{}');
@@ -125,44 +168,69 @@ class Strings {
 		}
 	}
 
+	/**
+	 * Generates a new UUID (aka GUID). Removes enclosing "{ }", if present.
+	 * @return string - Returns the generated UUID (36 chars).
+	 * @see Strings::createTextId()
+	 */
 	static public function createUUID() {
 		return Strings::createGUID();
 	}
 
-	static public function debugStr($var) {
+	/**
+	 * Captures the var_dump() of what is passed in.
+	 * @param mixed $aVar - variable to capture debug output
+	 * @param string $aNewLineReplacement - (optional) default is space ' '.
+	 * @return string Returns the captured debug output as string.
+	 */
+	static public function debugStr($aVar, $aNewLineReplacement=' ') {
 		ob_start();
-		var_dump($var);
-		return str_replace("\n",' ',ob_get_clean());
+		var_dump($aVar);
+		return str_replace("\n",$aNewLineReplacement,ob_get_clean());
 	}
 
+	/**
+	 * Send the string parameter to the debug log.
+	 * Current implementation is the LOG_ERR destination with 
+	 * a prefix of "[dbg] " prepended to the parameter.
+	 * @param string $s - string to send to the debug log.
+	 */
 	static public function debugLog($s) {
 		//syslog(LOG_DEBUG,$s);
 		syslog(LOG_ERR,'[dbg] '.$s);
 	}
 
+	/**
+	 * Converts the name from under_score to CamelCase.
+	 * e.g. "this_class_name" -> "ThisClassName"
+	 * @param string $aName - potential class name.
+	 * @return string Returns the name as a standard Class name.
+	 */
 	static public function getClassName($aName) {
-		// underscored to upper-camelcase
-		// e.g. "this_class_name" -> "ThisClassName"
 		return preg_replace('/(?:^|_)(.?)/e',"strtoupper('$1')",$aName);
 	}
 
+	/**
+	 * Converts the name from under_score to CamelCase.
+	 * e.g. "this_method_name" -> "thisMethodName"
+	 * @param string $aName - potential method name.
+	 * @return string Returns the name as a standard method name.
+	 */
 	static public function getMethodName($aName) {
-		// underscored to lower-camelcase
-		// e.g. "this_method_name" -> "thisMethodName"
 		return preg_replace('/_(.?)/e',"strtoupper('$1')",$aName);
 	}
 	
 	/**
 	 * Converts the hex representation of data to binary (same as the PHP 5.4 function)
 	 * http://www.php.net/manual/en/function.hex2bin.php
-	 * @param   string  $data       Hexadecimal representation of data
-	 * @return  string              Returns the binary representation of the given data
+	 * @param string $aData - Hexadecimal representation of data
+	 * @return string - Returns the binary representation of the given data
 	 */
-	static public function hex2bin($data='') {
+	static public function hex2bin($aData='') {
 		$bin = '';
-		$max = strlen($data);
+		$max = strlen($aData);
 		for ($i=0; $i<$max; $i+=2) {
-			$bin .= chr(hexdec($data{$i}.$data{($i+1)}));
+			$bin .= chr(hexdec($aData{$i}.$aData{($i+1)}));
 		}
 		return $bin;
 	}
@@ -170,33 +238,53 @@ class Strings {
 	/**
 	 * Converts the binary representation of data to hex (same as the PHP 5.4 function
 	 * http://www.php.net/manual/en/function.bin2hex.php
-	 * @param String $data          Data you want to expand into hex notation
-	 * @return  string              Returns the hex representation of the given data
+	 * @param string $aData - Data you want to expand into hex notation
+	 * @return string - Returns the hex representation of the given data
 	 */
-	static public function bin2hex($data='') {
+	static public function bin2hex($aData='') {
 		$hex = '';
-		$max = strlen($data);
+		$max = strlen($aData);
 		for ($i=0; $i<$max; $i++) {
-			$hex .= sprintf("%02x",ord($data{$i}));
+			$hex .= sprintf("%02x",ord($aData{$i}));
 		}
 		return $hex;
 	}
 	
+	/**
+	 * Convert PHP's UUID to a 32 char SQL UUID (dubbed TextId by me). 
+	 * @param string $aUUID - a UUID
+	 * @return string - Returns the TextId (UUID minus punctuation)
+	 */
 	static public function cnvUUID2TextId($aUUID) {
 		$theResult = str_replace('-','',trim($aUUID,'{} '));
 		$sLen = strlen($theResult);
 		return ($sLen==32) ? $theResult : '';
 	}
-	
+
+	/**
+	 * Converts TextId to UUID by putting the punctuation back in.
+	 * @param string $aTextId - 32 char SQL UUID.
+	 * @return string - Returns the 36 char PHP UUID.
+	 */
 	static public function cnvTextId2UUID($aTextId) {
 		return substr($aTextId,0,8).'-'.substr($aTextId,8,4).'-'.substr($aTextId,12,4).
 				'-'.substr($aTextId,16,4).'-'.substr($aTextId,20);
 	}
 	
+	/**
+	 * Generates a new UUID as TextId format.
+	 * @return string - Returns the new TextId (SQL format, 32 chars).
+	 * @see Strings::createUUID()
+	 */
 	static public function createTextId() {
 		return Strings::cnvUUID2TextId(Strings::createUUID());
 	}
 	
+	/**
+	 * Convert a Unix Timestamp to a SQL datetime field format.
+	 * @param int $aTimestamp - the timestamp.
+	 * @return string - the SQL datetime string.
+	 */
 	static public function cnvTimestampUnix2SQL($aTimestamp) {
 		return gmdate('Y-m-d H:i:s',$aTimestamp);
 	}
