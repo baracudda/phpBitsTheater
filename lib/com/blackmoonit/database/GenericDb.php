@@ -19,11 +19,19 @@ namespace com\blackmoonit\database;
 use com\blackmoonit\AdamEve as BaseDbClass;
 use com\blackmoonit\database\DbUtils;
 use \PDO;
+use \PDOStatement;
 {//begin namespace
 
 class GenericDb extends BaseDbClass {
 	public $db = null;
 
+	/**
+	 * IDE helper function, Code-Complete will display defined functions.
+	 */
+	static public function asPDOStatement(PDOStatement $aStatement) {
+		return $aStatement;
+	}
+	
 	/**
 	 * PDO database connection and helper functions.
 	 * @param string/array $aDnsInfo - if string, use as dns (see link for acceptable formats); else array(dns,usr,pwd).
