@@ -118,6 +118,10 @@ table.data-entry .data-field {
 	
 }
 
+table.data-display {
+
+}
+
 .smalltext {
 	font-size: x-small;
 	font-family: verdana, sans-serif;
@@ -126,6 +130,15 @@ table.data-entry .data-field {
 .infotext {
 	font-size: 10px;
 	font-style: italic;
+}
+
+input.hidden {
+    width: 0px;
+    height: 0px;
+    margin: 0px;
+    padding: 0px;
+    outline: none;
+    border: 0px;
 }
 
 /* main submit button */

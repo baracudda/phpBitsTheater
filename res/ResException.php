@@ -16,10 +16,10 @@
  */
 
 namespace com\blackmoonit\bits_theater\res;
+use com\blackmoonit\bits_theater\app\config\I18N;
 use com\blackmoonit\exceptions\DebuggableExceptionTrait;
 use com\blackmoonit\exceptions\IDebuggableException;
 use \Exception;
-use com\blackmoonit\bits_theater\app\config\I18N;
 {//begin namespace
 
 /**
@@ -69,6 +69,9 @@ class ResException extends Exception implements IDebuggableException {
 					$msg .= I18N::DEFAULT_PATH_LANG."\n";
 				if ((I18N::LANG != I18N::DEFAULT_LANG) || (I18N::REGION != I18N::DEFAULT_REGION))
 					$msg .= I18N::DEFAULT_PATH_REGION."\n";
+				$theFileRoot = $this->mDebuggableExceptionTrait->getFileRoot();
+				if ($theFileRoot)
+					$msg = str_replace($theFileRoot,'[%site]',$msg);
 			}
 		} else {
 			$msg = $this->getCode().': '.$this->resClass.'.'.$this->resName.'('.implode('/',$this->resArgs).')"'."\n";

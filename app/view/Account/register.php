@@ -31,7 +31,7 @@ $w .= '<tr><td class="data-label"></td><td class="data-field">'.
 		
 $w .= "</table>\n";
 
-$form_html = Widgets::createHtmlForm($recite->form_name,$recite->action_register,$w,$v->redirect,false);
-print $form_html;
+$form_html = Widgets::createHtmlForm($recite->form_name,$recite->action_url_register,$w,$v->redirect,false);
+print($form_html);
 
 $recite->includeMyFooter();

@@ -16,6 +16,8 @@
  */
 
 namespace com\blackmoonit\bits_theater\app;
+use com\blackmoonit\bits_theater\app\Model;
+use com\blackmoonit\bits_theater\res\ResException;
 use com\blackmoonit\AdamEve as BaseDirector;
 use com\blackmoonit\Strings;
 use com\blackmoonit\database\DbUtils;
@@ -24,7 +26,6 @@ use \ReflectionClass;
 use \ReflectionMethod;
 use \ReflectionException;
 use \Exception;
-use com\blackmoonit\bits_theater\res\ResException;
 {//begin namespace
 
 class Director extends BaseDirector implements ArrayAccess {

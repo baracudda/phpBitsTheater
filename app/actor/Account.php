@@ -51,10 +51,10 @@ class Account extends Actor {
 			$theRegResult = $dbAuth->canRegister($this->scene->$userKey,$this->scene->email);
 			switch ($theRegResult) {
 			case $dbAuth::REGISTRATION_EMAIL_TAKEN:
-				return $this->getMyUrl('/account/register',
+				return $this->getMyUrl('register',
 						array('err_msg'=>$this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email'))));
 			case $dbAuth::REGISTRATION_NAME_TAKEN:
-				return $this->getMyUrl('/account/register',
+				return $this->getMyUrl('register',
 						array('err_msg'=>$this->getRes('account/msg_acctexists/'.$this->getRes('account/label_name'))));
 			default: //create new acct
 				$theNewAcct['account_name'] = $this->scene->$userKey;
@@ -78,7 +78,7 @@ class Account extends Actor {
 			//$this->scene->err_msg = $_SERVER['QUERY_STRING'];
 			//$this->scene->err_msg = array_key_exists('err_msg',$_GET)?$_GET['err_msg']:null;
 			$this->scene->form_name = 'register_user';
-			$this->scene->action_register = $this->getMyUrl('/account/register/new');
+			$this->scene->action_url_register = $this->getMyUrl('register/new');
 			$this->scene->post_key = $this->getAppId();
 			if ($dbAccts->isEmpty()) {
 				$this->scene->redirect = $this->getMyUrl('/rights');
@@ -90,21 +90,23 @@ class Account extends Actor {
 	}
 	
 	public function login() {
+		$v =& $this->scene;
 		if (!$this->director->isGuest()) {
-			if ($this->scene->redirect)
-				return $this->scene->redirect;
+			if ($v->redirect)
+				return $v->redirect;
 			else
 				return $this->getHomePage();
 		} else {
-			$this->scene->action_login = $this->config['auth/login_url'];
-			$this->scene->redirect = $this->getHomePage();
+			$v->action_url_login = $this->getMyUrl($this->config['auth/login_url']);
+			$v->redirect = $this->getHomePage();
 		}
 	}
 	
 	public function logout() {
+		$v =& $this->scene;
 		$s = $this->director->logout();
-		if (!empty($this->scene->redirect))
-			$s = $this->scene->redirect;
+		if (!empty($v->redirect))
+			$s = $v->redirect;
 		return $s;
 	}
 	
@@ -112,8 +114,10 @@ class Account extends Actor {
 	 * Renders the login/logout area of a page.
 	 */
 	protected function buildAuthArea() {
-		$this->scene->action_login = $this->config['auth/login_url'];
-		$this->scene->action_logout = $this->config['auth/logout_url'];
+		$v =& $this->scene;
+		$v->action_url_register = $this->getMyUrl($this->config['auth/register_url']);
+		$v->action_url_login = $this->getMyUrl($this->config['auth/login_url']);
+		$v->action_url_logout = $this->getMyUrl($this->config['auth/logout_url']);
 		
 	}
 	
@@ -138,7 +142,7 @@ class Account extends Actor {
 				if (strcmp($theOldEmail,$theNewEmail)!=0) {
 					//Strings::debugLog('email is not 0:'.strcmp($theOldEmail,$theNewEmail));
 					if ($dbAuth->getAuthByEmail($theNewEmail)) {
-						return $this->getMyUrl('/account/view',
+						return $this->getMyUrl('view',
 								array('err_msg'=>$this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email'))));
 					} else {
 						$theSql = 'UPDATE '.$dbAuth->tnAuth.' SET email = :email WHERE account_id=:acct_id';
@@ -151,11 +155,11 @@ class Account extends Actor {
 					$theSql = 'UPDATE '.$dbAuth->tnAuth.' SET pwhash = :pwhash WHERE account_id=:acct_id';
 					$dbAuth->execDML($theSql,array('acct_id'=>$theAcctId, 'pwhash'=>$thePwHash));
 				}
-				return $this->getMyUrl('/account/view',
+				return $this->getMyUrl('view',
 						array('err_msg'=>$this->getRes('account/msg_update_success')));
 			}
 		} else {
-			return $this->getMyUrl('/account/view',
+			return $this->getMyUrl('view',
 					array('err_msg'=>$this->getRes('generic/msg_permission_denied')));
 		}
 	}

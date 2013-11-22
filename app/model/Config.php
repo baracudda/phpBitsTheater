@@ -28,17 +28,17 @@ class Config extends KeyValueModel {
 	
 	protected function getDefaultData($aScene) {
 		if (empty($aScene->auth_registration_url))
-			$aScene->auth_register_url = BITS_URL.'/account/register';
+			$aScene->auth_register_url = 'register';
 		if (empty($aScene->auth_login_url))
-			$aScene->auth_login_url = BITS_URL.'/account/login';
+			$aScene->auth_login_url = 'login';
 		if (empty($aScene->auth_logout_url))
-			$aScene->auth_logout_url = BITS_URL.'/account/logout';
+			$aScene->auth_logout_url = 'logout';
 		$r = array(
 			//AUTH
 			array('ns' => 'namespace', 'key'=>'auth', 'value'=>null, 'default'=>null, ),
-			array('ns' => 'auth', 'key'=>'register_url', 'value'=>$aScene->auth_register_url, 'default'=>BITS_URL.'/account/register', ),
-			array('ns' => 'auth', 'key'=>'login_url', 'value'=>$aScene->auth_login_url, 'default'=>BITS_URL.'/account/login', ),
-			array('ns' => 'auth', 'key'=>'logout_url', 'value'=>$aScene->auth_logout_url, 'default'=>BITS_URL.'/account/logout', ),
+			array('ns' => 'auth', 'key'=>'register_url', 'value'=>$aScene->auth_register_url, 'default'=>'register', ),
+			array('ns' => 'auth', 'key'=>'login_url', 'value'=>$aScene->auth_login_url, 'default'=>'login', ),
+			array('ns' => 'auth', 'key'=>'logout_url', 'value'=>$aScene->auth_logout_url, 'default'=>'logout', ),
 
 		);
 		return $r;
@@ -60,6 +60,19 @@ class Config extends KeyValueModel {
 	
 	public function setConfigValue($aNamespace, $aKey, $aValue) {
 		$this[$aNamespace.'/'.$aKey] = $aValue;
+	}
+	
+	/**
+	 * Override setting the mapped value so that we can convert "?" to default value.
+	 * "/?" would store "?" instead of the default value.
+	 */
+	public function setMapValue($aKey, $aNewValue) {
+		if ($aNewValue=='\?') {
+			$aNewValue = '?';
+		} else if ($aNewValue=='?' && isset($this->_mapdefault[$aKey])) {
+			$aNewValue = $this->_mapdefault[$aKey];
+		}
+		parent::setMapValue($aKey, $aNewValue);		
 	}
 	
 }//end class

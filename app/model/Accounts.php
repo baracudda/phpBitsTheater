@@ -42,11 +42,11 @@ class Accounts extends Model {
 		case 'mysql': default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnAccounts} ".
 				"( account_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY".
-				", account_name NCHAR(60) NOT NULL COLLATE utf8_unicode_ci".
+				", account_name NCHAR(60) NOT NULL".
 				", external_id INT".
 				", KEY idx_external_id (external_id)".
 				", UNIQUE KEY idx_account_name_ci (account_name) ".
-				") CHARACTER SET utf8 COLLATE utf8_bin";
+				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		}
 		$this->execDML($theSql);
 	}

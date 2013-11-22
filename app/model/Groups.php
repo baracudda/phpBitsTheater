@@ -61,7 +61,7 @@ class Groups extends Model {
 				", group_name NCHAR(60) NOT NULL".
 				", group_type SMALLINT NOT NULL DEFAULT 0".
 				", parent_group_id INT NULL".
-				") CHARACTER SET utf8 COLLATE utf8_bin";
+				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		}
 		$r = $this->execDML($theSql);
 		switch ($this->dbType()) {
@@ -71,7 +71,7 @@ class Groups extends Model {
 				", group_id INT NOT NULL".
 				", PRIMARY KEY (account_id, group_id)".
 				//", UNIQUE KEY (group_id, account_id)".  IDK if it'd be useful
-				") CHARACTER SET utf8 COLLATE utf8_bin";
+				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		}
 		$r = $this->execDML($theSql);
 	}

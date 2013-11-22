@@ -145,8 +145,19 @@ class Actor extends BaseActor {
 		return $this->director->getRes($aName);
 	}
 	
-	public function getMyUrl($aPage='', array $aQuery=array()) {
-		$theUrl = BITS_URL.$aPage;
+	/**
+	 * 
+	 * @param string $aUrl - string/array of relative site path segment(s), if
+	 * leading '/' is omitted, current Actor class name is pre-pended to $aUrl.
+	 * @param array $aQuery - (optional) array of query key/values.
+	 * @return string - Returns the domain + page url.
+	 * @see Scene::getSiteURL()
+	 */
+	public function getMyUrl($aUrl='', array $aQuery=array()) {
+		if (!empty($aUrl) && !is_array($aUrl) && !Strings::beginsWith($aUrl,'/')) {
+			$theUrl = $this->scene->getSiteURL(strtolower($this->mySimpleClassName),$aUrl);
+		} else
+			$theUrl = $this->scene->getSiteURL($aUrl);
 		if (!empty($aQuery)) {
 			$theUrl .= '?'.http_build_query($aQuery,'','&');
 		}

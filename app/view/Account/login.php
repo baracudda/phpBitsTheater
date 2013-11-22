@@ -16,9 +16,9 @@ $w .= '<tr><td class="data-label"></td><td class="data-field">'.
 		Widgets::createSubmitButton('button_login',$v->getRes('account/label_login'));
 		
 $w .= "</table>\n";
-$w .= '<a href="'.$v->_config['auth/register_url'].'">Register</a>'." <br/>\n";
+$w .= '<a href="'.$v->action_url_register.'">Register</a>'." <br/>\n";
 
-$form_html = Widgets::createForm($recite->action_login,$w,$v->redirect);
-print $form_html;
+$form_html = Widgets::createForm($recite->action_url_login,$w,$v->redirect);
+print($form_html);
 
 $recite->includeMyFooter();

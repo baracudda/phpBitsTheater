@@ -30,6 +30,7 @@ abstract class KeyValueModel extends Model implements ArrayAccess {
 	const TABLE_NAME = 'map'; //excluding prefix
 	const MAPKEY_NAME = 'mapkey';
 	protected $_mapdata = array();
+	protected $_mapdefault = array();
 	//protected $value_select; auto-created on first use
 	//protected $value_update; auto-created on first use
 	//protected $value_insert; auto-created on first use
@@ -40,7 +41,7 @@ abstract class KeyValueModel extends Model implements ArrayAccess {
 	
 	public function setup(Director $aDirector, $aDbConn) {
 		parent::setup($aDirector, $aDbConn);
-		$this->sql_value_select = "SELECT value FROM {$this->getTableName()} WHERE namespace = :ns AND ".
+		$this->sql_value_select = "SELECT * FROM {$this->getTableName()} WHERE namespace = :ns AND ".
 				static::MAPKEY_NAME." = :key";
 		$this->sql_value_update = "UPDATE {$this->getTableName()} SET value=:new_value WHERE namespace = :ns AND ".
 				static::MAPKEY_NAME." = :key";
@@ -57,6 +58,7 @@ abstract class KeyValueModel extends Model implements ArrayAccess {
 	
 	public function cleanup() {
 		array_walk($this->_mapdata, function(&$n) {$n = null;} );
+		array_walk($this->_mapdefault, function(&$n) {$n = null;} );
 		parent::cleanup();
 	}
 	
@@ -65,12 +67,12 @@ abstract class KeyValueModel extends Model implements ArrayAccess {
 		switch ($this->dbType()) {
 		case 'mysql': default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->getTableName()} ".
-				"( namespace CHAR(40) NULL COLLATE utf8_unicode_ci".
-				", ".static::MAPKEY_NAME." CHAR(40) NOT NULL COLLATE utf8_unicode_ci".
+				"( namespace CHAR(40) NULL".
+				", ".static::MAPKEY_NAME." CHAR(40) NOT NULL".
 				", value NVARCHAR(250) NULL".
 				", val_def NVARCHAR(250) NULL".
 				", PRIMARY KEY (namespace, ".static::MAPKEY_NAME.")".
-				") CHARACTER SET utf8 COLLATE utf8_bin";
+				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		}
 		$this->execDML($theSql);
 	}
@@ -159,9 +161,15 @@ abstract class KeyValueModel extends Model implements ArrayAccess {
 		if (empty($this->_mapdata[$aKey])) {
 			$row = $this->getMapData($aKey);
 			$this->_mapdata[$aKey] = (isset($row['value']))?$row['value']:'';
+			$this->_mapdefault[$aKey] = (isset($row['val_def']))?$row['val_def']:'';
 		}
 		//Strings::debugLog('key='.$aKey.' val='.$this->_mapdata[$aKey]);
 		return $this->_mapdata[$aKey];
+	}
+	
+	public function getMapDefault($aKey) {
+		$this->getMapValue($aKey); //ensure data is loaded
+		return (isset($this->_mapdefault[$aKey]))?$this->_mapdefault[$aKey]:'';
 	}
 
 	public function setMapValue($aKey, $aNewValue) {

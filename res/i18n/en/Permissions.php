@@ -13,12 +13,12 @@ class Permissions extends ResPerms {
 				'deny' => array('label'=>'Deny', 'desc'=>'Access will not be granted even if another group Allows.', ),
 			);
 	
+	//when adding new rights, add their namespace info here
+	
 	public $namespace = array(
 				'auth' => array('label'=>'Authorization', 'desc'=>'Authorization Rights', ),
 				'config' => array('label'=>'Settings', 'desc'=>'Settings/Configuration/Preferences', ),
 				'accounts' => array('label'=>'Accounts', 'desc'=>'Membership Account Rights', ),
-				'casnodes' => array('label'=>'CAS Nodes', 'desc'=>'Nodes used for CAS', ),
-				'casnode_api' => array('label'=>'CAS Node REST API', 'desc'=>'Remote app REST server for CAS Nodes', ),
 	);
 			
 	public $auth = array(
@@ -36,19 +36,6 @@ class Permissions extends ResPerms {
 				//no need for create right as everyone can create an account by registering
 				'delete' => array('label'=>'Delete Accounts', 'desc'=>'Remove any existing account (requires Modify too).', ),
 			);
-			
-	public $casnodes = array(
-				'create' => array('label'=>'Create Nodes', 'desc'=>'Create new Nodes.', ),
-				'delete' => array('label'=>'Delete Nodes', 'desc'=>'Remove existing Nodes.', ),
-				'modify' => array('label'=>'Modify Nodes', 'desc'=>'Change details of a Node.', ),
-				'status' => array('label'=>'Update Node Status', 'desc'=>'Add status records to a Node, thus updating its current status', ),
-	);
-			
-	public $casnode_api = array(
-				'get' => array('label'=>'Get', 'desc'=>'Able to retrieve node data.', ),
-				'set' => array('label'=>'Set', 'desc'=>'Able to create/modify node data.', ),
-				'del' => array('label'=>'Delete', 'desc'=>'Able to delete node data.', ),
-	);
 			
 			
 

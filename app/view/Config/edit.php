@@ -3,6 +3,8 @@ use \com\blackmoonit\Widgets;
 $recite->includeMyHeader();
 
 $w = "<h1 align=\"center\">Configuration Settings</h1>\n";
+$w .= 'Use "?" to reset a setting to its default value ("\\?" to save just a question mark).'."<br />\n";
+$w .= "<br />\n";
 foreach ($v->config_areas as $ns => $nsInfo) {
 	$v->_row_class = 1; //reset row counter back to 1 for each table created (resets the row formatting)
 	$w .= "<h2>{$nsInfo['label']}</h2>";

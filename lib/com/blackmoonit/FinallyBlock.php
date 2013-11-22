@@ -20,9 +20,10 @@ namespace com\blackmoonit;
 
 /**
  * Since PHP still does not support try-finally, emulate it with RAII.<br />
- * All exceptions will be eaten, if you want to throw one, return the $e var (try-catch: return new \Exception();)
+ * All exceptions will be eaten, if you want to throw one, return the $e var 
+ * (try-catch: return new \Exception();)
  * Please note that this finally only occurs after the function/method exits.
- * Example useage:
+ * Example useage:<pre>
  * function do_something() {
  *     mysql_query("LOCK TABLES mytable WRITE");
  *     $myFinally = new FinallyBlock(function($obj,$param2) {
@@ -32,7 +33,7 @@ namespace com\blackmoonit;
  *     try {
  *         // ... do queries here
  *     }
- * }
+ * }</pre>
  */
 class FinallyBlock {
 	private $callback;
@@ -40,10 +41,8 @@ class FinallyBlock {
 
 	function __construct($callback) {
 		$this->callback = $callback;
-		$numArgs = func_num_args();
-		for ($i=1; $i<$numArgs; $i++) {
-			$this->args[] = func_get_arg($i);
-		}
+		$this->args = func_get_args();
+		array_shift($this->args);
 	}
 
 	function __destruct() {
@@ -62,7 +61,7 @@ class FinallyBlock {
 		return new self(__NAMESPACE__ .'\FinallyBlock::closeCursor',$aPdoStatement);
 	}
 	
-	static public function closeCursor(&$aPdoStatement) {
+	static public function closeCursor(&$aPdoStatement=null) {
 		if ($aPdoStatement) {
 			$aPdoStatement->closeCursor();
 		}

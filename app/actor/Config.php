@@ -46,7 +46,7 @@ class Config extends Actor {
 			}
 		}
 		$this->scene->redirect = $this->getHomePage();
-		$this->scene->next_action = $this->getMyUrl('/config/modify');
+		$this->scene->next_action = $this->getMyUrl('modify');
 		$theText = $this->scene->getRes('generic/save_button_text');
 		$this->scene->save_button = '<br/>'.Widgets::createSubmitButton('submit_save',$theText)."\n";
 	}

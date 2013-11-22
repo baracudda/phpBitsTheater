@@ -276,7 +276,7 @@ class DbUtils {
 	}
 
 	/**
-	 * In-place conversion from UTF-8 text field into a string
+	 * In-place conversion from Unix timestamp to MySQL timestamp string.
 	 * @param access $aDataRow
 	 * @param string $aFieldName
 	 */

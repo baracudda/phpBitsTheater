@@ -43,14 +43,14 @@ class Permissions extends Model {
 	
 	public function setupModel() {
 		$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnPermissions} ".
-				"( namespace CHAR(40) NULL COLLATE utf8_unicode_ci".
-				", permission CHAR(40) NOT NULL COLLATE utf8_unicode_ci".
+				"( namespace CHAR(40) NULL".
+				", permission CHAR(40) NOT NULL".
 				", group_id INT NOT NULL".
 				", value CHAR(1) CHARACTER SET ascii COLLATE ascii_bin NOT NULL".
 				", PRIMARY KEY (namespace, permission, group_id)".
 				", KEY IdxValuePermissions (namespace, value)".
 				", UNIQUE KEY IdxGroupPermissions (group_id, namespace, permission)".
-				") CHARACTER SET utf8 COLLATE utf8_bin";
+				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		$this->execDML($theSql);
 	}
 	

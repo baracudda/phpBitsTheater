@@ -58,7 +58,7 @@ class Auth extends AuthBase {
 		switch ($this->dbType()) {
 		case 'mysql': default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnAuth} ".
-				"( email NCHAR(255) NOT NULL PRIMARY KEY COLLATE utf8_unicode_ci". //store as typed, but collate as case-insensitive
+				"( email NCHAR(255) NOT NULL PRIMARY KEY". //store as typed, but collate as case-insensitive
 				", account_id INT NOT NULL".							//link to Accounts
 				", pwhash CHAR(85) CHARACTER SET ascii NOT NULL COLLATE ascii_bin".	//blowfish hash of pw & its salt
 				", verified DATETIME".									//UTC when acct was verified
@@ -66,7 +66,7 @@ class Auth extends AuthBase {
 				", _created TIMESTAMP NOT NULL DEFAULT 0".
 				", _changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP".
 				", INDEX IdxAcctId (account_id)".
-				") CHARACTER SET utf8 COLLATE utf8_bin";
+				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 			$this->execDML($theSql);
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnAuthCookie} ".
 				"( account_id INT NOT NULL".							//link to Accounts
