@@ -28,17 +28,17 @@ class Config extends KeyValueModel {
 	
 	protected function getDefaultData($aScene) {
 		if (empty($aScene->auth_registration_url))
-			$aScene->auth_register_url = 'register';
+			$aScene->auth_register_url = 'account/register';
 		if (empty($aScene->auth_login_url))
-			$aScene->auth_login_url = 'login';
+			$aScene->auth_login_url = 'account/login';
 		if (empty($aScene->auth_logout_url))
-			$aScene->auth_logout_url = 'logout';
+			$aScene->auth_logout_url = 'account/logout';
 		$r = array(
 			//AUTH
 			array('ns' => 'namespace', 'key'=>'auth', 'value'=>null, 'default'=>null, ),
-			array('ns' => 'auth', 'key'=>'register_url', 'value'=>$aScene->auth_register_url, 'default'=>'register', ),
-			array('ns' => 'auth', 'key'=>'login_url', 'value'=>$aScene->auth_login_url, 'default'=>'login', ),
-			array('ns' => 'auth', 'key'=>'logout_url', 'value'=>$aScene->auth_logout_url, 'default'=>'logout', ),
+			array('ns' => 'auth', 'key'=>'register_url', 'value'=>$aScene->auth_register_url, 'default'=>'account/register', ),
+			array('ns' => 'auth', 'key'=>'login_url', 'value'=>$aScene->auth_login_url, 'default'=>'account/login', ),
+			array('ns' => 'auth', 'key'=>'logout_url', 'value'=>$aScene->auth_logout_url, 'default'=>'account/logout', ),
 
 		);
 		return $r;
