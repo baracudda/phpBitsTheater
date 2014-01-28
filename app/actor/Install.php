@@ -231,10 +231,10 @@ class Install extends Actor {
 			$accounts = $this->getProp('Accounts');
 			if ($accounts->isEmpty()) {
 				$dbAuth = $this->getProp('Auth');
-				if ($dbAuth->ALLOW_REGISTRATION) {
-					$this->scene->next_action = $this->config['auth/register_url'];
+				if ($dbAuth->isRegistrationAllowed()) {
+					$this->scene->next_action = $this->scene->getSiteURL($this->config['auth/register_url']);
 				} else {
-					$this->scene->next_action = $this->config['auth/login_url'];
+					$this->scene->next_action = $this->scene->getSiteURL($this->config['auth/login_url']);
 				}
 				$this->returnProp($dbAuth);
 			}

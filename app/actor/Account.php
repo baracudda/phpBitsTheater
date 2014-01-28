@@ -25,7 +25,7 @@ class Account extends Actor {
 
 	public function view($aAcctId=null) {
 		if ($this->director->isGuest()) {
-			return $this->config['auth/register_url'];
+			return $this->scene->getSiteURL($this->config['auth/register_url']);
 		}
 		$this->scene->dbAccounts = $this->getProp('Accounts');
 		if (!empty($aAcctId) && $this->isAllowed('account','modify')) {
@@ -97,7 +97,8 @@ class Account extends Actor {
 			else
 				return $this->getHomePage();
 		} else {
-			$v->action_url_login = $this->getMyUrl($this->config['auth/login_url']);
+			$v->action_url_register = $v->getSiteURL($this->config['auth/register_url']);
+			$v->action_url_login = $v->getSiteURL($this->config['auth/login_url']);
 			$v->redirect = $this->getHomePage();
 		}
 	}
@@ -115,10 +116,9 @@ class Account extends Actor {
 	 */
 	protected function buildAuthArea() {
 		$v =& $this->scene;
-		$v->action_url_register = $this->getMyUrl($this->config['auth/register_url']);
-		$v->action_url_login = $this->getMyUrl($this->config['auth/login_url']);
-		$v->action_url_logout = $this->getMyUrl($this->config['auth/logout_url']);
-		
+		$v->action_url_register = $v->getSiteURL($this->config['auth/register_url']);
+		$v->action_url_login = $v->getSiteURL($this->config['auth/login_url']);
+		$v->action_url_logout = $v->getSiteURL($this->config['auth/logout_url']);		
 	}
 	
 	public function modify() {
