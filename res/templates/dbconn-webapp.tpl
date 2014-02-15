@@ -1,7 +1,7 @@
 [dbopts]
 table_prefix = "%table_prefix%"
 dns_scheme = "%dns_scheme%"
-dns_value = "%dns_value%"
+dns_value = "%dns_alias%%dns_customuri%"
 
 [dbconn]
 driver = "%dbtype%"

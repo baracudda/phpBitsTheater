@@ -44,6 +44,24 @@ class Arrays {
 		return array_merge(array_slice($aArray, $theBreakIdx), array_slice($aArray, 0, $theBreakIdx));
 	}
 
+	/**
+	 * Prepends all args after the first to the first arg (which is an array).
+	 * @param array $aArray - array to prepend all other args
+	 * @return array Resulting array.
+	 */
+	static public function array_prepend(array &$aArray) {
+		return array_merge(array_slice(func_get_args(),1),$aArray);
+	}
+	
+	/**
+	 * Appends all args after the first to the first arg (which is an array).
+	 * @param array $aArray - array to append all other args
+	 * @return array Resulting array.
+	 */
+	static public function array_append(array &$aArray) {
+		return array_merge($aArray,array_slice(func_get_args(),1));
+	}
+	
 }//end class
 
 }//end namespace

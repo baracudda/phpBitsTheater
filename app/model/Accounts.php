@@ -16,7 +16,6 @@
  */
 
 namespace com\blackmoonit\bits_theater\app\model;
-use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\bits_theater\app\Model;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
@@ -25,8 +24,8 @@ use com\blackmoonit\exceptions\DbException;
 class Accounts extends Model {
 	public $tnAccounts; const TABLE_Accounts = 'accounts';
 
-	public function setup(Director $aDirector, $aDbConn) {
-		parent::setup($aDirector, $aDbConn);
+	public function setupAfterDbConnected() {
+		parent::setupAfterDbConnected();
 		$this->tnAccounts = $this->tbl_.self::TABLE_Accounts;
 		$this->sql_acct_get = "SELECT * FROM {$this->tnAccounts} WHERE account_id = :acct_id";
 		$this->sql_acct_add = "INSERT INTO {$this->tnAccounts} ".

@@ -43,11 +43,11 @@ class Actor extends BaseActor {
 	public function setup(Director $aDirector, $anAction) {
 		$this->director = $aDirector;
 		$this->action = $anAction;
-		$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\scene\\'.$this->mySimpleClassName.'\\'.$anAction;
+		$theSceneClass = BITS_NAMESPACE_SCENE.$this->mySimpleClassName.'\\'.$anAction;
 		if (!class_exists($theSceneClass))
-			$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\scene\\'.$this->mySimpleClassName;
+			$theSceneClass = BITS_NAMESPACE_SCENE.$this->mySimpleClassName;
 		if (!class_exists($theSceneClass))
-			$theSceneClass = BITS_BASE_NAMESPACE.'\\app\\Scene';
+			$theSceneClass = BITS_NAMESPACE_APP.'Scene';
 		$this->scene = new $theSceneClass($this,$anAction);
 		$this->bHasBeenSetup = true;
 	}
@@ -125,6 +125,16 @@ class Actor extends BaseActor {
 		}
 	}
 	
+	static public function isActionUrlAllowed($aAction) {
+		if (static::ALLOW_URL_ACTIONS) {
+			$bIsAjaxCall = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+			//allow if url is an ajax call, else reject if method has "ajax" prefixed to it.
+			return ( $bIsAjaxCall  || !Strings::beginsWith($aAction,'ajax') );
+		} else {
+			return false;
+		}
+	}
+	
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
 		return $this->director->isAllowed($aNamespace,$aPermission,$acctInfo);
 	}
@@ -146,6 +156,16 @@ class Actor extends BaseActor {
 	}
 	
 	/**
+	 * Returns the URL for this site appended with relative path info.
+	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
+	 * equating to path segments.
+	 * @return string - returns the site domain + relative path URL.
+	 */
+	public function getSiteURL($aRelativeURL='', $_=null) {
+		return call_user_func_array(array($this->director, 'getSiteURL'), func_get_args());
+	}
+	
+	/**
 	 * 
 	 * @param string $aUrl - string/array of relative site path segment(s), if
 	 * leading '/' is omitted, current Actor class name is pre-pended to $aUrl.
@@ -155,9 +175,9 @@ class Actor extends BaseActor {
 	 */
 	public function getMyUrl($aUrl='', array $aQuery=array()) {
 		if (!empty($aUrl) && !is_array($aUrl) && !Strings::beginsWith($aUrl,'/')) {
-			$theUrl = $this->scene->getSiteURL(strtolower($this->mySimpleClassName),$aUrl);
+			$theUrl = $this->director->getSiteURL(strtolower($this->mySimpleClassName),$aUrl);
 		} else
-			$theUrl = $this->scene->getSiteURL($aUrl);
+			$theUrl = $this->director->getSiteURL($aUrl);
 		if (!empty($aQuery)) {
 			$theUrl .= '?'.http_build_query($aQuery,'','&');
 		}

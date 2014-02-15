@@ -13,15 +13,26 @@ printf($aCssPattern,'bits.css');
 
 //apycom menu
 printf($aCssPattern,'apycom/menu.css');
-printf($aScriptPattern,'apycom/jquery.js');
+//printf($aScriptPattern,'apycom/jquery.js');
 printf($aScriptPattern,'apycom/menu.js');
 
 //jquery
 //printf($aScriptPattern,'jquery/jquery-1.7.min.js');
+print('<script src="//code.jquery.com/jquery-1.10.1.min.js"></script>'."\n");
 
 //jquery-ui
 //printf($aCssPattern,'jquery-ui/jquery-ui.css');
 //printf($aScriptPattern,'jquery-ui/jquery-ui-1.8.custom.min.js');
+
+$jbitsScriptPattern = '<script type="text/javascript" src="'.BITS_LIB.'/com/blackmoonit/jBits/%s"></script>'."\n";
+//minification from http://www.jsmini.com/ using Basic and no jquery included.
+printf($jbitsScriptPattern,'jbits_mini.js');
+//  !-remove the below space and comment out the above line to debug un-minified JS code
+/* * /
+printf($jbitsScriptPattern,'BasicObj.js');
+printf($jbitsScriptPattern,'AjaxDataUpdater.js');
+/* end of jBits JS */
+
 
 print "</head>\n";
 
@@ -47,7 +58,7 @@ print '  </tr>'."\n";
 print '</table>'."\n";
 
 //menu
-print '<table id="container-header" width="100%" cellpadding="0" cellspacing="0" border="0">'."\n";
+print '<table id="container-menu" width="100%" cellpadding="0" cellspacing="0" border="0">'."\n";
 print '  <tr><td>'."\n";
 print $recite->cueActor('Menus','buildAppMenu');
 print '  </td></tr>'."\n";

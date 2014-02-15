@@ -16,6 +16,7 @@
  */
 
 namespace com\blackmoonit\bits_theater;
+use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\Strings;
 use com\blackmoonit\exceptions\FourOhFourExit;
 {//begin namespace
@@ -56,10 +57,10 @@ function unregisterGlobals() {
 /*
  * Route the URL requested to the approprate actor.
  */
-function route_request($aUrl) {
-	global $director; //exposed as a Global Var so legacy systems can interface with us
+function route_request(Director $aDirector, $aUrl) {
 	//passing in the ?url= (which .htaccess gives us) rather than $_SERVER['REQUEST_URI']
-	if ($director->isDebugging()) Strings::debugLog('aUrl='.$aUrl);
+	if ($aDirector->isDebugging()) Strings::debugLog('aUrl='.$aUrl);
+	//if ($aDirector->isDebugging() && $aUrl=='phpinfo') { print(phpinfo()); return; }
 	if (!empty($aUrl)) {
 		$urlPathList = explode("/",$aUrl);
 		$theActorClass = array_shift($urlPathList);
@@ -67,14 +68,14 @@ function route_request($aUrl) {
 		$theQuery = $urlPathList; //whatever is left
 	}
 	if (!empty($theActorClass)) {
-		$theActorClass = BITS_BASE_NAMESPACE.'\\app\\actor\\'.Strings::getClassName($theActorClass);
+		$theActorClass = BITS_NAMESPACE_ACTOR.Strings::getClassName($theActorClass);
 		$theAction = Strings::getMethodName($theAction);
-		if (!$director->raiseCurtain($theActorClass,$theAction,$theQuery)) {
+		if (!$aDirector->raiseCurtain($theActorClass,$theAction,$theQuery)) {
 			throw new FourOhFourExit($aUrl);
 		}
-	} elseif (!$director->isInstalled() && class_exists(BITS_BASE_NAMESPACE.'\\app\\actor\\Install')) {
-		app\actor\Install::perform($director,'install',array());
-	} elseif ($director->isInstalled() && empty($aUrl)) {
+	} elseif (!$aDirector->isInstalled() && class_exists(BITS_NAMESPACE_ACTOR.'Install')) {
+		$aDirector->raiseCurtain(BITS_NAMESPACE_ACTOR.'Install', 'install');
+	} elseif ($aDirector->isInstalled() && empty($aUrl)) {
 		header('Location: '.BITS_URL.app\config\Settings::PAGE_Landing);
 	} else {
 		throw new FourOhFourExit($aUrl);
@@ -83,7 +84,7 @@ function route_request($aUrl) {
 
 removeMagicQuotes();
 unregisterGlobals();
-global $director;
-$director = new app\Director();
-route_request(REQUEST_URL);
+global $director; //exposed as a Global Var so legacy systems can interface with us
+$director = new Director();
+route_request($director, REQUEST_URL);
 }//end namespace

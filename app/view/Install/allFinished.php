@@ -4,7 +4,8 @@ $recite->includeMyHeader();
 
 $w = '<div align="left">'."\n";
 if (!$v->permission_denied) {
-	$w .= 'All done!'."<br/>\n";
+	$w .= 'All done!  Please set the file permissions back to normal.'."<br/>\n";
+	$w .= '<br/>';
 	$w .= $v->continue_button;
 } else {
 	$w .= '<br/>';
@@ -16,4 +17,5 @@ $w .= '</div>';
 $form_html = Widgets::createHtmlForm($recite->form_name,$recite->next_action,$w,'',false);
 print $form_html;
 
+print(str_repeat('<br />',3));
 $recite->includeMyFooter();

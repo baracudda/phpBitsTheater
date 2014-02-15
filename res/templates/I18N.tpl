@@ -19,70 +19,59 @@ namespace com\blackmoonit\bits_theater\app\config;
 {//begin namespace
 
 final class I18N extends \stdClass {
-
-	const LANG = '%lang%';
-	const REGION = '%region%';
-	
-	const PATH_LANG = '%path_lang%';
-	const PATH_REGION = '%path_region%';
-
 	const DEFAULT_LANG = '%default_lang%';
 	const DEFAULT_REGION = '%default_region%';
+	private $userLang = self::DEFAULT_LANG;
+	private $userRegion = self::DEFAULT_REGION;
+	private $resPathBase = BITS_RES_PATH;
+	private $resPathLang;
+	private $resPathRegion;
+	private $resDefaultPathLang;
+	private $resDefaultPathRegion;
 	
-	const DEFAULT_PATH_LANG = '%default_path_lang%';
-	const DEFAULT_PATH_REGION = '%default_path_region%';
+	public function __construct($aUserI18n=null) {
+		$this->resDefaultPathLang = $this->resPathBase.'i18n'.¦.self::DEFAULT_LANG.¦;
+		$this->resDefaultPathRegion = $this->resDefaultPathLang.self::DEFAULT_REGION.¦;
+		$this->resPathLang = $this->resPathBase.'i18n'.¦.$this->userLang.¦;
+		$this->resPathRegion = $this->resPathLang.$this->userRegion.¦;
+		if (!empty($aUserI18n))
+			$this->setUserI18n($aUserI18n);
+	}
 	
-	static public function findClassNamespace($aResourceClass) {
-		/*
-		$theClass = 'res\\i18n\\'.self::LANG.'\\'.self::REGION.'\\'.$aResourceClass;
-		if (class_exists($theClass)) {
-			return $theClass;
-		} else {
-			$theClass = 'res\\i18n\\'.self::LANG.'\\'.$aResourceClass;
-			if (class_exists($theClass)) {
-				return $theClass;
-			} else {
-				return 'res\\'.$aResourceClass;
-			}
-		}
-		*/
-		if (file_exists(self::PATH_REGION.$aResourceClass.'.php'))
-			$theClass = self::LANG.'\\'.self::REGION.'\\'.$aResourceClass;
-		elseif (file_exists(self::PATH_LANG.$aResourceClass.'.php'))
-			$theClass = self::LANG.'\\'.$aResourceClass;
-		elseif (file_exists(BITS_RES_PATH.$aResourceClass.'.php'))
-			$theClass = $aResourceClass;
-		else
-			$theClass = 'Resources';
-		return BITS_BASE_NAMESPACE.'\\res\\'.$theClass;
+	public function setUserI18n($aUserI18n) {
+		$theUserI18nParts = explode('/',$aUserI18n);
+		$this->resPathLang = $this->resPathBase.'i18n'.¦.array_shift($theUserI18nParts).¦;
+		$this->resPathRegion = $this->resPathLang.array_shift($theUserI18nParts).¦;
 	}
-
-	static public function findDefaultClassNamespace($aResourceClass) {
-		/*
-		$theClass = 'res\\'.self::DEFAULT_LANG.'\\'.self::DEFAULT_REGION.'\\'.$aResourceClass;
-		if (class_exists($theClass)) {
-			return $theClass;
-		} else {
-			$theClass = 'res\\'.self::DEFAULT_LANG.'\\'.$aResourceClass;
-			if (class_exists($theClass)) {
-				return $theClass;
-			} else {
-				return 'res\\'.$aResourceClass;
-			}
-		}
-		*/
-		if (file_exists(self::DEFAULT_PATH_REGION.$aResourceClass.'.php'))
-			$theClass = self::DEFAULT_LANG.'\\'.self::DEFAULT_REGION.'\\'.$aResourceClass;
-		elseif (file_exists(self::DEFAULT_PATH_LANG.$aResourceClass.'.php'))
-			$theClass = self::DEFAULT_LANG.'\\'.$aResourceClass;
-		elseif (file_exists(BITS_RES_PATH.$aResourceClass.'.php'))
-			$theClass = $aResourceClass;
-		else
-			$theClass = 'Resources';
-		return BITS_BASE_NAMESPACE.'\\res\\'.$theClass;
+	
+	public function isUsingDefault() {
+		return ($this->userLang==self::DEFAULT_LANG && $this->userRegion==self::DEFAULT_REGION);
 	}
-
+	
+	public function includeResClass($aResClass) {
+		$theResClassFile = $aResClass.'.php';
+		if (file_exists($this->resPathRegion.$theResClassFile) && include_once($this->resPathRegion.$theResClassFile))
+			return BITS_NAMESPACE_RES.$this->userLang.'\\'.$this->userRegion.'\\'.$aResClass;
+		elseif (file_exists($this->resPathLang.$theResClassFile) && include_once($this->resPathLang.$theResClassFile))
+			return BITS_NAMESPACE_RES.$this->userLang.'\\'.$aResClass;
+		elseif (file_exists($this->resPathBase.$theResClassFile) && include_once($this->resPathBase.$theResClassFile))
+			return BITS_NAMESPACE_RES.$aResClass;
+		elseif (include_once($this->resPathBase.'Resources'))
+			return BITS_NAMESPACE_RES.'Resources';
+	}
+	
+	public function includeDefaultResClass($aResClass) {
+		$theResClassFile = $aResClass.'.php';
+		if (file_exists($this->resDefaultPathRegion.$theResClassFile) && include_once($this->resDefaultPathRegion.$theResClassFile))
+			return BITS_NAMESPACE_RES.self::DEFAULT_LANG.'\\'.self::DEFAULT_REGION.'\\'.$aResClass;
+		elseif (file_exists($this->resDefaultPathLang.$theResClassFile) && include_once($this->resDefaultPathLang.$theResClassFile))
+			return BITS_NAMESPACE_RES.self::DEFAULT_LANG.'\\'.$aResClass;
+		elseif (file_exists($this->resPathBase.$theResClassFile) && include_once($this->resPathBase.$theResClassFile))
+			return BITS_NAMESPACE_RES.$aResClass;
+		elseif (include_once($this->resPathBase.'Resources'))
+			return BITS_NAMESPACE_RES.'Resources';
+	}
+	
 }//end class
 
 }//end namespace
-

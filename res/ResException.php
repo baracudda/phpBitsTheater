@@ -27,16 +27,18 @@ use \Exception;
  */
 class ResException extends Exception implements IDebuggableException {
 	private $mDebuggableExceptionTrait;
+	public $resMgr;
 	public $resName;
 	public $resClass;
 	public $resArgs;
 	public $resErr;
 	
-	public function __construct($aResName, $aResClass=NULL, $args=NULL, $e=NULL) {
+	public function __construct(I18N $aResMgr, $aResName, $aResClass=NULL, $args=NULL, $e=NULL) {
 		if (empty($aResClass) || empty($args) || empty($e))
 			parent::__construct('Resource "'.$aResName.'" not found.',18404);
 		else
 			parent::__construct('Resource "'.$aResClass.'.'.$aResName.'('.implode('/',$args).')" caused: '.$e->getMessage(),18500);
+		$this->resMgr = $aResMgr;
 		$this->resName = $aResName;
 		$this->resClass = $aResClass;
 		$this->resArgs = $args;
@@ -62,13 +64,13 @@ class ResException extends Exception implements IDebuggableException {
 			$msg = $this->getCode().': '.$this->resName." not found in any of the paths";
 			if ($bIncludePathInfo) {
 				$msg .= ":\n";
-				$msg .= BITS_RES_PATH."\n";
-				$msg .= I18N::PATH_LANG."\n";
-				$msg .= I18N::PATH_REGION."\n";
-				if (I18N::LANG != I18N::DEFAULT_LANG)
-					$msg .= I18N::DEFAULT_PATH_LANG."\n";
-				if ((I18N::LANG != I18N::DEFAULT_LANG) || (I18N::REGION != I18N::DEFAULT_REGION))
-					$msg .= I18N::DEFAULT_PATH_REGION."\n";
+				$msg .= $this->resMgr->resPathBase."\n";
+				$msg .= $this->resMgr->resPathLang."\n";
+				$msg .= $this->resMgr->resPathRegion."\n";
+				if (!$this->resMgr->isUsingDefault()) {
+					$msg .= $this->resMgr->resDefaultPathLang."\n";
+					$msg .= $this->resMgr->resDefaultPathRegion."\n";
+				}
 				$theFileRoot = $this->mDebuggableExceptionTrait->getFileRoot();
 				if ($theFileRoot)
 					$msg = str_replace($theFileRoot,'[%site]',$msg);
@@ -85,12 +87,24 @@ class ResException extends Exception implements IDebuggableException {
 		return $this->mDebuggableExceptionTrait->getDebugDisplay($aMsg);
 	}
 	
+	public function getDebugCheck() {
+		return $this->mDebuggableExceptionTrait->getDebugCheck();
+	}
+	
 	public function setDebugCheck($aDebugCheck) {
 		return $this->mDebuggableExceptionTrait->setDebugCheck($aDebugCheck);
 	}
 	
+	public function getCssFileUrl() {
+		return $this->mDebuggableExceptionTrait->getCssFileUrl();
+	}
+	
 	public function setCssFileUrl($aCssFileUrl) {
 		return $this->mDebuggableExceptionTrait->setCssFileUrl($aCssFileUrl);
+	}
+	
+	public function getFileRoot() {
+		return $this->mDebuggableExceptionTrait->getFileRoot();
 	}
 	
 	public function setFileRoot($aFileRoot) {

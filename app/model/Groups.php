@@ -16,7 +16,6 @@
  */
 
 namespace com\blackmoonit\bits_theater\app\model;
-use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\bits_theater\app\Model;
 use com\blackmoonit\exceptions\DbException;
 {
@@ -34,8 +33,8 @@ class Groups extends Model {
 	protected $get_map_groups;
 	protected $get_map_accts;
 
-	public function setup(Director $aDirector, $aDbConn) {
-		parent::setup($aDirector, $aDbConn);
+	public function setupAfterDbConnected() {
+		parent::setupAfterDbConnected();
 		$this->tnGroups = $this->tbl_.'groups';
 		$this->tnGroupMap = $this->tbl_.'groups_map';
 		try {

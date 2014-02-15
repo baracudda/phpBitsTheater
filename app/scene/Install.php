@@ -44,7 +44,7 @@ class Install extends Scene {
 		
 		$this->auth_type = 'Basic';
 		
-		$this->table_prefix = 'bits_';
+		$this->table_prefix = 'webapp_';
 		$this->dbhost = 'localhost';
 		$this->dbtype = 'mysql';
 		$this->dbname = '';
@@ -55,7 +55,7 @@ class Install extends Scene {
 	
 	protected function getDefinedPw() {
 		$thePW = BITS_ROOT; //default pw is the folder path (since outsiders should not know it)
-		$thePwFilePath = BITS_ROOT.¦.self::INSTALL_PW_FILENAME;
+		$thePwFilePath = BITS_ROOT.Â¦.self::INSTALL_PW_FILENAME;
 		if (file_exists($thePwFilePath)) {
 			//load as pw
 			$thePW = trim(file_get_contents($thePwFilePath));

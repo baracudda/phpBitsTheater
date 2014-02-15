@@ -20,23 +20,40 @@ use com\blackmoonit\bits_theater\app\Actor;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\database\DbUtils;
+use \PDOException;
 {//namespace begin
 
 class Install extends Actor {
 	const DEFAULT_ACTION = 'install';
-		
+
+	/**
+	 * Similar to file_put_contents, but forces all parts of the folder path to exist first.
+	 * @param string $aDestFile - path and filename of destination.
+	 * @param string $aFileContents - contents to be saved in $aDestFile.
+	 * @return Returns false on failure, else num bytes stored.
+	 */
+	protected function file_force_contents($aDestFile, $aFileContents) {
+		$theFolders = dirname($aDestFile);
+		if (!is_dir($theFolders)) {
+			//umask(0777);
+			mkdir($theFolders,0777,true);
+			chmod($aDestFile, 0777);
+		}
+		return file_put_contents($aDestFile, $aFileContents);
+     }
+	
 	protected function installTemplate($aDestPath, $aTemplateName, $aNewExtension, $aVars) {
 		//copy the .tpl to .php and fill in the vars
 		$dst = $aDestPath.$aTemplateName.$aNewExtension;
 		if (file_exists($dst))
 			return $dst;
-		$src = BITS_RES_PATH.'templates'.DIRECTORY_SEPARATOR.$aTemplateName.'.tpl';
+		$src = BITS_RES_PATH.'templates'.¦.$aTemplateName.'.tpl';
 		$tpl = file_get_contents($src);
 		if ($tpl) {
 			foreach ($aVars as $theVarName) {
 				$tpl = str_replace('%'.$theVarName.'%',$this->scene->$theVarName,$tpl);
 			}
-			if (file_put_contents($dst,$tpl)) {
+			if ($this->file_force_contents($dst,$tpl)) {
 				return $dst;
 			}
 		}
@@ -44,7 +61,7 @@ class Install extends Actor {
 	}
 
 	protected function installConfigTpl($aTemplateName, $aNewExtension, $aVars) {
-		return $this->installTemplate(BITS_APP_PATH.'config'.¦,$aTemplateName,$aNewExtension,$aVars);
+		return $this->installTemplate(BITS_CFG_PATH,$aTemplateName,$aNewExtension,$aVars);
 	}
 
 	public function install() {
@@ -94,17 +111,10 @@ class Install extends Actor {
 	}
 	
 	protected function installLang($aLangType) {
-		$theVarNames = array('lang','region','path_lang','path_region',
-				'default_lang','default_region','default_path_lang','default_path_region');
+		$theVarNames = array('default_lang','default_region');
 		$sa = explode('/',$this->scene->lang_type);
-		$this->scene->lang = $sa[0];
-		$this->scene->region = $sa[1];
-		$this->scene->path_lang = addslashes(BITS_RES_PATH.'i18n'.¦.$this->scene->lang.¦);
-		$this->scene->path_region = $this->scene->path_lang.addslashes($this->scene->region.¦);
-		$this->scene->default_lang = 'en';
-		$this->scene->default_region = 'US';
-		$this->scene->default_path_lang = addslashes(BITS_RES_PATH.'i18n'.¦.$this->scene->default_lang.¦);
-		$this->scene->default_path_region = $this->scene->default_path_lang.addslashes($this->scene->default_region.¦);
+		$this->scene->default_lang = $sa[0];
+		$this->scene->default_region = $sa[1];
 		
 		return $this->installConfigTpl('I18N','.php',$theVarNames);
 	}
@@ -127,29 +137,45 @@ class Install extends Actor {
 	}
 
 	public function db2() {
-		if (!$this->scene->checkInstallPw()) return $this->scene->getSiteURL();
-
-		$this->scene->strip_spaces('table_prefix');
-		$theVarNames = array('table_prefix','dns_scheme','dns_value','dbhost','dbtype','dbname','dbuser','dbpwrd');
-		if ($dst = $this->installConfigTpl('_dbconn_','.ini',$theVarNames)) {
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		if (!$v->checkInstallPw()) { 
+			return $v->getSiteURL();
+		}
+		$v->strip_spaces('table_prefix');
+		switch ($v->dns_scheme) {
+			case 'customuri':
+				unset($v->dns_alias);
+				unset($v->dbpwrd); //some browsers auto-fill this field, unset if not using "ini" scheme
+				break;
+			case 'alias':
+				unset($v->dns_customuri);
+				unset($v->dbpwrd); //some browsers auto-fill this field, unset if not using "ini" scheme
+				break;
+			default: //ini
+				unset($v->dns_alias);
+				unset($v->dns_customuri);
+		}//switch
+		$theVarNames = array('table_prefix','dns_scheme','dns_alias','dns_customuri','dbhost','dbtype','dbname','dbuser','dbpwrd');
+		if ($dst = $this->installConfigTpl('dbconn-webapp','.ini',$theVarNames)) {
 			//copy completed, now try to connect to the db and prove it works
 			try {
-				$this->scene->connected = DbUtils::getPDOConnection(DbUtils::readDbConnInfo(BITS_DB_INFO));
-				$this->scene->next_action = $this->scene->getSiteURL('install/auth1');
-			} catch (\PDOException $e) {
+				$v->connected = $this->director->getDbConnInfo('webapp')->connect();;
+				$v->next_action = $v->getSiteURL('install/auth1');
+			} catch (PDOException $e) {
 				$ex = new DbException($e);
-				$this->scene->next_action = $this->scene->getSiteURL('install/db1');
-				$this->scene->connected = false;
-				$this->scene->_dbError = $ex->getDebugDisplay('Connection error');
-				$this->scene->old_vals = $this->scene->createHiddenPosts(array('dns_scheme', 'dns_value', 
+				$v->next_action = $v->getSiteURL('install/db1');
+				$v->connected = false;
+				$v->_dbError = $ex->getDebugDisplay('Connection error');
+				$v->old_vals = $v->createHiddenPosts(array('dns_scheme', 'dns_alias', 'dns_customuri', 
 						'table_prefix','dbhost','dbtype','dbname','dbuser','dbpwrd'));
 			}
-			if (empty($this->scene->connected)) {
-				//if dbconn failed, delete the file so it can be attempted again
-				$this->scene->permission_denied = !unlink($dst);
+			if (empty($v->connected) && empty($v->do_not_delete_failed_config)) {
+				//if db connection failed, delete the file so it can be attempted again
+				$v->permission_denied = !unlink($dst);
 			}
 		} else {
-			$this->scene->permission_denied = true;
+			$v->permission_denied = true;
 		}
 	}
 

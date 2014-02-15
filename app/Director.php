@@ -17,9 +17,11 @@
 
 namespace com\blackmoonit\bits_theater\app;
 use com\blackmoonit\bits_theater\app\Model;
+use com\blackmoonit\bits_theater\app\DbConnInfo;
 use com\blackmoonit\bits_theater\res\ResException;
 use com\blackmoonit\AdamEve as BaseDirector;
 use com\blackmoonit\Strings;
+use com\blackmoonit\Arrays;
 use com\blackmoonit\database\DbUtils;
 use \ArrayAccess;
 use \ReflectionClass;
@@ -30,14 +32,14 @@ use \Exception;
 
 class Director extends BaseDirector implements ArrayAccess {
 	public $account_info = null;//array('account_id'=>-1, 'account_name'=>'', 'email'=>'', 'groups'=>array(), 'tz'=>'',);
-	public $table_prefix = ''; //prefix for every table used by this app
-	public $dbConn = null; //single database connection to share with anyone using getModel()
+	public $dbConnInfo = array(); //database connections to share with the models
 	protected $_propMaster = array(); //cache models created so app doesn't need to create 12 instances of any single model
+	protected $_resManager = null;
 	protected $_resMaster = array(); //cache of res classes
 	protected $auth = null; //cache of Auth model
 
 	public function setup() {
-		if (session_id() === "") try {
+		if (session_id() === '') try {
 			session_start();
 		} catch (Exception $e) {
 			$this->resetSession();
@@ -56,12 +58,9 @@ class Director extends BaseDirector implements ArrayAccess {
 		//destroy all cashed models
 		array_walk($this->_propMaster, function(&$n) {$n['model'] = null;} );
 		unset($this->_propMaster);
-		//disconnect db
-		if (isset($this->dbConn)) {
-			//PDO does not have a disconnect at this time
-			//$this->dbConn->disconnect();
-		}
-		unset($this->dbConn);
+		//disconnect dbs
+		array_walk($this->dbConnInfo, function(&$dbci) {$dbci->disconnect();} );
+		unset($this->dbConnInfo);
 		//free all resources
 		$this->freeRes();
 		//call parent
@@ -69,7 +68,7 @@ class Director extends BaseDirector implements ArrayAccess {
 	}
 	
 	//----- methods required for various IMPLEMENTS interfaces
-	
+	//NOTE: $this['key'] works for simple types, but not arrays.  Avoid arrays!
 	public function offsetSet($aOffset, $aValue) {
 		$_SESSION[$aOffset] = $aValue;
 	}
@@ -98,19 +97,19 @@ class Director extends BaseDirector implements ArrayAccess {
 	}
 	
 	public function isInstalled() {
-		return class_exists(BITS_BASE_NAMESPACE.'\\app\\config\\Settings');
+		return class_exists(BITS_NAMESPACE_CFG.'Settings');
 	}
 
 	public function canCheckTickets() {
-		return $this->canConnectDb() && class_exists(BITS_BASE_NAMESPACE.'\\app\\model\\Auth');
+		return $this->canConnectDb() && class_exists(BITS_NAMESPACE_MODEL.'Auth');
 	}
 	
-	public function canConnectDb() {
-		return file_exists(BITS_DB_INFO);
+	public function canConnectDb($aDbConnName='webapp') {
+		return $this->getDbConnInfo($aDbConnName)->canAttemptConnectDb();
 	}
 	
 	public function canGetRes() {
-		return class_exists(BITS_BASE_NAMESPACE.'\\app\\config\\I18N');
+		return class_exists(BITS_NAMESPACE_CFG.'I18N');
 	}
 	
 	//===== Actor methods =====
@@ -121,7 +120,7 @@ class Director extends BaseDirector implements ArrayAccess {
 			if (empty($anAction))
 				$anAction = $anActorClass::DEFAULT_ACTION;
 			$methodExists = method_exists($anActorClass,$anAction) && is_callable(array($anActorClass,$anAction));
-			if ($methodExists && $anActorClass::ALLOW_URL_ACTIONS) {
+			if ($methodExists && $anActorClass::isActionUrlAllowed($anAction)) {
 				if ($this->isInstalled()) {
 					$this['played'] = config\Settings::APP_ID; //app_id -> play_id -> "played"
 				}
@@ -137,7 +136,7 @@ class Director extends BaseDirector implements ArrayAccess {
 	}
 	
 	public function cue($aScene, $anActorName, $anAction, $args=array()) {
-		$anActorClass = BITS_BASE_NAMESPACE.'\\app\\actor\\'.$anActorName;
+		$anActorClass = BITS_NAMESPACE_ACTOR.$anActorName;
 		//Strings::debugLog('rC: class='.$anActorClass.', exist?='.class_exists($anActorClass));
 		if (class_exists($anActorClass)) {
 			if (empty($anAction))
@@ -165,19 +164,21 @@ class Director extends BaseDirector implements ArrayAccess {
 	
 	//===== Model methods =====
 	
-	public function getModel($aModelClass) {
-		if (empty($this->dbConn) && $this->canConnectDb()) {
-			$theDbInfo = DbUtils::readDbConnInfo(BITS_DB_INFO);
-			$this->table_prefix = $theDbInfo['dbopts']['table_prefix'];
-			$this->dbConn = Model::getConnection($theDbInfo);
+	public function getDbConnInfo($aDbConnName='webapp') {
+		if (empty($this->dbConnInfo[$aDbConnName])) {
+			$this->dbConnInfo[$aDbConnName] = new DbConnInfo($aDbConnName);
 		}
+		return $this->dbConnInfo[$aDbConnName];
+	}
+	
+	public function getModel($aModelClass) {
 		if (is_string($aModelClass)) {
-			$theModelClass = BITS_BASE_NAMESPACE.'\\app\\model\\'.$aModelClass;
+			$theModelClass = BITS_NAMESPACE_MODEL.$aModelClass;
 		} elseif ($aModelClass instanceof ReflectionClass) {
 			$theModelClass = $aModelClass->getName();
 		}
 		if (empty($this->_propMaster[$theModelClass])) {
-			$this->_propMaster[$theModelClass]['model'] = new $theModelClass($this,$this->dbConn);
+			$this->_propMaster[$theModelClass]['model'] = new $theModelClass($this);
 			$this->_propMaster[$theModelClass]['ref_count'] = 0;
 		}
 		$this->_propMaster[$theModelClass]['ref_count'] += 1;
@@ -211,26 +212,32 @@ class Director extends BaseDirector implements ArrayAccess {
 	//===== RESOURCE management =====
 
 	public function getRes($aResName) {
+		if (empty($this->_resManager)) {
+			//TODO create a user config for "en/US" and pass that into the constructor. (lang/region) 
+			$this->_resManager = new config\I18N();
+		}
 		//explode on "\" or "/"
 		$theResUri = explode('/',str_replace('\\','/',$aResName));
+		//$this->debugPrint($this->debugStr($theResUri));
 		if (count($theResUri)>=2) {
 			$theResClassName = Strings::getClassName(array_shift($theResUri));
-			$theResClass = config\I18N::findClassNamespace($theResClassName);
 			$theRes = array_shift($theResUri);
 		} else {
-			$theResClass = BITS_BASE_NAMESPACE.'\\res\\Resources';
+			$theResClassName = 'Resources';
 			$theRes = array_shift($theResUri);
 		}
+		//$this->debugPrint('res name='.$theResClassName.', res class='.$theResClass.' / '.$this->debugStr($theRes));
 		try {
+			$theResClass = $this->_resManager->includeResClass($theResClassName);
 			if (!empty($theResUri))
 				return $this->loadRes($theResClass,$theRes,$theResUri);
 			else
 				return $this->loadRes($theResClass,$theRes);
 		} catch (ResException $re) {
-			if (config\I18N::LANG==config\I18N::DEFAULT_LANG && config\I18N::REGION==config\I18N::DEFAULT_REGION) {
+			if ($this->_resManager->isUsingDefault()) {
 				throw $re;
 			} else {
-				$theResClass = config\I18N::findDefaultClassNamespace($theResClassName);
+				$theResClass = $this->_resManager->includeDefaultResClass($theResClassName);
 				return $this->loadRes($theResClass,$theRes,$theResUri);
 			}
 		}
@@ -245,18 +252,22 @@ class Director extends BaseDirector implements ArrayAccess {
 			try {
 				return call_user_func_array(array($resObj,$aRes),$args);
 			} catch (Exception $e) {
-				throw new ResException($aRes,$aResClass,$args,$e);
+				throw new ResException($this->_resManager,$aRes,$aResClass,$args,$e);
 			}
 		} else {
 			if (isset($resObj->$aRes)) {
 				if (isset($args)) {
-					//Strings::debugLog('b: '.$resObj->$aRes.Strings::debugStr($args));
-					return call_user_func_array(array('com\blackmoonit\Strings','format'),array_merge(array($resObj->$aRes),$args));
+					//$this->debugPrint('b: '.$resObj->$aRes.Strings::debugStr($args));
+					try {
+						return call_user_func_array(array('com\blackmoonit\Strings','format'),Arrays::array_prepend($args,$resObj->$aRes));
+					} catch (Exception $e) {
+						throw new ResException($this->_resManager,$aRes,$aResClass,$args,$e);
+					}
 				} else {
 					return $resObj->$aRes;
 				}
 			} else {
-				throw new ResException($aRes);
+				throw new ResException($this->_resManager,(isset($resObj) ? $aResClass.'/' : '').$aRes);
 			}
 		}			
 	}
@@ -283,7 +294,7 @@ class Director extends BaseDirector implements ArrayAccess {
 	}
 	
 	public function isGuest() {
-		if ($this->auth->isCallable('isGuest')) {
+		if (isset($this->auth) && $this->auth->isCallable('isGuest')) {
 			return $this->auth->isGuest();
 		} else {
 			return (empty($this->account_info) || empty($this->account_info['groups']) || count($this->account_info['groups'])<1);
@@ -298,6 +309,23 @@ class Director extends BaseDirector implements ArrayAccess {
 		return BITS_URL;
 	}
 	
+	/**
+	 * Returns the URL for this site appended with relative path info.
+	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
+	 * equating to path segments.
+	 * @return string - returns the site domain + relative path URL.
+	 */
+	public function getSiteURL($aRelativeURL='', $_=null) {
+		$theResult = BITS_URL;
+		if (!empty($aRelativeURL)) {
+			$theArgs = (is_array($aRelativeURL)) ? $aRelativeURL : func_get_args();
+			foreach ($theArgs as $pathPart) {
+				$theResult .= ((!empty($pathPart) && $pathPart[0]!='/') ? '/' : '' ) . $pathPart;
+			}
+		}
+		return $theResult;
+	}
+	
 	public function getForumUrl() {
 		if ($this->auth->isCallable('getForumUrl')) {
 			return $this->auth->getForumUrl();
@@ -306,6 +334,18 @@ class Director extends BaseDirector implements ArrayAccess {
 		}
 	}
 	
+	/**
+	 * Calls methodName for every model class that matches the class patern and returns an array of results.
+	 * @param string $aModelClassPattern - NULL for all non-abstract models, else a result from getModelClassPattern.
+	 * @param string $aMethodName - method to call.
+	 * @param mixed $args - arguments to pass to the method to call.
+	 * @return array Returns an array of key(model class name) => value(function result);
+	 * @see Model::foreachModel()
+	 */
+	public function foreachModel($aModelClassPattern, $aMethodName, $args=null) {
+		return Model::foreachModel($this, $aModelClassPattern, $aMethodName, $args);
+	}
+
 }//end class
 
 }//end namespace

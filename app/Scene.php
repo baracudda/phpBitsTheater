@@ -55,6 +55,9 @@ class Scene extends BaseScene {
 	protected $_methodList = array(); // list of all custom added methods
 	protected $_properties = array(); // list of all added properties
 	protected $_dbResNames = array(); // list of all dbResult var names
+	const USER_MSG_NOTICE = 'notice';
+	const USER_MSG_WARNING = 'warning';
+	const USER_MSG_ERROR = 'error';
 	
 	public function __call($aName, $args) {
 		//Strings::debugLog('call:'.$aName);
@@ -169,8 +172,10 @@ class Scene extends BaseScene {
 		$this->actor_view_path = $this->view_path.$this->_actor->mySimpleClassName.DIRECTORY_SEPARATOR;
 		$this->page_header = $this->getViewPath($this->actor_view_path.'header');
 		$this->page_footer = $this->getViewPath($this->actor_view_path.'footer');
+		$this->page_user_msgs = $this->getViewPath($this->actor_view_path.'user_msgs');
 		$this->app_header = $this->getViewPath($this->view_path.'header');
 		$this->app_footer = $this->getViewPath($this->view_path.'footer');
+		$this->app_user_msgs = $this->getViewPath($this->view_path.'user_msgs');
 		
 		$this->myIconStyle = "none";
 	}
@@ -296,6 +301,25 @@ class Scene extends BaseScene {
 		}
 	}
 	
+	public function includeMyUserMsgs() {
+		$myUserMsgs = $this->page_user_msgs;
+		if (!file_exists($myUserMsgs))
+			$myUserMsgs = $this->app_user_msgs;
+		if (file_exists($myUserMsgs)) {
+			$recite =& $this; $v =& $this; //$this, $recite, $v are all the same
+			$myView = $myUserMsgs;
+			include_once($myUserMsgs);
+		} else {
+			$this->debugPrint($myUserMsgs.' not found.');
+		}
+	}
+	
+	public function renderMyUserMsgsAsString() {
+		ob_start();
+		$this->includeMyUserMsgs();
+		return ob_get_clean();
+	}
+	
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
 		return $this->_director->isAllowed($aNamespace,$aPermission,$acctInfo);
 	}
@@ -366,16 +390,71 @@ class Scene extends BaseScene {
 	 * @return string - returns the site domain + relative path URL.
 	 */
 	public function getSiteURL($aRelativeURL='', $_=null) {
-		$theResult = BITS_URL;
-		if (!empty($aRelativeURL)) {
-			$theArgs = (is_array($aRelativeURL)) ? $aRelativeURL : func_get_args();
-			foreach ($theArgs as $pathPart) {
-				$theResult .= ((!empty($pathPart) && $pathPart[0]!='/') ? '/' : '' ) . $pathPart;
-			}
+		return call_user_func_array(array($this->_director, 'getSiteURL'), func_get_args());
+	}
+		
+	/**
+	 * 
+	 * @param string $aUrl - string/array of relative site path segment(s), if
+	 * leading '/' is omitted, current Actor class name is pre-pended to $aUrl.
+	 * @param array $aQuery - (optional) array of query key/values.
+	 * @return string - Returns the domain + page url.
+	 * @see Scene::getSiteURL()
+	 */
+	public function getMyUrl($aUrl='', array $aQuery=array()) {
+		$theUrl = null;
+		if (!empty($aUrl) && !is_array($aUrl) && !Strings::beginsWith($aUrl,'/') && !empty($this->_actor)) {
+			$theUrl = $this->_director->getSiteURL(strtolower($this->_actor->mySimpleClassName),$aUrl);
+		} else {
+			$theUrl = $this->_director->getSiteURL($aUrl);
 		}
-		return $theResult;
+		if (!empty($aQuery)) {
+			$theUrl .= '?'.http_build_query($aQuery,'','&');
+		}
+		return $theUrl;
+	}
+
+	/**
+	 * Push a message onto the UI message queue.
+	 * @param string $aMsgText - text of the message to display.
+	 * @param string $aMsgClass - class of the message, one of self::USER_MSG_* constants (default NOTICE).
+	 */
+	public function addUserMsg($aMsgText, $aMsgClass=self::USER_MSG_NOTICE) {
+		if (!isset($_SESSION['user_msgs'])) {
+			$this->clearUserMsgs();
+		}
+		$_SESSION['user_msgs'][] = array('msg_class'=>$aMsgClass, 'msg_text'=>$aMsgText);
 	}
 	
+	/**
+	 * Clear out the message queue. Usually done after it is displayed in user_msgs.php view.
+	 */
+	public function clearUserMsgs() {
+		$_SESSION['user_msgs'] = array();
+	}
+	
+	/**
+	 * Retrieve the messages to display.
+	 * @return array Returns an array of messages, each msg is an array of 'msg_text' and 'msg_class'.
+	 */
+	public function getUserMsgs() {
+		if (!isset($_SESSION['user_msgs'])) {
+			$this->clearUserMsgs();
+		}
+		return $_SESSION['user_msgs'];
+	}
+
+	/**
+	 * Wrap JS code in the appropriate HTML tag block.
+	 * @param string $aJsCode
+	 * @return string Return the JS code wrapped appropriately for inclusion in HTML.
+	 */
+	public function createJsTagBlock($aJsCode, $aId=null) {
+		$theIdAttr = (empty($aId)) ? '' : 'id="'.$aId.'"';
+		return "<script type=\"text/javascript\" {$theIdAttr}>\n{$aJsCode}\n</script>\n";
+	}
+	
+
 }//end class
 
 }//end namespace

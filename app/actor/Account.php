@@ -118,7 +118,7 @@ class Account extends Actor {
 		$v =& $this->scene;
 		$v->action_url_register = $v->getSiteURL($this->config['auth/register_url']);
 		$v->action_url_login = $v->getSiteURL($this->config['auth/login_url']);
-		$v->action_url_logout = $v->getSiteURL($this->config['auth/logout_url']);		
+		$v->action_url_logout = $v->getSiteURL($this->config['auth/logout_url']);
 	}
 	
 	public function modify() {

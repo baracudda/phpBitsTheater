@@ -16,7 +16,6 @@
  */
 
 namespace com\blackmoonit\bits_theater\app\model;
-use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\bits_theater\app\Model;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
@@ -28,8 +27,8 @@ class Permissions extends Model {
 
 	public $tnPermissions; const TABLE_Permissions = 'permissions';
 
-	public function setup(Director $aDirector, $aDbConn) {
-		parent::setup($aDirector, $aDbConn);
+	public function setupAfterDbConnected() {
+		parent::setupAfterDbConnected();
 		$this->tnPermissions = $this->tbl_.self::TABLE_Permissions;
 		$this->sql_get_namespace = "SELECT * FROM {$this->tnPermissions} WHERE namespace = :ns AND value = :value";
 		$this->sql_get_group = "SELECT * FROM {$this->tnPermissions} WHERE group_id = :group_id";

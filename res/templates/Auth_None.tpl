@@ -2,7 +2,6 @@
 
 namespace com\blackmoonit\bits_theater\app\model;
 use com\blackmoonit\Strings;
-use \PDO;
 {//namespace begin
 
 class Auth extends AuthBase {

@@ -15,7 +15,6 @@ body {
 }
 
 #container-header {
-	background-color: Navy;
 	height: 80px;
 	width: 100%;
 	color: white;
@@ -23,7 +22,19 @@ body {
 	font-size: 12px;
 	text-align: left;
 	text-indent: 3px;
+	
+	background-color: Navy;
+	
+	background: -webkit-gradient(linear, 0 0, 0 100%, from(Navy), to(#0033CC)); // Safari 4+, Chrome 2+
+	background: linear-gradient(0, Navy, #0033CC); // Standard, IE10
+	
+	/* if you have an image & gradient
+	background: url('PATH-TO-IMG') center center no-repeat; // fallback
+	background: url('PATH-TO-IMG') center center no-repeat, -webkit-gradient(linear, 0 0, 0 100%, from(@startColor), to(@endColor)); // Safari 4+, Chrome 2+
+	background: url('PATH-TO-IMG') center center no-repeat, linear-gradient(top, @startColor, @endColor); // Standard, IE10
+	*/
 }
+
 #container-header a:link, #container-header a:active, #container-header a:visited {
 	color: LightSteelBlue;
 	text-decoration: none;
@@ -31,6 +42,20 @@ body {
 #container-header .title {
 	font-weight:bold;
 	font-size:24px;	
+}
+
+#container-menu {
+	height: 40px;
+	width: 100%;
+	color: white;
+	font-weight: bolder;
+	font-size: 12px;
+	text-align: left;
+	text-indent: 3px;
+	
+	background-color: Navy;
+	background: -webkit-gradient(linear, 0 0, 0 100%, from(#0033CC), to(Navy)); // Safari 4+, Chrome 2+
+	background: linear-gradient(0, #0033CC, Navy); // Standard, IE10
 }
 
 #container-body {
@@ -85,41 +110,54 @@ div#container-error .msg-trace {
 	color:white;
 }
 
-tr.rowh {
+tr.rowh { /*row header*/
 	background-color: Navy;
 	color: LightSteelBlue;
 	text-decoration: underline;
 }
 
 tr.row1 {
+	background-color: #FFFF99;
 /*background:url('../images/row1.gif'); */
 }
 
 tr.row2 {
-	background-color: #C0C0C0;
-/*background:url('../images/row2.gif'); */
+	background-color: #E8E8E8; 
+/*	background-color: #FFFF66; */
+/*	background-color: #C0C0C0; */
+/*	background:url('../images/row2.gif'); */
+}
+
+tr.rowf {
+	background-color: Navy;
+	color: LightSteelBlue;
 }
 
 tr.row-hover {
 /*background:url('../images/hover.jpg'); */
 }
 
-table.data-entry {
-	
+td.num {
+	text-align: right;
+}
+
+table.data-entry td, table.data-entry th {
+	padding: 2px;
 }
 
 table.data-entry .data-label {
-	font-size: 11px;
+	font-size: 12px;
 	font-weight: bolder;
 	text-align: right;
 }
 
 table.data-entry .data-field {
-	
+	font-size: 12px;
 }
 
-table.data-display {
-
+table.data-display td, table.data-display th {
+	font-size: 12px;
+	padding: 2px;
 }
 
 .smalltext {
@@ -141,6 +179,40 @@ input.hidden {
     border: 0px;
 }
 
+/* user messages */
+div#container-user-msgs {
+	text-decoration: none;
+	padding-top: 1em;
+	padding-bottom: 1em;
+}
+
+ul.user-msgs {
+	padding-top: 1em;
+	padding-right: 3em;
+	padding-bottom: 1em;
+	background-color: #FFFF99;
+	border:solid 2px #330099;
+	font-size: 12px;
+}
+
+ul.user-msgs li.notice {
+	padding-top: 1em;
+	padding-bottom: 1em;
+}
+
+ul.user-msgs li.warning {
+	padding-top: 1em;
+	padding-bottom: 1em;
+	background-color: #FFCC33;
+}
+
+ul.user-msgs li.error {
+	padding-top: 1em;
+	padding-bottom: 1em;
+	color: white;
+	background-color: red;
+}
+
 /* main submit button */
 input.mainoption {
 	font-weight: bolder;
@@ -159,4 +231,33 @@ a:hover {
 	color: Purple;
 	text-decoration: underline;
 }
+
+/* Dashboard */
+tr.spider-not-running {
+	color: Red;
+}
+
+/* Poprox Redbook */
+table.rb-ad {
+	width: 95%;
+ 	background-color: White;
+	font-family: Verdana,Arial,sans-serif;
+}
+
+table.rb-ad .rb-ad-title {
+	/*font-size: 10pt;*/
+	text-align: left;
+	font-weight: 700;
+	color: #d10000;
+}
+
+/* QRox */
+table#qrox-results {
+
+}
+
+table#qrox-results tr {
+	valign: center
+}
+
 

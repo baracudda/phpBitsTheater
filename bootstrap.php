@@ -24,27 +24,33 @@ namespace com\blackmoonit\bits_theater;
 /**********************************
  * define required CONSTANTS
  **********************************/
-define('BITS_BASE_NAMESPACE',__NAMESPACE__);
-define('¦',DIRECTORY_SEPARATOR);
+//namespaces
+define('BITS_NAMESPACE_BASE',__NAMESPACE__);
+define('BITS_NAMESPACE_APP',BITS_NAMESPACE_BASE.'\\app\\');
+define('BITS_NAMESPACE_RES',BITS_NAMESPACE_BASE.'\\res\\');
+define('BITS_NAMESPACE_ACTOR',BITS_NAMESPACE_APP.'actor\\');
+define('BITS_NAMESPACE_CFG',BITS_NAMESPACE_APP.'config\\');
+define('BITS_NAMESPACE_MODEL',BITS_NAMESPACE_APP.'model\\');
+define('BITS_NAMESPACE_SCENE',BITS_NAMESPACE_APP.'scene\\');
+
 //paths
+define('¦',DIRECTORY_SEPARATOR);
 define('BITS_ROOT',dirname(__FILE__));
 define('BITS_PATH',BITS_ROOT.¦);
 define('BITS_LIB_PATH',BITS_PATH.'lib'.¦);
 define('BITS_RES_PATH',BITS_PATH.'res'.¦);
 define('BITS_APP_PATH',BITS_PATH.'app'.¦);
-define('BITS_CFG_PATH',BITS_APP_PATH.'config'.¦);
+define('BITS_CFG_PATH',BITS_APP_PATH.'config'.¦.$_SERVER["SERVER_NAME"].¦);
 
 //domain url
 define('SERVER_URL',((array_key_exists('HTTPS',$_SERVER) && $_SERVER['HTTPS']=='on')?'https':'http').'://'.$_SERVER['SERVER_NAME'].
 		(($_SERVER["SERVER_PORT"]=="80")?'':':'.$_SERVER["SERVER_PORT"]).'/');
 //relative urls
 define('REQUEST_URL',array_key_exists('url',$_GET)?$_GET['url']:'');
-define('BITS_URL',dirname($_SERVER['PHP_SELF']));
+define('BITS_URL',dirname($_SERVER['SCRIPT_NAME']));
 define('BITS_RES',BITS_URL.'/res');
 define('BITS_LIB',BITS_URL.'/lib');
 //no need for app url as that is where all the urls normally get routed towards.
-
-define('BITS_DB_INFO',BITS_CFG_PATH.'_dbconn_.ini');
 
 
 /**********************************
@@ -52,11 +58,9 @@ define('BITS_DB_INFO',BITS_CFG_PATH.'_dbconn_.ini');
  **********************************/
 //lib autoloader first
 require_once(BITS_LIB_PATH.'autoloader.php');
-//app autoloader next most frequent & priority
-require_once(BITS_APP_PATH.'autoloader.php');
-//res autoloader last
-include_once(BITS_RES_PATH.'autoloader.php');
-
+//master autoloader
+require_once(BITS_PATH.'autoloader.php');
+//now let us get on with it
 require_once('router.php');
 
 }//end namespace

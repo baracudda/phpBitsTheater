@@ -16,7 +16,6 @@
  */
 
 namespace com\blackmoonit\bits_theater\app\model;
-use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\bits_theater\app\Model;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
@@ -39,8 +38,8 @@ abstract class KeyValueModel extends Model implements ArrayAccess {
 		return $this->tbl_.static::TABLE_NAME;
 	}
 	
-	public function setup(Director $aDirector, $aDbConn) {
-		parent::setup($aDirector, $aDbConn);
+	public function setupAfterDbConnected() {
+		parent::setupAfterDbConnected();
 		$this->sql_value_select = "SELECT * FROM {$this->getTableName()} WHERE namespace = :ns AND ".
 				static::MAPKEY_NAME." = :key";
 		$this->sql_value_update = "UPDATE {$this->getTableName()} SET value=:new_value WHERE namespace = :ns AND ".

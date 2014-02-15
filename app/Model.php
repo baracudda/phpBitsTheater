@@ -16,55 +16,70 @@
  */
 
 namespace com\blackmoonit\bits_theater\app;
+use com\blackmoonit\bits_theater\app\Director;
 use com\blackmoonit\database\GenericDb as BaseModel;
 use com\blackmoonit\database\DbUtils;
+use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
 use \ReflectionClass;
 use \PDOException;
-use com\blackmoonit\exceptions\DbException;
 {//begin namespace
 
 /**
  * Base class for Models.
  */
 class Model extends BaseModel {
-	const _SetupArgCount = 2; //number of args required to call the setup() method.
-	public $tbl_;
-	public $director;
+	const _SetupArgCount = 1; //number of args required to call the setup() method.
+	/**
+	 * Use the named connection found in director->dbConnInfo[].
+	 * @var string
+	 */
+	const dbConnName = 'webapp';
+	public $tbl_ = '';
+	public $director = null;
+	public $myDbConnInfo = null;
 	
 	/**
-	 * Setup Model for use.
+	 * Setup Model for use; connect to db if not done yet.
 	 * @param Director $aDirector - site director object
-	 * @param array $aDbConn - use this connection. If null, create a new one.
 	 */
-	public function setup(Director $aDirector, $aDbConn) {
+	public function setup(Director $aDirector) {
 		$this->director = $aDirector;
-		$this->tbl_ = $this->director->table_prefix;
-		if (is_null($aDbConn))
-			$this->connect($this->getDbConnInfo());
-		else {
-			$this->db = $aDbConn;
+		$this->myDbConnInfo = $this->director->getDbConnInfo(static::dbConnName);
+		try {
+			$this->db = $this->myDbConnInfo->connect();
+		} catch (PDOException $pdoe) {
+			throw new DbException($pdoe,'Failed to connect'.(!empty($this->myDbConnInfo->dbName) ? ' to '.$this->myDbConnInfo->dbName : ''));
+		}
+		if (!empty($this->db)) {
+			$this->setupAfterDbConnected();
 		}
 		$this->bHasBeenSetup = true;
 	}
 	
 	public function cleanup() {
 		unset($this->db);
+		unset($this->myDbConnInfo);
 		unset($this->tbl_);
 		unset($this->director);
 		parent::cleanup();
 	}
 	
 	static public function newModel($aModelClassName, Director $aDirector) {
-		return new $aModelClassName($aDirector, $aDirector->dbConn);
+		return new $aModelClassName($aDirector);
+	}
+	
+	/**
+	 * Descendants may wish to override this method to handle more stuff after 
+	 * a successful db connection is made. Should probably include on first line:
+	 * parent::setupAfterDbConnected().
+	 */
+	protected function setupAfterDbConnected() {
+		$this->tbl_ = $this->myDbConnInfo->table_prefix;
 	}
 	
 	public function isConnected() {
 		return (isset($this->db));
-	}
-	
-	public function getDbConnInfo() {
-		return DbUtils::readDbConnInfo(BITS_DB_INFO);
 	}
 	
 	/**
@@ -209,16 +224,38 @@ class Model extends BaseModel {
 	
 	//===== static helper functions =====
 	
-	static public function getModelClassPattern() {
-		return BITS_APP_PATH.'model'.¦.'*.php';
+	/**
+	 * Returns the model class pattern used by getModelClassInfos.
+	 * @param string $aModelClassPattern - filename pattern to use, default is '*'. Do not include the '.php' as that is assumed.
+	 * @return string Returns the "glob" pattern matching string.
+	 * @see Model::getModelClassInfos()
+	 */
+	static public function getModelClassPattern($aModelClassPattern='*') {
+		return BITS_APP_PATH.'model'.¦.$aModelClassPattern.'.php';
+	}
+
+	/**
+	 * Get list of all non-abstract model ReflectionClass objects.
+	 * @return array Returns list of all models as a ReflectionClass.
+	 */
+	static public function getAllModelClassInfo() {
+		return self::getModelClassInfos();
 	}
 	
-	static public function getAllModelClassInfo() {
+	/**
+	 * Get a list of models based on the parameter.
+	 * @param string $aModelClassPattern - NULL for all non-abstract models, else a result from getModelClassPattern.
+	 * @param boolean $bIncludeAbstracts - restricts the list to only instantiable classes if FALSE, default is FALSE.
+	 * @return array Returns list of all models that match the pattern as a ReflectionClass.
+	 * @see Model::getModelClassPattern()
+	 */
+	static public function getModelClassInfos($aModelClassPattern=null, $bIncludeAbstracts=false) {
+		$theModelClassPattern = (empty($aModelClassPattern)) ? self::getModelClassPattern() : $aModelClassPattern;
 		$theModels = array();
-		foreach (glob(self::getModelClassPattern()) as $theModelFile) {
+		foreach (glob($theModelClassPattern) as $theModelFile) {
 			$theModelClass = str_replace('.php','',basename($theModelFile));
-			$classInfo = new ReflectionClass(__NAMESPACE__.'\\model\\'.$theModelClass);
-			if (!$classInfo->isAbstract()) {
+			$classInfo = new ReflectionClass(BITS_NAMESPACE_MODEL.$theModelClass);
+			if ($bIncludeAbstracts || !$classInfo->isAbstract()) {
 			    $theModels[] = $classInfo;
 			}
 			unset($classInfo);
@@ -226,9 +263,47 @@ class Model extends BaseModel {
 		return $theModels;
 	}
 	
+	/**
+	 * Given a model list (output of getModelClassInfos), call their method with $args, if applicable.
+	 * @param Director $aDirector - site director object
+	 * @param array[ReflectionClass] $aModelList - list of model ReflectionClass.
+	 * @param string $aMethodName - method to call.
+	 * @param mixed $args - arguments to pass to the method to call.
+	 * @return array Returns an array of key(model class name) => value(function result);
+	 * @see Model::getModelClassInfos()
+	 */
+	static public function callModelMethod(Director $aDirector, array $aModelList, $aMethodName, $args=null) {
+		$theResult = array();
+		if (!is_array($args))
+			$args = array($args);
+		foreach ($aModelList as $modelInfo) {
+			if ($modelInfo->hasMethod($aMethodName)) {
+				$theModel = $aDirector->getProp($modelInfo);
+				$theResult[$modelInfo->getShortName()] = call_user_func_array(array($theModel,$aMethodName),$args);
+			}
+		}
+		return $theResult;
+	}
+	
+	/**
+	 * Calls methodName for every model class that matches the class patern and returns an array of results.
+	 * @param Director $aDirector - site director object
+	 * @param string $aModelClassPattern - NULL for all non-abstract models, else a result from getModelClassPattern.
+	 * @param string $aMethodName - method to call.
+	 * @param mixed $args - arguments to pass to the method to call.\
+	 * @return array Returns an array of key(model class name) => value(function result);
+	 * @see Model::getModelClassInfos()
+	 * @see Model::getModelClassPattern()
+	 * @see Model::callModelMethod()
+	 */
+	static public function foreachModel(Director $aDirector, $aModelClassPattern, $aMethodName, $args=null) {
+		$theModelClassPattern = self::getModelClassPattern($aModelClassPattern);
+		$theModelList = self::getModelClassInfos($theModelClassPattern);
+		return self::callModelMethod($aDirector, $theModelList, $aMethodName, $args);
+	}
+
 	static public function isExistant($aModelName) {
-		$theModelFile = __NAMESPACE__.'\\model\\'.$aModelName.'.php';
-		return file_exists($theModelFile);
+		return file_exists(self::getModelClassPattern($aModelName));
 	}
 	
 	public function getRes($aName) {
@@ -245,6 +320,16 @@ class Model extends BaseModel {
 
 	static public function cnvRowsToArray($aRowSet, $aFieldNameKey, $aFieldNameValue=null) {
 		return DbUtils::cnvRowsToArray($aRowSet,$aFieldNameKey,$aFieldNameValue);
+	}
+	
+	/**
+	 * Returns the URL for this site appended with relative path info.
+	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
+	 * equating to path segments.
+	 * @return string - returns the site domain + relative path URL.
+	 */
+	public function getSiteURL($aRelativeURL='', $_=null) {
+		return call_user_func_array(array($this->director, 'getSiteURL'), func_get_args());
 	}
 	
 }//end class
