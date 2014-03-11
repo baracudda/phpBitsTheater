@@ -158,8 +158,12 @@ class Model extends BaseModel {
 	 * return TRUE iff table exists and is empty.
 	 */	
 	public function isEmpty($aTableName) {
-		$r = $this->query("SELECT 1 FROM $aTableName WHERE EXISTS(SELECT * FROM $aTableName LIMIT 1)");
-		return ($r->fetch()==null);
+		if ($this->exists($aTableName)) {
+			$r = $this->query("SELECT 1 FROM $aTableName WHERE EXISTS(SELECT * FROM $aTableName LIMIT 1)");
+			return ($r->fetch()==null);
+		} else {
+			return false;
+		}
 	}
 	
 	//===== Parameterized queries =====	
