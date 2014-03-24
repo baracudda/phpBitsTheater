@@ -76,7 +76,8 @@ function route_request(Director $aDirector, $aUrl) {
 	} elseif (!$aDirector->isInstalled() && class_exists(BITS_NAMESPACE_ACTOR.'Install')) {
 		$aDirector->raiseCurtain(BITS_NAMESPACE_ACTOR.'Install', 'install');
 	} elseif ($aDirector->isInstalled() && empty($aUrl)) {
-		header('Location: '.BITS_URL.app\config\Settings::PAGE_Landing);
+		$theSettingsClass = BITS_NAMESPACE_CFG.'Settings';
+		header('Location: '.$theSettingsClass::getLandingPage());
 	} else {
 		throw new FourOhFourExit($aUrl);
 	}
@@ -84,6 +85,12 @@ function route_request(Director $aDirector, $aUrl) {
 
 removeMagicQuotes();
 unregisterGlobals();
+if (is_file(BITS_CFG_PATH . 'Settings.php')) {
+	$theSettingsClass = BITS_NAMESPACE_CFG.'Settings';
+	define('WEBAPP_NAMESPACE',$theSettingsClass::getAppNamespace());
+	define('WEBAPP_PATH', BITS_APP_PATH);
+	define('WEBAPP_JS', 'app'.¦.'js'.¦);
+}
 global $director; //exposed as a Global Var so legacy systems can interface with us
 $director = new Director();
 route_request($director, REQUEST_URL);

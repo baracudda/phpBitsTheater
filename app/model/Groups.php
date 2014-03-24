@@ -133,7 +133,7 @@ class Groups extends Model {
 	public function getAcctGroups($aAcctId) {
 		$r = $this->query($this->get_map_accts,array('acct_id'=>$aAcctId));
 		$theResult = array();
-		while ($row = $r->fetch()) {
+		while ($row = $r->fetch() !== false) {
 			$theResult[] = intval($row['group_id']);
 		}
 		return $theResult;

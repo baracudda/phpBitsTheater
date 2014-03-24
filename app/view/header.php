@@ -11,10 +11,6 @@ $aScriptPattern = '<script type="text/javascript" src="'.BITS_LIB.'/%s"></script
 //Theme
 printf($aCssPattern,'bits.css');
 
-//apycom menu
-printf($aCssPattern,'apycom/menu.css');
-//printf($aScriptPattern,'apycom/jquery.js');
-printf($aScriptPattern,'apycom/menu.js');
 
 //jquery
 //printf($aScriptPattern,'jquery/jquery-1.7.min.js');
@@ -23,6 +19,11 @@ print('<script src="//code.jquery.com/jquery-1.10.1.min.js"></script>'."\n");
 //jquery-ui
 //printf($aCssPattern,'jquery-ui/jquery-ui.css');
 //printf($aScriptPattern,'jquery-ui/jquery-ui-1.8.custom.min.js');
+
+//apycom menu (needs to be after jQuery, else use the jquery sublib)
+printf($aCssPattern,'apycom/menu.css');
+//printf($aScriptPattern,'apycom/jquery.js');
+printf($aScriptPattern,'apycom/menu.js');
 
 $jbitsScriptPattern = '<script type="text/javascript" src="'.BITS_LIB.'/com/blackmoonit/jBits/%s"></script>'."\n";
 //minification from http://www.jsmini.com/ using Basic and no jquery included.
@@ -49,6 +50,7 @@ print '    <td>'."\n";
 print '      <a href="'.BITS_URL.'">';
 print '        <span class="title">phpBitsTheater</span>';
 print '      </a>'."\n";
+print("      <em>An ity-bity framework.</em>");
 print '    </td>'."\n";
 //login info
 print '    <td align="right">'."\n";

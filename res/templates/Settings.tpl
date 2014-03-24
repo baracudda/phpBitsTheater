@@ -23,10 +23,16 @@ class Settings extends \stdClass {
 
 	const APP_ID = '%app_id%';
 
+	const APP_NAMESPACE = 'com_mydomain_mywebapp';
+
 	const PAGE_Landing = '/home';
 	
 	static function getAppId() {
 		return self::APP_ID;
+	}
+	
+	static function getAppNamespace() {
+		return self::APP_NAMESPACE;
 	}
 	
 	static function getLandingPage() {

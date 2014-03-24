@@ -44,7 +44,7 @@ define('BITS_CFG_PATH',BITS_APP_PATH.'config'.¦.$_SERVER["SERVER_NAME"].¦);
 
 //domain url
 define('SERVER_URL',((array_key_exists('HTTPS',$_SERVER) && $_SERVER['HTTPS']=='on')?'https':'http').'://'.$_SERVER['SERVER_NAME'].
-		(($_SERVER["SERVER_PORT"]=="80")?'':':'.$_SERVER["SERVER_PORT"]).'/');
+		(($_SERVER["SERVER_PORT"]=="80" || $_SERVER["SERVER_PORT"]=="443")?'':':'.$_SERVER["SERVER_PORT"]).'/');
 //relative urls
 define('REQUEST_URL',array_key_exists('url',$_GET)?$_GET['url']:'');
 define('BITS_URL',dirname($_SERVER['SCRIPT_NAME']));
