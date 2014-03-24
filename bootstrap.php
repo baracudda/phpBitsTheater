@@ -41,6 +41,7 @@ define('BITS_LIB_PATH',BITS_PATH.'lib'.¦);
 define('BITS_RES_PATH',BITS_PATH.'res'.¦);
 define('BITS_APP_PATH',BITS_PATH.'app'.¦);
 define('BITS_CFG_PATH',BITS_APP_PATH.'config'.¦.$_SERVER["SERVER_NAME"].¦);
+define('WEBAPP_PATH', BITS_APP_PATH);
 
 //domain url
 define('SERVER_URL',((array_key_exists('HTTPS',$_SERVER) && $_SERVER['HTTPS']=='on')?'https':'http').'://'.$_SERVER['SERVER_NAME'].
@@ -51,6 +52,8 @@ define('BITS_URL',dirname($_SERVER['SCRIPT_NAME']));
 define('BITS_RES',BITS_URL.'/res');
 define('BITS_LIB',BITS_URL.'/lib');
 //no need for app url as that is where all the urls normally get routed towards.
+define('WEBAPP_JS_URL', 'app/js');
+
 
 
 /**********************************

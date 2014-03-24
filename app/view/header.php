@@ -11,9 +11,7 @@ $aScriptPattern = '<script type="text/javascript" src="'.BITS_LIB.'/%s"></script
 //Theme
 printf($aCssPattern,'bits.css');
 
-
 //jquery
-//printf($aScriptPattern,'jquery/jquery-1.7.min.js');
 print('<script src="//code.jquery.com/jquery-1.10.1.min.js"></script>'."\n");
 
 //jquery-ui
@@ -33,6 +31,15 @@ printf($jbitsScriptPattern,'jbits_mini.js');
 printf($jbitsScriptPattern,'BasicObj.js');
 printf($jbitsScriptPattern,'AjaxDataUpdater.js');
 /* end of jBits JS */
+
+$webappJsPattern = '<script type="text/javascript" src="'.WEBAPP_JS_URL.'/%s"></script>'."\n";
+//minification from http://www.jsmini.com/ using Basic and no jquery included.
+//printf($webappJsPattern,'webapp_mini.js');
+//  !-remove the below space and comment out the above line to debug un-minified JS code
+/* * /
+ printf($webappJsPattern,'webapp.js');
+printf($webappJsPattern,'AnotherFile.js');
+/* end of webapp JS */
 
 
 print "</head>\n";

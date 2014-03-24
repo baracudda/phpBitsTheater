@@ -62,13 +62,17 @@ class Strings {
 	/**
 	 * Captures the var_export() of what is passed in.
 	 * @param mixed $aVar - variable to capture export output
-	 * @param string $aNewLineReplacement - (optional) default is space ' '.
+	 * @param string $aNewLineReplacement - (optional) default is space ' ', null = no replacement.
 	 * @return string Returns the captured export output as string.
 	 */
 	static public function exportStr($aVar, $aNewLineReplacement=' ') {
 		ob_start();
 		var_export($aVar);
-		return str_replace("\n",$aNewLineReplacement,ob_get_clean());
+		if (isset($aNewLineReplacement)) {
+			return str_replace("\n",$aNewLineReplacement,ob_get_clean());
+		} else {
+			return ob_get_clean();
+		}
 	}
 	
 	/**
@@ -180,13 +184,17 @@ class Strings {
 	/**
 	 * Captures the var_dump() of what is passed in.
 	 * @param mixed $aVar - variable to capture debug output
-	 * @param string $aNewLineReplacement - (optional) default is space ' '.
+	 * @param string $aNewLineReplacement - (optional) default is space ' ', null = no replacement.
 	 * @return string Returns the captured debug output as string.
 	 */
 	static public function debugStr($aVar, $aNewLineReplacement=' ') {
 		ob_start();
 		var_dump($aVar);
-		return str_replace("\n",$aNewLineReplacement,ob_get_clean());
+		if (isset($aNewLineReplacement)) {
+			return str_replace("\n",$aNewLineReplacement,ob_get_clean());
+		} else {
+			return ob_get_clean();
+		}
 	}
 
 	/**

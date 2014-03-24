@@ -88,8 +88,6 @@ unregisterGlobals();
 if (is_file(BITS_CFG_PATH . 'Settings.php')) {
 	$theSettingsClass = BITS_NAMESPACE_CFG.'Settings';
 	define('WEBAPP_NAMESPACE',$theSettingsClass::getAppNamespace());
-	define('WEBAPP_PATH', BITS_APP_PATH);
-	define('WEBAPP_JS', 'app'.¦.'js'.¦);
 }
 global $director; //exposed as a Global Var so legacy systems can interface with us
 $director = new Director();
