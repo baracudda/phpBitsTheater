@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\res;
+namespace BitsTheater\res;
 {//begin namespace
 
 class Permissions extends Resources {

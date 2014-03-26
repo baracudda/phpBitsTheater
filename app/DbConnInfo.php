@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app;
+namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseDbConnInfo;
 use com\blackmoonit\Strings;
 use com\blackmoonit\database\DbUtils;

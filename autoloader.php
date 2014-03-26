@@ -15,24 +15,18 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater;
 use com\blackmoonit\Strings;
-{//namespace begin
 
 /*
  * @param string $aClassName
  * 		Class or Interface name automatically passed to this function by the PHP Interpreter.
  */
-function autoloader($aClassName) {
+function BitsTheater_autoloader($aClassName) {
 	//debugLog('al1: '.$aClassName);
-	//if (!Strings::beginsWith($aClassName,BITS_NAMESPACE_BASE)) return;
-	if (Strings::beginsWith($aClassName,BITS_NAMESPACE_CFG)) {
+	if (Strings::beginsWith($aClassName,BITS_NAMESPACE_CFGS)) {
 		//cfg_path incorporates $_SERVER['SERVER_NAME'] so that live config and localhost sandbox can coexist and avoids
 		//  getting overwritten accidentally if checked into a source code control mechanism
-		$theClassNamePath = BITS_CFG_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName,BITS_NAMESPACE_CFG)).'.php';
-	} elseif (Strings::beginsWith($aClassName,BITS_NAMESPACE_APP)) {
-		//convert namespace format ns\sub-ns\classname into folder paths
-		$theClassNamePath = BITS_APP_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName,BITS_NAMESPACE_APP)).'.php';
+		$theClassNamePath = BITS_CFG_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName,BITS_NAMESPACE_CFGS)).'.php';
 	} elseif (Strings::beginsWith($aClassName,BITS_NAMESPACE_RES)) {
 		//convert namespace format ns\sub-ns\classname into folder paths
 		$theClassFile = str_replace('\\', ¦, Strings::strstr_after($aClassName,BITS_NAMESPACE_RES)).'.php';
@@ -40,6 +34,9 @@ function autoloader($aClassName) {
 			$theClassNamePath = BITS_RES_PATH.'i18n'.¦.$theClassFile;
 		else
 			$theClassNamePath = BITS_RES_PATH.$theClassFile;
+	} elseif (Strings::beginsWith($aClassName,BITS_NAMESPACE)) {
+		//convert namespace format ns\sub-ns\classname into folder paths
+		$theClassNamePath = BITS_APP_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName,BITS_NAMESPACE)).'.php';
 	} elseif (defined('WEBAPP_NAMESPACE') && Strings::beginsWith($aClassName, WEBAPP_NAMESPACE)) {
 		//convert namespace format ns\sub-ns\classname into folder paths, starting from the BITS APP namespace.
 		$theClassNamePath = BITS_APP_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName,WEBAPP_NAMESPACE)).'.php';
@@ -53,5 +50,4 @@ function autoloader($aClassName) {
 	}
 }
 
-spl_autoload_register(BITS_NAMESPACE_BASE .'\autoloader');
-}//end namespace
+spl_autoload_register('BitsTheater_autoloader');

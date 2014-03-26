@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app\model;
-use com\blackmoonit\bits_theater\app\Model;
+namespace BitsTheater\models;
+use BitsTheater\Model;
 use com\blackmoonit\exceptions\DbException;
 {
 
@@ -133,7 +133,7 @@ class Groups extends Model {
 	public function getAcctGroups($aAcctId) {
 		$r = $this->query($this->get_map_accts,array('acct_id'=>$aAcctId));
 		$theResult = array();
-		while ($row = $r->fetch() !== false) {
+		while (($row = $r->fetch()) !== false) {
 			$theResult[] = intval($row['group_id']);
 		}
 		return $theResult;

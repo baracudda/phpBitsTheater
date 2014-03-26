@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app\model; 
-use com\blackmoonit\bits_theater\app\Model;
-use com\blackmoonit\bits_theater\app\config\Settings;
+namespace BitsTheater\models; 
+use BitsTheater\Model;
+use BitsTheater\configs\Settings;
 {//namespace begin
 
 abstract class AuthBase extends Model {

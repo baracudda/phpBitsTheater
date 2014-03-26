@@ -1,6 +1,6 @@
 <?php
-namespace com\blackmoonit\bits_theater\res\en;
-use com\blackmoonit\bits_theater\res\Permissions as ResPerms;
+namespace BitsTheater\res\en;
+use BitsTheater\res\Permissions as ResPerms;
 {
 
 class Permissions extends ResPerms {

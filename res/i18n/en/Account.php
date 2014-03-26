@@ -1,13 +1,13 @@
 <?php
-namespace com\blackmoonit\bits_theater\res\en;
-use com\blackmoonit\bits_theater\res\Resources;
+namespace BitsTheater\res\en;
+use BitsTheater\res\Resources;
 {//begin namespace
 
 class Account extends Resources {
 
 	public $label_login = 'Login';
 	public $label_logout = 'Logout';
-	public $label_name = 'Name';
+	public $label_name = 'Username';
 	public $label_email = 'Email';
 	public $label_pwinput = 'Password';
 	public $label_pwconfirm = 'Confirm Password';

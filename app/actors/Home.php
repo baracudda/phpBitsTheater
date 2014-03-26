@@ -1,6 +1,6 @@
 <?php
-namespace com\blackmoonit\bits_theater\app\actor; 
-use com\blackmoonit\bits_theater\app\Actor;
+namespace BitsTheater\actors;
+use BitsTheater\Actor;
 {//namespace begin
 
 class Home extends Actor {

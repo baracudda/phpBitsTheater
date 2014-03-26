@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app\scene; 
-use com\blackmoonit\bits_theater\app\Scene;
-use com\blackmoonit\bits_theater\app\model\Auth;
+namespace BitsTheater\scenes; 
+use BitsTheater\Scene;
+use BitsTheater\models\Auth;
 {//namespace begin
 
 class Account extends Scene {

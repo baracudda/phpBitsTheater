@@ -15,19 +15,19 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app\config;
+namespace BitsTheater\configs;
 {//begin namespace
 
 final class I18N extends \stdClass {
 	const DEFAULT_LANG = '%default_lang%';
 	const DEFAULT_REGION = '%default_region%';
-	private $userLang = self::DEFAULT_LANG;
-	private $userRegion = self::DEFAULT_REGION;
-	private $resPathBase = BITS_RES_PATH;
-	private $resPathLang;
-	private $resPathRegion;
-	private $resDefaultPathLang;
-	private $resDefaultPathRegion;
+	public $userLang = self::DEFAULT_LANG;
+	public $userRegion = self::DEFAULT_REGION;
+	public $resPathBase = BITS_RES_PATH;
+	public $resPathLang;
+	public $resPathRegion;
+	public $resDefaultPathLang;
+	public $resDefaultPathRegion;
 	
 	public function __construct($aUserI18n=null) {
 		$this->resDefaultPathLang = $this->resPathBase.'i18n'.¦.self::DEFAULT_LANG.¦;
@@ -40,8 +40,10 @@ final class I18N extends \stdClass {
 	
 	public function setUserI18n($aUserI18n) {
 		$theUserI18nParts = explode('/',$aUserI18n);
-		$this->resPathLang = $this->resPathBase.'i18n'.¦.array_shift($theUserI18nParts).¦;
-		$this->resPathRegion = $this->resPathLang.array_shift($theUserI18nParts).¦;
+		$this->userRegion = array_shift($theUserI18nParts);
+		$this->userLang = array_shift($theUserI18nParts);
+		$this->resPathLang = $this->resPathBase.'i18n'.¦.$this->userLang.¦;
+		$this->resPathRegion = $this->resPathLang.$this->userRegion.¦;
 	}
 	
 	public function isUsingDefault() {

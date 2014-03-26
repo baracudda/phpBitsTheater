@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app\model;
-use com\blackmoonit\bits_theater\app\Model;
+namespace BitsTheater\models;
+use BitsTheater\Model;
 {//namespace begin
 
 class SetupDb extends Model {

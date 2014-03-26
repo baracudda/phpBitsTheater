@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app;
-use com\blackmoonit\bits_theater\app\Director;
+namespace BitsTheater;
+use BitsTheater\Director;
 use com\blackmoonit\database\GenericDb as BaseModel;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\exceptions\DbException;
@@ -235,7 +235,7 @@ class Model extends BaseModel {
 	 * @see Model::getModelClassInfos()
 	 */
 	static public function getModelClassPattern($aModelClassPattern='*') {
-		return BITS_APP_PATH.'model'.¦.$aModelClassPattern.'.php';
+		return BITS_APP_PATH.'models'.¦.$aModelClassPattern.'.php';
 	}
 
 	/**
@@ -257,8 +257,9 @@ class Model extends BaseModel {
 		$theModelClassPattern = (empty($aModelClassPattern)) ? self::getModelClassPattern() : $aModelClassPattern;
 		$theModels = array();
 		foreach (glob($theModelClassPattern) as $theModelFile) {
-			$theModelClass = str_replace('.php','',basename($theModelFile));
-			$classInfo = new ReflectionClass(BITS_NAMESPACE_MODEL.$theModelClass);
+			$theModelName = str_replace('.php','',basename($theModelFile));
+			$theModelClass = Director::getModelClass($theModelName);
+			$classInfo = new ReflectionClass($theModelClass);
 			if ($bIncludeAbstracts || !$classInfo->isAbstract()) {
 			    $theModels[] = $classInfo;
 			}

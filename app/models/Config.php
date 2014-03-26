@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app\model; 
-use com\blackmoonit\bits_theater\app\model\KeyValueModel;
+namespace BitsTheater\models; 
+use BitsTheater\models\KeyValueModel;
 {//namespace begin
 
 class Config extends KeyValueModel {

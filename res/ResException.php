@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\res;
-use com\blackmoonit\bits_theater\app\config\I18N;
+namespace BitsTheater\res;
+use BitsTheater\configs\I18N;
 use com\blackmoonit\exceptions\DebuggableExceptionTrait;
 use com\blackmoonit\exceptions\IDebuggableException;
 use \Exception;

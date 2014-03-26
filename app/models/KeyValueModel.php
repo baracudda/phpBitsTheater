@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app\model;
-use com\blackmoonit\bits_theater\app\Model;
+namespace BitsTheater\models;
+use BitsTheater\Model;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\FinallyBlock;

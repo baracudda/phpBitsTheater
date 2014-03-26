@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app;
+namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseScene;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
@@ -168,7 +168,7 @@ class Scene extends BaseScene {
 		$this->checkMobileDevice();
 
 		$this->form_name = 'form_'.$this->_action;
-		$this->view_path = BITS_APP_PATH.'view'.DIRECTORY_SEPARATOR;
+		$this->view_path = BITS_APP_PATH.'views'.DIRECTORY_SEPARATOR;
 		$this->actor_view_path = $this->view_path.$this->_actor->mySimpleClassName.DIRECTORY_SEPARATOR;
 		$this->page_header = $this->getViewPath($this->actor_view_path.'header');
 		$this->page_footer = $this->getViewPath($this->actor_view_path.'footer');

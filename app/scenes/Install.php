@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app\scene; 
-use com\blackmoonit\bits_theater\app\Scene;
+namespace BitsTheater\scenes; 
+use BitsTheater\Scene;
 {//namespace begin
 
 class Install extends Scene {

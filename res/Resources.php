@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\res;
+namespace BitsTheater\res;
 use com\blackmoonit\AdamEve as BaseResources;
 use com\blackmoonit\Strings;
 use com\blackmoonit\exceptions\IllegalArgumentException;

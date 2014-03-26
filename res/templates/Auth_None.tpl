@@ -1,6 +1,6 @@
 <?php
 
-namespace com\blackmoonit\bits_theater\app\model;
+namespace BitsTheater\models;
 use com\blackmoonit\Strings;
 {//namespace begin
 

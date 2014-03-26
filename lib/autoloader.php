@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\lib;
+namespace BitsTheater\lib;
 {//begin namespace
 
 /*
@@ -26,8 +26,8 @@ namespace com\blackmoonit\bits_theater\lib;
  */
 if (!defined('CLASS_AUTOLOAD_PATHS')) {
 	define('CLASS_AUTOLOAD_PATHS',
-			BITS_PATH.'lib'.DIRECTORY_SEPARATOR.';'.
-			BITS_PATH.'includes'.DIRECTORY_SEPARATOR.'classes'.DIRECTORY_SEPARATOR.';'.
+			__DIR__.DIRECTORY_SEPARATOR.';'.
+			//__DIR__.DIRECTORY_SEPARATOR.'includes'.DIRECTORY_SEPARATOR.'classes'.DIRECTORY_SEPARATOR.';'.
 			'');
 }
 
@@ -50,11 +50,10 @@ function autoloader($aClassName){
 
 	if (!strpos($aClassName,'\\')) { //only try this section if namespace not detected
 		//try the PEAR style of naming classes
-		$theClassNamePath = str_ireplace('_', DIRECTORY_SEPARATOR, $aClassName);
-		foreach ($folder_list as $theFolder) {
-			$theClassFile = $theFolder.$theClassNamePath.'.php';
-			//\app\debugLog(__NAMESPACE__.$theClassFile);
-			if (is_file($theClassFile) && (include $theClassFile)) {
+		$theClassLibPath = str_ireplace('_', DIRECTORY_SEPARATOR, $aClassName);
+		foreach ($folder_list as $theRootLibFolder) {
+			$theClassFile = $theRootLibFolder.$theClassLibPath.'.php';
+			if (is_file($theClassFile) && (include_once($theClassFile))) {
 				return true;
 			}
 		}
@@ -64,19 +63,17 @@ function autoloader($aClassName){
 	
 	$fileNameFormat_list = explode(';',CLASS_FILENAME_FORMATS);
 	//convert namespace format ns\sub-ns\classname into folder paths
-	$theClassNamePath = str_replace('\\', DIRECTORY_SEPARATOR, $aClassName);
-	$theClassFolder = dirname($theClassNamePath).DIRECTORY_SEPARATOR;
-	$theClassName = basename($theClassNamePath);
-	foreach ($folder_list as $theFolder) {
+	$theClassLibPath = str_replace('\\', DIRECTORY_SEPARATOR, $aClassName);
+	$theClassFolder = dirname($theClassLibPath).DIRECTORY_SEPARATOR;
+	$theClassName = basename($theClassLibPath);
+	foreach ($folder_list as $theRootLibFolder) {
 		foreach ($fileNameFormat_list as $theFileNameFormat) {
 			$theFileName = sprintf($theFileNameFormat,$theClassName);
-			$theClassPath = $theFolder.$theClassFolder.$theFileName;
-			$theClassPathAlt = $theFolder.$theFileName;
-			//\app\debugLog(__NAMESPACE__.$theClassPath);
-			//\app\debugLog(__NAMESPACE__.$theClassPathAlt);
+			$theClassPath = $theRootLibFolder.$theClassFolder.$theFileName;
+			$theClassPathAlt = $theRootLibFolder.$theFileName;
 			if (is_file($theClassPath) || is_file($theClassPathAlt)) {
-				if (include $theClassPath) return true;
-				if (include $theClassPathAlt) return true;
+				if (include_once($theClassPath)) return true;
+				if (include_once($theClassPathAlt)) return true;
 			}
 		}
 	}

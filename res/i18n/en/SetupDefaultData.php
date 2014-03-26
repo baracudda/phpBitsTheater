@@ -1,6 +1,6 @@
 <?php
-namespace com\blackmoonit\bits_theater\res\en;
-use com\blackmoonit\bits_theater\res\Resources;
+namespace BitsTheater\res\en;
+use BitsTheater\res\Resources;
 {
 
 class SetupDefaultData extends Resources {

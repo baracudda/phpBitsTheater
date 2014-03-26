@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app\actor; 
-use com\blackmoonit\bits_theater\app\Actor;
-use com\blackmoonit\bits_theater\res\ResException;
+namespace BitsTheater\actors; 
+use BitsTheater\Actor;
+use BitsTheater\res\ResException;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -106,7 +106,9 @@ class Menus extends Actor {
 	
 	protected function buildMenuFromRes($aRes) {
 		$theMenu = $this->scene->getRes($aRes);
+		//print('<br/><pre>');var_dump($theMenu);print("</pre><br/><br/>\n");
 		//Strings::debugLog($aRes.'='.Strings::debugStr($theMenu));
+
 		//process the menu array/tree first, anything left will be rendered
 		foreach ($theMenu as $theMenuName => &$theMenuItem) {
 			if ($this->isMenuItemRemoved($theMenuName,$theMenuItem)) {

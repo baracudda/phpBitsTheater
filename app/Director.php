@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app;
-use com\blackmoonit\bits_theater\app\Model;
-use com\blackmoonit\bits_theater\app\DbConnInfo;
-use com\blackmoonit\bits_theater\res\ResException;
+namespace BitsTheater;
+use BitsTheater\Model;
+use BitsTheater\DbConnInfo;
+use BitsTheater\res\ResException;
 use com\blackmoonit\AdamEve as BaseDirector;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
@@ -45,7 +45,7 @@ class Director extends BaseDirector implements ArrayAccess {
 			$this->resetSession();
 		}
 		if ($this->isInstalled()) {
-			$this['app_id'] = config\Settings::APP_ID;
+			$this['app_id'] = configs\Settings::APP_ID;
 		}
 		$this->bHasBeenSetup = true;
 	}
@@ -97,11 +97,11 @@ class Director extends BaseDirector implements ArrayAccess {
 	}
 	
 	public function isInstalled() {
-		return class_exists(BITS_NAMESPACE_CFG.'Settings');
+		return class_exists(BITS_NAMESPACE_CFGS.'Settings');
 	}
 
 	public function canCheckTickets() {
-		return $this->canConnectDb() && class_exists(BITS_NAMESPACE_MODEL.'Auth');
+		return $this->canConnectDb() && class_exists(BITS_NAMESPACE_MODELS.'Auth');
 	}
 	
 	public function canConnectDb($aDbConnName='webapp') {
@@ -109,42 +109,52 @@ class Director extends BaseDirector implements ArrayAccess {
 	}
 	
 	public function canGetRes() {
-		return class_exists(BITS_NAMESPACE_CFG.'I18N');
+		return class_exists(BITS_NAMESPACE_CFGS.'I18N');
 	}
 	
-	//===== Actor methods =====
+	
+	//===========================================================
+	//=                     Actor methods                       =
+	//===========================================================
+	static public function getActorClass($anActorName) {
+		$theActorClass = BITS_NAMESPACE_ACTORS.$anActorName;
+		if (!class_exists($theActorClass)) {
+			$theActorClass = WEBAPP_NAMESPACE.'actors\\'.$anActorName;
+		}
+		return $theActorClass;
+	}
 
-	public function raiseCurtain($anActorClass, $anAction, $aQuery=array()) {
-		//Strings::debugLog('rC: class='.$anActorClass.', exist?='.class_exists($anActorClass));
-		if (class_exists($anActorClass)) {
-			if (empty($anAction))
-				$anAction = $anActorClass::DEFAULT_ACTION;
-			$methodExists = method_exists($anActorClass,$anAction) && is_callable(array($anActorClass,$anAction));
-			if ($methodExists && $anActorClass::isActionUrlAllowed($anAction)) {
+	public function raiseCurtain($anActorName, $anAction=null, $aQuery=array()) {
+		$theActorClass = self::getActorClass($anActorName);
+		//Strings::debugLog('rC: class='.$theActorClass.', exist?='.class_exists($theActorClass));
+		if (class_exists($theActorClass)) {
+			$theAction = (!empty($anAction)) ? $anAction : $theActorClass::DEFAULT_ACTION;
+			$methodExists = method_exists($theActorClass,$theAction) && is_callable(array($theActorClass,$theAction));
+			if ($methodExists && $theActorClass::isActionUrlAllowed($theAction)) {
 				if ($this->isInstalled()) {
-					$this['played'] = config\Settings::APP_ID; //app_id -> play_id -> "played"
+					$this['played'] = configs\Settings::APP_ID; //app_id -> play_id -> "played"
 				}
-				//Strings::debugLog('raiseCurtain: '.$anActorClass.', '.$anAction.', '.Strings::debugStr($aQuery));
-				$anActorClass::perform($this,$anAction,$aQuery);
+				//Strings::debugLog('raiseCurtain: '.$theActorClass.', '.$theAction.', '.Strings::debugStr($aQuery));
+				$theActorClass::perform($this,$theAction,$aQuery);
 				return true;
 			} else {
         	    return false;
 			}
 		} else {
+			Strings::debugLog(__NAMESPACE__.': cannot find Actor class: '.$theActorClass);
 			return false;
 		}
 	}
 	
 	public function cue($aScene, $anActorName, $anAction, $args=array()) {
-		$anActorClass = BITS_NAMESPACE_ACTOR.$anActorName;
-		//Strings::debugLog('rC: class='.$anActorClass.', exist?='.class_exists($anActorClass));
-		if (class_exists($anActorClass)) {
-			if (empty($anAction))
-				$anAction = $anActorClass::DEFAULT_ACTION;
+		$theActorClass = self::getActorClass($anActorName);
+		//Strings::debugLog('rC: class='.$theActorClass.', exist?='.class_exists($theActorClass));
+		if (class_exists($theActorClass)) {
+			$theAction = (!empty($anAction)) ? $anAction : $theActorClass::DEFAULT_ACTION;
 			try {
-				$theMethod = new ReflectionMethod($anActorClass,$anAction);
+				$theMethod = new ReflectionMethod($theActorClass,$theAction);
 				//if no exception, instantiate the class and call the method
-				$theActor = new $anActorClass($this,$anAction);
+				$theActor = new $theActorClass($this,$theAction);
 				$theMethod->setAccessible(true); //protected from direct "raiseCurtain" calls, but ok for cue().
 				$args['aScene'] = $aScene; //append the scene of our caller as last param in case called method wants it
 				$theResult = $theMethod->invokeArgs($theActor,$args);
@@ -162,7 +172,27 @@ class Director extends BaseDirector implements ArrayAccess {
 		}
 	}
 	
-	//===== Model methods =====
+	
+	//===========================================================
+	//=                   Model methods                         =
+	//===========================================================
+	/**
+	 * Returns the correct namespace associated with the model name/ReflectionClass.
+	 * @param string/ReflectionClass $aModelName - model name as string or 
+	 * ReflectionClass of model in question.
+	 * @return string Returns the model class name with correct namespace.
+	 */
+	static public function getModelClass($aModelName) {
+		if (is_string($aModelName)) {
+			$theModelClass = BITS_NAMESPACE_MODELS.$aModelName;
+			if (!class_exists($theModelClass)) {
+				$theModelClass = WEBAPP_NAMESPACE.'models\\'.$aModelName;
+			}
+		} elseif ($aModelName instanceof ReflectionClass) {
+			$theModelClass = $aModelName->getName();
+		}
+		return $theModelClass;
+	}
 	
 	public function getDbConnInfo($aDbConnName='webapp') {
 		if (empty($this->dbConnInfo[$aDbConnName])) {
@@ -172,10 +202,9 @@ class Director extends BaseDirector implements ArrayAccess {
 	}
 	
 	public function getModel($aModelClass) {
-		if (is_string($aModelClass)) {
-			$theModelClass = BITS_NAMESPACE_MODEL.$aModelClass;
-		} elseif ($aModelClass instanceof ReflectionClass) {
-			$theModelClass = $aModelClass->getName();
+		$theModelClass = self::getModelClass($aModelClass);
+		if (!class_exists($theModelClass)) {
+			Strings::debugLog(__NAMESPACE__.': cannot find Model class: '.$theModelClass);
 		}
 		if (empty($this->_propMaster[$theModelClass])) {
 			$this->_propMaster[$theModelClass]['model'] = new $theModelClass($this);
@@ -209,12 +238,42 @@ class Director extends BaseDirector implements ArrayAccess {
 	}
 	
 	
-	//===== RESOURCE management =====
+	/**
+	 * Calls methodName for every model class that matches the class patern and returns an array of results.
+	 * @param string $aModelClassPattern - NULL for all non-abstract models, else a result from getModelClassPattern.
+	 * @param string $aMethodName - method to call.
+	 * @param mixed $args - arguments to pass to the method to call.
+	 * @return array Returns an array of key(model class name) => value(function result);
+	 * @see Model::foreachModel()
+	 */
+	public function foreachModel($aModelClassPattern, $aMethodName, $args=null) {
+		return Model::foreachModel($this, $aModelClassPattern, $aMethodName, $args);
+	}
+	
+	
+	//===========================================================
+	//=                  Scene methods                          =
+	//===========================================================
+	
+	static public function getSceneClass($anActorName) {
+		$theSceneClass = BITS_NAMESPACE_SCENES.$anActorName;
+		if (!class_exists($theSceneClass)) {
+			$theSceneClass = WEBAPP_NAMESPACE.'scenes\\'.$anActorName;
+		}
+		if (!class_exists($theSceneClass))
+			$theSceneClass = BITS_NAMESPACE.'Scene';
+		return $theSceneClass;
+	}
+	
+	
+	//===========================================================
+	//=               RESOURCE management                       =
+	//===========================================================
 
 	public function getRes($aResName) {
 		if (empty($this->_resManager)) {
 			//TODO create a user config for "en/US" and pass that into the constructor. (lang/region) 
-			$this->_resManager = new config\I18N();
+			$this->_resManager = new configs\I18N();
 		}
 		//explode on "\" or "/"
 		$theResUri = explode('/',str_replace('\\','/',$aResName));
@@ -229,6 +288,7 @@ class Director extends BaseDirector implements ArrayAccess {
 		//$this->debugPrint('res name='.$theResClassName.', res class='.$theResClass.' / '.$this->debugStr($theRes));
 		try {
 			$theResClass = $this->_resManager->includeResClass($theResClassName);
+			//Strings::debugLog('res='.$aResName.' cls='.$theResClass);
 			if (!empty($theResUri))
 				return $this->loadRes($theResClass,$theRes,$theResUri);
 			else
@@ -276,7 +336,9 @@ class Director extends BaseDirector implements ArrayAccess {
 		array_walk($this->_resMaster, function(&$n) {$n = null;} );
 	}
 
-	//===== LOGIN INFO ========
+	//===========================================================
+	//=                   LOGIN INFO                            =
+	//===========================================================
 	
 	public function admitAudience() {
 		if ($this->canCheckTickets()) {
@@ -332,18 +394,6 @@ class Director extends BaseDirector implements ArrayAccess {
 		} else {
 			return "";
 		}
-	}
-	
-	/**
-	 * Calls methodName for every model class that matches the class patern and returns an array of results.
-	 * @param string $aModelClassPattern - NULL for all non-abstract models, else a result from getModelClassPattern.
-	 * @param string $aMethodName - method to call.
-	 * @param mixed $args - arguments to pass to the method to call.
-	 * @return array Returns an array of key(model class name) => value(function result);
-	 * @see Model::foreachModel()
-	 */
-	public function foreachModel($aModelClassPattern, $aMethodName, $args=null) {
-		return Model::foreachModel($this, $aModelClassPattern, $aMethodName, $args);
 	}
 
 }//end class

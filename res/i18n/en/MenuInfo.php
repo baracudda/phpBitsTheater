@@ -1,6 +1,6 @@
 <?php
-namespace com\blackmoonit\bits_theater\res\en;
-use com\blackmoonit\bits_theater\res\MenuInfo as ResMenuInfo;
+namespace BitsTheater\res\en;
+use BitsTheater\res\MenuInfo as ResMenuInfo;
 {//begin namespace
 
 class MenuInfo extends ResMenuInfo {

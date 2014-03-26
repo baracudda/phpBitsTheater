@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app;
+namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseActor;
 use com\blackmoonit\Strings;
 use \ReflectionClass;
@@ -43,11 +43,10 @@ class Actor extends BaseActor {
 	public function setup(Director $aDirector, $anAction) {
 		$this->director = $aDirector;
 		$this->action = $anAction;
-		$theSceneClass = BITS_NAMESPACE_SCENE.$this->mySimpleClassName.'\\'.$anAction;
-		if (!class_exists($theSceneClass))
-			$theSceneClass = BITS_NAMESPACE_SCENE.$this->mySimpleClassName;
-		if (!class_exists($theSceneClass))
-			$theSceneClass = BITS_NAMESPACE_APP.'Scene';
+		$theSceneClass = Director::getSceneClass($this->mySimpleClassName);
+		if (!class_exists($theSceneClass)) {
+			Strings::debugLog(__NAMESPACE__.': cannot find Scene class: '.$theSceneClass);
+		}
 		$this->scene = new $theSceneClass($this,$anAction);
 		$this->bHasBeenSetup = true;
 	}
@@ -115,9 +114,9 @@ class Actor extends BaseActor {
 						return $theResult;
 					} catch (Exception $e) {
 						syslog(LOG_ERR,'load config model failed: '.$e->getMessage());
-						return null;
 					}
 				}
+				return null;
 			default:
 				if ($this->director->isDebugging())
 					throw new Exception('Cannot find actor->'.$aName.', check spelling.');
@@ -189,7 +188,7 @@ class Actor extends BaseActor {
 	}
 	
 	public function getHomePage() {
-		return BITS_URL.config\Settings::getLandingPage();
+		return BITS_URL.'/'.configs\Settings::getLandingPage();
 	}
 	
 	public function throwPermissionDenied($aMsg='') {

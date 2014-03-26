@@ -15,20 +15,22 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater;
-use com\blackmoonit\bits_theater\app\Director;
+namespace BitsTheater;
+use BitsTheater\Director;
 use com\blackmoonit\Strings;
 use com\blackmoonit\exceptions\FourOhFourExit;
 {//begin namespace
 
-/*
- * Check for Magic Quotes and remove them.
+/**
+ * Given an array or single value, return stripslashes() on it. Recursive function.
  */
 function stripSlashesDeep($value) {
-	$value = is_array($value) ? array_map('stripSlashesDeep', $value) : stripslashes($value);
-	return $value;
+	return (is_array($value)) ? array_map('stripSlashesDeep', $value) : stripslashes($value);
 }
 
+/**
+ * Check for Magic Quotes and remove them.
+ */
 function removeMagicQuotes() {
 	if ( get_magic_quotes_gpc() ) {
 		$_GET    = stripSlashesDeep($_GET   );
@@ -37,7 +39,7 @@ function removeMagicQuotes() {
 	}
 }
 
-/*
+/**
  * Check register globals and remove them since they are copies 
  * of the PHP global vars and are security risks.
  */
@@ -54,30 +56,28 @@ function unregisterGlobals() {
     }
 }
 
-/*
+/**
  * Route the URL requested to the approprate actor.
  */
 function route_request(Director $aDirector, $aUrl) {
 	//passing in the ?url= (which .htaccess gives us) rather than $_SERVER['REQUEST_URI']
-	if ($aDirector->isDebugging()) Strings::debugLog('aUrl='.$aUrl);
+	//if ($aDirector->isDebugging()) Strings::debugLog('aUrl='.$aUrl);
 	//if ($aDirector->isDebugging() && $aUrl=='phpinfo') { print(phpinfo()); return; }
 	if (!empty($aUrl)) {
 		$urlPathList = explode("/",$aUrl);
-		$theActorClass = array_shift($urlPathList);
+		$theActorName = Strings::getClassName(array_shift($urlPathList));
 		$theAction = array_shift($urlPathList);
 		$theQuery = $urlPathList; //whatever is left
 	}
-	if (!empty($theActorClass)) {
-		$theActorClass = BITS_NAMESPACE_ACTOR.Strings::getClassName($theActorClass);
+	if (!empty($theActorName)) {
 		$theAction = Strings::getMethodName($theAction);
-		if (!$aDirector->raiseCurtain($theActorClass,$theAction,$theQuery)) {
+		if (!$aDirector->raiseCurtain($theActorName,$theAction,$theQuery)) {
 			throw new FourOhFourExit($aUrl);
 		}
-	} elseif (!$aDirector->isInstalled() && class_exists(BITS_NAMESPACE_ACTOR.'Install')) {
-		$aDirector->raiseCurtain(BITS_NAMESPACE_ACTOR.'Install', 'install');
+	} elseif (!$aDirector->isInstalled() && class_exists(BITS_NAMESPACE_ACTORS.'Install')) {
+		$aDirector->raiseCurtain('Install', 'install');
 	} elseif ($aDirector->isInstalled() && empty($aUrl)) {
-		$theSettingsClass = BITS_NAMESPACE_CFG.'Settings';
-		header('Location: '.$theSettingsClass::getLandingPage());
+		header('Location: ' . configs\Settings::getLandingPage());
 	} else {
 		throw new FourOhFourExit($aUrl);
 	}
@@ -85,10 +85,6 @@ function route_request(Director $aDirector, $aUrl) {
 
 removeMagicQuotes();
 unregisterGlobals();
-if (is_file(BITS_CFG_PATH . 'Settings.php')) {
-	$theSettingsClass = BITS_NAMESPACE_CFG.'Settings';
-	define('WEBAPP_NAMESPACE',$theSettingsClass::getAppNamespace());
-}
 global $director; //exposed as a Global Var so legacy systems can interface with us
 $director = new Director();
 route_request($director, REQUEST_URL);

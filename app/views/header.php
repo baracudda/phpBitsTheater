@@ -56,7 +56,7 @@ print '    </td>'."\n";
 print '    <td>'."\n";
 print '      <a href="'.BITS_URL.'">';
 print '        <span class="title">phpBitsTheater</span>';
-print '      </a>'."\n";
+print '      </a>'."<br />\n";
 print("      <em>An ity-bity framework.</em>");
 print '    </td>'."\n";
 //login info

@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater\app\actor; 
-use com\blackmoonit\bits_theater\app\Actor;
+namespace BitsTheater\actors; 
+use BitsTheater\Actor;
 use com\blackmoonit\Widgets;
 {//namespace begin
 

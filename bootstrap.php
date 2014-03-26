@@ -15,23 +15,25 @@
  * limitations under the License.
  */
 
-/*
- * You are highly encouraged to find/replace this namespace with your own. (search for *.php and *.tpl)
- */
-namespace com\blackmoonit\bits_theater;
+namespace BitsTheater;
 {//namespace begin
 
 /**********************************
  * define required CONSTANTS
  **********************************/
 //namespaces
-define('BITS_NAMESPACE_BASE',__NAMESPACE__);
-define('BITS_NAMESPACE_APP',BITS_NAMESPACE_BASE.'\\app\\');
-define('BITS_NAMESPACE_RES',BITS_NAMESPACE_BASE.'\\res\\');
-define('BITS_NAMESPACE_ACTOR',BITS_NAMESPACE_APP.'actor\\');
-define('BITS_NAMESPACE_CFG',BITS_NAMESPACE_APP.'config\\');
-define('BITS_NAMESPACE_MODEL',BITS_NAMESPACE_APP.'model\\');
-define('BITS_NAMESPACE_SCENE',BITS_NAMESPACE_APP.'scene\\');
+define('BITS_NAMESPACE',__NAMESPACE__.'\\');
+define('BITS_NAMESPACE_RES',BITS_NAMESPACE.'res\\');
+define('BITS_NAMESPACE_ACTORS',BITS_NAMESPACE.'actors\\');
+define('BITS_NAMESPACE_CFGS',BITS_NAMESPACE.'configs\\');
+define('BITS_NAMESPACE_MODELS',BITS_NAMESPACE.'models\\');
+define('BITS_NAMESPACE_SCENES',BITS_NAMESPACE.'scenes\\');
+
+//========================
+//=     CHANGE ME!       =
+define('WEBAPP_NAMESPACE','MyWebAppNamespace\\'); //always end with "\\"
+//========================
+//========================
 
 //paths
 define('¦',DIRECTORY_SEPARATOR);
@@ -40,7 +42,7 @@ define('BITS_PATH',BITS_ROOT.¦);
 define('BITS_LIB_PATH',BITS_PATH.'lib'.¦);
 define('BITS_RES_PATH',BITS_PATH.'res'.¦);
 define('BITS_APP_PATH',BITS_PATH.'app'.¦);
-define('BITS_CFG_PATH',BITS_APP_PATH.'config'.¦.$_SERVER["SERVER_NAME"].¦);
+define('BITS_CFG_PATH',BITS_APP_PATH.'configs'.¦.$_SERVER["SERVER_NAME"].¦);
 define('WEBAPP_PATH', BITS_APP_PATH);
 
 //domain url
@@ -53,7 +55,6 @@ define('BITS_RES',BITS_URL.'/res');
 define('BITS_LIB',BITS_URL.'/lib');
 //no need for app url as that is where all the urls normally get routed towards.
 define('WEBAPP_JS_URL', 'app/js');
-
 
 
 /**********************************

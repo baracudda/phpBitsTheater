@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace com\blackmoonit\bits_theater;
+namespace BitsTheater;
 use com\blackmoonit\Strings;
 use com\blackmoonit\exceptions\IDebuggableException;
 use com\blackmoonit\exceptions\FourOhFourExit;
@@ -35,7 +35,7 @@ try {
 	/* do nothing */
 } catch (IDebuggableException $e) {
 	$e->setDebugCheck(function() {
-			return (!class_exists(BITS_NAMESPACE_CFG.'Settings') || _DEBUG_APP);
+			return (!class_exists(BITS_NAMESPACE_CFGS.'Settings') || _DEBUG_APP);
 		})->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(BITS_ROOT);
 	$e->debugPrint();
 	if (ini_get('log_errors')) {
