@@ -25,6 +25,8 @@ use \Exception;
 
 try { 
 	require_once('bootstrap.php');
+	//now let us get on with it
+	require_once('router.php');
 } catch (FourOhFourExit $e404) {
 	//Strings::debugLog('404 on '.$e404->getMessage());
 	header("HTTP/1.0 404 Not Found");

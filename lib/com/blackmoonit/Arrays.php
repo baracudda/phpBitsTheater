@@ -62,6 +62,14 @@ class Arrays {
 		return array_merge($aArray,array_slice(func_get_args(),1));
 	}
 	
+	static public function array_column($anArray, $aKey) {
+		if (function_exists('array_column')) {
+			return array_column($anArray, $aKey);
+		} else {
+			return array_map(function($e) use (&$aKey) {return $e[$aKey];}, $anArray);
+		}
+	}
+	
 }//end class
 
 }//end namespace

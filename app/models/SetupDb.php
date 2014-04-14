@@ -17,12 +17,15 @@
 
 namespace BitsTheater\models;
 use BitsTheater\Model;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 class SetupDb extends Model {
 
 	public function setupModels($aScene) {
 		$models = self::getAllModelClassInfo();
+		
+		//Strings::debugLog('SetupModels: '.Strings::debugStr($models));
 
 		$this->callModelMethod($this->director, $models,'setupModel',$aScene);
 		$this->callModelMethod($this->director, $models,'setupDefaultData',$aScene);

@@ -20,9 +20,25 @@ use com\blackmoonit\AdamEve as BaseDbClass;
 use com\blackmoonit\database\DbUtils;
 use \PDO;
 use \PDOStatement;
+use \PDOException;
 {//begin namespace
 
 class GenericDb extends BaseDbClass {
+	const DB_TYPE_CUBRID	= 'cubrid';		//Cubrid
+	const DB_TYPE_DBLIB		= 'dblib';		//FreeTDS / Microsoft SQL Server / Sybase
+	const DB_TYPE_FIREBIRD	= 'firebird';	//Firebird/Interbase 6
+	const DB_TYPE_IBM		= 'ibm';		//IBM DB2
+	const DB_TYPE_INFORMIX	= 'informix';	//IBM Informix Dynamic Server
+	const DB_TYPE_MYSQL		= 'mysql';		//MySQL 3.x/4.x/5.x
+	const DB_TYPE_OCI		= 'oci';		//Oracle Call Interface
+	const DB_TYPE_ODBC		= 'odbc';		//ODBC v3 (IBM DB2, unixODBC and win32 ODBC)
+	const DB_TYPE_PGSQL		= 'pgsql';		//PostgreSQL
+	const DB_TYPE_SQLITE	= 'sqlite';		//SQLite 3 and SQLite 2
+	const DB_TYPE_SQLSRV	= 'sqlsrv';		//Microsoft SQL Server / SQL Azure
+	const DB_TYPE_4D		= '4d';			//4D
+			
+	const MAX_RETRY_COUNT = 3;
+	
 	public $db = null;
 
 	/**
@@ -33,15 +49,6 @@ class GenericDb extends BaseDbClass {
 	}
 	
 	/**
-	 * PDO database connection and helper functions.
-	 * @param string/array $aDnsInfo - if string, use as dns (see link for acceptable formats); else array(dns,usr,pwd).
-	 * @link http://php.net/manual/pdo.construct.php
-	 */
-	public function connect($aDnsInfo) {
-		$this->db = $this::getConnection($aDnsInfo);
-	}
-
-	/**
 	 * Get a PDO database connection.
 	 * @param string/array $aDnsInfo - if string, use as dns (see link for acceptable formats); else array(dns,usr,pwd).
 	 * @link http://php.net/manual/pdo.construct.php
@@ -49,6 +56,41 @@ class GenericDb extends BaseDbClass {
 	static public function getConnection($aDnsInfo) {
 		return DbUtils::getPDOConnection($aDnsInfo);
 	}
+
+	/**
+	 * PDO database connection and helper functions.
+	 * @link http://php.net/manual/pdo.construct.php
+	 */
+	public function connect() {
+		$theDnsInfo = $this->getDbConnInfo();
+		if (!empty($theDnsInfo)) {
+			$this->db = $this::getConnection($aDnsInfo);
+	}
+	}
+
+	/**
+	 * Returns the connection info needed to call getConnection().
+	 * Used in base connect() implementation.
+	 */
+	public function getDbConnInfo() {
+		//let descendants handle
+	}
+	
+	/**
+	 * Returns the database connection driver being used.
+	 * cubrid	PDO_CUBRID	Cubrid
+	 * dblib 	PDO_DBLIB 	FreeTDS / Microsoft SQL Server / Sybase
+	 * firebird	PDO_FIREBIRD Firebird/Interbase 6
+	 * ibm		PDO_IBM 	IBM DB2
+	 * informix	PDO_INFORMIX IBM Informix Dynamic Server
+	 * mysql	PDO_MYSQL 	MySQL 3.x/4.x/5.x
+	 * oci		PDO_OCI 	Oracle Call Interface
+	 * odbc		PDO_ODBC 	ODBC v3 (IBM DB2, unixODBC and win32 ODBC)
+	 * pgsql	PDO_PGSQL 	PostgreSQL
+	 * sqlite	PDO_SQLITE 	SQLite 3 and SQLite 2
+	 * sqlsrv	PDO_SQLSRV 	Microsoft SQL Server / SQL Azure
+	 * 4d		PDO_4D		4D
+	 */
 
 	public function dbType() {
 		return DbUtils::getDbType($this->db);
@@ -59,8 +101,8 @@ class GenericDb extends BaseDbClass {
 	 * @param string $aSql
 	 * @param array $aSqlParams
 	 */
-	function isNoResults($aSql, array $aSqlParams) {
-		$theStatement = $this->db->prepare($aSql);
+	public function isNoResults($aSql, array $aSqlParams) {
+		$theStatement = $this->prepareSQL($aSql);
 		foreach ($aSqlParams as $theKey=>$theValue) {
 			$theStatement->bindValue($theKey,$theValue);
 		}
@@ -68,14 +110,37 @@ class GenericDb extends BaseDbClass {
 	}
 	
 	/**
+	 * Params should be ordered array with ? params OR associative array with :label params.
+	 * @param string $aParamSql - the parameterized SQL string.
+	 * @return PDOStatement is returned, ready for binding to params.
+	 * @throws DbException if there is an error.
+	 */
+	public function prepareSQL($aParamSql) {
+		$theRetries = 0;
+		do {
+			try {
+				return $this->db->prepare($aParamSql);
+			} catch (PDOException $pdoe) {
+				if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
+					//connection timed out, reconnect and try again
+					$this->connect();
+				} else {
+					throw $pdoe;
+				}
+			}
+		} while ($theRetries++ < static::MAX_RETRY_COUNT);
+	}
+
+	/**
 	 * Bind each named param with its value.
 	 * @param PDOStatement or string $aStatement - the prepared SQL statement, or SQL string to be prepared.
 	 * @param array $aSqlParams - the values to bind to the prepared statement.
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
+	 * @return PDOStatement returns the passed-in/generated PDOStatement.
 	 */
 	public function bindValues($aStatement, array $aSqlParams, $aParamTypes = NULL) {
 		if (is_string($aStatement))
-			$theStatement = $this->db->prepare($aStatement);
+			$theStatement = $this->prepareSQL($aStatement);
 		else
 			$theStatement = $aStatement;
 		foreach ($aSqlParams as $theKey=>$theValue) {

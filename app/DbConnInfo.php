@@ -39,11 +39,7 @@ class DbConnInfo extends BaseDbConnInfo {
 	}
 	
 	public function cleanup() {
-		if (!empty($this->dbConn)) {
-			//PDO does not have a disconnect at this time
-			//$this->dbConn->disconnect();
-		}
-		unset($this->dbConn);
+		$this->disconnect();
 		parent::cleanup();
 	}
 	
@@ -83,6 +79,9 @@ class DbConnInfo extends BaseDbConnInfo {
 				$this->dbName = $theDbInfo['dbconn']['dbname'];
 			}
 			$this->dbConn = DbUtils::getPDOConnection($theDbInfo);			
+			unset($theDbInfo);
+		} else {
+			throw new DbException(null,'Failed to connect: '.str_replace(BITS_CFG_PATH,'"[%config]'.¦,$this->getConfigFilePath()).'" not found.');
 		}
 		return $this->dbConn;
 	}

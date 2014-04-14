@@ -203,21 +203,22 @@ class Director extends BaseDirector implements ArrayAccess {
 	
 	public function getModel($aModelClass) {
 		$theModelClass = self::getModelClass($aModelClass);
-		if (!class_exists($theModelClass)) {
+		if (class_exists($theModelClass)) {
+			if (empty($this->_propMaster[$theModelClass])) {
+				$this->_propMaster[$theModelClass]['model'] = new $theModelClass($this);
+				$this->_propMaster[$theModelClass]['ref_count'] = 0;
+			}
+			$this->_propMaster[$theModelClass]['ref_count'] += 1;
+			return $this->_propMaster[$theModelClass]['model'];
+		} else {
 			Strings::debugLog(__NAMESPACE__.': cannot find Model class: '.$theModelClass);
 		}
-		if (empty($this->_propMaster[$theModelClass])) {
-			$this->_propMaster[$theModelClass]['model'] = new $theModelClass($this);
-			$this->_propMaster[$theModelClass]['ref_count'] = 0;
-		}
-		$this->_propMaster[$theModelClass]['ref_count'] += 1;
-		return $this->_propMaster[$theModelClass]['model'];
 	}
 	
 	public function unsetModel($aModel) {
 		if (isset($aModel)) {
 			$theModelClass = get_class($aModel);
-			if (isset($this->dbConn) && isset($this->_propMaster[$theModelClass])) {
+			if (isset($this->_propMaster[$theModelClass])) {
 				$this->_propMaster[$theModelClass]['ref_count'] -= 1;
 				if ($this->_propMaster[$theModelClass]['ref_count']<1) {
 					$this->_propMaster[$theModelClass]['model'] = null;

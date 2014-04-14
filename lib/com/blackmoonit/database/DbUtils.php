@@ -18,12 +18,26 @@
 namespace com\blackmoonit\database;
 use com\blackmoonit\Strings;
 use \PDO;
+use \PDOException;
 use \InvalidArgumentException;
 use \RuntimeException;
 use \UnexpectedValueException;
 {//begin namespace
 
 class DbUtils {
+	const DB_TYPE_CUBRID	= 'cubrid';		//Cubrid
+	const DB_TYPE_DBLIB		= 'dblib';		//FreeTDS / Microsoft SQL Server / Sybase
+	const DB_TYPE_FIREBIRD	= 'firebird';	//Firebird/Interbase 6
+	const DB_TYPE_IBM		= 'ibm';		//IBM DB2
+	const DB_TYPE_INFORMIX	= 'informix';	//IBM Informix Dynamic Server
+	const DB_TYPE_MYSQL		= 'mysql';		//MySQL 3.x/4.x/5.x
+	const DB_TYPE_OCI		= 'oci';		//Oracle Call Interface
+	const DB_TYPE_ODBC		= 'odbc';		//ODBC v3 (IBM DB2, unixODBC and win32 ODBC)
+	const DB_TYPE_PGSQL		= 'pgsql';		//PostgreSQL
+	const DB_TYPE_SQLITE	= 'sqlite';		//SQLite 3 and SQLite 2
+	const DB_TYPE_SQLSRV	= 'sqlsrv';		//Microsoft SQL Server / SQL Azure
+	const DB_TYPE_4D		= '4d';			//4D
+			
 	private function __construct() {} //do not instantiate
 
 	/**
@@ -66,11 +80,26 @@ class DbUtils {
 	 * sqlsrv	PDO_SQLSRV 	Microsoft SQL Server / SQL Azure
 	 * 4d		PDO_4D		4D
 	 */
-	static public function getDbType($aDbConn) {
+	static public function getDbType(PDO $aDbConn) {
 		if (isset($aDbConn)) {
 			return $aDbConn->getAttribute(PDO::ATTR_DRIVER_NAME);
 		} else {
 			return '';
+		}
+	}
+
+	/**
+	 * Given a Db connection and a caught exception, see if it was a Timeout Exception.
+	 * @param PDO $aDbConn - a db connection.
+	 * @param PDOException $aPDOException - 
+	 * @return boolean
+	 */
+	static public function isDbConnTimeout(PDO $aDbConn, PDOException $aPDOException) {
+		switch (self::getDbType($aDbConn)) {
+			case self::DB_TYPE_MYSQL:
+				return (strpos($aPDOException->getMessage(), '2006 MySQL') !== false);
+			default:
+				return false;
 		}
 	}
 	

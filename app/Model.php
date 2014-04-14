@@ -45,15 +45,7 @@ class Model extends BaseModel {
 	 */
 	public function setup(Director $aDirector) {
 		$this->director = $aDirector;
-		$this->myDbConnInfo = $this->director->getDbConnInfo(static::dbConnName);
-		try {
-			$this->db = $this->myDbConnInfo->connect();
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe,'Failed to connect'.(!empty($this->myDbConnInfo->dbName) ? ' to '.$this->myDbConnInfo->dbName : ''));
-		}
-		if (!empty($this->db)) {
-			$this->setupAfterDbConnected();
-		}
+		$this->connect();
 		$this->bHasBeenSetup = true;
 	}
 	
@@ -70,6 +62,26 @@ class Model extends BaseModel {
 	}
 	
 	/**
+	 * Connect to the database. May also be called to reconnect after timeout. 
+	 * @throws DbException - if failed to connect, this exception is thrown.
+	 */
+	public function connect() {
+		$this->myDbConnInfo = $this->director->getDbConnInfo(static::dbConnName);
+		try {
+			if (!empty($this->db)) {
+				unset($this->db);
+				$this->myDbConnInfo->disconnect();
+			}
+			$this->db = $this->myDbConnInfo->connect();
+		} catch (PDOException $pdoe) {
+			throw new DbException($pdoe,'Failed to connect'.(!empty($this->myDbConnInfo->dbName) ? ' to '.$this->myDbConnInfo->dbName : ''));
+		}
+		if (!empty($this->db)) {
+			$this->setupAfterDbConnected();
+		}
+	}
+	
+	/**
 	 * Descendants may wish to override this method to handle more stuff after 
 	 * a successful db connection is made. Should probably include on first line:
 	 * parent::setupAfterDbConnected().
@@ -82,27 +94,59 @@ class Model extends BaseModel {
 		return (isset($this->db));
 	}
 	
+	public function prepareSQL($aParamSql) {
+		try {
+			return parent::prepareSQL($aParamSql);
+		} catch (PDOException $pdoe) {
+			throw new DbException($pdoe);
+		}
+	}
+
+	/**
+	 * Binds 
+	 * @param string/PDOStatement $aSql - SQL statement (may be parameterized).
+	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too. 
+	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
+	 * @throws PDOException if there is an error.
+	 */
+	public function bindParamValues($aSql, $aParamValues, $aParamTypes=null) {
+		if (is_array($aParamValues))
+			return $this->bindValues($aSql,$aParamValues,$aParamTypes);
+		elseif (is_string($aParamTypes))
+			return $this->bindValues($aSql,array(1=>$aParamValues),array(1=>$aParamTypes));
+		else
+			return $this->bindValues($aSql,array(1=>$aParamValues));
+	}
+	
 	/**
 	 * Execute DML (data manipulation language - INSERT, UPDATE, DELETE) statements
 	 * Params should be ordered array with ? params OR associative array with :label params.
-	 * @param string $aSql - SQL statement (may be parameterized).
+	 * @param string/PDOStatement $aSql - SQL statement (may be parameterized).
 	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too. 
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
 	 * @throws DbException if there is an error.
 	 * @return number of rows affected; using params returns TRUE instead.
 	 */
 	public function execDML($aSql, $aParamValues=null, $aParamTypes=null) {
-		try {
-			if (is_null($aParamValues)) {
-				return $this->db->exec($aSql);
-			} else {
-				$theStatement = $this->db->prepare($aSql);
-				$this->bindValues($theStatement,$aParamValues,$aParamTypes);
-				return $theStatement->execute();
+		$theRetries = 0;
+		do {
+			try {
+				if (is_null($aParamValues)) {
+					return $this->db->exec($aSql);
+				} else {
+					$thePdoStatement = $this->bindParamValues($aSql,$aParamValues,$aParamTypes);
+					$thePdoStatement->execute();
+					return $thePdoStatement;
+				}
+			} catch (PDOException $pdoe) {
+				if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
+					//connection timed out, reconnect and try again
+					$this->connect();
+				} else {
+					throw new DbException($pdoe);
+				}
 			}
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe);
-		}
+		} while ($theRetries++ < static::MAX_RETRY_COUNT);
 	}
 
 	/**
@@ -115,18 +159,25 @@ class Model extends BaseModel {
 	 * @return PDOStatement on success.
 	 */
 	public function query($aSql, $aParamValues=null, $aParamTypes=null) {
-		try {
-			if (is_null($aParamValues)) {
-				return $this->db->query($aSql);
-			} else {
-				$theStatement = $this->db->prepare($aSql);
-				$this->bindValues($theStatement,$aParamValues,$aParamTypes);
-				$theStatement->execute();
-				return $theStatement;
+		$theRetries = 0;
+		do {
+			try {
+				if (is_null($aParamValues)) {
+					return $this->db->query($aSql);
+				} else {
+					$thePdoStatement = $this->bindParamValues($aSql,$aParamValues,$aParamTypes);
+					$thePdoStatement->execute();
+					return $thePdoStatement;
+				}
+			} catch (PDOException $pdoe) {
+				if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
+					//connection timed out, try to reconnect
+					$this->connect();
+				} else {
+					throw new DbException($pdoe);
+				}
 			}
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe);
-		}
+		} while ($theRetries++ < static::MAX_RETRY_COUNT);
 	}
 	
 	/**
@@ -135,9 +186,10 @@ class Model extends BaseModel {
 	public function getTheRow($aSql, $aParamValues=null, $aParamTypes=null) {
 		$theResult = null;
 		$r = $this->query($aSql,$aParamValues,$aParamTypes);
-		if ($r)
+		if (!empty($r)) {
 			$theResult = $r->fetch();
-		$r->closeCursor();
+			$r->closeCursor();
+		}
 		return $theResult;
 	}
 	
@@ -171,35 +223,29 @@ class Model extends BaseModel {
 	/**
 	 * Params should be ordered array with ? params OR associative array with :label params.
 	 * @param string $aParamSql - the parameterized SQL string.
-	 * @throws DbException if there is an error.
-	 * @return PDOStatement is returned, ready for binding to params.
-	 */
-	public function prepareSQL($aParamSql) {
-		try {
-			return $this->db->prepare($aParamSql);
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe, 'Preparing: '.$aParamSql);
-		}
-	}
-
-	/**
-	 * Params should be ordered array with ? params OR associative array with :label params.
-	 * @param string $aParamSql - the parameterized SQL string.
 	 * @param array $aListOfParamValues - array with the array of values for the parameters in the SQL statement.
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
 	 * @throws DbException if there is an error.
 	 */
 	public function execMultiDML($aParamSql, $aListOfParamValues, $aParamTypes=null) {
-		try {
-			$theStatement = $this->db->prepare($aParamSql);
-			foreach ($aListOfParamValues as $theSqlParams) {
-				$this->bindValues($theStatement,$theSqlParams,$aParamTypes);
-				$theStatement->execute();
-				$theStatement->closeCursor();
+		$theRetries = 0;
+		do {
+			try {
+				$theStatement = $this->prepareSQL($aParamSql);
+				foreach ($aListOfParamValues as $theSqlParams) {
+					$theStatement = $this->bindParamValues($theStatement,$theSqlParams,$aParamTypes);
+					$theStatement->execute();
+					$theStatement->closeCursor();
+				}
+			} catch (PDOException $pdoe) {
+				if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
+					//connection timed out, try to reconnect
+					$this->connect();
+				} else {
+					throw new DbException($pdoe);
+				}
 			}
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe);
-		}
+		} while ($theRetries++ < static::MAX_RETRY_COUNT);
 	}
 	
 	/**
@@ -214,13 +260,25 @@ class Model extends BaseModel {
 	public function addAndGetId($aSql, $aParamValues=null, $aParamTypes=null) {
 		$theResult = null;
 		if (!empty($aSql)) {
-			$this->db->beginTransaction();
-			if ($this->execDML($aSql,$aParamValues,$aParamTypes)==1) {
-				$theResult = $this->db->lastInsertId();
-				$this->db->commit();
-			} else {
-				$this->db->rollBack();
-			}
+			$theRetries = 0;
+			do {
+				try {
+					$this->db->beginTransaction();
+					if ($this->execDML($aSql,$aParamValues,$aParamTypes)==1) {
+						$theResult = $this->db->lastInsertId();
+						$this->db->commit();
+					} else {
+						$this->db->rollBack();
+					}
+				} catch (PDOException $pdoe) {
+					if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
+						//connection timed out, try to reconnect
+						$this->connect();
+					} else {
+						throw new DbException($pdoe);
+					}
+				}
+			} while ($theRetries++ < static::MAX_RETRY_COUNT);
 		}
 		return $theResult;
 	}
@@ -282,6 +340,7 @@ class Model extends BaseModel {
 		if (!is_array($args))
 			$args = array($args);
 		foreach ($aModelList as $modelInfo) {
+			//Strings::debugLog($modelInfo->getShortName().' calling: '.$aMethodName);
 			if ($modelInfo->hasMethod($aMethodName)) {
 				$theModel = $aDirector->getProp($modelInfo);
 				$theResult[$modelInfo->getShortName()] = call_user_func_array(array($theModel,$aMethodName),$args);

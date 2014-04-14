@@ -54,7 +54,7 @@ define('BITS_URL',dirname($_SERVER['SCRIPT_NAME']));
 define('BITS_RES',BITS_URL.'/res');
 define('BITS_LIB',BITS_URL.'/lib');
 //no need for app url as that is where all the urls normally get routed towards.
-define('WEBAPP_JS_URL', 'app/js');
+define('WEBAPP_JS_URL', BITS_URL.'/app/js');
 
 
 /**********************************
@@ -64,7 +64,5 @@ define('WEBAPP_JS_URL', 'app/js');
 require_once(BITS_LIB_PATH.'autoloader.php');
 //master autoloader
 require_once(BITS_PATH.'autoloader.php');
-//now let us get on with it
-require_once('router.php');
 
 }//end namespace

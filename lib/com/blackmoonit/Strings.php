@@ -40,14 +40,39 @@ class Strings {
 	
 	/**
 	 * Check to see if string begins with substring.
-	 * @param string $str - string to check
-	 * @param string $sub - needle to check for in $str
-	 * @return boolean - Returns TRUE if $str begins with $sub.
+	 * @param string $aHaystack - string to check
+	 * @param string $aNeedle - needle to check for in $aHaystack
+	 * @return boolean - Returns TRUE if $aHaystack begins with $aNeedle.
 	 */
-	static public function beginsWith($str, $sub) {
-	    return (strncmp($str, $sub, strlen($sub)) == 0);
+	static public function beginsWith($aHaystack, $aNeedle) {
+		return self::startsWith($aHaystack, $aNeedle);
 	}
 	
+	/**
+	 * Optionally case-sensitive string comparison on just the beginning of the haystack.
+	 * @param string $aHaystack - string to search on.
+	 * @param string $aNeedle - string to find.
+	 * @param boolean $bCaseInsensitive - when true, ignores case; defaults to FALSE.
+	 * @return boolean Returns true if haystack starts with needle.
+	 */
+	static public function startsWith($aHaystack, $aNeedle, $bCaseInsensitive=false) {
+    	$theFunc = ($bCaseInsensitive) ? 'strncasecmp' : 'strncmp';
+    	$aHaystack .= '';  //ensure params are strings
+    	$aNeedle .= '';    //ensure params are strings
+	    return ($theFunc($aHaystack, $aNeedle, strlen($aNeedle)) === 0);
+	}
+	
+	/**
+	 * Optionally case-sensitive string comparison on just the end of the haystack.
+	 * @param string $aHaystack - string to search on.
+	 * @param string $aNeedle - string to find.
+	 * @param boolean $bCaseInsensitive - when true, ignores case; defaults to FALSE.
+	 * @return boolean Returns true if haystack ends with needle.
+	 */
+	static public function endsWith($aHaystack, $aNeedle, $bCaseInsensitive=false) {
+		return self::startsWith(substr($aHaystack, strlen($aHaystack)-strlen($aNeedle)), $aNeedle, $bCaseInsensitive);
+	}
+
 	/**
 	 * Alias for sprintf.
 	 * @param string $aFormat - format to use, e.g. "Row %d".
