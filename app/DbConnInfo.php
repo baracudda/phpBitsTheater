@@ -81,7 +81,7 @@ class DbConnInfo extends BaseDbConnInfo {
 			$this->dbConn = DbUtils::getPDOConnection($theDbInfo);			
 			unset($theDbInfo);
 		} else {
-			throw new DbException(null,'Failed to connect: '.str_replace(BITS_CFG_PATH,'"[%config]'.¦,$this->getConfigFilePath()).'" not found.');
+			throw new DbException(null,'Failed to connect: '.str_replace(BITS_CFG_PATH,'"[%config]'.Â¦,$this->getConfigFilePath()).'" not found.');
 		}
 		return $this->dbConn;
 	}
