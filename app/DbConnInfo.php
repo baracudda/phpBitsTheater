@@ -19,6 +19,7 @@ namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseDbConnInfo;
 use com\blackmoonit\Strings;
 use com\blackmoonit\database\DbUtils;
+use com\blackmoonit\exceptions\DbException;
 {//begin namespace
 
 class DbConnInfo extends BaseDbConnInfo {
@@ -80,7 +81,7 @@ class DbConnInfo extends BaseDbConnInfo {
 			}
 			$this->dbConn = DbUtils::getPDOConnection($theDbInfo);			
 			unset($theDbInfo);
-		} else {
+		} elseif (empty($this->dbConn)) {
 			throw new DbException(null,'Failed to connect: '.str_replace(BITS_CFG_PATH,'"[%config]'.¦,$this->getConfigFilePath()).'" not found.');
 		}
 		return $this->dbConn;

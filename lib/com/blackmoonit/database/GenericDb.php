@@ -144,16 +144,20 @@ class GenericDb extends BaseDbClass {
 		else
 			$theStatement = $aStatement;
 		foreach ($aSqlParams as $theKey=>$theValue) {
-			if (is_array($theValue))
+			if (is_array($theValue)) {
 				continue;
-			if ($aParamTypes!=null && array_key_exists($theKey,$aParamTypes)) {
+			} elseif (is_null($theValue)) {
+				$theParamType = PDO::PARAM_NULL;
+			} elseif (!is_null($aParamTypes) && array_key_exists($theKey,$aParamTypes)) {
 				$theParamType = $aParamTypes[$theKey];
-			} else {
+			} elseif (is_string($theValue)) {
 				$theParamType = PDO::PARAM_STR;
-				if (is_string($theValue))	$theParamType = PDO::PARAM_STR;
-				elseif (is_int($theValue)) 	$theParamType = PDO::PARAM_INT;
-				elseif (is_bool($theValue))	$theParamType = PDO::PARAM_BOOL;
-				elseif (is_null($theValue))	$theParamType = PDO::PARAM_NULL;
+			} elseif (is_int($theValue)) {
+				$theParamType = PDO::PARAM_INT;
+			} elseif (is_bool($theValue)) {
+				$theParamType = PDO::PARAM_BOOL;
+			} else { //default type is STR
+				$theParamType = PDO::PARAM_STR;
 			}
 			$theStatement->bindValue($theKey,$theValue,$theParamType);
 		}
