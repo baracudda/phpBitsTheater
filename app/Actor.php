@@ -75,6 +75,7 @@ class Actor extends BaseActor {
 	}
 	
 	public function renderView($anAction=null) {
+		if ($anAction=='_blank') return;
 		if (!$this->bHasBeenSetup) throw new BadMethodCallException('setup() must be called first.');
 		if (empty($anAction))
 			$anAction = $this->action;

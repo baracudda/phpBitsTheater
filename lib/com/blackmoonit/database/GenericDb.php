@@ -238,8 +238,8 @@ class GenericDb extends BaseDbClass {
 	/**
 	 * @return Returns a SQL datetime string representing now() in UTC.
 	 */
-	public function utc_now() {
-		return 	DbUtils::utc_now();
+	public function utc_now($bUseMicroseconds=false) {
+		return 	DbUtils::utc_now($bUseMicroseconds);
 	}
 	
 }//class

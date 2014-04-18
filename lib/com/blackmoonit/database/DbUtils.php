@@ -22,6 +22,8 @@ use \PDOException;
 use \InvalidArgumentException;
 use \RuntimeException;
 use \UnexpectedValueException;
+use \DateTime;
+use \DateTimeZone;
 {//begin namespace
 
 class DbUtils {
@@ -318,8 +320,11 @@ class DbUtils {
 	/**
 	 * @return Returns a SQL datetime string representing now() in UTC.
 	 */
-	static public function utc_now() {
-		return gmdate("Y-m-d\TH:i:s\Z");
+	static public function utc_now($bUseMicroseconds=false) {
+		$theDateTimeUtc = new DateTime('now', new DateTimeZone('UTC') );
+		$theFormatStr = ($bUseMicroseconds) ? "Y-m-d\TH:i:s.u\Z" : "Y-m-d\TH:i:s\Z";
+		return $theDateTimeUtc->format($theFormatStr);
+		//return gmdate("Y-m-d\TH:i:s\Z");
 	}
 
 	/**
