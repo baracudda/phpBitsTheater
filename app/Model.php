@@ -63,10 +63,14 @@ class Model extends BaseModel {
 	
 	/**
 	 * Connect to the database. May also be called to reconnect after timeout. 
+	 * @param string aDbConnName - connection info name to load
 	 * @throws DbException - if failed to connect, this exception is thrown.
 	 */
-	public function connect() {
-		$this->myDbConnInfo = $this->director->getDbConnInfo(static::dbConnName);
+	public function connect($aDbConnName=null) {
+		if (empty($aDbConnName)) {
+			$aDbConnName = static::dbConnName;
+		}
+		$this->myDbConnInfo = $this->director->getDbConnInfo($aDbConnName);
 		try {
 			if (!empty($this->db)) {
 				unset($this->db);
