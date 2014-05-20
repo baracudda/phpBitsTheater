@@ -24,6 +24,7 @@ use \RuntimeException;
 use \UnexpectedValueException;
 use \DateTime;
 use \DateTimeZone;
+use \DateInterval;
 {//begin namespace
 
 class DbUtils {
@@ -374,6 +375,30 @@ class DbUtils {
 					return $val[$aKeyName];
 				}
 				,$aArray);
+	}
+	
+	/**
+	 * Get the DateTime object from "days ago" number. 0 = today.
+	 * @param number $aDaysAgo - how far back should date go
+	 * @return Returns the DateTime object.
+	 */
+	static public function cnvDaysToDateTime($aDaysAgo) {
+		$theDate = new DateTime();
+		//today at midnight
+		$theDate->setTime(0,0,0);
+		if (!empty($aDaysAgo)) {
+			$theDate->sub(new DateInterval('P'.$aDaysAgo.'D'));
+		} // else will get UTC of last midnight
+		return $theDate;
+	}
+	
+	/**
+	 * Calculate the datetime string from a "days ago" number. 0 = today.
+	 * @param number $aDaysAgo - how far back should date go
+	 * @param string $aDateFormat - datetime format to return. Defaults to 'Y-m-d H:i:s'.
+	 */
+	static public function cnvDaysToDateTimeStr($aDaysAgo, $aDateFormat='Y-m-d H:i:s') {
+		return self::cnvDaysToDateTime($aDaysAgo)->format($aDateFormat);
 	}
 
 }//class

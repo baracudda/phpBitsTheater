@@ -200,7 +200,7 @@ class Install extends Actor {
 	protected function installAuth($aAuthType) {
 		//copy the auth type class out of lib/authtype into app/model
 		$src = BITS_RES_PATH.'templates'.¦.'Auth_'.$aAuthType.'.tpl';
-		$dst = BITS_APP_PATH.'model'.¦.'Auth.php';
+		$dst = BITS_APP_PATH.'models'.¦.'Auth.php';
 		return copy($src,$dst);
 	}
 	

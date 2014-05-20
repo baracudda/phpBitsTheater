@@ -185,8 +185,29 @@ AjaxDataUpdater.prototype.setAutoParse = function(aBool) {
  * Callback method to determine when Ajax call is ready to deliver responseText.
  */
 AjaxDataUpdater.prototype.handleStateChange = function() {
-	if (this.mHttpRequest.readyState == 4 && this.mHttpRequest.status == 200) {
+	if (this.mHttpRequest.readyState == 4) {
+        switch (this.mHttpRequest.status) {
+        case 200: //Success!
 		this.requestDataCallback();
+            break;
+        case 408: //Request Timeout.
+			console.log('408 error. Re-sending ajax request.');
+			if (!this.bDone) {
+				setTimeout(this.bind(this,'sendAjaxRequest'), this.randomFromInterval(this.mDelayMin,this.mDelayMax));
+			}
+            break;
+        case 331: //Chrome: net::ERR_NETWORK_IO_SUSPENDED
+            //laptop put to sleep and then awakened, net connection to page needs a reload.
+			console.log('Chrome "net::ERR_NETWORK_IO_SUSPENDED" (331) error. Reloading page.');
+			window.location.reload();
+            break;
+        case 504: //Gateway Timeout.
+			console.log('Gateway timeout error. Reloading page.');
+			window.location.reload();
+            break;
+		default:
+			console.log('HTTP response: '+this.mHttpRequest.status+". This particular failure not handled, yet.");			
+		}
 	}
 }
 
