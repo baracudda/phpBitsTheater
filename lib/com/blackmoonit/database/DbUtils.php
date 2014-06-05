@@ -345,8 +345,7 @@ class DbUtils {
 	 * @return array Returns the dataset as an array with keys based on $aFieldNameKey.
 	 */
 	static public function cnvRowsToArray(&$aRowSet, $aFieldNameKey, $aFieldNameValue=null) {
-			$theResult = array();
-			
+		$theResult = array();	
 		if (!empty($aRowSet)) {
 			$doMap = null;
 			if (!empty($aFieldNameValue)) {
