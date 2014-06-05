@@ -24,7 +24,7 @@ print '      </a>'."\n";
 print '    </td>'."\n";
 print '    <td>'."\n";
 print '      <a href="'.BITS_URL.'">';
-print '        <span class="title">phpBitsTheater MicroFramework Installation</span>';
+print '        <span class="title">BitsTheater MicroFramework Installation</span>';
 print '      </a>'."\n";
 print '    </td>'."\n";
 print '  </tr>'."\n";

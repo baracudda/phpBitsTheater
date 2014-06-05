@@ -21,6 +21,7 @@ use com\blackmoonit\Strings;
 {//namespace begin
 
 class Menus extends Scene {
+	const IS_SUBTEXT_SUPPORTED = false;
 
 	public function getText($aMenuItem,$aKey) {
 		if (empty($aMenuItem[$aKey]))
@@ -52,31 +53,47 @@ class Menus extends Scene {
 	
 	public function getMenuDisplay($aMenuItem) {
 		$theResult = trim($this->getMenuIcon($aMenuItem).' '.$this->getText($aMenuItem,'label'));
-		if (!empty($aMenuItem['subtext']))
+		if (self::IS_SUBTEXT_SUPPORTED && !empty($aMenuItem['subtext']))
 			$theResult .= '<span class="subtext">'.$this->getText($aMenuItem,'subtext').'</span>';
 		return $theResult;
 	}
 
-	public function renderMenuItem($aMenuItem,$aSubLevel=0) {
+	public function renderMenuItem($aMenuKey, $aMenuItem, $aSubLevel=0) {
 		$isLast = (isset($aMenuItem['last']));
 		$isSubMenu = ((empty($aMenuItem['link']) || !empty($aMenuItem['hasSubmenu'])) && isset($aMenuItem['submenu']));
 		$theLink = $this->getText($aMenuItem,'link');
+
+		$theClasses = '';
+		if ($isSubMenu)
+			$theClasses .= 'parent ';
+		if ($isLast)
+			$theClasses .= 'last ';
+		if (!empty($theClasses))
+			$theClasses = ' class="'.trim($theClasses).'"';
+		
 		$theItem = sprintf('<a href="%1$s" %3$s><span>%2$s</span></a>',
-				$theLink,$this->getMenuDisplay($aMenuItem),($isSubMenu)?'class="parent"':(($isLast)?'class="last"':''));
+				$theLink,$this->getMenuDisplay($aMenuItem),$theClasses);
 		if ($isSubMenu) {
 			$theItem .= "\n".$this->renderMenu($aMenuItem['submenu'],$aSubLevel+1)."\n";
 		}
-		return str_repeat("\t",$aSubLevel).'<li>'.$theItem."</li>\n";
+		
+		
+		$theClasses = '';
+		if ($aMenuKey==$this->_director['current_menu_key'])
+			$theClasses .= 'current ';
+		if (!empty($theClasses))
+			$theClasses = ' class="'.trim($theClasses).'"';
+		return str_repeat("\t",$aSubLevel).'<li'.$theClasses.'>'.$theItem."</li>\n";
 	}
 	
 	public function renderMenu($aMenu,$aSubLevel=0) {
 		if (empty($aMenu))
 			return;
-		$w = str_repeat("\t",$aSubLevel).'<ul '.(($aSubLevel==0)?'class="menu"':'').'>'."\n";
-		foreach ($aMenu as &$theMenuItem) {
-			$w .= $this->renderMenuItem($theMenuItem,$aSubLevel);
+		$w = str_repeat("\t",$aSubLevel).'<div><ul'.(($aSubLevel==0)?' class="menu"':'').'>'."\n";
+		foreach ($aMenu as $theMenuKey => &$theMenuItem) {
+			$w .= $this->renderMenuItem($theMenuKey,$theMenuItem,$aSubLevel);
 		}
-		$w .= str_repeat("\t",$aSubLevel)."</ul>";
+		$w .= str_repeat("\t",$aSubLevel)."</ul></div>";
 		if (!$this->_director->isGuest())
 			$w = str_replace('%account_id%',$this->_director->account_info['account_id'],$w);
 		return $w;

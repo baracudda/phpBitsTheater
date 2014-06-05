@@ -29,6 +29,8 @@ class Rights extends Actor {
 		$auth = $this->director->getProp('Auth');
 		$this->scene->groups = $auth->getGroupList();
 		$this->director->returnProp($auth);
+		//indicate what top menu we are currently in
+		$this->scene->_director['current_menu_key'] = 'admin';	
 	}
 	
 	public function group($aGroupId) {
@@ -54,6 +56,8 @@ class Rights extends Actor {
 		$this->scene->assigned_rights = $this->scene->rights->getAssignedRights($aGroupId);
 		$this->scene->redirect = $this->getMyUrl('/rights');
 		$this->scene->next_action = $this->getMyUrl('/rights/modify');
+		//indicate what top menu we are currently in
+		$this->scene->_director['current_menu_key'] = 'admin';	
 	}
 	
 	public function modify() {

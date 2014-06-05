@@ -453,6 +453,52 @@ class Scene extends BaseScene {
 		$theIdAttr = (empty($aId)) ? '' : 'id="'.$aId.'"';
 		return "<script type=\"text/javascript\" {$theIdAttr}>\n{$aJsCode}\n</script>\n";
 	}
+
+	/**
+	 * Create standard HTML load CSS file tag.
+	 * @param string $aFilename - filename (may include relative URL), be sure not to lead with "/".
+	 * @param string $aLocation - URL to prepend to $aFilename, if NULL or not supplied, defaults to BITS_LIB.
+	 * @return string Returns the appropriate tag string that will load the CSS file if included in HTML page.
+	 */
+	public function getCSStag($aFilename, $aLocation=null) {
+		if (empty($aFilename))
+			return;
+		if (empty($aLocation))
+			$aLocation = BITS_LIB;
+		return Strings::format('<link rel="stylesheet" type="text/css" href="%s/%s">'."\n", $aLocation, $aFilename);
+	}
+	
+	/**
+	 * Prints out the standard HTML load CSS file tag.
+	 * @param string $aFilename - filename (may include relative URL), be sure not to lead with "/".
+	 * @param string $aLocation - URL to prepend to $aFilename, if NULL or not supplied, defaults to BITS_LIB.
+	 */
+	public function loadCSS($aFilename, $aLocation=null) {
+		print($this->getCSStag($aFilename, $aLocation));
+	}
+	
+	/**
+	 * Create standard HTML load JavaScript file tag.
+	 * @param string $aFilename - filename (may include relative URL), be sure not to lead with "/".
+	 * @param string $aLocation - URL to prepend to $aFilename, if NULL or not supplied, defaults to BITS_LIB.
+	 * @return string Returns the appropriate tag string that will load the JavaScript file if included in HTML page.
+	 */
+	public function getScriptTag($aFilename, $aLocation=null) {
+		if (empty($aFilename))
+			return;
+		if (empty($aLocation))
+			$aLocation = BITS_LIB;
+		return Strings::format('<script type="text/javascript" src="%s/%s"></script>'."\n", $aLocation, $aFilename);
+	}
+	
+	/**
+	 * Prints out the standard HTML load JavaScript file tag.
+	 * @param string $aFilename - filename (may include relative URL), be sure not to lead with "/".
+	 * @param string $aLocation - URL to prepend to $aFilename, if NULL or not supplied, defaults to BITS_LIB.
+	 */
+	public function loadScript($aFilename, $aLocation=null) {
+		print($this->getScriptTag($aFilename, $aLocation));
+	}
 	
 
 }//end class

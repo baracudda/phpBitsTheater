@@ -96,6 +96,12 @@ div#container-error .msg-trace {
 	color: lime;
 }
 
+/* Supplemental Menu CSS */
+.menu_icon {
+	vertical-align: middle;
+	height: 24px;
+}
+
 /* Data Entry/Display */
 .data-outline {
 	border:solid 1px #000000;
@@ -251,14 +257,4 @@ table.rb-ad .rb-ad-title {
 	font-weight: 700;
 	color: #d10000;
 }
-
-/* QRox */
-table#qrox-results {
-
-}
-
-table#qrox-results tr {
-	valign: center
-}
-
 

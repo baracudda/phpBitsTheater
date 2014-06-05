@@ -105,7 +105,7 @@ class Strings {
 	 * @param array $aArray - the array to encode.
 	 * @return string - Returns string to be used in validate script.
 	 */
-	static public function phpArray2jsArray($aArray) {
+	static public function phpArray2jsArray($aArray, $elemPostChar="\n") {
 		$s = '{';
 		foreach ($aArray as $key=>$val) {
 			$s .= $key.': ';
@@ -118,7 +118,7 @@ class Strings {
 					$s .= '"'.$val.'"';
 			else
 				$s .= self::exportStr($val);
-			$s .= ",\n";
+			$s .= ','.$elemPostChar;
 		}
 		$s .= "}";
 		return $s;
@@ -320,6 +320,17 @@ class Strings {
 	 */
 	static public function cnvTimestampUnix2SQL($aTimestamp) {
 		return gmdate('Y-m-d H:i:s',$aTimestamp);
+	}
+	
+	/**
+	 * Break up really long words/lines along word boundaries, if possible.
+	 * @param string $aStr - string to wrap.
+	 * @param number $aWidth - max width to wrap around.
+	 * @param string $aWrapper - wrap lines using "\n" by default, or custom param.
+	 * @return string Returns the string with added $aWrappers inserted into $aStr.
+	 */
+	static public function wordWrap($aStr, $aWidth=75, $aWrapper="\n") {
+		return preg_replace('#(\S{'.$aWidth.',})#e', "chunk_split('$1', ".$aWidth.", '".$aWrapper."')", $aStr);
 	}
 	
 	

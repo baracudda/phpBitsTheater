@@ -56,12 +56,20 @@ class Menus extends Actor {
 				$meth = explode('/',$sa[1]);
 				$b = (strtolower($meth[1])==='true');
 				return call_user_func_array(array($this->director,$meth[0]),array())==$b;
+			case '&false': //always disable (useful for mocking up menu stubs for later development)
+				return false;
 			}//switch
-		} else
-			return call_user_func_array(array($this->director,'isAllowed'),explode('/',$aFilter));
+		} else {
+			$sa = explode('/',$aFilter,2);
+			if (count($sa)>=2)
+				return call_user_func_array(array($this->director,'isAllowed'),$sa);
+			else
+				return false;
+		}
 	}
 	
-	protected function isMenuItemRemoved($aMenuName,&$aMenuItem) {
+	protected function isMenuItemRemoved($aMenuKey,&$aMenuItem) {
+		//if filter is defined, check if allowed
 		if (!empty($aMenuItem['filter'])) {
 			$theList = explode(',',$aMenuItem['filter']);
 			foreach ($theList as $theFilter) {
@@ -70,10 +78,24 @@ class Menus extends Actor {
 				}
 			}
 		}
+		
+		//if link is defined, 
+		if (!empty($aMenuItem['link'])) {
+			$theLink = $this->getLink($aMenuItem['link']);
+			if (!empty($theLink)) {
+				if (!$this->director->isGuest())
+					$aMenuItem['link'] = str_replace('%account_id%',$this->director->account_info['account_id'],$theLink);
+				else
+					$aMenuItem['link'] = $theLink;
+			} else {
+				$aMenuItem['link'] = null;
+			}
+		}
+		
 		//recursive call in case of submenu items so that if menu ends up empty, return true
-		if (empty($aMenuItem['link']) || !empty($aMenuItem['hasSubmenu'])) {
+		if (!empty($aMenuItem['hasSubmenu']) || empty($aMenuItem['link'])) {
 			//get submenu and filter it
-			$resName = 'menu_info/menu_'.$aMenuName;
+			$resName = 'menu_info/menu_'.$aMenuKey;
 			try {
 				$submenu = $this->scene->getRes($resName);
 			} catch (ResException $re) {
@@ -81,9 +103,9 @@ class Menus extends Actor {
 				$submenu = null;
 			}
 			if (isset($submenu)) {
-				foreach ($submenu as $theMenuName => $theMenuItem) {
-					if ($this->isMenuItemRemoved($theMenuName,$theMenuItem)) {
-						unset($submenu[$theMenuName]);
+				foreach ($submenu as $theMenuKey => &$theMenuItem) {
+					if ($this->isMenuItemRemoved($theMenuKey,$theMenuItem)) {
+						unset($submenu[$theMenuKey]);
 					}
 				}
 			}
@@ -92,15 +114,9 @@ class Menus extends Actor {
 			} else {
 				$aMenuItem['submenu'] = $submenu;
 			}
-		} else {
-			$theLink = $this->getLink($aMenuItem['link']);
-			if (empty($theLink))
-				return true;
-			if (!$this->director->isGuest())
-				$aMenuItem['link'] = str_replace('%account_id%',$this->director->account_info['account_id'],$theLink);
-			else
-				$aMenuItem['link'] = $theLink;
 		}
+		
+		//if we made it here, show the menuitem
 		return false;
 	}
 	
@@ -110,9 +126,13 @@ class Menus extends Actor {
 		//Strings::debugLog($aRes.'='.Strings::debugStr($theMenu));
 
 		//process the menu array/tree first, anything left will be rendered
-		foreach ($theMenu as $theMenuName => &$theMenuItem) {
-			if ($this->isMenuItemRemoved($theMenuName,$theMenuItem)) {
-				unset($theMenu[$theMenuName]);
+		foreach ($theMenu as $theMenuKey => &$theMenuItem) {
+			if ($this->isMenuItemRemoved($theMenuKey,$theMenuItem)) {
+				unset($theMenu[$theMenuKey]);
+			} else {
+				//empty links need to be "#" instead so mobile devices can use menu
+				if (empty($theMenuItem['link']))
+					$theMenuItem['link'] = '#';
 			}
 		}
 		if (empty($theMenu)) 

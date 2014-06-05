@@ -17,6 +17,7 @@
 
 namespace com\blackmoonit;
 use com\blackmoonit\Strings;
+use \DateTime;
 {//begin namespace
 
 /**
@@ -131,8 +132,8 @@ class Widgets {
 		return $theWidget;
 	}
 
-	static public function createCheckBox($aWidgetName, $isChecked=false) {
-		return '<input type="checkbox" name="'.$aWidgetName.'"'.(($isChecked)?' checked':'').' />';
+	static public function createCheckBox($aWidgetName, $isChecked=false, $aClass='') {
+		return '<input type="checkbox" name="'.$aWidgetName.'" class="'.$aClass.'"'.(($isChecked)?' checked':'').' />';
 	}
 	
 	static public function createSubmitButton($aWidgetName, $aText='Submit', $aClass='mainoption') {
@@ -158,6 +159,22 @@ class Widgets {
 		$theWidget = createTooltipLink("javascript:popupForm('$aPopupFormName');",$aTooltipMsg,$aDisplayHtml);
 		$theWidget .= $aPopupForm;
 		return $theWidget;
+	}
+	
+	/**
+	 * Converts a UTC timestamp to Local datetime string for human consumption (uses JavaScript).
+	 * @param string $aElemId - variable containing an Element ID, else a UUID is generated and returned in it.
+	 * @param number/string $aTime - either a UTC timestamp or a MySQL datetime string.
+	 * @return string Returns a JavaScript function call with parameters that will display the timestamp as
+	 * a local datetime string based on their computer date format display settings.
+	 */
+	static public function cnvUtcTs2LocalStr(&$aElemId, $aTime) {
+		if (empty($aElemId))
+			$aElemId = Strings::createUUID();
+		//timestamps need to have @ in front
+		$theTime = (is_numeric($aTime)?'@':'').$aTime;
+		$theTs = new DateTime($theTime.' Z');
+		return 'zulu_to_local("'.$aElemId.'",'.$theTs->getTimestamp().');';
 	}
 
 }//end class

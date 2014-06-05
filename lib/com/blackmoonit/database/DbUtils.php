@@ -342,28 +342,24 @@ class DbUtils {
 	 * @param PDOStatement|array $aRowSet - result set or an array
 	 * @param string $aFieldNameKey - fieldname to use as key entries.
 	 * @param string $aFieldNameValue - fieldname to use as values, if omitted, use entire row array
+	 * @return array Returns the dataset as an array with keys based on $aFieldNameKey.
 	 */
 	static public function cnvRowsToArray(&$aRowSet, $aFieldNameKey, $aFieldNameValue=null) {
-		$theArray = NULL;
-		if (!empty($aRowSet)) {
 			$theResult = array();
 			
-			$doMap = function(&$aResults,&$aRow,$aKeyName,$aValueName=null) { 
-					if ($aValueName) {
+		if (!empty($aRowSet)) {
+			$doMap = null;
+			if (!empty($aFieldNameValue)) {
+				$doMap = function(&$aResults,&$aRow,$aKeyName,$aValueName) { 
 						$aResults[$aRow[$aKeyName]] = $aRow[$aValueName];
-					} else {
-						$aResults[$aRow[$aKeyName]] = $aRow;
-					}
-			};			
-			
-			if (is_array($aRowSet)) {
-				foreach($aRowSet as $theRow) {
-					$doMap($theResult,$theRow,$aFieldNameKey,$aFieldNameValue);
-				}
+				};
 			} else {
-				while(($theRow = $aRowSet->fetch()) !== FALSE) {
-					$doMap($theResult,$theRow,$aFieldNameKey,$aFieldNameValue);
-				}
+				$doMap = function(&$aResults,&$aRow,$aKeyName,$aValueName) {
+						$aResults[$aRow[$aKeyName]] = $aRow;
+				};
+			}
+			foreach($aRowSet as $theRow) {
+				$doMap($theResult,$theRow,$aFieldNameKey,$aFieldNameValue);
 			}
 		}
 		return $theResult;

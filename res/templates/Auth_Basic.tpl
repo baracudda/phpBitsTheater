@@ -94,7 +94,7 @@ class Auth extends AuthBase {
 		return $this->getTheRow($theSql,array('id'=>$aId),array(\PDO::PARAM_INT));
 	}
 	
-	private function updateCookie($aAcctId) {
+	public function updateCookie($aAcctId) {
 		$keyid = Strings::randomSalt(128);
 		$theSql = "INSERT INTO {$this->tnAuthCookie} (account_id, keyid) VALUES (:account_id, :keyid)";
 		$this->execDML($theSql,array('account_id'=>$aAcctId, 'keyid'=>$keyid),array(\PDO::PARAM_INT, \PDO::PARAM_STR));

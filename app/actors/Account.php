@@ -17,6 +17,7 @@
 
 namespace BitsTheater\actors;
 use BitsTheater\Actor;
+use BitsTheater\models\Groups;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -38,6 +39,8 @@ class Account extends Actor {
 		}
 		$this->scene->action_modify = $this->getMyUrl('/account/modify');
 		$this->scene->redirect = $this->getMyUrl('/account/view');
+		//indicate what top menu we are currently in
+		$this->scene->_director['current_menu_key'] = 'account';
 	}
 	
 	public function register($aTask='data-entry') {
@@ -45,7 +48,8 @@ class Account extends Actor {
 		//make sure user/pw reg fields will not interfere with any login user/pw field in header
 		$userKey = $this->scene->getUsernameKey().'_reg';
 		$pwKey = $this->scene->getPwInputKey().'_reg';
-		if ($aTask==='new' && $this->scene->reg_code===$this->getAppId() &&
+		$theRegCode = strtoupper($this->scene->reg_code);
+		if ($aTask==='new' && $theRegCode===$this->getAppId() &&
 				$this->scene->$pwKey===$this->scene->password_confirm) {
 			$dbAuth = $this->getProp('Auth');
 			$theRegResult = $dbAuth->canRegister($this->scene->$userKey,$this->scene->email);
@@ -60,8 +64,10 @@ class Account extends Actor {
 				$theNewAcct['account_name'] = $this->scene->$userKey;
 				$theNewId = $dbAccts->add($theNewAcct);
 				if (!empty($theNewId)) {
+					$theDefaultGroup = Groups::GROUPTYPE_guest;
 					$verified_ts = null;
-					if ($this->scene->reg_code===$this->getAppId()) {
+					if ($theRegCode===$this->getAppId()) {
+						$theDefaultGroup = Groups::GROUPTYPE_restricted;
 						$verified_ts = $dbAccts->utc_now();
 					}
 					$theNewAcct = array(
@@ -70,7 +76,7 @@ class Account extends Actor {
 							'pwinput' => $this->scene->$pwKey,
 							'verified_timestamp' => $verified_ts,
 					);
-					$dbAuth->registerAccount($theNewAcct);
+					$dbAuth->registerAccount($theNewAcct,$theDefaultGroup);
 					return $this->getMyUrl('/rights');
 				}
 			}//end switch
@@ -87,6 +93,8 @@ class Account extends Actor {
 				$this->scene->redirect = $this->getHomePage();
 			}
 		}
+		//indicate what top menu we are currently in
+		$this->scene->_director['current_menu_key'] = 'account';
 	}
 	
 	public function login() {
@@ -101,6 +109,8 @@ class Account extends Actor {
 			$v->action_url_login = $v->getSiteURL($this->config['auth/login_url']);
 			$v->redirect = $this->getHomePage();
 		}
+		//indicate what top menu we are currently in
+		$this->scene->_director['current_menu_key'] = 'account';
 	}
 	
 	public function logout() {
