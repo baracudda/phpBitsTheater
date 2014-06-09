@@ -78,13 +78,18 @@ abstract class KeyValueModel extends Model implements ArrayAccess {
 	
 	protected function getDefaultData($aScene) {
 		//descendants would override this method
+		return array();
 	}
 	
 	public function setupDefaultData($aScene) {
 		$default_data = $this->getDefaultData($aScene);
 		if (!empty($default_data)) {
 			if ($this->isEmpty($this->getTableName())) {
-				$this->execMultiDML($this->sql_value_insert,$default_data);
+				try {
+					$this->execMultiDML($this->sql_value_insert,$default_data);
+				} catch (DbException $dbe) {
+					throw $dbe->setContextMsg('dbError@'.$this->getTableName().".setupDefaultData()");
+				}
 			} else {
 				foreach ($default_data as $mapInfo) {
 					$this->defineMapValue($mapInfo);

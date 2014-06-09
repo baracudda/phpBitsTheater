@@ -38,7 +38,7 @@ try {
 } catch (IDebuggableException $e) {
 	$e->setDebugCheck(function() {
 			return (!class_exists(BITS_NAMESPACE_CFGS.'Settings') || _DEBUG_APP);
-		})->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(BITS_ROOT);
+	})->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
 	$e->debugPrint();
 	if (ini_get('log_errors')) {
 		Strings::debugLog($e->getMessage().' c_stk: '.$e->getTraceAsString());
@@ -47,11 +47,12 @@ try {
 	die();
 } catch (Exception $e) { 
 	if (is_callable(array($e,'debugPrint'))) {
+		$e->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
 		$e->debugPrint();
 	} else if (ini_get('display_errors')) {
 		print($e->getMessage()."<br />\n");
 		$theTrace = str_replace("\n","<br />\n",$e->getTraceAsString());
-		$theTrace = str_replace(BITS_ROOT,'[%site]',$theTrace);
+		$theTrace = str_replace(realpath(BITS_ROOT),'[%site]',$theTrace);
 		print($theTrace);
 	}
 	if (ini_get('log_errors')) {

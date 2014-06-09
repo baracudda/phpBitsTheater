@@ -56,10 +56,11 @@ class Groups extends Model {
 		switch ($this->dbType()) {
 		case 'mysql': default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnGroups} ".
-				"( group_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY".
+				"( group_id INT NOT NULL AUTO_INCREMENT".
 				", group_name NCHAR(60) NOT NULL".
 				", group_type SMALLINT NOT NULL DEFAULT 0".
 				", parent_group_id INT NULL".
+				", PRIMARY KEY (group_id)".
 				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		}
 		$r = $this->execDML($theSql);
@@ -79,15 +80,15 @@ class Groups extends Model {
 		if ($this->isEmpty()) {
 			$group_names = $aScene->getRes('setupDefaultData/group_names');
 			$default_data = array(
-					array('group_id'=>1,'group_name'=>$group_names[1],'group_type'=>self::GROUPTYPE_titan),
-					array('group_id'=>2,'group_name'=>$group_names[2],'group_type'=>self::GROUPTYPE_admin),
-					array('group_id'=>3,'group_name'=>$group_names[3],'group_type'=>self::GROUPTYPE_privileged),
-					array('group_id'=>4,'group_name'=>$group_names[4],'group_type'=>self::GROUPTYPE_restricted),
-					array('group_id'=>0,'group_name'=>$group_names[5],'group_type'=>self::GROUPTYPE_guest),
+					array('group_name'=>$group_names[1],'group_type'=>self::GROUPTYPE_titan),
+					array('group_name'=>$group_names[2],'group_type'=>self::GROUPTYPE_admin),
+					array('group_name'=>$group_names[3],'group_type'=>self::GROUPTYPE_privileged),
+					array('group_name'=>$group_names[4],'group_type'=>self::GROUPTYPE_restricted),
+					array('group_name'=>$group_names[5],'group_type'=>self::GROUPTYPE_guest),
 			);
 			$theSql = "INSERT INTO {$this->tnGroups} ".
-					"(group_id, group_name, group_type) VALUES (:group_id, :group_name, :group_type)";
-			$theParamTypes = array('group_id'=>\PDO::PARAM_INT,'group_name'=>\PDO::PARAM_STR,'group_type'=>\PDO::PARAM_INT);
+					"(group_name, group_type) VALUES (:group_name, :group_type)";
+			$theParamTypes = array('group_name'=>\PDO::PARAM_STR,'group_type'=>\PDO::PARAM_INT);
 			return $this->execMultiDML($theSql,$default_data,$theParamTypes);
 		}
 	}

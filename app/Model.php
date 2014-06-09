@@ -241,6 +241,7 @@ class Model extends BaseModel {
 					$theStatement->execute();
 					$theStatement->closeCursor();
 				}
+				return; //break out of retry loop if all went well
 			} catch (PDOException $pdoe) {
 				if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
 					//connection timed out, try to reconnect
@@ -274,6 +275,7 @@ class Model extends BaseModel {
 					} else {
 						$this->db->rollBack();
 					}
+					return $theResult; //break out of retry loop if all went well
 				} catch (PDOException $pdoe) {
 					if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
 						//connection timed out, try to reconnect

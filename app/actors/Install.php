@@ -164,6 +164,7 @@ class Install extends Actor {
 				$v->next_action = $v->getSiteURL('install/auth1');
 			} catch (PDOException $e) {
 				$ex = new DbException($e);
+				$ex->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
 				$v->next_action = $v->getSiteURL('install/db1');
 				$v->connected = false;
 				$v->_dbError = $ex->getDebugDisplay('Connection error');
@@ -222,6 +223,7 @@ class Install extends Actor {
 		try {
 			$theSetupDb->setupModels($this->scene);
 		} catch (DbException $dbe) {
+			$dbe->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
 			$this->scene->_dbError = $dbe->getDebugDisplay();
 			$this->scene->popDbResults();
 		}

@@ -21,6 +21,7 @@ use BitsTheater\models\KeyValueModel;
 
 class Config extends KeyValueModel {
 	const TABLE_NAME = 'config';
+	const MAPKEY_NAME = 'setting';
 	
 	public function setupModel() {
 		return parent::setupModel();
