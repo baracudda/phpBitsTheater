@@ -344,7 +344,7 @@ class Director extends BaseDirector implements ArrayAccess {
 	public function admitAudience() {
 		if ($this->canCheckTickets()) {
 			$this->auth = $this->getProp('Auth'); //director will close this on cleanup
-			return $this->auth->checkTicket($this);
+			return $this->auth->checkTicket();
 		}
 		return false;
 	}
@@ -366,7 +366,7 @@ class Director extends BaseDirector implements ArrayAccess {
 	
 	public function logout() {
 		if (!$this->isGuest() && isset($this->auth)) {
-			$this->auth->ripTicket($this);
+			$this->auth->ripTicket();
 			unset($this->account_info);
 		}
 		return BITS_URL;

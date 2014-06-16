@@ -29,6 +29,8 @@ Options -Indexes
 #phpBitsTheater framework redirection
 <IfModule mod_rewrite.c>
 	RewriteEngine On
+#needed for HTTP Basic authorization
+	RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 	RewriteCond %{REQUEST_FILENAME} !-f
 	RewriteCond %{REQUEST_FILENAME} !-d
 	RewriteRule ^(.*)$ index.php?url=$1 [PT,QSA,L]	

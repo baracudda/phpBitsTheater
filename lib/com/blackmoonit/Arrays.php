@@ -62,6 +62,14 @@ class Arrays {
 		return array_merge($aArray,array_slice(func_get_args(),1));
 	}
 	
+	/**
+	 * Given a two dimensional array, return the singular array of a 
+	 * single specified column.
+	 * @param array $anArray - array of arrays.
+	 * @param  $aKey - index of column to retrieve.
+	 * @return Returns a one dimensional array of just $anArray[$subArray[$aKey]] values.
+	 * @link http://www.php.net//manual/en/function.array-column.php array_column()
+	 */
 	static public function array_column($anArray, $aKey) {
 		if (function_exists('array_column')) {
 			return array_column($anArray, $aKey);

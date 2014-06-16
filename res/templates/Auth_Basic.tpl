@@ -105,10 +105,10 @@ class Auth extends AuthBase {
 		setcookie(self::KEY_app_id, $this->director['app_id']);
 	}
 
-	public function checkTicket() {
+	public function checkTicket($aAcctName=null, $aAuth=null) {
 		if ($this->director->canConnectDb()) {
 			$dbAcct = $this->director->getProp('Accounts');
-			if (isset($this->director[self::KEY_userinfo])) {
+			if (isset($this->director[self::KEY_userinfo]) && empty($aAcctName)) {
 				$acct_id = $this->director[self::KEY_userinfo];
 				//Strings::debugLog('userid:'.$acct_id);
 				$dbAccts = $this->director->getProp('Accounts');
@@ -124,11 +124,15 @@ class Auth extends AuthBase {
 					$this->ripTicket();
 				}
 			}
-			if (isset($_POST[self::KEY_userinfo])) {
-				//Strings::debugLog('user:'.$_POST[self::KEY_userinfo].' pw:'.$_POST[self::KEY_pwinput]);
-				$userinfo = $_POST[self::KEY_userinfo];
-				$pwinput = $_POST[self::KEY_pwinput];
-				unset($_POST[self::KEY_pwinput]);
+			$theUserName = (isset($_POST[self::KEY_userinfo])) ? $_POST[self::KEY_userinfo] : $aAcctName;
+			if (!empty($theUserName)) {
+				//Strings::debugLog('user:'.$theUserName.' pw:'.$_POST[self::KEY_pwinput]);
+				$userinfo = $theUserName;
+				$pwinput = $aAuth;
+				if (isset($_POST[self::KEY_pwinput])) {
+					$pwinput = $_POST[self::KEY_pwinput];
+					unset($_POST[self::KEY_pwinput]);
+				}
 				$authdata = null;
 				if ($acctdata = $dbAcct->getByName($userinfo)) {
 					//Strings::debugLog('getByName:'.Strings::debugStr($acctdata));
