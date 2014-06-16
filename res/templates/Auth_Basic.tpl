@@ -218,8 +218,10 @@ class Auth extends AuthBase {
 	 * keys: email, acct_id, acct_name, pwinput, verified_timestamp
 	 * @see app\model.AuthBase::registerAccount()
 	 */
-	public function registerAccount($aUserData) {
-		$isEmpty = $this->isEmpty();
+	public function registerAccount($aUserData, $aDefaultGroup=0) {
+		if ($this->isEmpty()) {
+			$aDefaultGroup = 1;
+		}
 		$theValues = array(
 				'email'		=> $aUserData['email'],
 				'acct_id'	=> $aUserData['account_id'],
@@ -229,7 +231,7 @@ class Auth extends AuthBase {
 		$theResult = $this->execDML($this->sql_register,$theValues,$this->pt_register);
 		if ($theResult) {
 			$dbGroupMap = $this->getProp('Groups');
-			$dbGroupMap->addAcctMap(1*$isEmpty,$aUserData['account_id']);
+			$dbGroupMap->addAcctMap($aDefaultGroup,$aUserData['account_id']);
 			$this->returnProp($dbGroupMap);
 		}
 	}
