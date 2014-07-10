@@ -16,20 +16,17 @@
  */
 
 namespace BitsTheater\models;
-use BitsTheater\Model;
+use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
 {//begin namespace
 
-class Accounts extends Model {
+class Accounts extends BaseModel {
 	public $tnAccounts; const TABLE_Accounts = 'accounts';
 
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
 		$this->tnAccounts = $this->tbl_.self::TABLE_Accounts;
-		$this->sql_acct_get = "SELECT * FROM {$this->tnAccounts} WHERE account_id = :acct_id";
-		$this->sql_acct_add = "INSERT INTO {$this->tnAccounts} ".
-				"(account_id, account_name, external_id) VALUES (:account_id, :account_name, :external_id) ";
 	}
 	
 	protected function getTableName() {
@@ -57,20 +54,18 @@ class Accounts extends Model {
 	}
 	
 	public function getAccount($aAcctId) {
-		$rs = $this->query($this->sql_acct_get,array('acct_id'=>$aAcctId));
-		return $rs->fetch();
+		$theSql = "SELECT * FROM {$this->tnAccounts} WHERE account_id = :acct_id";
+		return $this->getTheRow($theSql,array('acct_id'=>$aAcctId));
 	}
 	
 	public function getByName($aName) {
 		$theSql = "SELECT * FROM {$this->tnAccounts} WHERE account_name = :acct_name";
-		$theStatement = $this->query($theSql,array('acct_name'=>$aName));
-		return $theStatement->fetch();
+		return $this->getTheRow($theSql,array('acct_name'=>$aName));
 	}
 	
 	public function getByExternalId($aExternalId) {
 		$theSql = "SELECT * FROM {$this->tnAccounts} WHERE external_id = :external_id";
-		$theStatement = $this->query($theSql,array('external_id'=>$aExternalId));
-		return $theStatement->fetch();
+		return $this->getTheRow($theSql,array('external_id'=>$aExternalId));
 	}
 	
 	public function add($aData) {
@@ -82,8 +77,12 @@ class Accounts extends Model {
 				$aData['external_id'] = null;
 			if (!array_key_exists('account_name',$aData))
 				throw new IllegalArgumentException('account_name undefined');
+			$theSql = "INSERT INTO {$this->tnAccounts} ";
+			$theSql .= "(account_id, account_name, external_id)";
+			$theSql .= " VALUES ";
+			$theSql .= "(:account_id, :account_name, :external_id) ";
 			$this->db->beginTransaction();
-			if ($this->execDML($this->sql_acct_add,$aData)==1) {
+			if ($this->execDML($theSql,$aData)) {
 				$theResult = $this->db->lastInsertId();
 				$this->db->commit();
 			} else {

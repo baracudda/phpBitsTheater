@@ -16,7 +16,7 @@
  */
 
 namespace BitsTheater\models;
-use BitsTheater\Model;
+use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\FinallyBlock;
@@ -25,7 +25,7 @@ use \ArrayAccess;
 use \PDOExeption;
 {//namespace begin
 
-abstract class KeyValueModel extends Model implements ArrayAccess {
+abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	const TABLE_NAME = 'map'; //excluding prefix
 	const MAPKEY_NAME = 'mapkey';
 	protected $_mapdata = array();
@@ -175,7 +175,7 @@ abstract class KeyValueModel extends Model implements ArrayAccess {
 		$this->getMapValue($aKey); //ensure data is loaded
 		return (isset($this->_mapdefault[$aKey]))?$this->_mapdefault[$aKey]:'';
 	}
-
+	
 	public function setMapValue($aKey, $aNewValue) {
 		$old_value = $this->getMapValue($aKey);
 		if ($old_value != $aNewValue) {

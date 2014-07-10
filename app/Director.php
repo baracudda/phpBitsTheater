@@ -31,6 +31,22 @@ use \Exception;
 {//begin namespace
 
 class Director extends BaseDirector implements ArrayAccess {
+	/**
+	 * Normal website operation mode.
+	 * @var string
+	 */
+	const SITE_MODE_NORMAL = 'normal';
+	/**
+	 * Refuse connections while the site is being worked on.
+	 * @var string
+	 */
+	const SITE_MODE_MAINTENANCE = 'maintenance';
+	/**
+	 * Use local resources as much as possible (little/no net connection)
+	 * @var string
+	 */
+	const SITE_MODE_DEMO = 'demo';
+	
 	public $account_info = null;//array('account_id'=>-1, 'account_name'=>'', 'email'=>'', 'groups'=>array(), 'tz'=>'',);
 	public $dbConnInfo = array(); //database connections to share with the models
 	protected $_propMaster = array(); //cache models created so app doesn't need to create 12 instances of any single model
@@ -167,7 +183,6 @@ class Director extends BaseDirector implements ArrayAccess {
 				}
 			} catch (ReflectionException $e) {
 				//no method to call, just ignore it
-				
 			}
 		}
 	}
@@ -237,8 +252,7 @@ class Director extends BaseDirector implements ArrayAccess {
 	public function returnProp($aModel) {
 		$this->unsetModel($aModel);
 	}
-	
-	
+
 	/**
 	 * Calls methodName for every model class that matches the class patern and returns an array of results.
 	 * @param string $aModelClassPattern - NULL for all non-abstract models, else a result from getModelClassPattern.
@@ -270,11 +284,16 @@ class Director extends BaseDirector implements ArrayAccess {
 	//===========================================================
 	//=               RESOURCE management                       =
 	//===========================================================
-
+	
 	public function getRes($aResName) {
 		if (empty($this->_resManager)) {
-			//TODO create a user config for "en/US" and pass that into the constructor. (lang/region) 
-			$this->_resManager = new configs\I18N();
+			if ($this->isInstalled()) {
+				//TODO create a user config for "en/US" and pass that into the constructor. (lang/region) 
+				$this->_resManager = new configs\I18N();
+			} else {
+				$theInstallResMgr = BITS_NAMESPACE_RES.'ResI18N';
+				$this->_resManager = new $theInstallResMgr('en/US');
+			}
 		}
 		//explode on "\" or "/"
 		$theResUri = explode('/',str_replace('\\','/',$aResName));
@@ -299,7 +318,10 @@ class Director extends BaseDirector implements ArrayAccess {
 				throw $re;
 			} else {
 				$theResClass = $this->_resManager->includeDefaultResClass($theResClassName);
-				return $this->loadRes($theResClass,$theRes,$theResUri);
+				if (!empty($theResUri))
+					return $this->loadRes($theResClass,$theRes,$theResUri);
+				else
+					return $this->loadRes($theResClass,$theRes);
 			}
 		}
 	}
@@ -389,6 +411,10 @@ class Director extends BaseDirector implements ArrayAccess {
 		return $theResult;
 	}
 	
+	/**
+	 * Returns the chat forum this site is mated with, or "" if not.
+	 * @return string URL of the forum, if any.
+	 */
 	public function getForumUrl() {
 		if ($this->auth->isCallable('getForumUrl')) {
 			return $this->auth->getForumUrl();
@@ -397,6 +423,19 @@ class Director extends BaseDirector implements ArrayAccess {
 		}
 	}
 
+	/**
+	 * Get the current mode of the site (normal/maintenance/demo).
+	 * @return string Returns one of the MODE_* constants.
+	 */
+	public function getSiteMode() {
+		try {
+			$dbConfig = $this->getProp('Config');
+			return $dbConfig['site/mode'];
+		} catch (Exception $e) {
+			return self::SITE_MODE_NORMAL;
+		}
+	}
+	
 }//end class
 
 }//end namespace

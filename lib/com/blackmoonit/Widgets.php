@@ -45,16 +45,16 @@ class Widgets {
 	}
 	
 	static public function createForm($aFormAction, $aDisplayHtml, $redirectLink='', $isPopup=false, $aFormName='') {
-		return Widgets::createHtmlForm($aFormName, $aFormAction, $aDisplayHtml, $redirectLink, $isPopup); 
+		return Widgets::createHtmlForm($aFormName, $aFormAction, $aDisplayHtml, $redirectLink, $isPopup);
 	}
 	
-	static public function createDropDown($aWidgetName, $aItemList, $aKeySelected='') {
+	static public function createDropDown($aWidgetName, $aItemList, $aKeySelected=null) {
 		$theWidget = '';
 		if (!empty($aItemList) && is_array($aItemList)) {
-			$theWidget = '<select name="'.$aWidgetName.'" id="'.$aWidgetName.'" class="post">'."\n";
+			$theWidget = '<select name="'.$aWidgetName.'" id="'.$aWidgetName.'" class="field">'."\n";
 			//$theWidget .= '<!-- '.$aKeySelected.' -->'."\n";
 			foreach ($aItemList as $key => $value) {
-				if (empty($aKeySelected) || $aKeySelected!=$key)
+				if (!isset($aKeySelected) || $aKeySelected!=$key)
 					$theWidget .= "\t".'<option value="'.$key.'">'.$value.'</option>';
 				else
 					$theWidget .= "\t".'<option value="'.$key.'" selected>'.$value.'</option>';
@@ -75,7 +75,7 @@ class Widgets {
 	static public function createInputBox($aWidgetName, $aType='text', $aValue='', $isRequired=false, $aSize=60, $aMaxLen=255, $aJsEvents='') {
 		$attr_size = (!is_null($aSize)) ? " size=\"$aSize\"" : '';
 		$attr_maxlen = (!is_null($aMaxLen)) ? " maxlength=\"$aMaxLen\"" : '';
-		return Strings::format('<input type="%2$s" name="%1$s" id="%1$s" value="%3$s"%5$s%6$s%7$s%4$s />',
+		return Strings::format('<input type="%2$s" name="%1$s" id="%1$s" value="%3$s"%5$s%6$s%7$s%4$s class="field" />',
 				$aWidgetName,$aType,$aValue,($isRequired)?' required':'',$attr_size,$attr_maxlen,$aJsEvents);
 	}
 	
@@ -99,12 +99,12 @@ class Widgets {
 		$attr_step = (!is_null($aStep)) ? Strings::format(" step=\"%f\"",$aStep) : '';
 		$attr_min = (!is_null($aMin)) ? Strings::format(" min=\"%f\"",$aMin) : '';
 		$attr_max = (!is_null($aMax)) ? Strings::format(" max=\"%f\"",$aMax) : '';
-		return Strings::format('<input type="number" name="%1$s" id="%1$s" value="%2$s"%4$s%5$s%6$s%7$s%8$s%3$s />',
+		return Strings::format('<input type="number" name="%1$s" id="%1$s" value="%2$s"%4$s%5$s%6$s%7$s%8$s%3$s class="field" />',
 				$aWidgetName,$aValue,($isRequired)?' required':'',$attr_size,$attr_step,$attr_min,$attr_max,$aJsEvents);
 	}
 	
 	static public function createTextArea($aWidgetName, $aValue, $isRequired=false, $aRows=3, $aCols=40, $aWrap='soft') {
-		return Strings::format('<textarea name="%1$s" id="%1$s" rows="%4$d" cols="%5$d" wrap="%6$s"%3$s >%2$s</textarea>',
+		return Strings::format('<textarea name="%1$s" id="%1$s" rows="%4$d" cols="%5$d" wrap="%6$s"%3$s class="field" >%2$s</textarea>',
 				$aWidgetName,$aValue,($isRequired)?' required':'',$aRows,$aCols,$aWrap);
 	}
 	
@@ -136,7 +136,7 @@ class Widgets {
 		return '<input type="checkbox" name="'.$aWidgetName.'" class="'.$aClass.'"'.(($isChecked)?' checked':'').' />';
 	}
 	
-	static public function createSubmitButton($aWidgetName, $aText='Submit', $aClass='mainoption') {
+	static public function createSubmitButton($aWidgetName, $aText='Submit', $aClass='btn-primary') {
 		if (empty($aText))
 			$aText = 'Submit';
 		return Strings::format('<input type="submit" name="%1$s" id="%1$s" class="%3$s" value="%2$s"/>',

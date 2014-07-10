@@ -32,16 +32,16 @@ class Arrays {
 	 * @param int $aSteps - # of steps to shift array
 	 * @return array Resulting array
 	 */
-	static public function array_shift_circular(array $aArray, $aSteps = 1) {
+	static public function array_shift_circular(array $anArray, $aSteps = 1) {
 		if (!is_int($aSteps)) {
 			throw new \InvalidArgumentException('steps has to be an (int)');
 		}
-		$len = count($aArray);
+		$len = count($anArray);
 		if ($len === 0 || $aSteps === 0) {
-			return $aArray;
+			return $anArray;
 		}
 		$theBreakIdx = ($aSteps % $len) * -1;
-		return array_merge(array_slice($aArray, $theBreakIdx), array_slice($aArray, 0, $theBreakIdx));
+		return array_merge(array_slice($anArray, $theBreakIdx), array_slice($anArray, 0, $theBreakIdx));
 	}
 
 	/**
@@ -49,8 +49,8 @@ class Arrays {
 	 * @param array $aArray - array to prepend all other args
 	 * @return array Resulting array.
 	 */
-	static public function array_prepend(array &$aArray) {
-		return array_merge(array_slice(func_get_args(),1),$aArray);
+	static public function array_prepend(array &$anArray) {
+		return array_merge(array_slice(func_get_args(),1),$anArray);
 	}
 	
 	/**
@@ -58,8 +58,8 @@ class Arrays {
 	 * @param array $aArray - array to append all other args
 	 * @return array Resulting array.
 	 */
-	static public function array_append(array &$aArray) {
-		return array_merge($aArray,array_slice(func_get_args(),1));
+	static public function array_append(array &$anArray) {
+		return array_merge($anArray,array_slice(func_get_args(),1));
 	}
 	
 	/**
@@ -76,6 +76,17 @@ class Arrays {
 		} else {
 			return array_map(function($e) use (&$aKey) {return $e[$aKey];}, $anArray);
 		}
+	}
+	
+	/**
+	 * Given a two dimensional array, return that same array with keys redefined
+	 * as the values from $anArray[$aKey].
+	 * @param array $anArray - array of arrays.
+	 * @param string $aKey - index of column to make as keys
+	 * @return array Returns an array re-indexed using $aKey column. 
+	 */
+	static public function array_column_as_key($anArray, $aKey) {
+		return array_combine(self::array_column($anArray,$aKey), $anArray);
 	}
 	
 }//end class

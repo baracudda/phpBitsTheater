@@ -17,6 +17,7 @@
 
 namespace com\blackmoonit\database;
 use com\blackmoonit\AdamEve as BaseDbClass;
+use com\blackmoonit\database\DbConnInfo;
 use com\blackmoonit\database\DbUtils;
 use \PDO;
 use \PDOStatement;
@@ -39,23 +40,10 @@ class GenericDb extends BaseDbClass {
 			
 	const MAX_RETRY_COUNT = 3;
 	
+	/**
+	 * @var PDO
+	 */
 	public $db = null;
-
-	/**
-	 * IDE helper function, Code-Complete will display defined functions.
-	 */
-	static public function asPDOStatement(PDOStatement $aStatement) {
-		return $aStatement;
-	}
-	
-	/**
-	 * Get a PDO database connection.
-	 * @param string/array $aDnsInfo - if string, use as dns (see link for acceptable formats); else array(dns,usr,pwd).
-	 * @link http://php.net/manual/pdo.construct.php
-	 */
-	static public function getConnection($aDnsInfo) {
-		return DbUtils::getPDOConnection($aDnsInfo);
-	}
 
 	/**
 	 * PDO database connection and helper functions.
@@ -64,13 +52,13 @@ class GenericDb extends BaseDbClass {
 	public function connect() {
 		$theDnsInfo = $this->getDbConnInfo();
 		if (!empty($theDnsInfo)) {
-			$this->db = $this::getConnection($aDnsInfo);
-	}
+			$this->db = $theDnsInfo->getPDOConnection();
+		}
 	}
 
 	/**
-	 * Returns the connection info needed to call getConnection().
 	 * Used in base connect() implementation.
+	 * @return DbConnInfo the database connection info.
 	 */
 	public function getDbConnInfo() {
 		//let descendants handle
@@ -91,7 +79,6 @@ class GenericDb extends BaseDbClass {
 	 * sqlsrv	PDO_SQLSRV 	Microsoft SQL Server / SQL Azure
 	 * 4d		PDO_4D		4D
 	 */
-
 	public function dbType() {
 		return DbUtils::getDbType($this->db);
 	}

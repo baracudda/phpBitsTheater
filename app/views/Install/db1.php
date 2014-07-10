@@ -1,51 +1,85 @@
 <?php
-use \com\blackmoonit\Widgets;
+use BitsTheater\scenes\Install as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
+use com\blackmoonit\Widgets;
+use com\blackmoonit\database\DbConnOptions;
+use com\blackmoonit\database\DbConnSettings;
+use com\blackmoonit\database\DbConnInfo;
 $recite->includeMyHeader();
 $w = '';
-//$w .= '<div align="left">'."\n";
-$w .= '<h3>Database Info:</h3><br />'."\n";
-$w .= '<br />';
-$w .= 'Table Prefix: '.Widgets::createTextBox('table_prefix',$recite->table_prefix)."<br/>\n";
-$w .= '<br />'."\n";
-$w .= "<hr />\n";
-$w .= 'This site uses PHP\'s PDO database classes, please specify how to specify the DNS:<br />';
-$w .= '<br />';
+
+$w .= '<h3>Database Connection Settings:</h3>'."<br />\n";
+$w .= "<br />\n";
+$w .= 'This site uses PHP\'s PDO database classes, please specify the DNS required to connect to the following databases.'."<br />\n";
+$w .= "<br />\n";
 
 $w .= '<table class="data-entry">';
-$w .= '<tr class="rowh"><th>Pick one</th><th></th></tr>';
+$w .= '<tr>';
+/* @var $theDbConnInfo DbConnInfo */
+foreach($v->db_conns as $theDbConnInfo) {
+	$r = '<td align="center" style="border: 1px solid">';
+	
+	if (!empty($theDbConnInfo->dbConnOptions->ini_filename)) {
+		$r .= '<strong>Database Connection: </strong>'.$theDbConnInfo->dbConnOptions->ini_filename.''."<br/>\n";
+		$r .= "<br />\n";
+	}
 
-$w .= '<tr class="'.$v->_rowClass.'"><td class="data-label">';
-$w .= '<label for="dns_scheme1" class="radiolabel">Standard Credentials</label>';
-$w .= '<input type="radio" name="dns_scheme" id="dns_scheme1" class="radiobutton" value="ini" checked />';
-$w .= '</td><td class="data-entry">';
-$w .= "<br/>\n";
-$w .= 'Host: '.Widgets::createTextBox('dbhost',$recite->dbhost)."<br/>\n";
-$w .= 'Database Type: '.Widgets::createDropDown('dbtype',$recite->db_types,$recite->dbtype)."<br/>\n";
-$w .= 'Database Name: '.Widgets::createTextBox('dbname',$recite->dbname)."<br/>\n";
-$w .= 'Username: '.Widgets::createTextBox('dbuser',$recite->dbuser)."<br/>\n";
-$w .= 'Password: '.Widgets::createPassBox('dbpwrd',$recite->dbpwrd)."<br/>\n";
-$w .= "<br/>\n";
-$w .= '</td></tr>';
-
-$w .= '<tr class="'.$v->_rowClass.'"><td class="data-label">';
-$w .= '<label for="dns_scheme2" class="radiolabel">Alias defined in php.ini</label>';
-$w .= '<input type="radio" name="dns_scheme" id="dns_scheme2" class="radiobutton" value="alias" />';
-$w .= '</td><td class="data-entry">';
-$w .= "<br/>\n";
-$w .= 'Alias: '.Widgets::createTextBox('dns_alias',$recite->dns_alias)."<br/>\n";
-$w .= "<br/>\n";
-$w .= '</td></tr>';
-
-$w .= '<tr class="'.$v->_rowClass.'"><td class="data-label">';
-$w .= '<label for="dns_scheme3" class="radiolabel">Custom URI</label>';
-$w .= '<input type="radio" name="dns_scheme" id="dns_scheme3" class="radiobutton" value="uri" />';
-$w .= '</td><td class="data-entry">';
-$w .= "<br/>\n";
-$w .= 'URI: '.Widgets::createTextBox('dns_customuri',$recite->dns_customuri)."<br/>\n";
-$w .= "<br/>\n";
-$w .= '</td></tr>';
-
+	$theFormIdPrefix = $v->getFormIdPrefix($theDbConnInfo);
+	$r .= '<span class="data-label">'.$v->getRes('install/label_dns_table_prefix').': </span>';
+	$r .= Widgets::createTextBox($theFormIdPrefix.'_table_prefix',$theDbConnInfo->dbConnOptions->table_prefix,false,20)."<br/>\n";
+	$r .= "<br />\n";
+	$r .= "<hr />\n"; //horizontal line here
+	if (empty($theDbConnInfo->dbConnOptions->dns_scheme)) {
+		$r .= '<table class="data-entry">';
+		$r .= '<tr class="rowh"><th>Pick one</th><th></th></tr>';
+		
+		$r .= '<tr class="'.$v->_rowClass.'"><td class="data-label">';
+		$r .= '<label for="'.$theFormIdPrefix.'_dns_scheme_ini" class="radiolabel">'.$v->getRes('install/label_dns_scheme_ini').'</label>';
+		$r .= '<input type="radio" name="'.$theFormIdPrefix.'_dns_scheme" id="'.$theFormIdPrefix.'_dns_scheme_ini" class="radiobutton" value="ini" checked />';
+		$r .= '</td><td class="data-entry">';
+		$r .= "<br/>\n";
+		$r .= $v->getDnsWidgets($theDbConnInfo,$v);
+		$r .= "<br/>\n";
+		$r .= '</td></tr>';
+		
+		$r .= '<tr class="'.$v->_rowClass.'"><td class="data-label">';
+		$r .= '<label for="'.$theFormIdPrefix.'_dns_scheme_alias" class="radiolabel">'.$v->getRes('install/label_dns_scheme_alias').'</label>';
+		$r .= '<input type="radio" name="'.$theFormIdPrefix.'_dns_scheme" id="'.$theFormIdPrefix.'_dns_scheme_alias" class="radiobutton" value="alias" />';
+		$r .= '</td><td class="data-entry">';
+		$r .= "<br/>\n";
+		$r .= $v->getDnsWidgets($theDbConnInfo,$v);
+		$r .= "<br/>\n";
+		$r .= '</td></tr>';
+		
+		$r .= '<tr class="'.$v->_rowClass.'"><td class="data-label">';
+		$r .= '<label for="'.$theFormIdPrefix.'_dns_scheme_uri" class="radiolabel">'.$v->getRes('install/label_dns_scheme_uri').'</label>';
+		$r .= '<input type="radio" name="'.$theFormIdPrefix.'_dns_scheme" id="'.$theFormIdPrefix.'_dns_scheme_uri" class="radiobutton" value="uri" />';
+		$r .= '</td><td class="data-entry">';
+		$r .= "<br/>\n";
+		$r .= $v->getDnsWidgets($theDbConnInfo,$v);
+		$r .= "<br/>\n";
+		$r .= '</td></tr>';
+		
+		$r .= '<tr class="'.$v->_rowClass.'"><td class="data-label">';
+		$r .= '<label for="'.$theFormIdPrefix.'_dns_scheme_custom" class="radiolabel">'.$v->getRes('install/label_dns_scheme_custom').'</label>';
+		$r .= '<input type="radio" name="'.$theFormIdPrefix.'_dns_scheme" id="'.$theFormIdPrefix.'_dns_scheme_custom" class="radiobutton" value="custom" />';
+		$r .= '</td><td class="data-entry">';
+		$r .= "<br/>\n";
+		$r .= $v->getDnsWidgets($theDbConnInfo,$v);
+		$r .= "<br/>\n";
+		$r .= '</td></tr>';
+		
+		$r .= '</tr></table>';
+	} else {
+		$r .= $v->getDnsWidgets($theDbConnInfo,$v);
+	}
+	
+	$r .= '</td>';
+	$w .= $r;
+}//foreach
 $w .= '</tr></table>';
+
 $w .= "<br/>\n";
 $w .= Widgets::createCheckBox('do_not_delete_failed_config').' Keep config file on failure'."<br />\n";
 $w .= "<br/>\n";
@@ -54,7 +88,6 @@ $w .= $recite->continue_button;
 //$w .= '</div>';
 
 $form_html = Widgets::createHtmlForm($recite->form_name,$recite->next_action,$w,'',false);
-print $form_html;
-
+print($form_html);
 print(str_repeat('<br />',3));
 $recite->includeMyFooter();

@@ -16,15 +16,35 @@
  */
 
 namespace BitsTheater\models; 
-use BitsTheater\models\KeyValueModel;
+use BitsTheater\models\KeyValueModel as BaseModel;
+use BitsTheater\costumes\ConfigNamespaceInfo;
+use BitsTheater\costumes\ConfigSettingInfo;
+use \PDOException;
 {//namespace begin
 
-class Config extends KeyValueModel {
+class Config extends BaseModel {
 	const TABLE_NAME = 'config';
 	const MAPKEY_NAME = 'setting';
+	public $tnConfig;
+	
+	public function setupAfterDbConnected() {
+		parent::setupAfterDbConnected();
+		$this->tnConfig = $this->getTableName();
+	}
 	
 	public function setupModel() {
-		return parent::setupModel();
+		parent::setupModel();
+
+		//realized that Config model should have a different mapkey name from what KeyValueModel defined.
+		//  existing sites may need to alter their definition so the updated code will work.
+		$theSql = 'SELECT '.static::MAPKEY_NAME.' FROM '.$this->tnConfig.' LIMIT 1';
+		try {
+			$this->query($theSql);
+		} catch(PDOException $e) {
+			//we need to alter the table
+			$theSql = 'ALTER TABLE '.$this->tnConfig.' CHANGE '.KeyValueModel::MAPKEY_NAME.' '.static::MAPKEY_NAME.' CHAR(40)';
+			$this->execDML($theSql);
+		}
 	}
 	
 	protected function getDefaultData($aScene) {
@@ -35,6 +55,8 @@ class Config extends KeyValueModel {
 		if (empty($aScene->auth_logout_url))
 			$aScene->auth_logout_url = 'account/logout';
 		$r = array(
+			array('ns' => 'namespace', 'key'=>'site', 'value'=>null, 'default'=>null, ),
+			array('ns' => 'site', 'key'=>'mode', 'value'=>$aScene->site_mode, 'default'=>null, ),
 			//AUTH
 			array('ns' => 'namespace', 'key'=>'auth', 'value'=>null, 'default'=>null, ),
 			array('ns' => 'auth', 'key'=>'register_url', 'value'=>$aScene->auth_register_url, 'default'=>'account/register', ),
@@ -72,8 +94,46 @@ class Config extends KeyValueModel {
 		} else if ($aNewValue=='?' && isset($this->_mapdefault[$aKey])) {
 			$aNewValue = $this->_mapdefault[$aKey];
 		}
-		parent::setMapValue($aKey, $aNewValue);		
+		parent::setMapValue($aKey, $aNewValue);
 	}
+	
+	/**
+	 * Get all defined namespaces visible for current login and return them 
+	 * as ConfigNamespaceInfo objects.
+	 * @return array Returns an array of ConfigNamespaceInfo objects.
+	 */
+	public function getConfigAreas() {
+		$theAreas = array();
+		$theNamespaces = $this->getRes('config/namespace');
+		foreach ($theNamespaces as $ns=>$nsInfo) {
+			$theNsObj = ConfigNamespaceInfo::fromConfigArea($this->director, $ns, $nsInfo);
+			if ($theNsObj->isAllowed()) {
+				$theAreas[$ns] = $theNsObj;
+			}
+		}
+		return $theAreas;
+	}
+	
+	/**
+	 * Get all defined settings for a particular namespace visible for the
+	 * current login and return them as ConfigSettingInfo objects. 
+	 * @param ConfigNamespaceInfo $aNamespaceInfo
+	 * @return array[ConfigSettingInfo] Returns an array of objects.
+	 */
+	public function getConfigSettings(ConfigNamespaceInfo $aNamespaceInfo) {
+		$theSettings = array();
+		if ($aNamespaceInfo!=null) {
+			$theSettingList = $this->getRes('config/'.$aNamespaceInfo->namespace);
+			foreach ($theSettingList as $theSettingName => $theSettingInfo) {
+				$o = ConfigSettingInfo::fromConfigRes($aNamespaceInfo, $theSettingName, $theSettingInfo);
+				if ($o->isAllowed()) {
+					$theSettings[$theSettingName] = $o;
+				}
+			}
+		}
+		return $theSettings;
+	}
+	
 	
 }//end class
 

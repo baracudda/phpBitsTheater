@@ -19,8 +19,6 @@ namespace com\blackmoonit\database;
 use com\blackmoonit\Strings;
 use \PDO;
 use \PDOException;
-use \InvalidArgumentException;
-use \RuntimeException;
 use \UnexpectedValueException;
 use \DateTime;
 use \DateTimeZone;
@@ -44,44 +42,19 @@ class DbUtils {
 	private function __construct() {} //do not instantiate
 
 	/**
-	 * [dbconn]
-	 * driver = "mysql"
-	 * host = "localhost"
-	 * ;port = 3306
-	 * dbname = "mydatabase"
-	 * username = "server_bot"
-	 * password = "pw-for-server_bot"
-	 * 
-	 * @param array $aConfigData
-	 */
-	static private function cnvDbConnIni2Dns($aConfigData) {
-		switch ($aConfigData['dbconn']['driver']) {
-			case 'sqlite':
-				$theDns = $aConfigData['dbconn']['driver'].':'.$aConfigData['dbconn']['host'];
-				break;
-			case 'mysql':
-			default:
-				$theDns = $aConfigData['dbconn']['driver'].':host='.$aConfigData['dbconn']['host'].
-						((!empty($aConfigData['dbconn']['port'])) ? (';port='.$aConfigData['dbconn']['port']) : '' ).
-						';dbname='.$aConfigData['dbconn']['dbname'];
-		}
-		return array('dns'=>$theDns,'usr'=>$aConfigData['dbconn']['username'],'pwd'=>$aConfigData['dbconn']['password']);
-	}
-
-	/**
 	 * Returns the database connection driver being used.
-	 * cubrid	PDO_CUBRID	Cubrid
-	 * dblib 	PDO_DBLIB 	FreeTDS / Microsoft SQL Server / Sybase
-	 * firebird	PDO_FIREBIRD Firebird/Interbase 6
-	 * ibm		PDO_IBM 	IBM DB2
-	 * informix	PDO_INFORMIX IBM Informix Dynamic Server
-	 * mysql	PDO_MYSQL 	MySQL 3.x/4.x/5.x
-	 * oci		PDO_OCI 	Oracle Call Interface
-	 * odbc		PDO_ODBC 	ODBC v3 (IBM DB2, unixODBC and win32 ODBC)
-	 * pgsql	PDO_PGSQL 	PostgreSQL
-	 * sqlite	PDO_SQLITE 	SQLite 3 and SQLite 2
-	 * sqlsrv	PDO_SQLSRV 	Microsoft SQL Server / SQL Azure
-	 * 4d		PDO_4D		4D
+	 * cubrid	DB_TYPE_CUBRID		Cubrid
+	 * dblib 	DB_TYPE_DBLIB 		FreeTDS / Microsoft SQL Server / Sybase
+	 * firebird	DB_TYPE_FIREBIRD 	Firebird/Interbase 6
+	 * ibm		DB_TYPE_IBM 		IBM DB2
+	 * informix	DB_TYPE_INFORMIX 	IBM Informix Dynamic Server
+	 * mysql	DB_TYPE_MYSQL 		MySQL 3.x/4.x/5.x
+	 * oci		DB_TYPE_OCI 		Oracle Call Interface
+	 * odbc		DB_TYPE_ODBC 		ODBC v3 (IBM DB2, unixODBC and win32 ODBC)
+	 * pgsql	DB_TYPE_PGSQL 		PostgreSQL
+	 * sqlite	DB_TYPE_SQLITE 		SQLite 3 and SQLite 2
+	 * sqlsrv	DB_TYPE_SQLSRV 		Microsoft SQL Server / SQL Azure
+	 * 4d		DB_TYPE_4D			4D
 	 */
 	static public function getDbType(PDO $aDbConn) {
 		if (isset($aDbConn)) {
@@ -104,98 +77,6 @@ class DbUtils {
 			default:
 				return false;
 		}
-	}
-	
-	/**
-	 * Load pertinent database connection information from INI config file.
-	 * @param string $aConfigPath
-	 * @return array The settings are returned as an associative array.
-	 * @throws InvalidArgumentException if aConfigPath is empty.
-	 * @throws RuntimeException if unable to import the file.
-	 */
-	static public function readDbConnInfo($aConfigPath) {
-		if (empty($aConfigPath)) {
-			throw new InvalidArgumentException('Config path is empty.');
-		}
-		
-		$theDefaultConfig = array('dbopts','dbconn');
-		$theDefaultConfig['dbopts'] = array_fill_keys(array('table_prefix','dns_scheme','dns_value'),null);
-		$theDefaultConfig['dbconn'] = array_fill_keys(array('driver','host','port','dbname','username','password'),null);
-
-		if ($theConfig = parse_ini_file($aConfigPath, TRUE)) {
-			$theConfig = array_replace_recursive($theDefaultConfig,$theConfig);
-			switch ($theConfig['dbopts']['dns_scheme']) {
-				case 'ini':
-					$theConfig = array_merge($theConfig,self::cnvDbConnIni2Dns($theConfig));
-					break;
-				case 'alias':
-					$theConfig['dns'] = $theConfig['dbopts']['dns_value'];
-					break;
-				default:
-					$theConfig['dns'] = $theConfig['dbopts']['dns_scheme'].':'.$theConfig['dbopts']['dns_value'];
-			}
-			return $theConfig;
-		} else {
-			throw new RuntimeException('Unable to import '.$aConfigPath.'.');
-		}
-	}
-	
-	/**
-	 * 
-	 * @param string $aDnsScheme - 'alias', 'ini', 'uri'
-	 * @param string $aDnsValue - string whose parsed value varies by aDnsScheme.
-	 */
-	static public function getDbConnInfo($aDnsScheme, $aDnsValue) {
-		switch ($aDnsScheme) {
-			case 'ini':
-				return self::getDnsFromIniFile($aDnsValue);
-			case 'alias':
-				return $aDnsValue;
-			default:
-				return $aDnsScheme.':'.$aDnsValue;
-		}
-	}
-	
-	/**
-	 * Returns an array containing ('dns'=>$dnsString, 'usr'=>$username, 'pwd'=>$password) for PDO constructor
-	 * 
-	 * ;comments begin with semi-colon
-	 * [dbconn]
-	 * driver = mysql
-	 * host = localhost
-	 * ;port = 3306
-	 * dbname = my_db_name
-	 * username = rootbeer
-	 * password = "DoubleHelix!"
-	 * 
-	 * @param string $aConfigFilename - filename containing the INI information needed.
-	 * @throws InvalidArgumentException - if the filename is empty.
-	 * @throws RuntimeException - if the filename fails to import.
-	 */
-	static public function getDnsFromIniFile($aConfigFilename) {
-		if (empty($aConfigFilename)) {
-			throw new InvalidArgumentException('Config filename empty.');
-		}
-		if (!$theConfig = parse_ini_file($aConfigFilename, TRUE)) {
-			throw new RuntimeException('Unable to import '.$aConfigFilename.'.');
-		}
-		return self::cnvDbConnIni2Dns($theConfig);
-	}
-	
-	/**
-	 * Get a PDO database connection.
-	 * @param string/array $aDnsInfo - if string, use as dns (see link for acceptable formats); else array(dns,usr,pwd).
-	 * @link http://php.net/manual/pdo.construct.php
-	 */
-	static public function getPDOConnection($aDnsInfo) {
-		$theResult = null;
-		if (!empty($aDnsInfo['usr']) && !empty($aDnsInfo['pwd']))
-			$theResult = new PDO($aDnsInfo['dns'],$aDnsInfo['usr'],$aDnsInfo['pwd']);
-		else
-			$theResult = new PDO($aDnsInfo['dns']);
-		$theResult->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
-		$theResult->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-		return $theResult;
 	}
 	
 	/*-----------------------------------------------------------------------------
@@ -319,7 +200,7 @@ class DbUtils {
 	}
 	
 	/**
-	 * @return Returns a SQL datetime string representing now() in UTC.
+	 * @return string Returns a SQL datetime string representing now() in UTC.
 	 */
 	static public function utc_now($bUseMicroseconds=false) {
 		/* PHP is bugged, the "u" format does not work!
@@ -345,7 +226,7 @@ class DbUtils {
 	 * @return array Returns the dataset as an array with keys based on $aFieldNameKey.
 	 */
 	static public function cnvRowsToArray(&$aRowSet, $aFieldNameKey, $aFieldNameValue=null) {
-		$theResult = array();	
+		$theResult = array();
 		if (!empty($aRowSet)) {
 			$doMap = null;
 			if (!empty($aFieldNameValue)) {
@@ -375,7 +256,7 @@ class DbUtils {
 	/**
 	 * Get the DateTime object from "days ago" number. 0 = today.
 	 * @param number $aDaysAgo - how far back should date go
-	 * @return Returns the DateTime object.
+	 * @return DateTime Returns the DateTime object.
 	 */
 	static public function cnvDaysToDateTime($aDaysAgo) {
 		$theDate = new DateTime();
@@ -391,10 +272,12 @@ class DbUtils {
 	 * Calculate the datetime string from a "days ago" number. 0 = today.
 	 * @param number $aDaysAgo - how far back should date go
 	 * @param string $aDateFormat - datetime format to return. Defaults to 'Y-m-d H:i:s'.
+	 * @return DateTime Returns the DateTime object.
 	 */
 	static public function cnvDaysToDateTimeStr($aDaysAgo, $aDateFormat='Y-m-d H:i:s') {
 		return self::cnvDaysToDateTime($aDaysAgo)->format($aDateFormat);
 	}
+	
 
 }//class
 

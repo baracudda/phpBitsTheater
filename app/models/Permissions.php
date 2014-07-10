@@ -16,12 +16,12 @@
  */
 
 namespace BitsTheater\models;
-use BitsTheater\Model;
+use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
 {//namespace begin
 
-class Permissions extends Model {
+class Permissions extends BaseModel {
 	const VALUE_Allow = '+';
 	const VALUE_Deny = 'x';
 
@@ -109,13 +109,6 @@ class Permissions extends Model {
 		return false;
 	}
 	
-	/**
-	 * Use "namespace" to retrieve all the different namespaces for permissions.
-	 */
-	public function getPermissionRes($aNamespace) {
-		return $this->director->getRes('Permissions/'.$aNamespace);
-	}
-	
 	public function getAssignedRights($aGroupId) {
 		$r = $this->query($this->sql_get_group,array('group_id'=>$aGroupId));
 		$ar = array();
@@ -128,9 +121,9 @@ class Permissions extends Model {
 	public function modifyGroupRights($aScene) {
 		$theGroupId = $aScene->group_id;
 		$this->execDML($this->sql_del_group,array('group_id'=>$theGroupId));
-		$right_groups = $this->getPermissionRes('namespace');
+		$right_groups = $aScene->getPermissionRes('namespace');
 		foreach ($right_groups as $ns => $nsInfo) {
-			foreach ($this->getPermissionRes($ns) as $theRight => $theRightInfo) {
+			foreach ($aScene->getPermissionRes($ns) as $theRight => $theRightInfo) {
 				$varName = $ns.'__'.$theRight;
 				$theAssignment = $aScene->$varName;
 				//Strings::debugLog($varName.'='.$theAssignment);

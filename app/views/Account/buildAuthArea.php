@@ -1,8 +1,11 @@
 <?php
+use BitsTheater\scenes\Account as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
 use \com\blackmoonit\Widgets;
-
 $w = '';
-if ($recite->_director->isGuest()) {
+
+if ($recite->getDirector()->isGuest()) {
 	$w .= Widgets::createSubmitButton('button_login',$v->getRes('account/label_login')).': ';
 	$w .= Widgets::createTextBox($v->getUsernameKey(),$v->getUsername(),false,10,255)." ";
 	$w .= Widgets::createPassBox($v->getPwInputKey(),$v->getPwInput(),false,10,255)."<br />\n";
@@ -11,6 +14,6 @@ if ($recite->_director->isGuest()) {
 	$form_html = Widgets::createForm($v->action_url_login,$w,$v->redirect);
 	print($form_html);
 } else {
-	print($recite->_director->account_info['account_name'].' (<a href="'.$v->action_url_logout.'">'.
+	print($recite->getDirector()->account_info['account_name'].' (<a href="'.$v->action_url_logout.'">'.
 			$recite->getRes('account/label_logout').'</a>) ');
 }

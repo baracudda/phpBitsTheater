@@ -17,6 +17,7 @@
 
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseActor;
+use BitsTheater\Scene as MyScene;
 use com\blackmoonit\Strings;
 use \ReflectionClass;
 use \BadMethodCallException;
@@ -29,11 +30,33 @@ use com\blackmoonit\exceptions\SystemExit;
  * Base class for all Actors in the app.
  */
 class Actor extends BaseActor {
+	/**
+	 * Normal website operation mode.
+	 * @var string
+	 */
+	const SITE_MODE_NORMAL = Director::SITE_MODE_NORMAL;
+	/**
+	 * Refuse connections while the site is being worked on.
+	 * @var string
+	 */
+	const SITE_MODE_MAINTENANCE = Director::SITE_MODE_MAINTENANCE;
+	/**
+	 * Use local resources as much as possible (little/no net connection)
+	 * @var string
+	 */
+	const SITE_MODE_DEMO = Director::SITE_MODE_DEMO;
+	
 	const _SetupArgCount = 2; //number of args required to call the setup() method.
 	const DEFAULT_ACTION = '';
 	const ALLOW_URL_ACTIONS = true;
+	/**
+	 * @var Director
+	 */
 	public $director = NULL; //session vars can be accessed like property (ie. director->some_session_var; )
-	//public $config = NULL; //config model used essentially like property (ie. config->some_key; ) Dynamically created when accessed for 1st time.
+	//public $config = NULL; //config model used essentially like property (ie. config[some_key]; ) Dynamically created when accessed for 1st time.
+	/**
+	 * @var MyScene
+	 */
 	public $scene = NULL; //scene ui interface used like properties (ie. scene->some_var; (which can be functions))
 	protected $action = NULL;
 	protected $renderThisView = NULL; // REST service actions may wish to render a single view e.g. JSONoutput.php or XMLout.php
@@ -135,6 +158,13 @@ class Actor extends BaseActor {
 		}
 	}
 	
+	/**
+	 * @return Director Returns the director object.
+	 */
+	public function getDirector() {
+		return $this->director;
+	}
+	
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
 		return $this->director->isAllowed($aNamespace,$aPermission,$acctInfo);
 	}
@@ -201,6 +231,30 @@ class Actor extends BaseActor {
 	
 	public function getMyAccountID() {
 		return $this->director->account_info['account_id'];
+	}
+	
+	/**
+	 * If the menu being used supports highlighting, highlight the menu passed in.
+	 * @param string $aMenuKey - menu key name as used in res/MenuInfo.
+	 */
+	public function setCurrentMenuKey($aMenuKey) {
+		$this->director['current_menu_key'] = $aMenuKey;
+	}
+	
+	public function getConfigSetting($aConfigName) {
+		if ($this->config)
+			return $this->config[$aConfigName];
+	}
+	
+	/**
+	 * @see Director::getSiteMode()
+	 * @return string Returns the site mode config setting.
+	 */
+	public function getSiteMode() {
+		if ($this->config)
+			return $this->config['site/mode'];
+		else
+			return self::SITE_MODE_NORMAL;
 	}
 	
 }//end class

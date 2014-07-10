@@ -16,6 +16,7 @@
  */
 
 namespace com\blackmoonit;
+use com\blackmoonit\exceptions\IllegalArgumentException;
 {//begin namespace
 
 class Strings {
@@ -81,6 +82,8 @@ class Strings {
 	 * @link http://php.net/manual/en/function.sprintf.php
 	 */
 	static public function format($aFormat, $args) {
+		if (!isset($args))
+			throw new IllegalArgumentException('Strings::format requires arguments to replace in the format string.');
 		return call_user_func_array('sprintf',func_get_args());
 	}
 
@@ -137,12 +140,12 @@ class Strings {
 		return $salt;
 	}
 	
-	/** 
+	/**
 	 * Blowfish pw encryption mechanism: 76 chars long (60 char encryption + 16 char random salt)
 	 * <pre>
 	 * $pwhash = hasher($pwInput); //encrypts $pw and appends the generated random salt
 	 * //safe now to store $pwhash in a database
-	 * $isAuthorized = hasher($pwInput, $pwhash); 
+	 * $isAuthorized = hasher($pwInput, $pwhash);
 	 * </pre>
 	 * @param string $aPwInput - user supplied pw string
 	 * @param string $aEncryptedData - db stored encrypted pw string to compare against (optional)
@@ -224,7 +227,7 @@ class Strings {
 
 	/**
 	 * Send the string parameter to the debug log.
-	 * Current implementation is the LOG_ERR destination with 
+	 * Current implementation is the LOG_ERR destination with
 	 * a prefix of "[dbg] " prepended to the parameter.
 	 * @param string $s - string to send to the debug log.
 	 */
@@ -284,7 +287,7 @@ class Strings {
 	}
 	
 	/**
-	 * Convert PHP's UUID to a 32 char SQL UUID (dubbed TextId by me). 
+	 * Convert PHP's UUID to a 32 char SQL UUID (dubbed TextId by me).
 	 * @param string $aUUID - a UUID
 	 * @return string - Returns the TextId (UUID minus punctuation)
 	 */

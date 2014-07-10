@@ -1,6 +1,9 @@
 <?php
+use BitsTheater\scenes\Account as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
 
-if (!$recite->_director->isGuest()) {
+if (!$recite->getDirector()->isGuest()) {
 	ob_start();
 	ssi_logout();
 	$theLink = ob_get_clean();

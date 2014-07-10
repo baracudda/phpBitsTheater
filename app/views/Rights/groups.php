@@ -1,8 +1,12 @@
 <?php
+use BitsTheater\scenes\Rights as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
 use \com\blackmoonit\Widgets;
 $recite->includeMyHeader();
+$w = '';
 
-$w = '<h2>Assign Rights To Groups</h2>';
+$w .= '<h2>Assign Rights To Groups</h2>';
 if (isset($v->err_msg)) {
 	$w .= '<span class="msg-error">'.$v->err_msg.'</span>';
 }
@@ -20,5 +24,6 @@ foreach ($v->groups as $theGroup) {
 $w .= "  </tbody>\n";
 $w .= "</table><br/>\n";
 
-print $w;
+print($w);
+print(str_repeat('<br />',3));
 $recite->includeMyFooter();

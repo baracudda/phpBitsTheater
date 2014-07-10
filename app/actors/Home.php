@@ -1,6 +1,8 @@
 <?php
 namespace BitsTheater\actors;
 use BitsTheater\Actor;
+use BitsTheater\Scene as MyScene;
+	/* @var $v MyScene */
 {//namespace begin
 
 class Home extends Actor {
@@ -8,7 +10,7 @@ class Home extends Actor {
 
 	public function view() {
 		//indicate what top menu we are currently in
-		$this->scene->_director['current_menu_key'] = 'home';
+		$this->setCurrentMenuKey('home');
 	}
 	
 }//end class

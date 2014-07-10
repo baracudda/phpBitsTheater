@@ -21,6 +21,7 @@ namespace BitsTheater;
 /**********************************
  * define required CONSTANTS
  **********************************/
+
 //namespaces
 define('BITS_NAMESPACE',__NAMESPACE__.'\\');
 define('BITS_NAMESPACE_RES',BITS_NAMESPACE.'res\\');

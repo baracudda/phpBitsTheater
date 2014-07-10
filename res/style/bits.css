@@ -1,8 +1,10 @@
-/**
+@CHARSET "ISO-8859-1";
+
+/*
  * BITS CSS STYLES
  */
 
-/**
+/*
  * General page style. 
  */
 body {
@@ -22,26 +24,18 @@ body {
 	font-size: 12px;
 	text-align: left;
 	text-indent: 3px;
-	
-	background: -moz-linear-gradient(top, Navy, #0033CC); // Firefox older
-	background: Navy;
-	background: -webkit-gradient(linear, 0 0, 0 100%, from(Navy), to(#0033CC)); // Safari 4+, Chrome 2+
-	background: linear-gradient(to bottom, Navy, #0033CC); // Standard, IE10
-	
-	/* if you have an image & gradient
-	background: url('PATH-TO-IMG') center center no-repeat; // fallback
-	background: url('PATH-TO-IMG') center center no-repeat, -webkit-gradient(linear, 0 0, 0 100%, from(@startColor), to(@endColor)); // Safari 4+, Chrome 2+
-	background: url('PATH-TO-IMG') center center no-repeat, linear-gradient(top, @startColor, @endColor); // Standard, IE10
-	*/
-}
 
-#container-header a:link, #container-header a:active, #container-header a:visited {
-	color: LightSteelBlue;
-	text-decoration: none;
-}
-#container-header .title {
-	font-weight:bold;
-	font-size:24px;	
+	/* moz: old FF; webkit: Safari 4+, Chrome 2-35 */
+	background: -moz-linear-gradient(top, Navy, #0033CC);
+	background: Navy;
+	background: -webkit-gradient(linear, 0 0, 0 100%, from(Navy), to(#0033CC));
+	background: linear-gradient(to bottom, Navy, #0033CC);
+	
+	/* if you have an image & gradient (webkit: Safari 4+, Chrome 2+)
+	background: url('PATH-TO-IMG') center center no-repeat;
+	background: url('PATH-TO-IMG') center center no-repeat, -webkit-gradient(linear, 0 0, 0 100%, from(@startColor), to(@endColor));
+	background: url('PATH-TO-IMG') center center no-repeat, linear-gradient(top, @startColor, @endColor);
+	*/
 }
 
 #container-menu {
@@ -53,10 +47,36 @@ body {
 	text-align: left;
 	text-indent: 3px;
 	
-	background: -moz-linear-gradient(top, #0033CC, Navy); // Firefox older
+	/* moz: old FF; webkit: Safari 4+, Chrome 2-35 */
+	background: -moz-linear-gradient(top, #0033CC, Navy);
 	background: Navy;
-	background: -webkit-gradient(linear, 0 0, 0 100%, from(#0033CC), to(Navy)); // Safari 4+, Chrome 2+
-	background: linear-gradient(to bottom, #0033CC, Navy); // Standard, IE10
+	background: -webkit-gradient(linear, 0 0, 0 100%, from(#0033CC), to(Navy));
+	background: linear-gradient(to bottom, #0033CC, Navy);
+}
+
+/* use these lines if you want the header to match the menu's color highlight
+#container-header {
+	background: -moz-linear-gradient(top, Black, rgb(86,134,177));
+	background: rgb(86,134,177);
+	background: -webkit-gradient(linear, 0 0, 0 100%, from(Black), to(rgb(86,134,177)));
+	background: linear-gradient(to bottom, Black, rgb(86,134,177));
+}
+
+#container-menu {
+	background: -moz-linear-gradient(top, rgb(86,134,177), White);
+	background: rgb(86,134,177);
+	background: -webkit-gradient(linear, 0 0, 0 100%, from(rgb(86,134,177)), to(White));
+	background: linear-gradient(to bottom, rgb(86,134,177), White);
+}
+*/
+	
+#container-header a:link, #container-header a:active, #container-header a:visited {
+	color: LightSteelBlue;
+	text-decoration: none;
+}
+#container-header .title {
+	font-weight:bold;
+	font-size:24px;	
 }
 
 #container-body {
@@ -72,7 +92,9 @@ body {
 	padding:5px;
 }
 
-/* Error Display */
+/*
+ * Error Display
+ */
 div#container-error {
 	background-color: black;
 	font-family: Lucidatypewriter, Courier New, monospace;
@@ -96,13 +118,53 @@ div#container-error .msg-trace {
 	color: lime;
 }
 
-/* Supplemental Menu CSS */
+/*
+ * Supplemental Menu CSS
+ */
 .menu_icon {
 	vertical-align: middle;
 	height: 24px;
 }
 
-/* Data Entry/Display */
+/* 
+ * User Messages
+ */
+div#container-user-msgs {
+	text-decoration: none;
+	padding-top: 1em;
+	padding-bottom: 1em;
+}
+
+ul.user-msgs {
+	padding-top: 1em;
+	padding-right: 3em;
+	padding-bottom: 1em;
+	background-color: #FFFF99;
+	border:solid 2px #330099;
+	font-size: 12px;
+}
+
+ul.user-msgs li.notice {
+	padding-top: 1em;
+	padding-bottom: 1em;
+}
+
+ul.user-msgs li.warning {
+	padding-top: 1em;
+	padding-bottom: 1em;
+	background-color: #FFCC33;
+}
+
+ul.user-msgs li.error {
+	padding-top: 1em;
+	padding-bottom: 1em;
+	color: white;
+	background-color: red;
+}
+
+/*
+ * Data Entry & Display
+ */
 .data-outline {
 	border:solid 1px #000000;
 	font-size: 11px;
@@ -125,11 +187,11 @@ tr.rowh { /*row header*/
 
 tr.row1 {
 	background-color: #FFFF99;
-/*background:url('../images/row1.gif'); */
+/*	background:url('../images/row1.gif'); */
 }
 
 tr.row2 {
-	background-color: #E8E8E8; 
+	background-color: #E8E8E8;
 /*	background-color: #FFFF66; */
 /*	background-color: #C0C0C0; */
 /*	background:url('../images/row2.gif'); */
@@ -141,7 +203,7 @@ tr.rowf {
 }
 
 tr.row-hover {
-/*background:url('../images/hover.jpg'); */
+/*	background:url('../images/hover.jpg'); */
 }
 
 td.num {
@@ -186,49 +248,24 @@ input.hidden {
     border: 0px;
 }
 
-/* user messages */
-div#container-user-msgs {
-	text-decoration: none;
-	padding-top: 1em;
-	padding-bottom: 1em;
+input.field, textarea.field, select.field {
+
 }
 
-ul.user-msgs {
-	padding-top: 1em;
-	padding-right: 3em;
-	padding-bottom: 1em;
-	background-color: #FFFF99;
-	border:solid 2px #330099;
-	font-size: 12px;
-}
-
-ul.user-msgs li.notice {
-	padding-top: 1em;
-	padding-bottom: 1em;
-}
-
-ul.user-msgs li.warning {
-	padding-top: 1em;
-	padding-bottom: 1em;
-	background-color: #FFCC33;
-}
-
-ul.user-msgs li.error {
-	padding-top: 1em;
-	padding-bottom: 1em;
-	color: white;
-	background-color: red;
-}
-
-/* main submit button */
-input.mainoption {
+/*
+ * Buttons
+ */
+input.btn-primary {
 	font-weight: bolder;
 }
 
-/* secondary submit button (usually a reset) */
-input.liteoption {
+input.btn-secondary {
+	
 }
 
+/*
+ * Hyperlinks
+ */
 a:link,a:active,a:visited {
 	color: MidnightBlue;
 	text-decoration: none;
@@ -237,24 +274,5 @@ a:link,a:active,a:visited {
 a:hover {
 	color: Purple;
 	text-decoration: underline;
-}
-
-/* Dashboard */
-tr.spider-not-running {
-	color: Red;
-}
-
-/* Poprox Redbook */
-table.rb-ad {
-	width: 95%;
- 	background-color: White;
-	font-family: Verdana,Arial,sans-serif;
-}
-
-table.rb-ad .rb-ad-title {
-	/*font-size: 10pt;*/
-	text-align: left;
-	font-weight: 700;
-	color: #d10000;
 }
 

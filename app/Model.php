@@ -16,13 +16,14 @@
  */
 
 namespace BitsTheater;
-use BitsTheater\Director;
 use com\blackmoonit\database\GenericDb as BaseModel;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
 use \ReflectionClass;
 use \PDOException;
+use BitsTheater\Director;
+use BitsTheater\DbConnInfo;
 {//begin namespace
 
 /**
@@ -34,9 +35,15 @@ class Model extends BaseModel {
 	 * Use the named connection found in director->dbConnInfo[].
 	 * @var string
 	 */
-	const dbConnName = 'webapp';
+	public $dbConnName = 'webapp';
 	public $tbl_ = '';
+	/**
+	 * @var Director
+	 */
 	public $director = null;
+	/**
+	 * @var DbConnInfo
+	 */
 	public $myDbConnInfo = null;
 	
 	/**
@@ -45,7 +52,7 @@ class Model extends BaseModel {
 	 */
 	public function setup(Director $aDirector) {
 		$this->director = $aDirector;
-		$this->connect();
+		$this->connect($this->dbConnName);
 		$this->bHasBeenSetup = true;
 	}
 	
@@ -68,7 +75,7 @@ class Model extends BaseModel {
 	 */
 	public function connect($aDbConnName=null) {
 		if (empty($aDbConnName)) {
-			$aDbConnName = static::dbConnName;
+			$aDbConnName = $this->dbConnName;
 		}
 		$this->myDbConnInfo = $this->director->getDbConnInfo($aDbConnName);
 		try {

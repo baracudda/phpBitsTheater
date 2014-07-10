@@ -1,9 +1,14 @@
 <?php
+use BitsTheater\Scene as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
+$w = '';
+
 //print('USER MSGS HERE BEGIN<BR>');
 $theUserMsgs = $v->getUserMsgs();
 //print($v->debugStr($theUserMsgs));
 if (!empty($theUserMsgs)) {
-	$w = '<div id="container-user-msgs"><ul class="user-msgs">';
+	$w .= '<div id="container-user-msgs"><ul class="user-msgs">';
 	foreach((array) $theUserMsgs as $theUserMsg) {
 		$w .= '<li class="'.$theUserMsg['msg_class'].'">'.$theUserMsg['msg_text'].'</li>'."\n";
 	}

@@ -17,7 +17,13 @@
 
 namespace BitsTheater\actors;
 use BitsTheater\Actor;
+use BitsTheater\scenes\Account as MyScene;
+	/* @var $v MyScene */
+use BitsTheater\models\Accounts;
+	/* @var $dbAccounts Accounts */
 use BitsTheater\models\Groups;
+use BitsTheater\models\Auth;
+	/* @var $dbAuth Auth */
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -25,7 +31,7 @@ class Account extends Actor {
 	const DEFAULT_ACTION = 'register';
 
 	public function view($aAcctId=null) {
-		if ($this->director->isGuest()) {
+		if ($this->isGuest()) {
 			return $this->scene->getSiteURL($this->config['auth/register_url']);
 		}
 		$this->scene->dbAccounts = $this->getProp('Accounts');
@@ -40,11 +46,11 @@ class Account extends Actor {
 		$this->scene->action_modify = $this->getMyUrl('/account/modify');
 		$this->scene->redirect = $this->getMyUrl('/account/view');
 		//indicate what top menu we are currently in
-		$this->scene->_director['current_menu_key'] = 'account';
+		$this->setCurrentMenuKey('account');
 	}
 	
 	public function register($aTask='data-entry') {
-		$dbAccts = $this->getProp('Accounts');
+		$dbAccounts = $this->getProp('Accounts');
 		//make sure user/pw reg fields will not interfere with any login user/pw field in header
 		$userKey = $this->scene->getUsernameKey().'_reg';
 		$pwKey = $this->scene->getPwInputKey().'_reg';
@@ -62,13 +68,13 @@ class Account extends Actor {
 						array('err_msg'=>$this->getRes('account/msg_acctexists/'.$this->getRes('account/label_name'))));
 			default: //create new acct
 				$theNewAcct['account_name'] = $this->scene->$userKey;
-				$theNewId = $dbAccts->add($theNewAcct);
+				$theNewId = $dbAccounts->add($theNewAcct);
 				if (!empty($theNewId)) {
 					$theDefaultGroup = Groups::GROUPTYPE_guest;
 					$verified_ts = null;
 					if ($theRegCode===$this->getAppId()) {
 						$theDefaultGroup = Groups::GROUPTYPE_restricted;
-						$verified_ts = $dbAccts->utc_now();
+						$verified_ts = $dbAccounts->utc_now();
 					}
 					$theNewAcct = array(
 							'email' => $this->scene->email,
@@ -86,7 +92,7 @@ class Account extends Actor {
 			$this->scene->form_name = 'register_user';
 			$this->scene->action_url_register = $this->getMyUrl('register/new');
 			$this->scene->post_key = $this->getAppId();
-			if ($dbAccts->isEmpty()) {
+			if ($dbAccounts->isEmpty()) {
 				$this->scene->redirect = $this->getMyUrl('/rights');
 				$this->scene->reg_code = $this->getAppId();
 			} else {
@@ -94,10 +100,11 @@ class Account extends Actor {
 			}
 		}
 		//indicate what top menu we are currently in
-		$this->scene->_director['current_menu_key'] = 'account';
+		$this->setCurrentMenuKey('account');
 	}
 	
 	public function login() {
+		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		if (!$this->director->isGuest()) {
 			if ($v->redirect)
@@ -110,10 +117,11 @@ class Account extends Actor {
 			$v->redirect = $this->getHomePage();
 		}
 		//indicate what top menu we are currently in
-		$this->scene->_director['current_menu_key'] = 'account';
+		$this->setCurrentMenuKey('account');
 	}
 	
 	public function logout() {
+		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		$s = $this->director->logout();
 		if (!empty($v->redirect))
@@ -125,6 +133,7 @@ class Account extends Actor {
 	 * Renders the login/logout area of a page.
 	 */
 	protected function buildAuthArea() {
+		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		$v->action_url_register = $v->getSiteURL($this->config['auth/register_url']);
 		$v->action_url_login = $v->getSiteURL($this->config['auth/login_url']);
@@ -132,7 +141,7 @@ class Account extends Actor {
 	}
 	
 	public function modify() {
-		$dbAccts = $this->getProp('Accounts');
+		$dbAccounts = $this->getProp('Accounts');
 		$theAcctId = $this->scene->ticket_num;
 		$dbAuth = $this->getProp('Auth');
 		$pwKeyOld = $this->scene->getPwInputKey().'_old';

@@ -17,11 +17,14 @@
 
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseScene;
+use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use \ReflectionClass;
 use \ReflectionMethod;
-use com\blackmoonit\exceptions\IllegalArgumentException;
+use BitsTheater\Director;
+use BitsTheater\Actor;
+use BitsTheater\models\Config;
 {//begin namespace
 
 /**
@@ -46,9 +49,38 @@ use com\blackmoonit\exceptions\IllegalArgumentException;
  */
 class Scene extends BaseScene {
 	const _SetupArgCount = 2; //number of args required to call the setup() method.
+	
+	/**
+	 * Normal website operation mode.
+	 * @var string
+	 */
+	const SITE_MODE_NORMAL = Director::SITE_MODE_NORMAL;
+	/**
+	 * Refuse connections while the site is being worked on.
+	 * @var string
+	 */
+	const SITE_MODE_MAINTENANCE = Director::SITE_MODE_MAINTENANCE;
+	/**
+	 * Use local resources as much as possible (little/no net connection)
+	 * @var string
+	 */
+	const SITE_MODE_DEMO = Director::SITE_MODE_DEMO;
+	
+	/**
+	 * @var ReflectionClass
+	 */
 	public $me = null;
+	/**
+	 * @var Actor
+	 */
 	public $_actor = null;
+	/**
+	 * @var Director
+	 */
 	public $_director = null;
+	/**
+	 * @var Config
+	 */
 	public $_config = null;
 	public $_action = '';
 	public $_dbError = false;
@@ -320,6 +352,13 @@ class Scene extends BaseScene {
 		return ob_get_clean();
 	}
 	
+	/**
+	 * @return Director Returns the director object.
+	 */
+	public function getDirector() {
+		return $this->_director;
+	}
+	
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
 		return $this->_director->isAllowed($aNamespace,$aPermission,$acctInfo);
 	}
@@ -338,6 +377,21 @@ class Scene extends BaseScene {
 	
 	public function getRes($aResName) {
 		return $this->_director->getRes($aResName);
+	}
+	
+	public function getConfigSetting($aConfigName) {
+		return $this->_config[$aConfigName];
+	}
+	
+	/**
+	 * @see Director::getSiteMode()
+	 * @return string Returns the site mode config setting.
+	 */
+	public function getSiteMode() {
+		if ($this->_config)
+			return $this->_config['site/mode'];
+		else
+			return self::SITE_MODE_NORMAL;
 	}
 	
 	/**
@@ -500,7 +554,7 @@ class Scene extends BaseScene {
 		print($this->getScriptTag($aFilename, $aLocation));
 	}
 	
-
+	
 }//end class
 
 }//end namespace

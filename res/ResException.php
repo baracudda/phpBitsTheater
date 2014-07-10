@@ -16,7 +16,6 @@
  */
 
 namespace BitsTheater\res;
-use BitsTheater\configs\I18N;
 use com\blackmoonit\exceptions\DebuggableExceptionTrait;
 use com\blackmoonit\exceptions\IDebuggableException;
 use \Exception;
@@ -31,9 +30,12 @@ class ResException extends Exception implements IDebuggableException {
 	public $resName;
 	public $resClass;
 	public $resArgs;
+	/**
+	 * @var ResException
+	 */
 	public $resErr;
 	
-	public function __construct(I18N $aResMgr, $aResName, $aResClass=NULL, $args=NULL, $e=NULL) {
+	public function __construct($aResMgr, $aResName, $aResClass=NULL, $args=NULL, $e=NULL) {
 		if (empty($aResClass) || empty($args) || empty($e))
 			parent::__construct('Resource "'.$aResName.'" not found.',18404);
 		else
@@ -77,8 +79,10 @@ class ResException extends Exception implements IDebuggableException {
 			}
 		} else {
 			$msg = $this->getCode().': '.$this->resClass.'.'.$this->resName.'('.implode('/',$this->resArgs).')"'."\n";
-			$msg .= 'caused: '.$this->resErr->getMessage()."\n";
-			$msg .= $this->resErr->getDebugMsg()."\n";
+			if (!empty($this->resErr)) {
+				$msg .= 'caused: '.$this->resErr->getMessage()."\n";
+				$msg .= $this->resErr->getDebugDisplay()."\n";
+			}
 		}
 		return $msg;
 	}

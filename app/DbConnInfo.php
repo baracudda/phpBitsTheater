@@ -16,32 +16,35 @@
  */
 
 namespace BitsTheater;
-use com\blackmoonit\AdamEve as BaseDbConnInfo;
+use com\blackmoonit\database\DbConnInfo as BaseDbConnInfo;
 use com\blackmoonit\Strings;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\exceptions\DbException;
+use \PDO;
 {//begin namespace
 
 class DbConnInfo extends BaseDbConnInfo {
-	const _SetupArgCount = 1; //number of args required to call the setup() method.
-	public $dbConnName = null;
+	public $dbConnName = 'webapp';
 	public $dbName = null;
 	public $table_prefix = '';	//prefix for every table used by this connection
+	/**
+	 * @var PDO
+	 */
 	public $dbConn = null; 		//the actual, open connection
 
 	/**
 	 * Setup this class for use.
-	 * @param Director $aDirector - site director object
 	 * @param array $aDbConn - use this connection. If null, create a new one.
 	 */
-	public function setup($aDbConnName) {
-		$this->dbConnName = $aDbConnName;
-		$this->bHasBeenSetup = true;
+	public function __construct($aDbConnName) {
+		parent::__construct();
+		if (!empty($aDbConnName)) {
+			$this->dbConnName = $aDbConnName;
+		}
 	}
 	
-	public function cleanup() {
+	public function __destruct() {
 		$this->disconnect();
-		parent::cleanup();
 	}
 	
 	/**
@@ -61,26 +64,21 @@ class DbConnInfo extends BaseDbConnInfo {
 	}
 	
 	/**
-	 * Reads in the config information.
-	 * @return array Returns the db config contents.
-	 */
-	public function getDbConnInfo() {
-		return DbUtils::readDbConnInfo($this->getConfigFilePath());
-	}
-	
-	/**
 	 * Connects to the database and returns the connection.
-	 * @return Returns the connection when successful, FALSE if the attempt failed.
+	 * @return PDO Returns the connection when successful, FALSE if the attempt failed.
 	 */
 	public function connect() {
-		if (empty($this->dbConn) && file_exists($theCfgFile = $this->getConfigFilePath())) {
-			$theDbInfo = DbUtils::readDbConnInfo($theCfgFile);
-			$this->table_prefix = $theDbInfo['dbopts']['table_prefix'];
-			if (!empty($theDbInfo['dbconn']['dbname'])) {
-				$this->dbName = $theDbInfo['dbconn']['dbname'];
+		if (empty($this->dbConn) && $this->canAttemptConnectDb()) {
+			$theCfgFile = $this->getConfigFilePath();
+			$this->loadDbConnInfoFromIniFile($theCfgFile);
+			$this->table_prefix = $this->dbConnOptions->table_prefix;
+			if (!empty($this->dbConnSettings) && (!empty($this->dbConnSettings->dbname))) {
+				$this->dbName = $this->dbConnSettings->dbname;
 			}
-			$this->dbConn = DbUtils::getPDOConnection($theDbInfo);			
-			unset($theDbInfo);
+			$this->dbConn = $this->getPDOConnection();
+			unset($this->dbConnSettings);
+			unset($this->username);
+			unset($this->password);
 		} elseif (empty($this->dbConn)) {
 			throw new DbException(null,'Failed to connect: '.str_replace(BITS_CFG_PATH,'"[%config]'.¦,$this->getConfigFilePath()).'" not found.');
 		}

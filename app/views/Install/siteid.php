@@ -6,11 +6,13 @@ use com\blackmoonit\Widgets;
 $recite->includeMyHeader();
 $w = '';
 
-$w .= '<div align="left">';
-$w .= 'Please enter the install passphrase to continue: ';
-$w .= '<input type="text" class="post" name="installpw" value="" size="60" maxlength="255" required><br />';
-$w .= $recite->continue_button;
-$w .= '</div>';
+$w .= '<table class="data-entry"><tr>';
+$w .= '<td class="data-label">'.$v->getRes('install/label_site_id').': </td>';
+$w .= '<td>'.Widgets::createTextBox('site_id',$v->site_id,true,60)."</td>\n";
+$w .= '</tr></table>';
+$w .= $v->getRes('install/desc_site_id')."<br />\n";
+$w .= "<br />\n";
+$w .= $v->continue_button;
 
 $form_html = Widgets::createHtmlForm($recite->form_name,$recite->next_action,$w,'',false);
 print($form_html);

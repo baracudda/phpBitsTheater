@@ -16,11 +16,11 @@
  */
 
 namespace BitsTheater\models;
-use BitsTheater\Model;
+use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\DbException;
 {
 
-class Groups extends Model {
+class Groups extends BaseModel {
 	const GROUPTYPE_guest = 0;
 	const GROUPTYPE_titan = 1;
 	const GROUPTYPE_admin = 2;

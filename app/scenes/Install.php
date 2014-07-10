@@ -17,6 +17,11 @@
 
 namespace BitsTheater\scenes; 
 use BitsTheater\Scene;
+use com\blackmoonit\Widgets;
+use com\blackmoonit\database\DbConnOptions;
+use com\blackmoonit\database\DbConnSettings;
+use com\blackmoonit\database\DbConnInfo;
+use \PDO;
 {//namespace begin
 
 class Install extends Scene {
@@ -43,14 +48,6 @@ class Install extends Scene {
 				'value="'.$theText.'">'."\n";
 		
 		$this->auth_type = 'Basic';
-		
-		$this->table_prefix = 'webapp_';
-		$this->dbhost = 'localhost';
-		$this->dbtype = 'mysql';
-		$this->dbname = '';
-		$this->dbuser = '';
-		$this->dbpwrd = '';
-		
 	}
 	
 	protected function getDefinedPw() {
@@ -83,21 +80,120 @@ class Install extends Scene {
 					//'dbuser' => 'required',
 					//'dbpwrd' => 'required',
 			),'messages' => array(
-					'table_prefix' => 'A table prefix will prevent table name collisions.',
-					'dbhost' => 'Where is the database located?',
-					'dbname' => 'What is the database called?',
-					'dbuser' => 'Who am I requesting data as?',
-					'dbpwrd' => 'What is your quest?',
+					'table_prefix' => $this->getRes('install/validate_table_prefix'),
+					'dbhost' => $this->getRes('install/validate_dbhost'),
+					'dbname' => $this->getRes('install/validate_dbname'),
+					'dbuser' => $this->getRes('install/validate_dbuser'),
+					'dbpwrd' => $this->getRes('install/validate_dbpwrd'),
 			),
 		);
 	}
 	
 	public function getDbTypes() {
 		//return $this->getRes('install/db_types');
-		$theList = \PDO::getAvailableDrivers();
+		$theList = PDO::getAvailableDrivers();
 		return array_combine($theList,$theList);
 	}
+	
+	public function getDbConns() {
+		$db_conns = array();
+		
+		$theDbConnInfo = new DbConnInfo();
+		$theDbConnInfo->dbConnOptions->ini_filename = 'dbconn-webapp';
+		$theDbConnInfo->dbConnOptions->table_prefix = 'webapp_';
+		$theDbConnInfo->dbConnOptions->dns_scheme = DbConnOptions::DB_CONN_SCHEME_INI;
+		$theDbConnInfo->dbConnSettings->driver = DbConnSettings::DRIVER_MYSQL;
+		$theDbConnInfo->dbConnSettings->dbname = '';
+		$theDbConnInfo->dbConnSettings->host = '';
+		$theDbConnInfo->dbConnSettings->username = '';
+		$db_conns[] = $theDbConnInfo;
+		
+		return $db_conns;
+	}
+	
+	public function getFormIdPrefix(DbConnInfo $aDbConnInfo) {
+		if (!empty($aDbConnInfo) && !empty($aDbConnInfo->dbConnSettings->dbname)) {
+			return $aDbConnInfo->dbConnSettings->dbname;
+		} else {
+			return 'webapp';
+		}
+	}
 
+	public function getDnsWidgets(DbConnInfo $aDbConnInfo, $aScene) {
+		/* @var $v Install */
+		$v =& $this;
+		$theDnsScheme = $aDbConnInfo->dbConnOptions->dns_scheme;
+		if (empty($theDnsScheme))
+			return;
+		$theFormIdPrefix = $v->getFormIdPrefix($aDbConnInfo);
+		$w = '';
+		switch ($theDnsScheme) {
+			case DbConnOptions::DB_CONN_SCHEME_INI:
+				$w .= '<table class="data-entry">';
+
+				$w .= '<tr>';
+				$theWidgetName = $theFormIdPrefix.'_dbhost';
+				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->host))
+					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->host;
+				$w .= '<td class="data-label">'.$this->getRes('install/label_dns_dbhost').': </td>';
+				$w .= '<td>'.Widgets::createTextBox($theWidgetName,$v->$theWidgetName,true,30).'</td>';
+				$w .= "</tr>\n";
+
+				$w .= '<tr>';
+				$theWidgetName = $theFormIdPrefix.'_dbtype';
+				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->driver))
+					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->driver;
+				$w .= '<td class="data-label">'.$this->getRes('install/label_dns_dbtype').': </td>';
+				$w .= '<td>'.Widgets::createDropDown($theWidgetName,$v->getDbTypes(),$v->$theWidgetName).'</td>';
+				$w .= "</tr>\n";
+				
+				$w .= '<tr>';
+				$theWidgetName = $theFormIdPrefix.'_dbname';
+				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->dbname))
+					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->dbname;
+				$w .= '<td class="data-label">'.$this->getRes('install/label_dns_dbname').': </td>';
+				$w .= '<td>'.Widgets::createTextBox($theWidgetName,$v->$theWidgetName,true,30).'</td>';
+				$w .= "</tr>\n";
+				
+				$w .= '<tr>';
+				$theWidgetName = $theFormIdPrefix.'_dbuser';
+				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->username))
+					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->username;
+				$w .= '<td class="data-label">'.$this->getRes('install/label_dns_dbuser').': </td>';
+				$w .= '<td>'.Widgets::createTextBox($theWidgetName,$v->$theWidgetName,false,30).'</td>';
+				$w .= "</tr>\n";
+				
+				$w .= '<tr>';
+				$theWidgetName = $theFormIdPrefix.'_dbpwrd';
+				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->password))
+					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->password;
+				$w .= '<td class="data-label">'.$this->getRes('install/label_dns_dbpwrd').': </td>';
+				$w .= '<td>'.Widgets::createPassBox($theWidgetName,$v->$theWidgetName,false,30).'</td>';
+				$w .= "</tr>\n";
+				$w .= "</table>\n";
+				break;
+			case DbConnOptions::DB_CONN_SCHEME_ALIAS:
+				$theWidgetName = $theFormIdPrefix.'_dns_alias';
+				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnOptions->dns_value))
+					$v->$theWidgetName = $aDbConnInfo->dbConnOptions->dns_value;
+				$w .= $this->getRes('install/label_dns_alias').': '.Widgets::createTextBox($theWidgetName,$v->$theWidgetName)."<br/>\n";
+				break;
+			case DbConnOptions::DB_CONN_SCHEME_URI:
+				$theWidgetName = $theFormIdPrefix.'_dns_uri';
+				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnOptions->dns_value))
+					$v->$theWidgetName = $aDbConnInfo->dbConnOptions->dns_value;
+				$w .= $this->getRes('install/label_dns_uri').': '.Widgets::createTextBox($theWidgetName,$v->$theWidgetName)."<br/>\n";
+				break;
+			default:
+				$theWidgetName = $theFormIdPrefix.'_dns_custom';
+				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnOptions->dns_value))
+					$v->$theWidgetName = $aDbConnInfo->dbConnOptions->dns_value;
+				$w .= $this->getRes('install/label_dns_custom').': '.Widgets::createTextBox($theWidgetName,$v->$theWidgetName)."<br/>\n";
+				break;
+		}//switch
+		return $w;		
+	}
+	
 }//end class
 
 }//end namespace

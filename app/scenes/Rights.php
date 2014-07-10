@@ -32,8 +32,15 @@ class Rights extends Scene {
 		$this->save_button = '<br/>'.Widgets::createSubmitButton('submit_save',$theText)."\n";
 	}
 	
-	public function getRightValues($rights) {
-		$res = $rights->getPermissionRes('right_values');
+	/**
+	 * Use "namespace" to retrieve all the different namespaces for permissions.
+	 */
+	public function getPermissionRes($aNamespace) {
+		return $this->getRes('Permissions/'.$aNamespace);
+	}
+	
+	public function getRightValues() {
+		$res = $this->getPermissionRes('right_values');
 		$theResult = array();
 		foreach ($res as $key => $keyInfo) { //allow, disallow, deny
 			$theResult[$key] = $keyInfo['label'];
@@ -45,10 +52,10 @@ class Rights extends Scene {
 		return array('allow'=>'+','disallow'=>'-','deny'=>'x');
 	}
 	
-	public function getRightValue($assigned_rights,$ns,$rightName) {
+	public function getRightValue($aAssignedRights, $aNamespace, $aRightName) {
 		$theResult = 'disallow';
-		if (!empty($assigned_rights[$ns]) && !empty($assigned_rights[$ns][$rightName]))
-			$theResult = $assigned_rights[$ns][$rightName];
+		if (!empty($aAssignedRights[$aNamespace]) && !empty($aAssignedRights[$aNamespace][$aRightName]))
+			$theResult = $aAssignedRights[$aNamespace][$aRightName];
 		return $theResult;
 	}
 	

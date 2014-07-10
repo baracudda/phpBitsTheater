@@ -16,11 +16,11 @@
  */
 
 namespace BitsTheater\models;
-use BitsTheater\Model;
+use BitsTheater\Model as BaseModel;
 use com\blackmoonit\Strings;
 {//namespace begin
 
-class SetupDb extends Model {
+class SetupDb extends BaseModel {
 
 	public function setupModels($aScene) {
 		$models = self::getAllModelClassInfo();

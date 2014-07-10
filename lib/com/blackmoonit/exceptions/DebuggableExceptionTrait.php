@@ -56,7 +56,10 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 	public function getDebugDisplay($aMsg=null) {
 		$s = "<br/>\n".'<div id="container-error">';
 		$this->mContextMsg .= $aMsg;
-		$s .= '<span class="msg-context">'.str_replace("\n","<br/>\n",$this->getContextMsg())."</span><br/>\n";
+		$theContextMsg = $this->getContextMsg();
+		if (!empty($this->mFileRoot) && !empty($theContextMsg))
+			$theContextMsg = str_replace($this->mFileRoot,'[%site]',$theContextMsg);
+		$s .= '<span class="msg-context">'.str_replace("\n","<br/>\n",$theContextMsg)."</span><br/>\n";
 		$s .= '<span class="msg-error">'.str_replace("\n","<br/>\n",$this->getErrorMsg())."</span><br/>\n";
 		$s .= '<span class="msg-debug">'.str_replace("\n","<br/>\n",$this->getDebugMsg())."</span><br/>\n";
 		$theTrace = str_replace("\n","<br/>\n",$this->mException->getTraceAsString());
@@ -121,11 +124,12 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 	public function debugPrint($aMsg=null) {
 		if ($this->isDebugging()) {
 			if (!headers_sent()) {
-				print('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'."\n");
-				print('<html xmlns="http://www.w3.org/1999/xhtml">'."\n");
-				print('<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">'."\n");
+				$w = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'."\n";
+				$w .= '<html xmlns="http://www.w3.org/1999/xhtml">'."\n";
+				$w .= '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">'."\n";
 				if (!empty($this->mCssFileUrl))
-					print('<link rel="stylesheet" type="text/css" href="'.$this->mCssFileUrl.'">'."\n");
+					$w .= '<link rel="stylesheet" type="text/css" href="'.$this->mCssFileUrl.'">'."\n";
+				print($w);
 			}
 			print($this->getDebugDisplay($aMsg));
 		} else {

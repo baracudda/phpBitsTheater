@@ -1,6 +1,6 @@
 <?php
-namespace BitsTheater\models;
-use BitsTheater\models\JokaPackage;
+namespace BitsTheater\costumes;
+use BitsTheater\costumes\JokaPackage;
 {//begin namespace
 
 interface IJokaProcessing {

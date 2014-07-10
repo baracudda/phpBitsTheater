@@ -1,8 +1,12 @@
 <?php
+use BitsTheater\scenes\Install as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
 use \com\blackmoonit\Widgets;
 $recite->includeMyHeader();
+$w = '';
 
-$w = '<div align="left">';
+$w .= '<div align="left">';
 $w .= 'Language Chosen: '.$v->lang_types[$v->lang_type].'<br/>';
 if (!$v->permission_denied) {
 	$w .= '<br/>Successfully copied language configuration.<br/>';
@@ -15,7 +19,6 @@ if (!$v->permission_denied) {
 $w .= '</div>';
 
 $form_html = Widgets::createHtmlForm($recite->form_name,$recite->next_action,$w,'',false);
-print $form_html;
-
+print($form_html);
 print(str_repeat('<br />',3));
 $recite->includeMyFooter();

@@ -16,11 +16,11 @@
  */
 
 namespace BitsTheater\models;
-use BitsTheater\models\AuthBase;
+use BitsTheater\models\AuthBase as BaseModel;
 use com\blackmoonit\Strings;
 {//namespace begin
 
-class Auth extends AuthBase {
+class Auth extends BaseModel {
 	const TYPE = 'basic';
 	const ALLOW_REGISTRATION = true;
 	const REGISTRATION_SUCCESS = 0;

@@ -1,11 +1,16 @@
 <?php
+use BitsTheater\scenes\Account as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
 use \com\blackmoonit\Widgets;
 $recite->includeMyHeader();
+$w = '';
+
 $s = $v->getRes('account/msg_pw_nomatch');
 //print "<script>function checkPassword(p1,p2) { if (p1.value!=p2.value) {p2.setCustomValidity('\"'+p1.value+'\"!=\"'+p2.value+'\" $s');} else {p2.setCustomValidity('');} }</script>";
 print "<script>function checkPassword(p1,p2) { if (p1.value!=p2.value) {p2.setCustomValidity('$s');} else {p2.setCustomValidity('');} }</script>";
 
-$w = '<h2>Register</h2>';
+$w .= '<h2>Register</h2>';
 if (isset($v->err_msg)) {
 	$w .= '<span class="msg-error">'.$v->err_msg.'</span>';
 }
@@ -33,5 +38,5 @@ $w .= "</table>\n";
 
 $form_html = Widgets::createHtmlForm($recite->form_name,$recite->action_url_register,$w,$v->redirect,false);
 print($form_html);
-
+print(str_repeat('<br />',3));
 $recite->includeMyFooter();

@@ -17,6 +17,12 @@
 
 namespace BitsTheater\actors; 
 use BitsTheater\Actor;
+use BitsTheater\scenes\Rights as MyScene;
+	/* @var $v MyScene */
+use BitsTheater\models\Permissions;
+	/* @var $dbRights Permissions */
+use BitsTheater\models\Auth;
+	/* @var $dbAuth Auth */ 
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -26,52 +32,59 @@ class Rights extends Actor {
 	public function groups() {
 		if (!$this->director->isAllowed('permissions','modify'))
 			return $this->getHomePage();
-		$auth = $this->director->getProp('Auth');
-		$this->scene->groups = $auth->getGroupList();
-		$this->director->returnProp($auth);
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		
+		$dbAuth = $this->getProp('Auth');
+		$v->groups = $dbAuth->getGroupList();
+		$this->director->returnProp($dbAuth);
+
 		//indicate what top menu we are currently in
-		$this->scene->_director['current_menu_key'] = 'admin';	
+		$this->setCurrentMenuKey('admin');
 	}
 	
 	public function group($aGroupId) {
 		if (!$this->director->isAllowed('permissions','modify'))
 			return $this->getHomePage();
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		
 		if (is_null($aGroupId) || $aGroupId==1)
 			return $this->getMyUrl('/rights');
 		if ($aGroupId===0) {
-			$this->scene->group = null;
+			$v->group = null;
 		} else {
-			$auth = $this->director->getProp('Auth');
-			$this->scene->groups = $auth->getGroupList();
-			$this->director->returnProp($auth);
-			foreach ($this->scene->groups as $theGroup) {
+			$dbAuth = $this->getProp('Auth');
+			$v->groups = $dbAuth->getGroupList();
+			$this->returnProp($dbAuth);
+			foreach ($v->groups as $theGroup) {
 				if ($theGroup['group_id']==$aGroupId) {
-					$this->scene->group = $theGroup;
+					$v->group = $theGroup;
 					break;
 				}
 			}
 		}
-		$this->scene->rights = $this->director->getProp('Permissions');
-		$this->scene->right_groups = $this->scene->rights->getPermissionRes('namespace');
-		$this->scene->assigned_rights = $this->scene->rights->getAssignedRights($aGroupId);
+		$dbRights = $this->getProp('Permissions');
+		$this->scene->right_groups = $v->getPermissionRes('namespace');
+		$this->scene->assigned_rights = $dbRights->getAssignedRights($aGroupId);
 		$this->scene->redirect = $this->getMyUrl('/rights');
 		$this->scene->next_action = $this->getMyUrl('/rights/modify');
 		//indicate what top menu we are currently in
-		$this->scene->_director['current_menu_key'] = 'admin';	
+		$this->setCurrentMenuKey('admin');
 	}
 	
 	public function modify() {
-		if (!$this->director->isAllowed('permissions','modify'))
+		$v =& $this->scene;
+		if (!$this->isAllowed('permissions','modify'))
 			return $this->getHomePage();
-		if (is_null($this->scene->group_id) || $this->scene->group_id==1)
+		if (is_null($v->group_id) || $v->group_id==1)
 			return $this->getMyUrl('/rights');
 		//do update of DB
-		//print('<pre>');var_dump($this->scene);print('</pre>');
-		$rights = $this->director->getProp('Permissions');
-		$rights->modifyGroupRights($this->scene);
-		$this->director->returnProp($rights);
-		
-		return $this->scene->redirect;
+		//print('<pre>');var_dump($v);print('</pre>');
+		$dbRights = $this->getProp('Permissions');
+		$dbRights->modifyGroupRights($v);
+		$this->returnProp($dbRights);
+		return $v->redirect;
 	}
 		
 }//end class

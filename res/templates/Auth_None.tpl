@@ -1,10 +1,11 @@
 <?php
 
 namespace BitsTheater\models;
+use BitsTheater\models\AuthBase as BaseModel;
 use com\blackmoonit\Strings;
 {//namespace begin
 
-class Auth extends AuthBase {
+class Auth extends BaseModel {
 	const TYPE = 'None';  //skip all authentication methods
 	const ALLOW_REGISTRATION = false;
 
