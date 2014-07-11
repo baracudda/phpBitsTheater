@@ -31,6 +31,15 @@ abstract class AJokaPayload extends BaseCostume {
 			throw new IllegalArgumentException('JokaPackage should not be NULL.');
 		}
 	}
+	
+	public function toPackage (JokaPackage $aPackage) {
+		if ($aPackage!=null) {
+			$aPackage->payload = $this->toJson();
+		} else {
+			throw new IllegalArgumentException('JokaPackage should not be NULL.');
+		}
+	}
+	
 
 }//end class
 

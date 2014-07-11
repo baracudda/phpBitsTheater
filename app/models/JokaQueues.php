@@ -141,7 +141,7 @@ class JokaQueues extends BaseModel {
 
 	public function addIncomingPayload($aPayloadId, $aPayload, $aPackageName, $aDeviceId, $aXmitTs) {
 		$theResult = null;
-		if ($this->isConnected() && !empty($aPayloadId) && !empty($aPayload) && !empty($aPackageName) 
+		if ($this->isConnected() && !empty($aPayloadId) && !empty($aPayload) && !empty($aPackageName)
 				&& !empty($aDeviceId) && !empty($aXmitTs)) {
 			$theParams = array();
 			$theParamTypes = array();
@@ -207,6 +207,11 @@ class JokaQueues extends BaseModel {
 			$theSql .= ' ORDER BY transmit_ts '.$this->mSqlPayloadLimit;
 			$rs = $this->query($theSql,$theParams,$theParamTypes);
 			$theResultSet = $rs->fetchAll(PDO::FETCH_CLASS, $this->mSqlPayloadClass);
+			if (!empty($theResultSet)) {
+				foreach($theResultSet as &$theRow) {
+					$theRow->setDirector($this->director);
+				}
+			}
 			$rs->closeCursor();
 			
 		} catch (PDOException $pdoe) {
@@ -321,6 +326,11 @@ class JokaQueues extends BaseModel {
 			$theSql .= ' ORDER BY transmit_ts';
 			$rs = $this->query($theSql,$theParams,$theParamTypes);
 			$theResultSet = $rs->fetchAll(PDO::FETCH_CLASS, $this->mSqlPayloadClass);
+			if (!empty($theResultSet)) {
+				foreach($theResultSet as &$theRow) {
+					$theRow->setDirector($this->director);
+				}
+			}
 			$rs->closeCursor();
 			
 		} catch (PDOException $pdoe) {
@@ -347,6 +357,11 @@ class JokaQueues extends BaseModel {
 			$theSql .= ' ORDER BY transmit_ts '.$this->mSqlPayloadLimit;
 			$rs = $this->query($theSql,$theParams,$theParamTypes);
 			$theResultSet = $rs->fetchAll(PDO::FETCH_CLASS, $this->mSqlPayloadClass);
+			if (!empty($theResultSet)) {
+				foreach($theResultSet as &$theRow) {
+					$theRow->setDirector($this->director);
+				}
+			}
 			$rs->closeCursor();
 			
 		} catch (PDOException $pdoe) {

@@ -8,7 +8,7 @@ $w = '';
 print('<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">');
 print('<html xmlns="http://www.w3.org/1999/xhtml">'."\n");
 print('<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">'."\n");
-print('<title>Roxy</title>'."\n");
+print('<title>BitsTheater</title>'."\n");
 //NOTE: $v and $recite are interchangable (one is more readable, one is nice and short (v for variables! ... and functions)
 
 //jQuery

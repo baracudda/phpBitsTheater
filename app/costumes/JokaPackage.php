@@ -21,6 +21,7 @@ class JokaPackage extends BaseCostume {
 	/**
 	 * Given a JokaPackage, construct a new package that will route back to the sender.
 	 * @param JokaPackage $aJokaPackage - package to reply to.
+	 * @return JokaPackage Returns a new instance of JokaPackage ready to accept a new payload.
 	 */
 	static public function replyTo(JokaPackage $aJokaPackage) {
 		$theClassName = get_called_class();
@@ -41,7 +42,7 @@ class JokaPackage extends BaseCostume {
 			$theModelClassName = (!empty($dotDomain)) ? $dotDomain : $aPackageName;
 		}
 		$theModelClassName = str_replace('.', '_', $theModelClassName);
-		//convert "the_model_class_name" to "TheModelClassName" 
+		//convert "the_model_class_name" to "TheModelClassName"
 		return Strings::getClassName($theModelClassName);
 	}
 	

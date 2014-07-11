@@ -48,9 +48,17 @@ abstract class ABitsCostume extends BaseCostume {
 	public function getDirector() {
 		return $this->_director;
 	}
+
+	/**
+	 * Set the director variable.
+	 * @param Director $aDirector - site director object
+	 */
+	public function setDirector(Director $aDirector) {
+		$this->_director = $aDirector;
+	}
 	
 	/**
-	 * Copies array values into matching property names 
+	 * Copies array values into matching property names
 	 * based on the array keys.
 	 * @param array $anArray - array to copy from.
 	 */
@@ -80,7 +88,7 @@ abstract class ABitsCostume extends BaseCostume {
 	 * array param.
 	 * @param Director $aDirector - site director object
 	 * @param array $anArray - associative array of data
-	 * @return Returns the new instance.
+	 * @return ABitsCostume Returns the new instance.
 	 */
 	static public function fromArray(Director $aDirector, $anArray) {
 		$theClassName = get_called_class();
@@ -95,7 +103,7 @@ abstract class ABitsCostume extends BaseCostume {
 	 * JSON param.
 	 * @param Director $aDirector - site director object
 	 * @param string $asJson - JSON encoded string
-	 * @return Returns the new instance.
+	 * @return ABitsCostume Returns the new instance.
 	 */
 	static public function fromJson(Director $aDirector, &$asJson) {
 		//Strings::debugLog('joka json: '.Strings::debugStr($asJson));
@@ -105,10 +113,22 @@ abstract class ABitsCostume extends BaseCostume {
 	}
 	
 	/**
+	 * Hide metadata before converting self to JSON, return string.
+	 * @return string Return self encoded to JSON.
+	 */
+	public function toJson() {
+		$d = $this->_director;
+		$this->_director = null;
+		$json = json_encode($this);
+		$this->_director = $d;
+		return $json;
+	}
+	
+	/**
 	 * Utility function to convert a standard class to a specified class.
 	 * @param StandardClass $aStdClass - the standard class to convert from.
 	 * @param string $aClassName - the class to convert to.
-	 * @return \BitsTheater\costumes\mixed Returns the converted class.
+	 * @return BitsTheater\costumes\mixed Returns the converted class.
 	 * @throws IllegalArgumentException
 	 */
 	static public function cnvStdClassToXClass(StandardClass $aStdClass, $aClassName) {
@@ -133,6 +153,7 @@ abstract class ABitsCostume extends BaseCostume {
 		//Strings::debugLog('joka stdcls: '.Strings::debugStr($aStdClass));
 		$o = self::cnvStdClassToXClass($aStdClass, get_called_class());
 		//Strings::debugLog('joka cls: '.Strings::debugStr($o));
+		$o->director = $aDirector;
 		return $o;
 	}
 	
