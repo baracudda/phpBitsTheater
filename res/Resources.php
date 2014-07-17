@@ -17,17 +17,19 @@
 
 namespace BitsTheater\res;
 use com\blackmoonit\AdamEve as BaseResources;
+use BitsTheater\Director;
 use com\blackmoonit\Strings;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 {//begin namespace
 
 class Resources extends BaseResources {
 	const _SetupArgCount = 1; //number of args required to call the setup() method.
+	/**
+	 * @var Director
+	 */
 	protected $_director = null;
 	
-	public function setup($aDirector) {
-		if (empty($aDirector))
-			throw new IllegalArgumentException('Director is null.');
+	public function setup(Director $aDirector) {
 		$this->_director = $aDirector;
 		$this->bHasBeenSetup = true;
 	}
@@ -59,6 +61,115 @@ class Resources extends BaseResources {
 	
 	public function getRes($aResName) {
 		return $this->_director->getRes($aResName);
+	}
+	
+	/**
+	 * Images need to be lang/region/default checked as well as extension agnostic.
+	 * Return a list of base paths to check for image files.
+	 * @param $aI18NObj - the object used by the Director to load resources.
+	 * @return array Returns an array of URL=>Paths to check in order of precidence.
+	 */
+	protected function getBasePathList($aI18NObj) {
+		$theList = array();
+		if (!empty($aI18NObj)) {
+			//start looking in user lang/region: res/i18n/es/MX
+			$theKey = str_replace(BITS_RES_PATH, BITS_RES.'/', $aI18NObj->resPathRegion);
+			$theKey = str_replace(¦,'/',$theKey).'images/';
+			$theList[$theKey] = $aI18NObj->resPathRegion.'images'.¦;
+			//next look in user lang: res/i18n/es
+			$theKey = str_replace(BITS_RES_PATH, BITS_RES.'/', $aI18NObj->resPathLang);
+			$theKey = str_replace(¦,'/',$theKey).'images/';
+			$theList[$theKey] = $aI18NObj->resPathLang.'images'.¦;
+			//try looking in default lang/region: res/i18n/en/US
+			$theKey = str_replace(BITS_RES_PATH, BITS_RES.'/', $aI18NObj->resDefaultPathRegion);
+			$theKey = str_replace(¦,'/',$theKey).'images/';
+			$theList[$theKey] = $aI18NObj->resDefaultPathRegion.'images'.¦;
+			//next look in default lang: res/i18n/en
+			$theKey = str_replace(BITS_RES_PATH, BITS_RES.'/', $aI18NObj->resDefaultPathLang);
+			$theKey = str_replace(¦,'/',$theKey).'images/';
+			$theList[$theKey] = $aI18NObj->resDefaultPathLang.'images'.¦;
+		}
+		//if none of the above work, try default image folder
+		$theList[BITS_RES.'/images/'] = BITS_RES_PATH.'images'.¦;
+		return $theList;
+	}
+
+	/**
+	 * Check to see if image exists for the given path and return url if exists.
+	 * @param string $aBaseUrl - base url to use if exists.
+	 * @param string $aBasePath - base path to check for image.
+	 * @param array $aRelativePathList - required, may be empty, each entry is a deeper subfolder.
+	 * @param string $aFilename - either a full filename or, if missing an extension, match first likely image file.
+	 * @return string Returns a url to be used as an "img" tag's "src" attribute.
+	 */
+	protected function checkImgResSrcPath($aBaseUrl, $aBasePath, array $aRelativePathList, $aFilename) {
+		//construct the base URL
+		$theImgSrc = $aBaseUrl;
+		foreach ($aRelativePathList as $thePathSegment) {
+			$theImgSrc .= $thePathSegment.'/';
+		}
+		
+		//determine the image file wanted
+		$theFilename = null;
+		$theImagePath = $aBasePath;
+		foreach ($aRelativePathList as $thePathSegment) {
+			$theImagePath .= $thePathSegment.¦;
+		}
+		if (strpos($aFilename,'.')===false) {
+			//no extension given, match it to one in the path given
+			$theImagePattern = $theImagePath.$aFilename.'.*';
+			foreach (glob($theImagePattern) as $theMatchFilename) {
+				//just grab first match and break out
+				$theFilename = basename($theMatchFilename);
+				break;
+			}
+		} else if (file_exists($aBasePath.$aFilename)) {
+			$theFilename = $aFilename;
+		}
+		
+		//if found, return the URL else NULL
+		if (!empty($theFilename))
+			return $theImgSrc . $theFilename;
+		else
+			return null;
+	}
+	
+	/**
+	 * The parameters determine the relative path to an image file. Several base paths
+	 * will be checked based on getBasePathList() results.
+	 * @param array $aRelativePathList - required, may be empty, each entry is a deeper subfolder.
+	 * @param string $aFilename - either a full filename or, if missing an extension, match first likely image file.
+	 * @return string Returns a string suitable to be used as an "img" tag "src" attribute.
+	 */
+	protected function getImgResSrc(array $aRelativePathList, $aFilename) {
+		foreach($this->getBasePathList($this->_director->getResManager()) as $theUrl => $thePath) {
+			$theImgSrc = $this->checkImgResSrcPath($theUrl, $thePath, $aRelativePathList, $aFilename);
+			if (!empty($theImgSrc))
+				return $theImgSrc;
+		}
+		//if nothing was found, return NULL.
+		return null;
+	}
+	
+	/**
+	 * The parameters determine the relative path to a BITS_RES.'/images/' image file.
+	 * @return string Returns a string suitable to be used as an "img" tag "src" attribute.
+	 */
+	public function imgsrc() {
+		$theImagePathList = func_get_args();
+		if (!empty($theImagePathList)) {
+			//since this operation may be expensive, check session cache first
+			$theSessionVarName = 'imgsrc_cache/'.get_called_class().implode('/',$theImagePathList);
+			if (!empty($this->_director[$theSessionVarName])) {
+				return $this->_director[$theSessionVarName];
+			} else {
+				$theFilename = array_pop($theImagePathList);
+				$theResult = $this->getImgResSrc($theImagePathList,$theFilename);
+				//cache this result
+				$this->_director[$theSessionVarName] = $theResult;
+				return $theResult;
+			}
+		}
 	}
 	
 }//end class

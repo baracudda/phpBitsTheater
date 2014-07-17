@@ -4,6 +4,8 @@ use BitsTheater\res\Permissions as ResPerms;
 {
 
 class Permissions extends ResPerms {
+	public $menu_rights_label = 'Permissions';
+	public $menu_rights_subtext = '';
 
 	public $anonymous_group_name = 'anonymous'; //name of "group 0" when not logged in so you can still assign rights
 

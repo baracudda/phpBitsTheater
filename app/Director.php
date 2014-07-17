@@ -193,7 +193,7 @@ class Director extends BaseDirector implements ArrayAccess {
 	//===========================================================
 	/**
 	 * Returns the correct namespace associated with the model name/ReflectionClass.
-	 * @param string/ReflectionClass $aModelName - model name as string or 
+	 * @param string/ReflectionClass $aModelName - model name as string or
 	 * ReflectionClass of model in question.
 	 * @return string Returns the model class name with correct namespace.
 	 */
@@ -285,10 +285,14 @@ class Director extends BaseDirector implements ArrayAccess {
 	//=               RESOURCE management                       =
 	//===========================================================
 	
+	public function getResManager() {
+		return $this->_resManager;
+	}
+	
 	public function getRes($aResName) {
 		if (empty($this->_resManager)) {
 			if ($this->isInstalled()) {
-				//TODO create a user config for "en/US" and pass that into the constructor. (lang/region) 
+				//TODO create a user config for "en/US" and pass that into the constructor. (lang/region)
 				$this->_resManager = new configs\I18N();
 			} else {
 				$theInstallResMgr = BITS_NAMESPACE_RES.'ResI18N';
@@ -352,7 +356,7 @@ class Director extends BaseDirector implements ArrayAccess {
 			} else {
 				throw new ResException($this->_resManager,(isset($resObj) ? $aResClass.'/' : '').$aRes);
 			}
-		}			
+		}
 	}
 	
 	public function freeRes() {

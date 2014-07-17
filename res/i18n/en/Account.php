@@ -4,7 +4,9 @@ use BitsTheater\res\Resources;
 {//begin namespace
 
 class Account extends Resources {
-
+	public $menu_account_label = 'My Account';
+	public $menu_account_subtext = 'me, myself, &amp; I';
+	
 	public $label_login = 'Login';
 	public $label_logout = 'Logout';
 	public $label_name = 'Username';

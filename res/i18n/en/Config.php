@@ -4,6 +4,12 @@ use BitsTheater\res\Resources;
 {//begin namespace
 
 class Config extends Resources {
+	public $menu_admin_label = 'Admin';
+	public $menu_admin_subtext = 'nuts &amp; bolts';
+	public $menu_settings_label = 'Settings';
+	public $menu_settings_subtext = '';
+	
+	public $msg_save_applied = 'Settings saved!';
 
 	public $namespace = array(
 			'site' => array('label'=>'Site Settings', 'desc'=>'Settings that will determine behavior site-wide.',),
@@ -12,7 +18,7 @@ class Config extends Resources {
 			
 	public $site = array(
 			//0 = nomral, 1 = Maintenance, 2 = demo
-			'mode' => array('label' => 'Operating Mode', 
+			'mode' => array('label' => 'Operating Mode',
 							'desc' => 'Normal is the standard operation mode; Maintenance will refuse connections; Demo/Kiosk mode will favor local resources.',
 							'input' => 'dropdown',
 							'dropdown_values' => array(
@@ -28,8 +34,6 @@ class Config extends Resources {
 			'login_url' => array('label'=>'Login URL', 'desc'=>'URL for the login page.', ),
 			'logout_url' => array('label'=>'Logout URL', 'desc'=>'URL for the logout page.', ),
 	);
-	
-	public $msg_save_applied = 'Settings saved!';
 	
 
 }//end class

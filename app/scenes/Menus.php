@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\scenes; 
+namespace BitsTheater\scenes;
 use BitsTheater\Scene;
 use com\blackmoonit\Strings;
 {//namespace begin
@@ -40,7 +40,7 @@ class Menus extends Scene {
 				return $this->cueActor($meth[0],$meth[1]);
 			}//switch
 		} else
-			return $aMenuItem[$aKey];	
+			return $aMenuItem[$aKey];
 	}
 	
 	public function getMenuIcon($aMenuItem) {
@@ -48,7 +48,7 @@ class Menus extends Scene {
 		if (!empty($src))
 			return sprintf('<img src="%s" border="0" class="menu_icon" />',$src);
 		else
-			return '';	
+			return '';
 	}
 	
 	public function getMenuDisplay($aMenuItem) {

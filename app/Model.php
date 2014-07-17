@@ -69,7 +69,7 @@ class Model extends BaseModel {
 	}
 	
 	/**
-	 * Connect to the database. May also be called to reconnect after timeout. 
+	 * Connect to the database. May also be called to reconnect after timeout.
 	 * @param string aDbConnName - connection info name to load
 	 * @throws DbException - if failed to connect, this exception is thrown.
 	 */
@@ -93,7 +93,7 @@ class Model extends BaseModel {
 	}
 	
 	/**
-	 * Descendants may wish to override this method to handle more stuff after 
+	 * Descendants may wish to override this method to handle more stuff after
 	 * a successful db connection is made. Should probably include on first line:
 	 * parent::setupAfterDbConnected().
 	 */
@@ -114,9 +114,9 @@ class Model extends BaseModel {
 	}
 
 	/**
-	 * Binds 
+	 * Binds
 	 * @param string/PDOStatement $aSql - SQL statement (may be parameterized).
-	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too. 
+	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too.
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
 	 * @throws PDOException if there is an error.
 	 */
@@ -133,7 +133,7 @@ class Model extends BaseModel {
 	 * Execute DML (data manipulation language - INSERT, UPDATE, DELETE) statements
 	 * Params should be ordered array with ? params OR associative array with :label params.
 	 * @param string/PDOStatement $aSql - SQL statement (may be parameterized).
-	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too. 
+	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too.
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
 	 * @throws DbException if there is an error.
 	 * @return number of rows affected; using params returns TRUE instead.
@@ -164,7 +164,7 @@ class Model extends BaseModel {
 	 * Execute Select query, returns PDOStatement.
 	 * Params should be ordered array with ? params OR associative array with :label params.
 	 * @param string $aSql - SQL statement (may be parameterized).
-	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too. 
+	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too.
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
 	 * @throws DbException if there is an error.
 	 * @return PDOStatement on success.
@@ -219,7 +219,7 @@ class Model extends BaseModel {
 	
 	/**
 	 * return TRUE iff table exists and is empty.
-	 */	
+	 */
 	public function isEmpty($aTableName) {
 		if ($this->exists($aTableName)) {
 			$r = $this->query("SELECT 1 FROM $aTableName WHERE EXISTS(SELECT * FROM $aTableName LIMIT 1)");
@@ -229,7 +229,7 @@ class Model extends BaseModel {
 		}
 	}
 	
-	//===== Parameterized queries =====	
+	//===== Parameterized queries =====
 
 	/**
 	 * Params should be ordered array with ? params OR associative array with :label params.
@@ -264,7 +264,7 @@ class Model extends BaseModel {
 	 * Perform an INSERT query and return the new Auto-Inc ID field value for it.
 	 * Params should be ordered array with ? params OR associative array with :label params.
 	 * @param string $aSql - SQL statement (may be parameterized).
-	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too. 
+	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too.
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
 	 * @throws DbException if there is an error.
 	 * @return Returns the lastInsertId().
@@ -276,7 +276,7 @@ class Model extends BaseModel {
 			do {
 				try {
 					$this->db->beginTransaction();
-					if ($this->execDML($aSql,$aParamValues,$aParamTypes)==1) {
+					if ($this->execDML($aSql,$aParamValues,$aParamTypes)) {
 						$theResult = $this->db->lastInsertId();
 						$this->db->commit();
 					} else {
