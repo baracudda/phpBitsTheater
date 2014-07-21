@@ -74,23 +74,23 @@ class Resources extends BaseResources {
 		if (!empty($aI18NObj)) {
 			//start looking in user lang/region: res/i18n/es/MX
 			$theKey = str_replace(BITS_RES_PATH, BITS_RES.'/', $aI18NObj->resPathRegion);
-			$theKey = str_replace(¦,'/',$theKey).'images/';
-			$theList[$theKey] = $aI18NObj->resPathRegion.'images'.¦;
+			$theKey = str_replace(DIRECTORY_SEPARATOR,'/',$theKey).'images/';
+			$theList[$theKey] = $aI18NObj->resPathRegion.'images'.DIRECTORY_SEPARATOR;
 			//next look in user lang: res/i18n/es
 			$theKey = str_replace(BITS_RES_PATH, BITS_RES.'/', $aI18NObj->resPathLang);
-			$theKey = str_replace(¦,'/',$theKey).'images/';
-			$theList[$theKey] = $aI18NObj->resPathLang.'images'.¦;
+			$theKey = str_replace(DIRECTORY_SEPARATOR,'/',$theKey).'images/';
+			$theList[$theKey] = $aI18NObj->resPathLang.'images'.DIRECTORY_SEPARATOR;
 			//try looking in default lang/region: res/i18n/en/US
 			$theKey = str_replace(BITS_RES_PATH, BITS_RES.'/', $aI18NObj->resDefaultPathRegion);
-			$theKey = str_replace(¦,'/',$theKey).'images/';
-			$theList[$theKey] = $aI18NObj->resDefaultPathRegion.'images'.¦;
+			$theKey = str_replace(DIRECTORY_SEPARATOR,'/',$theKey).'images/';
+			$theList[$theKey] = $aI18NObj->resDefaultPathRegion.'images'.DIRECTORY_SEPARATOR;
 			//next look in default lang: res/i18n/en
 			$theKey = str_replace(BITS_RES_PATH, BITS_RES.'/', $aI18NObj->resDefaultPathLang);
-			$theKey = str_replace(¦,'/',$theKey).'images/';
-			$theList[$theKey] = $aI18NObj->resDefaultPathLang.'images'.¦;
+			$theKey = str_replace(DIRECTORY_SEPARATOR,'/',$theKey).'images/';
+			$theList[$theKey] = $aI18NObj->resDefaultPathLang.'images'.DIRECTORY_SEPARATOR;
 		}
 		//if none of the above work, try default image folder
-		$theList[BITS_RES.'/images/'] = BITS_RES_PATH.'images'.¦;
+		$theList[BITS_RES.'/images/'] = BITS_RES_PATH.'images'.DIRECTORY_SEPARATOR;
 		return $theList;
 	}
 
