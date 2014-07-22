@@ -2,6 +2,7 @@
 use BitsTheater\Scene;
 /* @var $recite Scene */
 /* @var $v Scene */
+//NOTE: $v and $recite are interchangable (one is more readable, one is nice and short (v for variables! ... and functions)
 $w = '';
 
 //print('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'."\n");
@@ -9,7 +10,6 @@ print('<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://ww
 print('<html xmlns="http://www.w3.org/1999/xhtml">'."\n");
 print('<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">'."\n");
 print('<title>BitsTheater</title>'."\n");
-//NOTE: $v and $recite are interchangable (one is more readable, one is nice and short (v for variables! ... and functions)
 
 //jQuery
 if ($v->getSiteMode() != $v::SITE_MODE_DEMO)
@@ -46,33 +46,39 @@ $v->loadScript('AnotherFile.js',WEBAPP_JS_URL);
 $v->loadCSS('bits.css', BITS_RES.'/style');
 
 print("</head>\n");
-print('<body>'."\n");
-$w .= '<table id="container-header" width="100%">'."\n";
-$w .= '  <tr valign="center">'."\n";
+$w .= '<body>'."\n";
+$w .= '<table id="container-header">'."\n";
+$w .= '<tr>'."\n";
+
 //logo
-$w .= '    <td width=80px>'."\n";
-$w .= '      <a href="'.BITS_URL.'">';
-$w .= '        <img height="72" width="72" title="logo" src="'.BITS_RES.'/images/site_logo.png" border="0">';
-$w .= '      </a>'."\n";
-$w .= '    </td>'."\n";
-$w .= '    <td>'."\n";
-$w .= '      <a href="'.BITS_URL.'">';
-$w .= '        <span class="title">BitsTheater</span>';
-$w .= '      </a>'."<br />\n";
-$w .= "      <em>An ity-bity framework.</em>";
-$w .= '    </td>'."\n";
+$w .= '<td class="logo">';
+$w .= '<a href="'.$v->getSiteURL().'">';
+$w .= '<img class="logo" title="logo" src="'.$v->getRes('header/imgsrc/site_logo.png').'">';
+$w .= '</a>';
+$w .= '</td>'."\n";
+
+//title & subtitle
+$w .= '<td>'."\n";
+$w .= '<a href="'.$v->getSiteURL().'">';
+$w .= '<span class="title">BitsTheater</span>';
+if ($v->getSiteMode() == $v::SITE_MODE_DEMO) {
+	$w .= ' <span class="title mode-demo">(demo)</span>';
+}
+$w .= '</a>'."<br />\n";
+$w .= '<span class="subtitle">An ity-bity framework.</span>';
+$w .= '</td>'."\n";
+
 //login info
-$w .= '    <td align="right">'."\n";
+$w .= '<td class="auth-area">'."\n";
 $w .= $recite->cueActor('Account','buildAuthArea');
-$w .= '    </td>'."\n";
-$w .= '  </tr>'."\n";
+$w .= '</td>'."\n";
+
+$w .= '</tr>'."\n";
 $w .= '</table>'."\n";
 
 //menu
-$w .= '<table id="container-menu" width="100%" cellpadding="0" cellspacing="0" border="0">'."\n";
-$w .= '  <tr><td>'."\n";
-$w .= $recite->cueActor('Menus','buildAppMenu');
-$w .= '  </td></tr>'."\n";
+$w .= '<table id="container-menu">'."\n";
+$w .= '<tr><td>'.$recite->cueActor('Menus','buildAppMenu').'</td></tr>'."\n";
 $w .= '</table>'."\n";
 
 print($w);

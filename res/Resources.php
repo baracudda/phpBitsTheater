@@ -113,7 +113,7 @@ class Resources extends BaseResources {
 		$theFilename = null;
 		$theImagePath = $aBasePath;
 		foreach ($aRelativePathList as $thePathSegment) {
-			$theImagePath .= $thePathSegment.¦;
+			$theImagePath .= $thePathSegment.DIRECTORY_SEPARATOR;
 		}
 		if (strpos($aFilename,'.')===false) {
 			//no extension given, match it to one in the path given

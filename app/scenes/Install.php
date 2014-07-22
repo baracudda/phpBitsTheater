@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\scenes; 
+namespace BitsTheater\scenes;
 use BitsTheater\Scene;
 use com\blackmoonit\Widgets;
 use com\blackmoonit\database\DbConnOptions;
@@ -191,7 +191,7 @@ class Install extends Scene {
 				$w .= $this->getRes('install/label_dns_custom').': '.Widgets::createTextBox($theWidgetName,$v->$theWidgetName)."<br/>\n";
 				break;
 		}//switch
-		return $w;		
+		return $w;
 	}
 	
 }//end class

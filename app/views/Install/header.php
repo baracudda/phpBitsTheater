@@ -2,6 +2,7 @@
 use BitsTheater\scenes\Install as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
+$w = '';
 
 print('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'."\n");
 print('<html xmlns="http://www.w3.org/1999/xhtml">'."\n");
@@ -17,23 +18,32 @@ $v->loadCSS('bits.css', BITS_RES.'/style');
 
 print('</head>'."\n");
 
-print('<body bgcolor="Silver">'."\n");
+$w .= '<body>'."\n";
+$w .= '<table id="container-header">'."\n";
+$w .= '<tr>'."\n";
 
-print('<table id="container-header" width="100%">'."\n");
-print('  <tr valign="center">'."\n");
 //logo
-print('    <td width=80px>'."\n");
-print('      <a href="'.BITS_URL.'">');
-print('        <img height="72" width="72" title="logo" src="'.BITS_RES.'/images/site_logo.png" border="0">');
-print('      </a>'."\n");
-print('    </td>'."\n");
-print('    <td>'."\n");
-print('      <a href="'.BITS_URL.'">');
-print('        <span class="title">BitsTheater MicroFramework Installation</span>');
-print('      </a>'."\n");
-print('    </td>'."\n");
-print('  </tr>'."\n");
-print('</table>'."\n");
+$w .= '<td class="logo">';
+$w .= '<a href="'.$v->getSiteURL().'">';
+$w .= '<img class="logo" title="logo" src="'.BITS_RES.'/images/site_logo.png">';
+$w .= '</a>';
+$w .= '</td>'."\n";
 
-print('<hr><br />'."\n");
+//title
+$w .= '<td>'."\n";
+$w .= '<a href="'.$v->getSiteURL().'">';
+$w .= '<span class="title">BitsTheater MicroFramework Installation</span>';
+$w .= '</a>'."\n";
+$w .= '</td>'."\n";
+
+$w .= '</tr>'."\n";
+$w .= '</table>'."\n";
+
+//menu
+$w .= '<table id="container-menu">'."\n";
+$w .= '<tr><td><br /></td></tr>'."\n";
+$w .= '</table>'."\n";
+$w .= '<br />';
+
+print($w);
 print('<div id="container-body">'."\n"); //this needs to be matched in the footer.php

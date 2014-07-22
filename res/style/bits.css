@@ -12,7 +12,7 @@ body {
 	margin: 0px;
 	padding: 0px;
 	color: black;
-	font-family: Arial, Helvetica, sans-serif;
+	font-family: Lucida Sans Unicode, Arial, Helvetica, sans-serif;
 	font-size: 12px;
 }
 
@@ -39,13 +39,14 @@ body {
 }
 
 #container-menu {
-	height: 40px;
+	height:auto;
 	width: 100%;
 	color: white;
 	font-weight: bolder;
 	font-size: 12px;
 	text-align: left;
 	text-indent: 3px;
+	padding-left: 1em;
 	
 	/* moz: old FF; webkit: Safari 4+, Chrome 2-35 */
 	background: -moz-linear-gradient(top, #0033CC, Navy);
@@ -72,11 +73,36 @@ body {
 	
 #container-header a:link, #container-header a:active, #container-header a:visited {
 	color: LightSteelBlue;
-	text-decoration: none;
+	text-decoration:none;
 }
+
+#container-header td.logo {
+	width:80px;
+	padding-left:1em;
+}
+
+#container-header img.logo {
+	height:72px;
+	width:72px;
+	border:0;
+}
+
 #container-header .title {
 	font-weight:bold;
 	font-size:24px;	
+}
+
+#container-header .mode-demo {
+	color: hsl(30,100%,50%);
+}
+
+#container-header .subtitle {
+	font-style:italic;
+}
+
+#container-header .auth-area {
+	text-align:right;
+	padding-right:1em;
 }
 
 #container-body {
