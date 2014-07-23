@@ -85,12 +85,9 @@ class Actor extends BaseActor {
 	static public function perform(Director $aDirector, $anAction, array $aQuery=array()) {
 		$myClass = get_called_class();
 		$theActor = new $myClass($aDirector,$anAction);
-		$theResult = $aDirector->admitAudience();
-		if ($theResult)
-			header('Location: '.$theResult);
-		else
-			$theResult = call_user_func_array(array($theActor,$anAction),$aQuery);
-		if ($theResult)
+		$aDirector->admitAudience(); //even guests may get to see some pages, ignore function result
+		$theResult = call_user_func_array(array($theActor,$anAction),$aQuery);
+		if (!empty($theResult))
 			header('Location: '.$theResult);
 		else
 			$theActor->renderView($theActor->renderThisView);
@@ -124,15 +121,15 @@ class Actor extends BaseActor {
 			ob_start();
 			include($myView);
 			return ob_get_clean();
-		}	
+		}
 	}
 	
 	public function __get($aName) {
 		//Strings::debugLog('actor->'.$aName.', is_empty='.empty($this->$aName).', canConnDb='.$this->director->canConnectDb());
 		switch ($aName) {
-			case 'config': 
+			case 'config':
 				if (empty($this->$aName) && $this->director->canConnectDb() && $this->director->isInstalled()) {
-					try { 
+					try {
 						$theResult = $this->director->getProp('Config');
 						$this->config = $theResult;
 						return $theResult;
@@ -196,7 +193,7 @@ class Actor extends BaseActor {
 	}
 	
 	/**
-	 * 
+	 *
 	 * @param string $aUrl - string/array of relative site path segment(s), if
 	 * leading '/' is omitted, current Actor class name is pre-pended to $aUrl.
 	 * @param array $aQuery - (optional) array of query key/values.

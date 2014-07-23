@@ -317,11 +317,12 @@ class Strings {
 	}
 	
 	/**
-	 * Convert a Unix Timestamp to a SQL datetime field format.
+	 * Convert a Unix Timestamp to a MySQL datetime field format
+	 * without time zone information.
 	 * @param int $aTimestamp - the timestamp.
 	 * @return string - the SQL datetime string.
 	 */
-	static public function cnvTimestampUnix2SQL($aTimestamp) {
+	static public function cnvTimestampUnix2MySQL($aTimestamp) {
 		return gmdate('Y-m-d H:i:s',$aTimestamp);
 	}
 	

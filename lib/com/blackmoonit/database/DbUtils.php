@@ -67,7 +67,7 @@ class DbUtils {
 	/**
 	 * Given a Db connection and a caught exception, see if it was a Timeout Exception.
 	 * @param PDO $aDbConn - a db connection.
-	 * @param PDOException $aPDOException - 
+	 * @param PDOException $aPDOException -
 	 * @return boolean
 	 */
 	static public function isDbConnTimeout(PDO $aDbConn, PDOException $aPDOException) {
@@ -230,7 +230,7 @@ class DbUtils {
 		if (!empty($aRowSet)) {
 			$doMap = null;
 			if (!empty($aFieldNameValue)) {
-				$doMap = function(&$aResults,&$aRow,$aKeyName,$aValueName) { 
+				$doMap = function(&$aResults,&$aRow,$aKeyName,$aValueName) {
 						$aResults[$aRow[$aKeyName]] = $aRow[$aValueName];
 				};
 			} else {
@@ -277,8 +277,8 @@ class DbUtils {
 	static public function cnvDaysToDateTimeStr($aDaysAgo, $aDateFormat='Y-m-d H:i:s') {
 		return self::cnvDaysToDateTime($aDaysAgo)->format($aDateFormat);
 	}
-	
 
+	
 }//class
 
 }//namespace

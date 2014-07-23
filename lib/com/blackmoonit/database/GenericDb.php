@@ -181,7 +181,7 @@ class GenericDb extends BaseDbClass {
 	}
 	
 	/**
-	 * Return SQL format for INSERT value field list. 
+	 * Return SQL format for INSERT value field list.
 	 * @param array $aFieldList - fields we want returned from SQL SELECT statement.
 	 * @param array $aTextIdFieldList - (optional) TextId fields require special attention.
 	 * @throws InvalidArgumentException - if the fieldlist is empty.
@@ -202,7 +202,7 @@ class GenericDb extends BaseDbClass {
 	}
 	
 	/**
-	 * Return SQL format for UPDATE field list. 
+	 * Return SQL format for UPDATE field list.
 	 * @param array $aUpdateParams - index keys are fields we want UPDATEd (values contain their new data).
 	 * @param array $aTextIdFieldList - (optional) TextId fields require special attention.
 	 * @throws InvalidArgumentException - if the fieldlist is empty.
@@ -226,7 +226,13 @@ class GenericDb extends BaseDbClass {
 	 * @return Returns a SQL datetime string representing now() in UTC.
 	 */
 	public function utc_now($bUseMicroseconds=false) {
-		return 	DbUtils::utc_now($bUseMicroseconds);
+		switch ($this->dbType()) {
+			case self::DB_TYPE_MYSQL:
+				//MySQL <=5.5 works+warning with "Z" timezone, 5.6+ gives fatal error
+				return ($bUseMicroseconds) ? DbUtils::utc_now(true) : gmdate('Y-m-d H:i:s');
+			default:
+				return DbUtils::utc_now($bUseMicroseconds);
+		}
 	}
 	
 }//class
