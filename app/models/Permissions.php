@@ -183,12 +183,11 @@ class Permissions extends BaseModel {
 	 * @param int $aGroupId - the group id
 	 * @param array $aRightsToMerge - the already defined rights.
 	 */
-	protected function loadAndMergeRights($aGroupId, &$aRightsToMerge) {
+	protected function loadAndMergeRights($aGroupId, &$aRightsToMerge, $bIsFirstSet) {
 		$rs = $this->getGroupRightsCursor($aGroupId);
 		if (!empty($rs)) {
-			$bFirstSet = empty($aRightsToMerge);
 			while (($theRow = $rs->fetch())!==false) {
-				$thePermissionValue = ($theRow['value']==self::VALUE_Allow) ? 'allow' : (($bFirstSet) ? 'deny' : 'deny-disable');
+				$thePermissionValue = ($theRow['value']==self::VALUE_Allow) ? 'allow' : (($bIsFirstSet) ? 'deny' : 'deny-disable');
 				$aRightsToMerge[$theRow['namespace']][$theRow['permission']] = $thePermissionValue;
 			}//while
 		}//if
@@ -202,7 +201,7 @@ class Permissions extends BaseModel {
 	public function getAssignedRights($aGroupId) {
 		$theGroupId = $aGroupId;
 		//check rights for group passed in, and then all its parents
-		$theMergeList = array($theGroupId => 1);
+		$theMergeList = array($theGroupId => -1);
 		$dbAuth = $this->getProp('Auth');
 		$theGroupList = Arrays::array_column_as_key($dbAuth->getGroupList(),'group_id');
 		while (!empty($theGroupId) && !empty($theGroupList[$theGroupId]) && !empty($theGroupList[$theGroupId]['parent_group_id'])) {
@@ -215,8 +214,8 @@ class Permissions extends BaseModel {
 		}//while
 
 		$theAssignedRights = array();
-		foreach ($theMergeList as $theMergeGroupId => $dummy) {
-			$this->loadAndMergeRights($theMergeGroupId, $theAssignedRights);
+		foreach ($theMergeList as $theMergeGroupId => $bIsFirstIfNegative) {
+			$this->loadAndMergeRights($theMergeGroupId, $theAssignedRights, $bIsFirstIfNegative<0);
 		}//foreach
 		return $theAssignedRights;
 	}
