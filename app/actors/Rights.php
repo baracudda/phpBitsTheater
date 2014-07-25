@@ -15,14 +15,15 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\actors; 
+namespace BitsTheater\actors;
 use BitsTheater\Actor;
 use BitsTheater\scenes\Rights as MyScene;
 	/* @var $v MyScene */
+use com\blackmoonit\Arrays;
 use BitsTheater\models\Permissions;
 	/* @var $dbRights Permissions */
 use BitsTheater\models\Auth;
-	/* @var $dbAuth Auth */ 
+	/* @var $dbAuth Auth */
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -30,13 +31,13 @@ class Rights extends Actor {
 	const DEFAULT_ACTION = 'groups';
 	
 	public function groups() {
-		if (!$this->director->isAllowed('permissions','modify'))
+		if (!$this->director->isAllowed('auth','modify'))
 			return $this->getHomePage();
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		
 		$dbAuth = $this->getProp('Auth');
-		$v->groups = $dbAuth->getGroupList();
+		$v->groups = Arrays::array_column_as_key($dbAuth->getGroupList(),'group_id');
 		$this->director->returnProp($dbAuth);
 
 		//indicate what top menu we are currently in
@@ -44,7 +45,7 @@ class Rights extends Actor {
 	}
 	
 	public function group($aGroupId) {
-		if (!$this->director->isAllowed('permissions','modify'))
+		if (!$this->director->isAllowed('auth','modify'))
 			return $this->getHomePage();
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -55,14 +56,8 @@ class Rights extends Actor {
 			$v->group = null;
 		} else {
 			$dbAuth = $this->getProp('Auth');
-			$v->groups = $dbAuth->getGroupList();
-			$this->returnProp($dbAuth);
-			foreach ($v->groups as $theGroup) {
-				if ($theGroup['group_id']==$aGroupId) {
-					$v->group = $theGroup;
-					break;
-				}
-			}
+			$v->groups = Arrays::array_column_as_key($dbAuth->getGroupList(),'group_id');
+			$v->group = $v->groups[$aGroupId];
 		}
 		$dbRights = $this->getProp('Permissions');
 		$this->scene->right_groups = $v->getPermissionRes('namespace');
@@ -75,7 +70,7 @@ class Rights extends Actor {
 	
 	public function modify() {
 		$v =& $this->scene;
-		if (!$this->isAllowed('permissions','modify'))
+		if (!$this->isAllowed('auth','modify'))
 			return $this->getHomePage();
 		if (is_null($v->group_id) || $v->group_id==1)
 			return $this->getMyUrl('/rights');

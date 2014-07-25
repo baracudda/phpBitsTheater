@@ -15,10 +15,11 @@ if (!empty($recite->connected)) {
 	$w .= 'Write Permission Denied, please give all files/folders Write access during install.<br />'."\n";
 	$w .= 'It is safe to grant Write access now and then refresh this page.<br />'."\n";
 } else {
-	$w .= 'The database information failed to result in a connection. Please correct the information and try again.<br/>'."\n";
+	$w .= 'The database information failed to result in a connection. Please correct the information and try again.';
+	$w .= $recite->back_button;
+	$w .= "<br />\n";
 	$w .= $recite->_dbError;
 	$w .= $recite->old_vals;
-	//$w .= $recite->back_button;	
 }
 $w .= '</div>';
 //even though there is no inputs here for the form, we need one for the Continue button to function

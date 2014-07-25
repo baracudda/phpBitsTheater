@@ -6,13 +6,26 @@ use BitsTheater\res\Permissions as ResPerms;
 class Permissions extends ResPerms {
 	public $menu_rights_label = 'Permissions';
 	public $menu_rights_subtext = '';
+	
+	public $title_groups = 'Assign Rights To Groups';
+	public $colheader_group_id = '#';
+	public $colheader_group_name = 'Rights Group';
+	public $colheader_group_parent = 'Description';
+	public $display_group_type_1 = 'always passes permission checks';
+	public $display_parent_group = 'subset of %s';
+	
+	public $title_group = 'Assign Rights for Group: %s';
+	public $colheader_right_name = 'Right';
+	public $colheader_right_value = 'Assign';
+	public $colheader_right_desc = 'Description';
+	
 
 	public $anonymous_group_name = 'anonymous'; //name of "group 0" when not logged in so you can still assign rights
 
 	public $right_values = array(
-			'allow' => array('label'=>'Allow', 'desc'=>'Access granted, if no other group explicitly Denies.', ),
-			'disallow' => array('label'=>'Disallow', 'desc'=>'Access granted only if another group explicitly Allows.', ),
-			'deny' => array('label'=>'Deny', 'desc'=>'Access will not be granted even if another group Allows.', ),
+			'allow' => array('label'=>'Allow', 'desc'=>'Access granted, if no parent group explicitly Denies.', ),
+			'disallow' => array('label'=>'Disallow', 'desc'=>'Access denied unless a parent group explicitly Allows.', ),
+			'deny' => array('label'=>'Deny', 'desc'=>'Access will be denied for this and all child groups.', ),
 	);
 	
 	//when adding new rights, add their namespace info here

@@ -29,7 +29,7 @@ use BitsTheater\models\Config;
 
 /**
  * Manages dynamic vars, methods, and properties
- * 
+ *
  * // Example adding/using new var
  * $test = new Scene();
  * $test->newVar = 'hi!';
@@ -45,7 +45,7 @@ use BitsTheater\models\Config;
  * $test->defineProperty('myProp',null,function ($thisScene, $name, $value) { return $value+1; }, 5);
  * echo $test->myProp; //prints "5"
  * $test->myProp += 1;
- * echo $test->myProp; //prints "7" (5+1 is 6 which becomes $value in call to "set" function which actually sets myProp to 6+1) 
+ * echo $test->myProp; //prints "7" (5+1 is 6 which becomes $value in call to "set" function which actually sets myProp to 6+1)
  */
 class Scene extends BaseScene {
 	const _SetupArgCount = 2; //number of args required to call the setup() method.
@@ -105,7 +105,7 @@ class Scene extends BaseScene {
 			$this->_methodList[$aName] = $aValue;
 		} elseif (array_key_exists($aName,$this->_properties)) {
 			$prop =& $this->_properties[$aName];
-			if (isset($prop['on_set'])) { 
+			if (isset($prop['on_set'])) {
 				$prop['value'] = $prop['on_set']($this,$aName,$aValue);
 			} else {
 				$prop['value'] = $aValue;
@@ -185,17 +185,17 @@ class Scene extends BaseScene {
 	}
 	
 	protected function setupDefaults() {
-		$this->on_set_session_var = function ($thisScene, $aName, $aValue) { 
-				$thisScene->_director[$aName] = $aValue; 
-				return $aValue; 
+		$this->on_set_session_var = function ($thisScene, $aName, $aValue) {
+				$thisScene->_director[$aName] = $aValue;
+				return $aValue;
 		};
-		$this->defineProperty('_row_class',function ($thisScene, $aName, $aValue) { 
-				$thisScene->_row_class = $aValue+1; 
-				return ($aValue%2)?'"row1"':'"row2"'; 
+		$this->defineProperty('_row_class',function ($thisScene, $aName, $aValue) {
+				$thisScene->_row_class = $aValue+1;
+				return ($aValue%2)?'"row1"':'"row2"';
 		},null,1);
-		$this->defineProperty('_rowClass',function ($thisScene, $aName, $aValue) { 
-				$thisScene->_rowClass = $aValue+1; 
-				return ($aValue%2)?'row1':'row2'; 
+		$this->defineProperty('_rowClass',function ($thisScene, $aName, $aValue) {
+				$thisScene->_rowClass = $aValue+1;
+				return ($aValue%2)?'row1':'row2';
 		},null,1);
 		$this->checkMobileDevice();
 
@@ -448,7 +448,7 @@ class Scene extends BaseScene {
 	}
 		
 	/**
-	 * 
+	 *
 	 * @param string $aUrl - string/array of relative site path segment(s), if
 	 * leading '/' is omitted, current Actor class name is pre-pended to $aUrl.
 	 * @param array $aQuery - (optional) array of query key/values.
@@ -554,6 +554,30 @@ class Scene extends BaseScene {
 		print($this->getScriptTag($aFilename, $aLocation));
 	}
 	
+	/**
+	 * If not logged in, check for "Basic HTTP Auth" header/POST var and attempt to log in with that user/pw info.
+	 */
+	public function checkForBasicHttpAuth() {
+		$d = $this->getDirector();
+		if (!$d->isGuest())
+			return;
+		//authenticate
+		if (empty($_SERVER['PHP_AUTH_USER']) && empty($_SERVER['PHP_AUTH_PW'])) {
+			$theAuthKey = (!empty($_SERVER['HTTP_AUTHORIZATION'])) ? $_SERVER['HTTP_AUTHORIZATION'] : $this->HTTP_AUTHORIZATION;
+			if (!empty($theAuthKey))
+				list($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']) = explode(':', base64_decode(substr($theAuthKey,6)));
+		}
+		if (!empty($_SERVER['PHP_AUTH_USER']) && !empty($_SERVER['PHP_AUTH_PW'])) {
+			$theUserName = $_SERVER['PHP_AUTH_USER'];
+			$theUserPw = $_SERVER['PHP_AUTH_PW'];
+
+			$dbAuth = $d->getProp('Auth');
+			$dbAuth->checkTicket($theUserName, $theUserPw);
+			if (isset($d->account_info)) {
+				$dbAuth->updateCookie($d[$dbAuth::KEY_userinfo]);
+			}
+		}
+	}
 	
 }//end class
 

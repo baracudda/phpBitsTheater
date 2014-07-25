@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\actors; 
+namespace BitsTheater\actors;
 use BitsTheater\Actor;
 use BitsTheater\scenes\Install as MyScene;
 	/* @var $v MyScene */
@@ -158,7 +158,7 @@ class Install extends Actor {
 	public function db2() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
-		if (!$v->checkInstallPw()) { 
+		if (!$v->checkInstallPw()) {
 			return $v->getSiteURL();
 		}
 		
@@ -242,11 +242,13 @@ class Install extends Actor {
 					$v->next_action = $v->getSiteURL('install/db1');
 					$v->connected = false;
 					$v->_dbError = $ex->getDebugDisplay('Connection error');
-					break; //break out of foreach loop
 				}
-				if (empty($v->connected) && empty($v->do_not_delete_failed_config)) {
-					//if db connection failed, delete the file so it can be attempted again
-					$v->permission_denied = !unlink($dst);
+				if (empty($v->connected)) {
+					if (empty($v->do_not_delete_failed_config)) {
+						//if db connection failed, delete the file so it can be attempted again
+						$v->permission_denied = !unlink($dst);
+					}
+					break; //break out of foreach loop
 				}
 			} else {
 				$v->permission_denied = true;

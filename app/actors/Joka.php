@@ -23,18 +23,7 @@ class Joka extends Actor {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		
-		//authenticate
-		if (empty($_SERVER['PHP_AUTH_USER']) && empty($_SERVER['PHP_AUTH_PW'])) {
-			$theAuthKey = (!empty($_SERVER['HTTP_AUTHORIZATION'])) ? $_SERVER['HTTP_AUTHORIZATION'] : $v->HTTP_AUTHORIZATION;
-			if (!empty($theAuthKey))
-				list($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']) = explode(':', base64_decode(substr($theAuthKey,6)));
-		}
-		if (!empty($_SERVER['PHP_AUTH_USER']) && !empty($_SERVER['PHP_AUTH_PW'])) {
-			$theUserName = $_SERVER['PHP_AUTH_USER'];
-			$theUserPw = $_SERVER['PHP_AUTH_PW'];
-			$dbAuth = $this->getProp('Auth');
-			$dbAuth->checkTicket($theUserName, $theUserPw);
-		}
+		$v->checkForBasicHttpAuth();
 		$bAuthorized = !$this->director->isGuest();
 		//print('isAuth='.($bAuthorized?'true':'false'));
 		

@@ -19,6 +19,11 @@ namespace BitsTheater\models;
 use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
+use com\blackmoonit\Arrays;
+use \PDO;
+use \PDOStatement;
+use BitsTheater\models\Auth;
+	/* @var $dbAuth Auth */
 {//namespace begin
 
 class Permissions extends BaseModel {
@@ -27,11 +32,12 @@ class Permissions extends BaseModel {
 
 	public $tnPermissions; const TABLE_Permissions = 'permissions';
 
+	public $_permCache = array();
+
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
 		$this->tnPermissions = $this->tbl_.self::TABLE_Permissions;
 		$this->sql_get_namespace = "SELECT * FROM {$this->tnPermissions} WHERE namespace = :ns AND value = :value";
-		$this->sql_get_group = "SELECT * FROM {$this->tnPermissions} WHERE group_id = :group_id";
 		$this->sql_del_group = "DELETE FROM {$this->tnPermissions} WHERE group_id = :group_id";
 		$this->sql_add_right = "INSERT INTO {$this->tnPermissions} (namespace, permission, group_id, value) VALUES (:ns,:perm,:group_id,:value)";
 	}
@@ -59,7 +65,10 @@ class Permissions extends BaseModel {
 		return parent::isEmpty($aTableName);
 	}
 	
-	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
+	/**
+	 * @deprecated
+	 */
+	public function isAllowed_OLD($aNamespace, $aPermission, $acctInfo=null) {
 		if (empty($this->_permCache[$aNamespace])) {
 			$this->_permCache[$aNamespace]['allow'] = array();
 			$this->_permCache[$aNamespace]['deny'] = array();
@@ -84,7 +93,7 @@ class Permissions extends BaseModel {
 			}
 		}
 		if (empty($acctInfo)) {
-			$acctInfo =& $this->director->account_info; 
+			$acctInfo =& $this->director->account_info;
 		}
 		if (empty($acctInfo)) {
 			return false; //if still no account, nothing to check against, return false.
@@ -109,13 +118,107 @@ class Permissions extends BaseModel {
 		return false;
 	}
 	
-	public function getAssignedRights($aGroupId) {
-		$r = $this->query($this->sql_get_group,array('group_id'=>$aGroupId));
-		$ar = array();
-		while ($row = $r->fetch()) {
-			$ar[$row['namespace']][$row['permission']] = ($row['value']==self::VALUE_Allow)?'allow':'deny';
+	/**
+	 * Check group permissions to see if current user account (or passed in one) is allowed.
+	 * @param string $aNamespace - namespace of permission.
+	 * @param string $aPermission - permission to test against.
+	 * @param array $acctInfo - account information (optional, defaults current user).
+	 * @return boolean Returns TRUE if allowed, else FALSE.
+	 */
+	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
+		if (empty($acctInfo)) {
+			$acctInfo =& $this->director->account_info;
 		}
-		return $ar;
+		if (empty($acctInfo)) {
+			return false; //if still no account, nothing to check against, return false.
+		}
+		//Strings::debugLog('acctinfo:'.Strings::debugStr($acctInfo));
+		if (!empty($acctInfo['groups']) && (array_search(1,$acctInfo['groups'],true)!==false)) {
+			return true; //group 1 is always allowed everything
+		}
+		//cache the current users permissions
+		if (empty($this->_permCache[$acctInfo['account_id']])) {
+			try {
+				$this->_permCache[$acctInfo['account_id']] = array();
+				foreach ($acctInfo['groups'] as $theGroupId) {
+					$this->_permCache[$acctInfo['account_id']][$theGroupId] = $this->getAssignedRights($theGroupId);
+				}
+			} catch (DbException $dbe) {
+				//use default empty arrays which will mean all permissions will be not allowed
+			}
+		}
+		//Strings::debugLog('perms:'.Strings::debugStr($this->_permCache));
+
+		//if any group allows the permission, then we allow it.
+		foreach ($this->_permCache[$acctInfo['account_id']] as $theGroupId => $theAssignedRights) {
+			$theResult = 'disallow';
+			if (!empty($theAssignedRights[$aNamespace]) && !empty($theAssignedRights[$aNamespace][$aPermission]))
+				$theResult = $theAssignedRights[$aNamespace][$aPermission];
+			//if any group the user is a member of allows the permission, then return true
+			if ($theResult=='allow') {
+				return true;
+			}
+		}
+		//if neither denied, nor allowed, then it is not allowed
+		return false;
+	}
+	
+	/**
+	 * Query the permissions table for group rights.
+	 * @param int $aGroupId - the group id to load.
+	 * @return PDOStatement Returns the executed query statement.
+	 */
+	protected function getGroupRightsCursor($aGroupId) {
+		$theParams = array();
+		$theParamTypes = array();
+		$theSql = "SELECT * FROM {$this->tnPermissions} WHERE group_id = :group_id";
+		$theParams['group_id'] = $aGroupId;
+		$theParamTypes['group_id'] = PDO::PARAM_INT;
+		return $this->query($theSql,$theParams,$theParamTypes);
+	}
+	
+	/**
+	 * Load the group rights and merge it into the passed in array;
+	 * loaded "deny" rights will trump array param.
+	 * @param int $aGroupId - the group id
+	 * @param array $aRightsToMerge - the already defined rights.
+	 */
+	protected function loadAndMergeRights($aGroupId, &$aRightsToMerge) {
+		$rs = $this->getGroupRightsCursor($aGroupId);
+		if (!empty($rs)) {
+			$bFirstSet = empty($aRightsToMerge);
+			while (($theRow = $rs->fetch())!==false) {
+				$thePermissionValue = ($theRow['value']==self::VALUE_Allow) ? 'allow' : (($bFirstSet) ? 'deny' : 'deny-disable');
+				$aRightsToMerge[$theRow['namespace']][$theRow['permission']] = $thePermissionValue;
+			}//while
+		}//if
+	}
+	
+	/**
+	 * Load up all rights assigned to this group as well as parent groups.
+	 * @param int $aGroupId - the group to find assigned rights.
+	 * @return array Returns the assigned rights for a given group.
+	 */
+	public function getAssignedRights($aGroupId) {
+		$theGroupId = $aGroupId;
+		//check rights for group passed in, and then all its parents
+		$theMergeList = array($theGroupId => 1);
+		$dbAuth = $this->getProp('Auth');
+		$theGroupList = Arrays::array_column_as_key($dbAuth->getGroupList(),'group_id');
+		while (!empty($theGroupId) && !empty($theGroupList[$theGroupId]) && !empty($theGroupList[$theGroupId]['parent_group_id'])) {
+			$theGroupId = $theGroupList[$theGroupId]['parent_group_id'];
+			//to prevent infinite loops
+			if (empty($theMergeList[$theGroupId]))
+				$theMergeList[$theGroupId] = 1;
+			else
+				$theGroupId = null;
+		}//while
+
+		$theAssignedRights = array();
+		foreach ($theMergeList as $theMergeGroupId => $dummy) {
+			$this->loadAndMergeRights($theMergeGroupId, $theAssignedRights);
+		}//foreach
+		return $theAssignedRights;
 	}
 	
 	public function modifyGroupRights($aScene) {
@@ -128,9 +231,9 @@ class Permissions extends BaseModel {
 				$theAssignment = $aScene->$varName;
 				//Strings::debugLog($varName.'='.$theAssignment);
 				if ($theAssignment=='allow') {
-					$this->query($this->sql_add_right,array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$theGroupId, 'value'=>self::VALUE_Allow)); 
+					$this->query($this->sql_add_right,array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$theGroupId, 'value'=>self::VALUE_Allow));
 				} elseif ($theAssignment=='deny') {
-					$this->query($this->sql_add_right,array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$theGroupId, 'value'=>self::VALUE_Deny)); 
+					$this->query($this->sql_add_right,array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$theGroupId, 'value'=>self::VALUE_Deny));
 				}
 			}//end foreach
 		}//end foreach

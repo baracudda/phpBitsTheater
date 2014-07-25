@@ -18,7 +18,8 @@
 namespace BitsTheater\models;
 use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\DbException;
-{
+use \PDO;
+{//begin namespace
 
 class Groups extends BaseModel {
 	const GROUPTYPE_guest = 0;
@@ -40,7 +41,6 @@ class Groups extends BaseModel {
 		try {
 			$this->get_group = "SELECT * FROM {$this->tnGroups} WHERE group_id = :group_id";
 			$this->get_map_groups = "SELECT account_id FROM {$this->tnGroupMap} WHERE group_id = :group_id";
-			$this->get_map_accts = "SELECT group_id FROM {$this->tnGroupMap} WHERE account_id = :acct_id";
 		} catch (DbException $dbe) {
 			if ($this->exists($this->tnGroups) && $this->exists($this->tnGroupMap)) {
 				throw $dbe->setContextMsg("dbError@groups.setup()\n");
@@ -105,7 +105,7 @@ class Groups extends BaseModel {
 	}
 	
 	public function add($aGroupData) {
-		if (empty($aGroupData)) 
+		if (empty($aGroupData))
 			return;
 		$cols = array_keys($aGroupData);
 		$theSql = "INSERT INTO {$this->tnGroups} (".implode(', ',$cols).") VALUES (:".implode(', :',$cols).")";
@@ -132,10 +132,15 @@ class Groups extends BaseModel {
 	}
 	
 	public function getAcctGroups($aAcctId) {
-		$r = $this->query($this->get_map_accts,array('acct_id'=>$aAcctId));
-		$theResult = array();
-		while (($row = $r->fetch()) !== false) {
-			$theResult[] = intval($row['group_id']);
+		$theParams = array();
+		$theParamTypes = array();
+		$theSql = "SELECT group_id FROM {$this->tnGroupMap} WHERE account_id = :acct_id";
+		$theParams['acct_id'] = $aAcctId;
+		$theParamTypes['acct_id'] = PDO::PARAM_INT;
+		$rs = $this->query($theSql,$theParams,$theParamTypes);
+		$theResult = $rs->fetchAll(PDO::FETCH_COLUMN,0);
+		foreach ($theResult as &$theGroupId) {
+			$theGroupId += 0;
 		}
 		return $theResult;
 	}

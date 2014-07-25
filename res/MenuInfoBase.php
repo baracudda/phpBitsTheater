@@ -19,6 +19,7 @@ namespace BitsTheater\res;
 {//begin namespace
 
 class MenuInfoBase extends Resources {
+	//menu items
 	public $menu_item_home;
 	public $menu_item_account;
 	public $menu_item_admin;
@@ -26,6 +27,10 @@ class MenuInfoBase extends Resources {
 	public $menu_item_rights;
 	public $menu_item_login;
 	public $menu_item_logout;
+	
+	//menus containing menu items
+	public $menu_main;
+	public $menu_admin;
 	
 	public function setup($aDirector) {
 		parent::setup($aDirector);
@@ -66,7 +71,7 @@ class MenuInfoBase extends Resources {
 		);
 		$this->menu_item_rights = array(
 				'link' => BITS_URL.'/rights/',
-				'filter' => '&right@rights/modify',
+				'filter' => '&right@auth/modify',
 				'label' => '&res@permissions/menu_rights_label',
 				'subtext' => '&res@permissions/menu_rights_subtext',
 		);
