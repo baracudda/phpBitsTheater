@@ -188,7 +188,9 @@ class Permissions extends BaseModel {
 		if (!empty($rs)) {
 			while (($theRow = $rs->fetch())!==false) {
 				$thePermissionValue = ($theRow['value']==self::VALUE_Allow) ? 'allow' : (($bIsFirstSet) ? 'deny' : 'deny-disable');
-				$aRightsToMerge[$theRow['namespace']][$theRow['permission']] = $thePermissionValue;
+				$theCurrValue =& $aRightsToMerge[$theRow['namespace']][$theRow['permission']];
+				if (empty($theCurrValue) || $theCurrValue=='allow')
+					$theCurrValue = $thePermissionValue;
 			}//while
 		}//if
 	}
