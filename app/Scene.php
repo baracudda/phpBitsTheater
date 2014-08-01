@@ -670,7 +670,7 @@ class Scene extends BaseScene {
 		
 		//print($aAction.' tc='.$theTotalCount.' cp='.$theCurrPage.' tp='.$theTotalPages.' pps='.$thePagerPageSize);
 		
-		if ($theTotalPages>0) {
+		if ($theTotalPages>1) {
 			$theQueryParams = array();
 			if ($thePagerPageSize!=25) {
 				$theQueryParams['pagesz'] = $thePagerPageSize;
