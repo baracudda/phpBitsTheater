@@ -1,12 +1,9 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\Resources;
-{
+use BitsTheater\res\Resources as BaseResources;
+{//begin namespace
 
-class Generic extends Resources {
-	public $menu_home_label = 'Home';
-	public $menu_home_subtext = '';
-	
+class Generic extends BaseResources {
 	public $page_not_found = 'Page Not Found';
 	
 	public $save_button_text = 'Save';
@@ -14,6 +11,7 @@ class Generic extends Resources {
 	public $msg_nothing_found = 'Nothing found.';
 	public $msg_permission_denied = 'Permission Denied';
 
+	public $label_header_title_suffix_demo_mode = '(demo)';
 }//end class
 
 }//end namespace

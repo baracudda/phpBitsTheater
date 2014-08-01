@@ -1,9 +1,9 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\Resources;
+use BitsTheater\res\Resources as BaseResources;
 {//begin namespace
 
-class Account extends Resources {
+class Account extends BaseResources {
 	public $menu_account_label = 'My Account';
 	public $menu_account_subtext = 'me, myself, &amp; I';
 	

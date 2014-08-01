@@ -419,6 +419,81 @@ class JokaQueues extends BaseModel {
 		}
 	}
 	
+	/**
+	 * Get payload log for display purposes.
+	 * @param Scene $aScene - scene being used in case we need user-defined query limits.
+	 * @throws DbException
+	 * @return array Returns rows from the payload log.
+	 */
+	public function displayPayloadLog($aScene) {
+		$theQueryLimit = $aScene->getQueryLimit($this->dbType());
+		$theResult = array();
+		if (!empty($this->db)) {
+			try {
+				$rs = null;
+				$myFinally = FinallyCursor::forDbCursor($rs);
+		
+				if (!empty($theQueryLimit)) {
+					//if we have a query limit, we may be using a pager, get total count for pager display
+					$theSql = 'SELECT count(log_id) as total_rows FROM '.$this->tnPayloadLog;
+					$rs = $this->getTheRow($theSql);
+					if (!empty($rs)) {
+						$aScene->setPagerTotalRowCount($rs['total_rows']+0);
+					}
+				}
+				
+				$theSql = 'SELECT * FROM '.$this->tnPayloadLog;
+				$theSql .= ' ORDER BY received_ts';
+				if (!empty($theQueryLimit)) {
+					$theSql .= $theQueryLimit;
+				}
+				$rs = $this->query($theSql);
+				$theResult = $rs->fetchAll();
+			} catch (PDOException $pdoe) {
+				throw new DbException($pdoe, 'displayPayloadLog failed.');
+			}
+		}
+		return $theResult;
+	}
+	
+	/**
+	 * Get payload outgoing queue for display purposes.
+	 * @param Scene $aScene - scene being used in case we need user-defined query limits.
+	 * @throws DbException
+	 * @return array Returns rows from the payload outgoing queue.
+	 */
+	public function displayPayloadOutgoingQueue($aScene) {
+		$theQueryLimit = $aScene->getQueryLimit($this->dbType());
+		$theResult = array();
+		if (!empty($this->db)) {
+			try {
+				$rs = null;
+				$myFinally = FinallyCursor::forDbCursor($rs);
+				
+				if (!empty($theQueryLimit)) {
+					//if we have a query limit, we may be using a pager, get total count for pager display
+					$theSql = 'SELECT count(payload_id) as total_rows FROM '.$this->tnOutboundPayloads;
+					$rs = $this->getTheRow($theSql);
+					if (!empty($rs)) {
+						$aScene->setPagerTotalRowCount($rs['total_rows']+0);
+					}
+				}
+				
+				$theSql = 'SELECT * FROM '.$this->tnOutboundPayloads;
+				$theSql .= ' ORDER BY transmit_ts';
+				if (!empty($theQueryLimit)) {
+					$theSql .= $theQueryLimit;
+				}
+				$rs = $this->query($theSql);
+				$theResult = $rs->fetchAll();
+				$rs->closeCursor();
+			} catch (PDOException $pdoe) {
+				throw new DbException($pdoe, 'displayPayloadOutgoingQueue failed.');
+			}
+		}
+		return $theResult;
+	}
+	
 }//end class
 
 }//end namespace

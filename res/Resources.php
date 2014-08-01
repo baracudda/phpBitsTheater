@@ -29,6 +29,9 @@ class Resources extends BaseResources {
 	 */
 	protected $_director = null;
 	
+	/**
+	 * Some resources need to be initialized by running code rather than a static definition.
+	 */
 	public function setup(Director $aDirector) {
 		$this->_director = $aDirector;
 		$this->bHasBeenSetup = true;
@@ -36,8 +39,10 @@ class Resources extends BaseResources {
 
 	/**
 	 * Descendants want to merge translated labels with their static definitions in ancestor.
+	 * @param array $res1 - an array resource variable to merge data into (array will be modified).
+	 * @param array $res2 - an array or a class with an array inteface used to merge data into res1.
 	 */
-	public function res_array_merge(array &$res1, &$res2) {
+	public function res_array_merge(array &$res1, $res2) {
 		if (!is_array($res1) || empty($res2)) {
 			throw new IllegalArgumentException('res_array_merge requires first param to be an array and second != null. '.
 					Strings::debugStr($res1));
@@ -59,6 +64,11 @@ class Resources extends BaseResources {
 		}
 	}
 	
+	/**
+	 * Shortcut to calling the Director's getRes method.
+	 * @param string $aResName - the resource in the form 'resClass/resName'.
+	 * @return mixed Returns either a string or an array, depending on the resource retrieved.
+	 */
 	public function getRes($aResName) {
 		return $this->_director->getRes($aResName);
 	}

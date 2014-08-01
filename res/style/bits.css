@@ -279,6 +279,24 @@ input.field, textarea.field, select.field {
 }
 
 /*
+ * Pager
+ */
+.pager {
+	text-align:center;
+	font-size:larger;
+	vertical-align:middle;
+}
+
+img.pager {
+	display:inline;
+}
+
+.current-page {
+	font-weight:bolder;
+}
+ 
+ 
+/*
  * Buttons
  */
 input.btn-primary {
@@ -302,3 +320,11 @@ a:hover {
 	text-decoration: underline;
 }
 
+/*
+ * General
+ */
+.invisible {
+	opacity:0.0;
+	cursor:text;
+}
+ 

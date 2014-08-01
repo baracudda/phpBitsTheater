@@ -43,8 +43,8 @@ class MenuInfoBase extends Resources {
 		$this->menu_item_home = array(
 				'link' => BITS_URL,
 				'filter' => '',
-				'label' => '&res@generic/menu_home_label',
-				'subtext' => '&res@generic/menu_home_subtext',
+				'label' => '&res@website/menu_home_label',
+				'subtext' => '&res@website/menu_home_subtext',
 				//'icon'=>'&res@menu_info/icon_home',
 		);
 		$this->menu_item_account = array(

@@ -9,7 +9,7 @@ $w = '';
 print('<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">');
 print('<html xmlns="http://www.w3.org/1999/xhtml">'."\n");
 print('<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">'."\n");
-print('<title>BitsTheater</title>'."\n");
+print('<title>'.$v->getRes('website/header_meta_title').'</title>'."\n");
 
 //jQuery
 if ($v->getSiteMode() != $v::SITE_MODE_DEMO)
@@ -26,26 +26,27 @@ $v->loadCSS('apycom/menu.css');
 //$v->loadScript('apycom/jquery.js'); //do not need if already using jQuery
 $v->loadScript('apycom/menu.js');
 
-//minification from http://www.jsmini.com/ using Basic and no jquery included.
-$v->loadScript('com/blackmoonit/jBits/jbits_mini.js');
-//  !-remove the below space and comment out the above line to debug un-minified JS code
-/* * /
-$v->loadScript('com/blackmoonit/jBits/BasicObj.js');
-$v->loadScript('com/blackmoonit/jBits/AjaxDataUpdater.js');
-/* end of jBits JS */
-
-//minification from http://www.jsmini.com/ using Basic and no jquery included.
-//$v->loadScript('webapp_mini.js',WEBAPP_JS_URL);
-//  !-remove the below space and comment out the above line to debug un-minified JS code
-/* * /
-$v->loadScript('webapp.js',WEBAPP_JS_URL);
-$v->loadScript('AnotherFile.js',WEBAPP_JS_URL);
-/* end of webapp JS */
+$theJsList = $v->getRes('website/js_load_list');
+if (!empty($theJsList)) {
+	foreach ($theJsList as $theJsFile => $theJsPath) {
+		$v->loadScript($theJsFile,$theJsPath);
+	}//foreach
+} else {
+	$v->loadScript('com/blackmoonit/jBits/jbits_mini.js');
+}
 
 //Theme
-$v->loadCSS('bits.css', BITS_RES.'/style');
+$theCssList = $v->getRes('website/css_load_list');
+if (!empty($theCssList)) {
+	foreach ($theCssList as $theCssFile => $theCssPath) {
+		$v->loadCSS($theCssFile,$theCssPath);
+	}//foreach
+} else {
+	$v->loadCSS('bits.css', BITS_RES.'/style');
+}
 
 print("</head>\n");
+//=============================================================================
 $w .= '<body>'."\n";
 $w .= '<table id="container-header">'."\n";
 $w .= '<tr>'."\n";
@@ -53,19 +54,19 @@ $w .= '<tr>'."\n";
 //logo
 $w .= '<td class="logo">';
 $w .= '<a href="'.$v->getSiteURL().'">';
-$w .= '<img class="logo" title="logo" src="'.$v->getRes('header/imgsrc/site_logo.png').'">';
+$w .= '<img class="logo" title="logo" src="'.$v->getRes('website/imgsrc/site_logo.png').'">';
 $w .= '</a>';
 $w .= '</td>'."\n";
 
 //title & subtitle
 $w .= '<td>'."\n";
 $w .= '<a href="'.$v->getSiteURL().'">';
-$w .= '<span class="title">BitsTheater</span>';
+$w .= '<span class="title">'.$v->getRes('website/header_title').'</span>';
 if ($v->getSiteMode() == $v::SITE_MODE_DEMO) {
-	$w .= ' <span class="title mode-demo">(demo)</span>';
+	$w .= ' <span class="title mode-demo">'.$v->getRes('generic/label_header_title_suffix_demo_mode').'</span>';
 }
 $w .= '</a>'."<br />\n";
-$w .= '<span class="subtitle">An ity-bity framework.</span>';
+$w .= '<span class="subtitle">'.$v->getRes('website/header_subtitle').'</span>';
 $w .= '</td>'."\n";
 
 //login info

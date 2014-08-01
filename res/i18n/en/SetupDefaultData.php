@@ -1,9 +1,9 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\Resources;
+use BitsTheater\res\Resources as BaseResources;
 {
 
-class SetupDefaultData extends Resources {
+class SetupDefaultData extends BaseResources {
 
 	//install page defauts
 	public $continue_button_text = '&gt;&gt; Continue';

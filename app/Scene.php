@@ -24,6 +24,7 @@ use \ReflectionClass;
 use \ReflectionMethod;
 use BitsTheater\Director;
 use BitsTheater\Actor;
+use BitsTheater\Model;
 use BitsTheater\models\Config;
 {//begin namespace
 
@@ -90,6 +91,12 @@ class Scene extends BaseScene {
 	const USER_MSG_NOTICE = 'notice';
 	const USER_MSG_WARNING = 'warning';
 	const USER_MSG_ERROR = 'error';
+	
+	/**
+	 * Total row count used for data pager.
+	 * @var number
+	 */
+	public $_pager_total_row_count = null;
 	
 	public function __call($aName, $args) {
 		//Strings::debugLog('call:'.$aName);
@@ -577,6 +584,182 @@ class Scene extends BaseScene {
 				$dbAuth->updateCookie($d[$dbAuth::KEY_userinfo]);
 			}
 		}
+	}
+	
+	public function getPagerTotalRowCount() {
+		return $this->_pager_total_row_count;
+	}
+	
+	public function setPagerTotalRowCount($aTotalRowCount) {
+		$this->_pager_total_row_count = max($aTotalRowCount,0);
+	}
+	
+	/**
+	 * Get the defined maximum row count for a page in a pager.
+	 * @param int $aDefaultPageSize - (optional) override the default page size of 25.
+	 * @return int Returns the max number of rows shown for a single pager page;
+	 * guaranteed to be 1 or greater.
+	 */
+	public function getPagerPageSize($aDefaultPageSize=25) {
+		//TODO $this->_config['disply/query_limit'];
+		$theLimit = max($aDefaultPageSize,1);
+		if (!empty($this->query_limit) && is_numeric($this->query_limit))
+			$theLimit = max($this->query_limit,1);
+		else if (!empty($this->pagesz) && is_numeric($this->pagesz))
+			$theLimit = max($this->pagesz,1);
+		return $theLimit;
+	}
+	
+	/**
+	 * @return int Returns the current pager page.
+	 */
+	public function getPagerCurrPage() {
+		$thePage = 1;
+		if (!empty($this->page) && is_numeric($this->page))
+			$thePage = max($this->page,1);
+		return $thePage;
+	}
+	
+	/**
+	 * Get the SQL query offset based on pager page size and page desired.
+	 * @param int $aPagerPageNum
+	 */
+	public function getQueryOffset($aPageSize, $aPageNum=null) {
+		$theOffset = 0;
+		if (!empty($this->query_offset) && is_numeric($this->query_offset))
+			$theOffset = $this->query_offset;
+		else if (($aPageSize>0) && !isset($aPageNum))
+			$theOffset = ($this->getPagerCurrPage()-1)*$aPageSize;
+		return $theOffset;
+	}
+	
+	/**
+	 * Return the SQL "LIMIT" expression for the given Database type based
+	 * on the "standard Scene variables" defined.
+	 * @param string $aDbType - one of the various PDO::DB_TYPE.
+	 * @return string Returns the LIMIT string to use, including prefix " LIMIT".
+	 */
+	public function getQueryLimit($aDbType) {
+		$theResult = null;
+		$theLimit = $this->getPagerPageSize();
+		if ($theLimit>0) {
+			$theOffset = $this->getQueryOffset($theLimit);
+			switch ($aDbType) {
+				case Model::DB_TYPE_MYSQL:
+				case Model::DB_TYPE_PGSQL:
+				default:
+					$theResult = ' LIMIT '.$theLimit . (($theOffset>0) ? ' OFFSET '.$theOffset : '');
+			}//switch
+		}//if
+		return $theResult;
+	}
+	
+	/**
+	 * Create the pager links for a table of data.
+	 * @param int $aTotalCount - the total number of items in dataset.
+	 * @param int $aCurrPage - (optional) the curent page, if NULL (default), calls getPagerCurrPage()
+	 * @return string Returns the HTML used for the pager.
+	 * @see Scene::getPagerCurrPage()
+	 */
+	public function getPagerHtml($aAction, $aTotalCount=null, $aCurrPage=null) {
+		$thePagerCount = 10; // The number of pages to display numerically
+		$thePagerPageSize = $this->getPagerPageSize();
+		$theCurrPage = (empty($aCurrPage)) ? $this->getPagerCurrPage() : max($aCurrPage,1);
+		$theTotalCount = (empty($aTotalCount)) ? $this->getPagerTotalRowCount() : max($aTotalCount,0);
+		$theTotalPages = ceil($theTotalCount/$thePagerPageSize);
+		
+		//print($aAction.' tc='.$theTotalCount.' cp='.$theCurrPage.' tp='.$theTotalPages.' pps='.$thePagerPageSize);
+		
+		if ($theTotalPages>0) {
+			$theQueryParams = array();
+			if ($thePagerPageSize!=25) {
+				$theQueryParams['pagesz'] = $thePagerPageSize;
+			}
+			$theLabelSpacer = $this->getRes('pager/label_spacer');
+			$thePager = '<div class="pager"> ';
+			
+			$theQueryParams['page'] = 1;
+			$thePager .= '<a href="'.$this->getMyUrl($aAction,$theQueryParams).'"';
+			if ($theCurrPage<=1) //hide, but still take up space
+				$thePager .= ' class="invisible"';
+			$thePager .= '>';
+			if ($theSrc = $this->getRes('pager/imgsrc/pager_first')) {
+				$thePager .= '<img src="'.$theSrc.'" class="pager" alt="'.$this->getRes('pager/label_first').'">';
+			} else {
+				$thePager .= $this->getRes('pager/label_first');
+			}
+			$thePager .= '</a>';
+
+			$thePager .= $theLabelSpacer;
+			
+			$theQueryParams['page'] = $theCurrPage-1;
+			$thePager .= '<a href="'.$this->getMyUrl($aAction,$theQueryParams).'"';
+			if ($theCurrPage<=1) //hide, but still take up space
+				$thePager .= ' class="invisible"';
+			$thePager .= '>';
+			if ($theSrc = $this->getRes('pager/imgsrc/pager_previous')) {
+				$thePager .= '<img src="'.$theSrc.'" class="pager" alt="'.$this->getRes('pager/label_previous').'">';
+			} else {
+				$thePager .= $this->getRes('pager/label_previous');
+			}
+			$thePager .= '</a>';
+
+			if ($theCurrPage <= ($thePagerCount/2)) {
+				$i_start = 1;
+			} else {
+				$i_start = $theCurrPage-($thePagerCount/2)+1;
+			}
+			$i_final = min($i_start+$thePagerCount-1,$theTotalPages);
+			$i_start = max(1,$i_final-$thePagerCount+1);
+			for ($i=$i_start; ($i <= $i_final); $i++) {
+				//$thePager .= ($i==$i_start && $i_start>1)?' … ':$theLabelSpacer;
+				$thePager .= $theLabelSpacer;
+				if ($i != $theCurrPage) {
+					$theQueryParams['page'] = $i;
+					$thePager .= '<a href="'.$this->getMyUrl($aAction,$theQueryParams).'">&nbsp;'.$i.'&nbsp;</a>';
+				} else {
+					$thePager .= '<span class="current-page">('.$i.')</span>';
+				}
+				$final_i = $i;
+			}
+			//if ($final_i < $theTotalPages) {
+			//	$thePager .= $theLabelSpacer.'… ';
+			//}
+			
+			$thePager .= $theLabelSpacer;
+
+			$theQueryParams['page'] = min($theCurrPage+1,$theTotalPages);
+			$thePager .= '<a href="'.$this->getMyUrl($aAction,$theQueryParams).'"';
+			if ($theCurrPage >= $theTotalPages) //hide, but still take up space
+				$thePager .= ' class="invisible"';
+			$thePager .= '>';
+			if ($theSrc = $this->getRes('pager/imgsrc/pager_next')) {
+				$thePager .= '<img src="'.$theSrc.'" class="pager" alt="'.$this->getRes('pager/label_next').'">';
+			} else {
+				$thePager .= $this->getRes('pager/label_next');
+			}
+			$thePager .= '</a>';
+					
+			$thePager .= $theLabelSpacer;
+				
+			$theQueryParams['page'] = $theTotalPages;
+			$thePager .= '<a href="'.$this->getMyUrl($aAction,$theQueryParams).'"';
+			if ($theCurrPage >= $theTotalPages) //hide, but still take up space
+				$thePager .= ' class="invisible"';
+			$thePager .= '>';
+			if ($theSrc = $this->getRes('pager/imgsrc/pager_last')) {
+				$thePager .= '<img src="'.$theSrc.'" class="pager" alt="'.$this->getRes('pager/label_last').'">';
+			} else {
+				$thePager .= $this->getRes('pager/label_last');
+			}
+			$thePager .= '</a>';
+				
+			$thePager .= "</div>";
+		} else {
+			$thePager = '';
+		}
+	
+		return $thePager;
 	}
 	
 }//end class

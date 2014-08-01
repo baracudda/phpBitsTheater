@@ -1,12 +1,12 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\Resources;
+use BitsTheater\res\Resources as BaseResources;
 use com\blackmoonit\database\DbConnOptions;
 use com\blackmoonit\database\DbConnSettings;
 use com\blackmoonit\database\DbConnInfo;
 {//begin namespace
 
-class Install extends Resources {
+class Install extends BaseResources {
 
 	public $continue_button_text = '&gt;&gt; Continue';
 	public $back_button_text = 'Back &lt;&lt;';

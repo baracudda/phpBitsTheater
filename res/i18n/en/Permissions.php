@@ -1,9 +1,9 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\Permissions as ResPerms;
+use BitsTheater\res\Permissions as BaseResources;
 {
 
-class Permissions extends ResPerms {
+class Permissions extends BaseResources {
 	public $menu_rights_label = 'Permissions';
 	public $menu_rights_subtext = '';
 	

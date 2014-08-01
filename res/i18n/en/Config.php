@@ -1,9 +1,9 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\Resources;
+use BitsTheater\res\Resources as BaseResources;
 {//begin namespace
 
-class Config extends Resources {
+class Config extends BaseResources {
 	public $menu_admin_label = 'Admin';
 	public $menu_admin_subtext = 'nuts &amp; bolts';
 	public $menu_settings_label = 'Settings';

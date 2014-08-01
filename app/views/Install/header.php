@@ -32,7 +32,7 @@ $w .= '</td>'."\n";
 //title
 $w .= '<td>'."\n";
 $w .= '<a href="'.$v->getSiteURL().'">';
-$w .= '<span class="title">BitsTheater MicroFramework Installation</span>';
+$w .= '<span class="title">Website Installation</span>';
 $w .= '</a>'."\n";
 $w .= '</td>'."\n";
 

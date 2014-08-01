@@ -14,6 +14,9 @@ use com\blackmoonit\Strings;
 class Joka extends Actor {
 	const DEFAULT_ACTION = 'queues';
 	
+	/**
+	 * Used as REST API, do not put on website menu.
+	 */
 	public function queues() {
 		/* Debugging Basic HTTP auth
 		 * needed the following line put into the .htaccess:
@@ -76,7 +79,59 @@ class Joka extends Actor {
 		}
 		
 	}
-	
+
+	/**
+	 * Display the transmit and receive log.
+	 */
+	public function commlog() {
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		//auth
+		if ($this->isGuest())
+			return $this->getHomePage();
+		//indicate what top menu we are currently in
+		$this->setCurrentMenuKey('lists');
+		//get account id of whomever is logged in
+		$v->myUserId = $this->getMyAccountID();
+		//get the model to use
+		$dbJokaQueues = $this->getProp('JokaQueues');
+		
+		$v->results = $dbJokaQueues->displayPayloadLog($v);
+		if (empty($v->results)) {
+			$v->results = null;
+			$v->addUserMsg($v->getRes('generic/msg_nothing_found'));
+		}
+		
+		//display this particular html page to view
+		//$this->renderThisView = ;
+	}
+		
+	/**
+	 * Display the outgoing payload queue.
+	 */
+	public function outq() {
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		//auth
+		if ($this->isGuest())
+			return $this->getHomePage();
+		//indicate what top menu we are currently in
+		$this->setCurrentMenuKey('lists');
+		//get account id of whomever is logged in
+		$v->myUserId = $this->getMyAccountID();
+		//get the model to use
+		$dbJokaQueues = $this->getProp('JokaQueues');
+		
+		$v->results = $dbJokaQueues->displayPayloadOutgoingQueue($v);
+		if (empty($v->results)) {
+			$v->results = null;
+			$v->addUserMsg($v->getRes('generic/msg_nothing_found'));
+		}
+		
+		//display this particular html page to view
+		//$this->renderThisView = ;
+	}
+		
 }//end class
 
 }//end namespace
