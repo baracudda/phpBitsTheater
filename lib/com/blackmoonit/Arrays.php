@@ -63,7 +63,7 @@ class Arrays {
 	}
 	
 	/**
-	 * Given a two dimensional array, return the singular array of a 
+	 * Given a two dimensional array, return the singular array of a
 	 * single specified column.
 	 * @param array $anArray - array of arrays.
 	 * @param  $aKey - index of column to retrieve.
@@ -83,12 +83,73 @@ class Arrays {
 	 * as the values from $anArray[$aKey].
 	 * @param array $anArray - array of arrays.
 	 * @param string $aKey - index of column to make as keys
-	 * @return array Returns an array re-indexed using $aKey column. 
+	 * @return array Returns an array re-indexed using $aKey column.
 	 */
 	static public function array_column_as_key($anArray, $aKey) {
 		return array_combine(self::array_column($anArray,$aKey), $anArray);
 	}
 	
+	/**
+	 * Compute the diff between two arrays by generating two arrays:
+	 * values array: a list of elements as they appear in the diff.
+	 * diff array: contains numbers. 0: unchanged, -1: removed, 1: added.
+	 * @param array $aV1 - array version 1
+	 * @param array $aV2 - array version 2
+	 * @return array('values','diff') Return the values and mask arrays.
+	 */
+	static public function computeDiff($aV1, $aV2) {
+		$theValues = array();
+		$theDiff = array();
+		$dm = array();
+		$n1 = count($aV1);
+		$n2 = count($aV2);
+		for ($j = -1; $j < $n2; $j++)
+			$dm[-1][$j] = 0;
+		for ($i = -1; $i < $n1; $i++)
+			$dm[$i][-1] = 0;
+		for ($i = 0; $i < $n1; $i++) {
+			for ($j = 0; $j < $n2; $j++) {
+				if ($aV1[$i] == $aV2[$j]) {
+					$ad = $dm[$i - 1][$j - 1];
+					$dm[$i][$j] = $ad + 1;
+				} else {
+					$a1 = $dm[$i - 1][$j];
+					$a2 = $dm[$i][$j - 1];
+					$dm[$i][$j] = max($a1, $a2);
+				}
+			}
+		}
+		$i = $n1 - 1;
+		$j = $n2 - 1;
+		while (($i > -1) || ($j > -1)) {
+			if ($j > -1) {
+				if ($dm[$i][$j - 1] == $dm[$i][$j]) {
+					$theValues[] = $aV2[$j];
+					$theDiff[] = 1;
+					$j--;
+					continue;
+				}
+			}
+			if ($i > -1) {
+				if ($dm[$i - 1][$j] == $dm[$i][$j]) {
+					$theValues[] = $aV1[$i];
+					$theDiff[] = -1;
+					$i--;
+					continue;
+				}
+			}
+			$theValues[] = $aV1[$i];
+			$theDiff[] = 0;
+			$i--;
+			$j--;
+		}
+		return array(
+				'values' => array_reverse($theValues),
+				'diff' => array_reverse($theDiff),
+		);
+	}
+
+
 }//end class
 
 }//end namespace

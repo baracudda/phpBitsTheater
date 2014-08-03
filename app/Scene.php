@@ -656,6 +656,7 @@ class Scene extends BaseScene {
 	
 	/**
 	 * Create the pager links for a table of data.
+	 * @param string $aAction - the relative action used as the first param in $this->getMyUrl().
 	 * @param int $aTotalCount - the total number of items in dataset.
 	 * @param int $aCurrPage - (optional) the curent page, if NULL (default), calls getPagerCurrPage()
 	 * @return string Returns the HTML used for the pager.
@@ -761,6 +762,7 @@ class Scene extends BaseScene {
 	
 		return $thePager;
 	}
+	
 	
 }//end class
 

@@ -327,4 +327,17 @@ a:hover {
 	opacity:0.0;
 	cursor:text;
 }
+
+ins {
+ 	background-color: LightGreen;
+ 	padding-left:2px;
+ 	padding-right:2px;
+}
+
+del {
+ 	background-color: Pink;
+ 	padding-left:2px;
+ 	padding-right:2px;
+}
+
  
