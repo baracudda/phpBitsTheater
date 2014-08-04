@@ -95,9 +95,10 @@ class Arrays {
 	 * diff array: contains numbers. 0: unchanged, -1: removed, 1: added.
 	 * @param array $aV1 - array version 1
 	 * @param array $aV2 - array version 2
-	 * @return array('values','diff') Return the values and mask arrays.
+	 * @param string $aDelimiter - the glue used to put arrays back together again.
+	 * @return array('values','diff','delimiter') Return the values and mask arrays.
 	 */
-	static public function computeDiff($aV1, $aV2) {
+	static public function computeDiff($aV1, $aV2, $aDelimiter='') {
 		$theValues = array();
 		$theDiff = array();
 		$dm = array();
@@ -146,6 +147,7 @@ class Arrays {
 		return array(
 				'values' => array_reverse($theValues),
 				'diff' => array_reverse($theDiff),
+				'delimiter' => $aDelimiter,
 		);
 	}
 

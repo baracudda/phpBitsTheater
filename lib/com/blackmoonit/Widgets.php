@@ -188,6 +188,7 @@ class Widgets {
 	static public function diffToHtml($aComputedDiff, $aDiffSeparator='') {
 		$theValues =& $aComputedDiff['values'];
 		$theDiffs =& $aComputedDiff['diff'];
+		$theDelimiter = $aComputedDiff['delimiter'];
 		$n = count($theValues);
 		$pmc = 0;
 		$theResult = '';
@@ -196,19 +197,24 @@ class Widgets {
 			if ($mc != $pmc) {
 				switch ($pmc) {
 					case -1: $theResult .= '</del>'.$aDiffSeparator; break;
-					case  1: $theResult .= '</ins>'; break;
+					case  1: $theResult .= '</ins>'.$aDiffSeparator; break;
+				}
+				if ($i<$n-1) {
+					$theResult .= $theDelimiter;
 				}
 				switch ($mc) {
 					case -1: $theResult .= '<del>'; break;
 					case  1: $theResult .= '<ins>'; break;
 				}
+			} else if ($i<$n-1) {
+				$theResult .= $theDelimiter;
 			}
 			$theResult .= $theValues[$i];
 			$pmc = $mc;
 		}
 		switch ($pmc) {
 			case -1: $theResult .= '</del>'.$aDiffSeparator; break;
-			case  1: $theResult .= '</ins>'; break;
+			case  1: $theResult .= '</ins>'.$aDiffSeparator; break;
 		}
 		return $theResult;
 	}
@@ -237,7 +243,8 @@ class Widgets {
 	static public function diffLines($aLines1, $aLines2, $aDelimiter="\n", $aDiffSeparator='') {
 		if (empty($aLines1))
 			return $aLines2;
-		return self::diffToHtml(Arrays::computeDiff(explode($aDelimiter,$aLines1), explode($aDelimiter,$aLines2)), $aDiffSeparator);
+		return self::diffToHtml(Arrays::computeDiff(explode($aDelimiter,$aLines1), explode($aDelimiter,$aLines2),
+				$aDelimiter), $aDiffSeparator);
 	}
 
 
