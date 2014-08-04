@@ -206,7 +206,7 @@ class Widgets {
 					case -1: $theResult .= '<del>'; break;
 					case  1: $theResult .= '<ins>'; break;
 				}
-			} else if ($i<$n-1) {
+			} else {
 				$theResult .= $theDelimiter;
 			}
 			$theResult .= $theValues[$i];
@@ -216,6 +216,7 @@ class Widgets {
 			case -1: $theResult .= '</del>'.$aDiffSeparator; break;
 			case  1: $theResult .= '</ins>'.$aDiffSeparator; break;
 		}
+		$theResult = str_replace('<del></del>','',str_replace('<ins></ins>','',$theResult));
 		return $theResult;
 	}
 	
