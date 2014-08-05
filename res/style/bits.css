@@ -334,6 +334,10 @@ ins {
  	padding-right:2px;
 }
 
+ins a:link,a:active,a:visited {
+	background-color: #00FFFF;
+}
+
 del {
  	background-color: Pink;
  	padding-left:2px;
