@@ -180,7 +180,7 @@ class Widgets {
 
 	/**
 	 * Takes a computed diff and translates it into an HTML string.
-	 * @param array('values','diff') $aComputedDiff - the computed diff
+	 * @param array('values','diff','delimiter') $aComputedDiff - the computed diff
 	 * @param string $aDiffSeparator - string used to separate line diffs. (optional, defaults to "")
 	 * @return string Returns the HTML string with <ins> and <del> tags where appropriate.
 	 * @see Arrays::computeDiff()
@@ -221,31 +221,62 @@ class Widgets {
 	}
 	
 	/**
-	 * Combine two texts into one "diff text".
-	 * @param string $aText1 - orig string
-	 * @param string $aText2 - revised string
-	 * @param string $aDiffSeparator - string used to separate line diffs. (optional, defaults to "")
-	 * @return string Returns a string intersperced with <ins> and <del> tags along with the merged text.
+	 * Compute the Diff between old and new text.
+	 * @param string $aTextOld - orig string set
+	 * @param string $aTextNew - revised string set
+	 * @param string $aDelimiter - (optional) explode the parameters based on this delimiter, defaults to "\n".
+	 * @param string $aDiffSeparator - (optional) string used to separate line diffs, defaults to ""
+	 * @param boolean $bPreserveHtmlTagsAs1Unit - (optional) if TRUE, the default, treats <tags> as a single comparison unit.
+	 * @return string Returns a Diff array set.
+	 * @see Arrays::computeDiff()
 	 */
-	static public function diffText($aText1, $aText2, $aDiffSeparator='') {
-		if (empty($aText1))
-			return $aText2;
-		return self::diffToHtml(Arrays::computeDiff(str_split($aText1), str_split($aText2)), $aDiffSeparator);
+	static public function computeDiff($aTextOld, $aTextNew, $aDelimiter="\n", $aDiffSeparator='', $bPreserveHtmlTagsAs1Unit=true) {
+		$theDiff = null;
+		if (empty($aDelimiter))
+			$theDiff = Arrays::computeDiff(str_split($aText1), str_split($aText2));
+		else {
+			$theExplodeDelimiter = $aDelimiter;
+			$theReconstructionDelimiter = $aDelimiter;
+			if ($theExplodeDelimiter==' ' && $bPreserveHtmlTagsAs1Unit) {
+				if (preg_match_all('~(<[^>]+?\s+[^>]*?>)~', $aTextOld, $theMatches)) {
+					foreach ($theMatches[1] as $theNeedle) {
+						$aTextOld = str_replace($theNeedle, str_replace(' ',"\e\a",$theNeedle), $aTextOld);
+					}
+				}
+				if (preg_match_all('~(<[^>]+?\s+[^>]*?>)~', $aTextNew, $theMatches)) {
+					foreach ($theMatches[1] as $theNeedle) {
+						$aTextNew = str_replace($theNeedle, str_replace(' ',"\e\a",$theNeedle), $aTextNew);
+					}
+				}
+				$aTextOld = str_replace("\e\a", ' ', str_replace(' ',"\a",$aTextOld));
+				$aTextNew = str_replace("\e\a", ' ', str_replace(' ',"\a",$aTextNew));
+				$theExplodeDelimiter = "\a";
+			}
+			$theDiff = Arrays::computeDiff(explode($theExplodeDelimiter,$aTextOld),
+					explode($theExplodeDelimiter,$aTextNew),$theReconstructionDelimiter);
+		}
+		return $theDiff;
 	}
 	
 	/**
 	 * Combine two sets of lines into one "diff lines" text.
-	 * @param string $aLines1 - orig string set
-	 * @param string $aLines2 - revised string set
-	 * @param string $aDelimiter - explode the parameters based on this delimiter, defaults to "\n".
-	 * @param string $aDiffSeparator - string used to separate line diffs. (optional, defaults to "")
+	 * @param string $aTextOld - orig string set
+	 * @param string $aTextNew - revised string set
+	 * @param string $aDelimiter - (optional) explode the parameters based on this delimiter, defaults to "\n".
+	 * @param string $aDiffSeparator - (optional) string used to separate line diffs, defaults to ""
+	 * @param boolean $bPreserveHtmlTagsAs1Unit - (optional) if TRUE, the default, treats <tags> as a single comparison unit.
 	 * @return string Returns a string intersperced with <ins> and <del> tags along with the merged text.
 	 */
-	static public function diffLines($aLines1, $aLines2, $aDelimiter="\n", $aDiffSeparator='') {
-		if (empty($aLines1))
-			return $aLines2;
-		return self::diffToHtml(Arrays::computeDiff(explode($aDelimiter,$aLines1), explode($aDelimiter,$aLines2),
-				$aDelimiter), $aDiffSeparator);
+	static public function diffLines($aTextOld, $aTextNew, $aDelimiter="\n", $aDiffSeparator='', $bPreserveHtmlTagsAs1Unit=true) {
+		if (!isset($aTextOld))
+			return $aTextNew;
+		if (!isset($aTextNew))
+			return $aTextOld;
+		$theDiff = self::computeDiff($aTextOld,$aTextNew,$aDelimiter,$aDiffSeparator,$bPreserveHtmlTagsAs1Unit);
+		if (!empty($theDiff))
+			return self::diffToHtml($theDiff, $aDiffSeparator);
+		else
+			return $aTextNew;
 	}
 
 
