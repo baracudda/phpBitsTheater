@@ -50,7 +50,6 @@ class Install extends Actor {
 		if (!is_dir($theFolders)) {
 			//umask(0777);
 			mkdir($theFolders,0777,true);
-			chmod($aDestFile, 0777);
 		}
 		return file_put_contents($aDestFile, $aFileContents);
 	}
@@ -358,7 +357,7 @@ class Install extends Actor {
 	public function resetDb($pw) {
 		//debug function, does nothing now
 	}
-		
+	
 }//end class
 
 }//end namespace

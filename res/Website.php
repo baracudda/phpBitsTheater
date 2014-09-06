@@ -3,7 +3,7 @@ namespace BitsTheater\res;
 use BitsTheater\res\Resources as BaseResources;
 {//begin namespace
 
-class BaseWebsite extends BaseResources {
+class Website extends BaseResources {
 	public $js_load_list; //defined in setup()
 	public $css_load_list; //defined in setup()
 

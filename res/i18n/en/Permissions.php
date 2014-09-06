@@ -33,9 +33,8 @@ class Permissions extends BaseResources {
 			'auth' => array('label'=>'Authorization', 'desc'=>'Authorization Rights', ),
 			'config' => array('label'=>'Settings', 'desc'=>'Settings/Configuration/Preferences', ),
 			'accounts' => array('label'=>'Accounts', 'desc'=>'Membership Account Rights', ),
-			'roxy' => array('label'=>'Roxy', 'desc'=>'Roxy Database Access', ),
 	);
-			
+	
 	public $auth = array(
 			'modify' => array('label'=>'Modify Permission Groups', 'desc'=>'Assign rights to groups.', ),
 			'create' => array('label'=>'Create Permission Groups', 'desc'=>'Define new rights groups.', ),

@@ -39,7 +39,7 @@ class JokaQueues extends BaseModel {
 		case self::DB_TYPE_MYSQL: default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnInboundPayloads} ".
 					"( payload_id NCHAR(36) NOT NULL".
-					", payload TEXT CHARACTER SET utf8 NOT NULL".
+					", payload LONGTEXT CHARACTER SET utf8 NOT NULL".
 					", package_name NCHAR(255) NOT NULL".
 					", device_id NCHAR(255) NOT NULL".
 					//", transmit_ts timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'".
@@ -55,7 +55,7 @@ class JokaQueues extends BaseModel {
 			$this->execDML($theSql);
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnOutboundPayloads} ".
 					"( payload_id NCHAR(36) NOT NULL".
-					", payload TEXT CHARACTER SET utf8 NOT NULL".
+					", payload LONGTEXT CHARACTER SET utf8 NOT NULL".
 					", package_name NCHAR(255) NOT NULL".
 					", device_id NCHAR(255) NOT NULL".
 					//", transmit_ts timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP".
@@ -72,7 +72,7 @@ class JokaQueues extends BaseModel {
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnPayloadLog} ".
 					"( log_id int(11) NOT NULL AUTO_INCREMENT".
 					", payload_id char(36) NOT NULL".
-					", payload text CHARACTER SET utf8 NOT NULL".
+					", payload LONGTEXT CHARACTER SET utf8 NOT NULL".
 					", package_name char(255) NOT NULL".
 					", device_id char(255) NOT NULL".
 					//", transmit_ts timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'".
