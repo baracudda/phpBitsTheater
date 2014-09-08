@@ -174,7 +174,7 @@ class Widgets {
 			$aElemId = Strings::createUUID();
 		//timestamps need to have @ in front
 		$theTime = (is_numeric($aTime)?'@':'').$aTime;
-		$theTs = new DateTime($theTime.' Z');
+		$theTs = new DateTime($theTime.' UTC'); //Z failed on CentOS v6.5
 		return 'zulu_to_local("'.$aElemId.'",'.$theTs->getTimestamp().');';
 	}
 
