@@ -258,7 +258,7 @@ BasicObj.prototype.drawImage = function(aElem, aImage, x,y,w,h) {
 		aElem.drawImage(aImage,x,y,w,h);
 	} else {
 		aImage.onload = function() { aElem.drawImage(aImage,x,y,w,h); };
-}
+	}
 	//return this for chaining calls
 	return this;
 };

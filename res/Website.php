@@ -23,6 +23,7 @@ class Website extends BaseResources {
 			'framework' => '<a target="_blank" href="https://github.com/baracudda/phpBitsTheater">BitsTheater framework by BITS</a>',
 			'menu' => '<a target="_blank" href="http://apycom.com/">jQuery Menu by Apycom</a>',
 			'icons' => '<a target="_blank" href="http://tango.freedesktop.org/Tango_Desktop_Project">Some icons by the Tango Project</a>',
+			'bootstrap-icons' => '<a href="http://glyphicons.com/">Glyphicons</a>',
 	);
 	public $list_credits_glue = ' &nbsp; | &nbsp; ';
 	

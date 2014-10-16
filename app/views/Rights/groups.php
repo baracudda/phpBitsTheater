@@ -73,8 +73,8 @@ foreach ($v->groups as $theGroup) {
 	else if ($theGroup['group_id']==1) //super-admin group cannot be subclassed
 		$r .= $v->getRes('permissions/display_group_1_desc');
 	else if (!empty($theGroup['parent_group_id'])) {
-				$r .= $v->getRes('permissions/display_parent_group/'.$v->groups[$theGroup['parent_group_id']]['group_name']);
-			}
+		$r .= $v->getRes('permissions/display_parent_group/'.$v->groups[$theGroup['parent_group_id']]['group_name']);
+	}
 	$r .= '</td>';
 	
 	$r .= '<td>';
