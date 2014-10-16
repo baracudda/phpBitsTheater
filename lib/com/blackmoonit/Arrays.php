@@ -151,6 +151,53 @@ class Arrays {
 		);
 	}
 
+	/**
+	 * Convert a given two dimensional array into a csv.
+	 * @param array $aInput - array to convert, returns FALSE if this is empty.
+	 * @param array $aHeaderRow - (optional) single dimension array of header values or TRUE to grab 1st row keys.
+	 * @param mixed $aStream - (optional) output directed to a stream, else a string is returned.
+	 * @param string $aDelimiter - (optional) defaults to ",", but it can be TAB or whatever.
+	 * @param functions $aCallbacks - (optional) callback functions keyed by column names for alternate output;
+	 *                                Callbacks are of the form myCallback($col, $row).
+	 * @return string - Returns a string if no output stream is given, else !empty($aInput).
+	 * @see StackOverflow.com http://stackoverflow.com/a/21858025
+	 * @see OutputToCSV.
+	 */
+	function array_to_csv_string(array &$aInput, $aHeaderRow=null, $aStream=null, $aDelimiter=',', $aCallbacks) {
+		if (empty($aInput))
+			return false;
+		// using concatenation since it is faster than fputcsv, and file size is smaller
+		$csv = '';
+		if (!empty($aHeaderRow)) {
+			if (is_array($aHeaderRow))
+				$csv .= '"'.implode("\"{$aDelimiter}\"", $aHeaderRow).'"'.PHP_EOL;
+			else
+				$csv .= '"'.implode("\"{$aDelimiter}\"", array_keys($aInput[0])).'"'.PHP_EOL;
+			if ($aStream) {
+				$aStream.put($csv);
+				$csv = '';
+			}
+		}
+		foreach ($aInput as $theRow) {
+			foreach ($theRow as $theColName => $theColValue) {
+				if (!empty($aCallbacks[$theColName])) {
+					$theColValue = $aCallbacks[$theColName]($theColValue, $theRow);
+				}
+				$csv .= '"'.$theColValue.'"'.$aDelimiter;
+			}
+		    $csv .= PHP_EOL;
+		    if ($aStream) {
+				$aStream.put($csv);
+				$csv = '';
+			}
+		}
+		if ($aStream) {
+			return true;
+		} else {
+			return $csv;
+		}
+	}
+
 
 }//end class
 

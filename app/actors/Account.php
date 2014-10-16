@@ -22,6 +22,7 @@ use BitsTheater\scenes\Account as MyScene;
 use BitsTheater\models\Accounts;
 	/* @var $dbAccounts Accounts */
 use BitsTheater\models\Groups;
+	/* @var $dbGroups Groups */
 use BitsTheater\models\Auth;
 	/* @var $dbAuth Auth */
 use com\blackmoonit\Strings;
@@ -50,30 +51,33 @@ class Account extends Actor {
 	}
 	
 	public function register($aTask='data-entry') {
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
 		$dbAccounts = $this->getProp('Accounts');
 		//make sure user/pw reg fields will not interfere with any login user/pw field in header
 		$userKey = $this->scene->getUsernameKey().'_reg';
 		$pwKey = $this->scene->getPwInputKey().'_reg';
 		$theRegCode = strtoupper($this->scene->reg_code);
-		if ($aTask==='new' && $theRegCode===$this->getAppId() &&
-				$this->scene->$pwKey===$this->scene->password_confirm) {
+		if ($aTask==='new' && !empty($theRegCode) && $this->scene->$pwKey===$this->scene->password_confirm) {
 			$dbAuth = $this->getProp('Auth');
 			$theRegResult = $dbAuth->canRegister($this->scene->$userKey,$this->scene->email);
 			switch ($theRegResult) {
 			case $dbAuth::REGISTRATION_EMAIL_TAKEN:
-				return $this->getMyUrl('register',
-						array('err_msg'=>$this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email'))));
+				$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email')),$v::USER_MSG_ERROR);
+				return $this->getMyUrl('register');
 			case $dbAuth::REGISTRATION_NAME_TAKEN:
-				return $this->getMyUrl('register',
-						array('err_msg'=>$this->getRes('account/msg_acctexists/'.$this->getRes('account/label_name'))));
+				$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_name')),$v::USER_MSG_ERROR);
+				return $this->getMyUrl('register');
 			default: //create new acct
 				$theNewAcct['account_name'] = $this->scene->$userKey;
 				$theNewId = $dbAccounts->add($theNewAcct);
 				if (!empty($theNewId)) {
-					$theDefaultGroup = Groups::GROUPTYPE_guest;
-					$verified_ts = null;
-					if ($theRegCode===$this->getAppId()) {
-						$theDefaultGroup = Groups::GROUPTYPE_restricted;
+					//see if there is a registration code that maps to a particular group
+					$dbGroups = $this->getProp('Groups');
+					$theDefaultGroup = $dbGroups->findGroupIdByRegCode($this->getAppId(), $theRegCode);
+					if ($theDefaultGroup==0) {
+						$verified_ts = null;
+					} else {
 						$verified_ts = $dbAccounts->utc_now();
 					}
 					$theNewAcct = array(

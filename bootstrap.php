@@ -50,11 +50,35 @@ define('WEBAPP_PATH', BITS_APP_PATH);
 define('SERVER_URL',((array_key_exists('HTTPS',$_SERVER) && $_SERVER['HTTPS']=='on')?'https':'http').'://'.$_SERVER['SERVER_NAME'].
 		(($_SERVER["SERVER_PORT"]=="80" || $_SERVER["SERVER_PORT"]=="443")?'':':'.$_SERVER["SERVER_PORT"]).'/');
 //relative urls
+/**
+ * Current, site-relative URL.
+ * @var string
+ */
 define('REQUEST_URL',array_key_exists('url',$_GET)?$_GET['url']:'');
+
+/**
+ * Site URL that does not end in a /.
+ * @var string
+ */
 define('BITS_URL',dirname($_SERVER['SCRIPT_NAME']));
+
+/**
+ * Resource URL that does not end in a /.
+ * @var string
+ */
 define('BITS_RES',BITS_URL.'/res');
+
+/**
+ * Library URL that does not end in a /.
+ * @var string
+ */
 define('BITS_LIB',BITS_URL.'/lib');
 //no need for app url as that is where all the urls normally get routed towards.
+
+/**
+ * Non-library JavaScript content for the website that does not end in a /.
+ * @var string
+ */
 define('WEBAPP_JS_URL', BITS_URL.'/app/js');
 
 

@@ -24,6 +24,8 @@ use BitsTheater\models\Permissions;
 	/* @var $dbRights Permissions */
 use BitsTheater\models\Auth;
 	/* @var $dbAuth Auth */
+use BitsTheater\models\Groups;
+	/* @var $dbGroups Groups */
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -35,13 +37,16 @@ class Rights extends Actor {
 			return $this->getHomePage();
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
+		//indicate what top menu we are currently in
+		$this->setCurrentMenuKey('admin');
 		
 		$dbAuth = $this->getProp('Auth');
 		$v->groups = Arrays::array_column_as_key($dbAuth->getGroupList(),'group_id');
 		$this->director->returnProp($dbAuth);
 
-		//indicate what top menu we are currently in
-		$this->setCurrentMenuKey('admin');
+		//TODO need a better UI for dealing with group reg codes
+		$dbGroups = $this->getProp('Groups');
+		$v->group_reg_codes = $dbGroups->getGroupRegCodes();
 	}
 	
 	public function group($aGroupId) {
@@ -49,10 +54,12 @@ class Rights extends Actor {
 			return $this->getHomePage();
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
+		//indicate what top menu we are currently in
+		$this->setCurrentMenuKey('admin');
 		
 		if (is_null($aGroupId) || $aGroupId==1)
 			return $this->getMyUrl('/rights');
-		if ($aGroupId===0) {
+		if ($aGroupId==0) {
 			$v->group = null;
 		} else {
 			$dbAuth = $this->getProp('Auth');
@@ -64,8 +71,6 @@ class Rights extends Actor {
 		$this->scene->assigned_rights = $dbRights->getAssignedRights($aGroupId);
 		$this->scene->redirect = $this->getMyUrl('/rights');
 		$this->scene->next_action = $this->getMyUrl('/rights/modify');
-		//indicate what top menu we are currently in
-		$this->setCurrentMenuKey('admin');
 	}
 	
 	public function modify() {
@@ -80,6 +85,20 @@ class Rights extends Actor {
 		$dbRights->modifyGroupRights($v);
 		$this->returnProp($dbRights);
 		return $v->redirect;
+	}
+	
+	public function ajaxUpdateGroup() {
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		//do not render anything
+		$this->renderThisView = '_blank';
+		if (isset($v->group_id) && $this->isAllowed('auth','modify') && $v->group_id>=0 && $v->group_id!=1) {
+			$dbGroups = $this->getProp('Groups');
+			$dbGroups->modifyGroup($v);
+		} else if ( (!isset($v->group_id) || $v->group_id<0) && $this->isAllowed('auth','create')) {
+			$dbGroups = $this->getProp('Groups');
+			$dbGroups->createGroup($v->group_name, $v->group_parent, $v->group_reg_code);
+		}
 	}
 		
 }//end class

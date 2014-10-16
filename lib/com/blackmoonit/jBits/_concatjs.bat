@@ -38,9 +38,10 @@ del _concat_js.txt
 :: ^ the above wont work because we need a specific order of files to make the mini-js version work correctly.
 
 copy /A Utils.js _concat_js.txt /B /Y
+copy /A _concat_js.txt+StdClass.js _concat_js.txt /B /Y
+copy /A _concat_js.txt+BaseClass.js _concat_js.txt /B /Y
 copy /A _concat_js.txt+BasicObj.js _concat_js.txt /B /Y
 copy /A _concat_js.txt+AjaxDataUpdater.js _concat_js.txt /B /Y
 
 ::copy /A _concat_js.txt+blah1.js _concat_js.txt /B /Y
 ::copy /A _concat_js.txt+blah2.js _concat_js.txt /B /Y
-::copy /A _concat_js.txt+blah3.js _concat_js.txt /B /Y

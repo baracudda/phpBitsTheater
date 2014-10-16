@@ -82,11 +82,16 @@ class Accounts extends BaseModel {
 			$theSql .= " VALUES ";
 			$theSql .= "(:account_id, :account_name, :external_id) ";
 			$this->db->beginTransaction();
-			if ($this->execDML($theSql,$aData)) {
-				$theResult = $this->db->lastInsertId();
-				$this->db->commit();
-			} else {
+			try {
+				if ($this->execDML($theSql,$aData)) {
+					$theResult = $this->db->lastInsertId();
+					$this->db->commit();
+				} else {
+					$this->db->rollBack();
+				}
+			} catch (PDOException $pdoe) {
 				$this->db->rollBack();
+				throw new DbException($pdoe, 'Add Accout failed.');
 			}
 		}
 		return $theResult;

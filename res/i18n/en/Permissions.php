@@ -11,13 +11,15 @@ class Permissions extends BaseResources {
 	public $colheader_group_id = '#';
 	public $colheader_group_name = 'Rights Group';
 	public $colheader_group_parent = 'Description';
-	public $display_group_type_1 = 'always passes permission checks';
+	public $display_group_0_desc = 'visitor that is not logged in';
+	public $display_group_1_desc = 'always passes permission checks';
 	public $display_parent_group = 'subset of %s';
 	
 	public $title_group = 'Assign Rights for Group: %s';
 	public $colheader_right_name = 'Right';
 	public $colheader_right_value = 'Assign';
 	public $colheader_right_desc = 'Description';
+	public $colheader_group_reg_code = 'Matches Registration Code';
 	
 
 	public $anonymous_group_name = 'anonymous'; //name of "group 0" when not logged in so you can still assign rights

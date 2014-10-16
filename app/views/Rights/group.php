@@ -7,6 +7,7 @@ $recite->includeMyHeader();
 $w = '';
 
 $w .= "<h1>{$v->getRes('permissions/title_group/'.$v->group['group_name'])}</h1>\n";
+$w .= $v->renderMyUserMsgsAsString();
 $res = $v->getPermissionRes('right_values');
 $w .= '<table border="0">';
 $w .= '<tr><td align="right"><b>+</b> = </td><td>'.$res['allow']['label'].': '.$res['allow']['desc']."</td></tr>\n";
@@ -25,9 +26,9 @@ foreach ($v->right_groups as $ns => $nsInfo) {
 			continue;
 		//if (Auth::TYPE!='basic' && $ns=='auth' && $theRight!='modify') continue;
 		$cellLabel = '<td style="width:20em" class="data-label">'.$theRightInfo['label'].'</td>';
-		$cellInput = '<td style="width:12em" align="center">'.Widgets::createRadioSet($ns.'__'.$theRight,
+		$cellInput = '<td style="width:12em;text-align:center">'.Widgets::createRadioSet($ns.'__'.$theRight,
 				$v->getShortRightValues(), $thePermissionValue,	'right',"&nbsp;&nbsp;").'</td>';
-		$cellDesc = '<td style="width:40em;text-align:left" >'.$theRightInfo['desc'].'</td>';
+		$cellDesc = '<td style="width:40em">'.$theRightInfo['desc'].'</td>';
 	
 		$thePermissionRows .= '<tr class="'.$v->_rowClass.'">'.$cellLabel.$cellInput.$cellDesc."</tr>\n";
 	}//end foreach
@@ -35,9 +36,9 @@ foreach ($v->right_groups as $ns => $nsInfo) {
 		$w .= "<h2>{$nsInfo['desc']}</h2>";
 		$w .= '<table class="data-entry">'."\n";
 		$w .= '<thead><tr class="rowh">'."\n";
-		$w .= '<th>'.$v->getRes('permissions/colheader_right_name').'</th>';
-		$w .= '<th>'.$v->getRes('permissions/colheader_right_value').'</th>';
-		$w .= '<th>'.$v->getRes('permissions/colheader_right_desc').'</th>';
+		$w .= '<th class="text-right">'.$v->getRes('permissions/colheader_right_name').'</th>';
+		$w .= '<th class="text-center">'.$v->getRes('permissions/colheader_right_value').'</th>';
+		$w .= '<th class="text-left">'.$v->getRes('permissions/colheader_right_desc').'</th>';
 		$w .= "</tr></thead>\n";
 		$w .= "<tbody>\n";
 		$w .= $thePermissionRows;

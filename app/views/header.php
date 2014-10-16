@@ -19,7 +19,10 @@ else
 
 //jQuery-ui
 //$v->loadCSS('jquery-ui/jquery-ui.css');
-//$v->loadScript('jquery-ui/jquery-ui-1.8.custom.min.js');
+//$v->loadScript('jquery-ui/jquery-ui.min.js');
+//$v->loadScript('jquery-ui/jquery.ui.touch-punch.min.js');
+
+$v->loadScript('bootbox/bootbox.js');
 
 //apycom menu (needs to be after jQuery, else use the jquery sublib)
 $v->loadCSS('apycom/menu.css');
@@ -44,6 +47,9 @@ if (!empty($theCssList)) {
 } else {
 	$v->loadCSS('bits.css', BITS_RES.'/style');
 }
+
+$v->loadCSS('bootstrap/css/bootstrap.css');
+$v->loadScript('bootstrap/js/bootstrap.min.js');
 
 print("</head>\n");
 //=============================================================================

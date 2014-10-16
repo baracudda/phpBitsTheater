@@ -18,34 +18,20 @@
 namespace BitsTheater\models;
 use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\DbException;
+use com\blackmoonit\Arrays;
 use \PDO;
 {//begin namespace
 
 class Groups extends BaseModel {
-	const GROUPTYPE_guest = 0;
-	const GROUPTYPE_titan = 1;
-	const GROUPTYPE_admin = 2;
-	const GROUPTYPE_privileged = 3;
-	const GROUPTYPE_restricted = 4;
-
-	public $tnGroups;
-	public $tnGroupMap;
-	protected $get_group;
-	protected $get_map_groups;
-	protected $get_map_accts;
+	public $tnGroups;			const TABLE_Groups = 'groups';
+	public $tnGroupMap;			const TABLE_GroupMap = 'groups_map';
+	public $tnGroupRegCodes;	const TABLE_GroupRegCodes = 'groups_reg_codes';
 
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
-		$this->tnGroups = $this->tbl_.'groups';
-		$this->tnGroupMap = $this->tbl_.'groups_map';
-		try {
-			$this->get_group = "SELECT * FROM {$this->tnGroups} WHERE group_id = :group_id";
-			$this->get_map_groups = "SELECT account_id FROM {$this->tnGroupMap} WHERE group_id = :group_id";
-		} catch (DbException $dbe) {
-			if ($this->exists($this->tnGroups) && $this->exists($this->tnGroupMap)) {
-				throw $dbe->setContextMsg("dbError@groups.setup()\n");
-			}
-		}
+		$this->tnGroups = $this->tbl_.self::TABLE_Groups;
+		$this->tnGroupMap = $this->tbl_.self::TABLE_GroupMap;
+		$this->tnGroupRegCodes = $this->tbl_.self::TABLE_GroupRegCodes;
 	}
 	
 	protected function getTableName() {
@@ -58,8 +44,8 @@ class Groups extends BaseModel {
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnGroups} ".
 				"( group_id INT NOT NULL AUTO_INCREMENT".
 				", group_name NCHAR(60) NOT NULL".
-				", group_type SMALLINT NOT NULL DEFAULT 0".
 				", parent_group_id INT NULL".
+				//", group_desc NCHAR(200) NULL".
 				", PRIMARY KEY (group_id)".
 				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		}
@@ -74,22 +60,34 @@ class Groups extends BaseModel {
 				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		}
 		$r = $this->execDML($theSql);
+		switch ($this->dbType()) {
+		case 'mysql': default:
+			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnGroupRegCodes} ".
+				"( group_id INT NOT NULL".
+				", reg_code NCHAR(64) NOT NULL".
+				", PRIMARY KEY (reg_code, group_id)".
+				") CHARACTER SET utf8 COLLATE utf8_general_ci COMMENT='Auto-assign group_id if Registration Code matches reg_code'";
+		}
+		$r = $this->execDML($theSql);
 	}
 	
 	public function setupDefaultData($aScene) {
 		if ($this->isEmpty()) {
 			$group_names = $aScene->getRes('setupDefaultData/group_names');
 			$default_data = array(
-					array('group_name'=>$group_names[1],'group_type'=>self::GROUPTYPE_titan),
-					array('group_name'=>$group_names[2],'group_type'=>self::GROUPTYPE_admin),
-					array('group_name'=>$group_names[3],'group_type'=>self::GROUPTYPE_privileged),
-					array('group_name'=>$group_names[4],'group_type'=>self::GROUPTYPE_restricted),
-					array('group_name'=>$group_names[5],'group_type'=>self::GROUPTYPE_guest),
+					array('group_id'=>1, 'group_name'=>$group_names[1],),
+					array('group_id'=>2, 'group_name'=>$group_names[2],),
+					array('group_id'=>3, 'group_name'=>$group_names[3],),
+					array('group_id'=>4, 'group_name'=>$group_names[4],),
+					array('group_id'=>5, 'group_name'=>$group_names[0],),
 			);
 			$theSql = "INSERT INTO {$this->tnGroups} ".
-					"(group_name, group_type) VALUES (:group_name, :group_type)";
-			$theParamTypes = array('group_name'=>\PDO::PARAM_STR,'group_type'=>\PDO::PARAM_INT);
-			return $this->execMultiDML($theSql,$default_data,$theParamTypes);
+					"(group_id, group_name) VALUES (:group_id, :group_name)";
+			$theParamTypes = array('group_id'=>PDO::PARAM_INT, 'group_name'=>PDO::PARAM_STR,);
+			$this->execMultiDML($theSql,$default_data,$theParamTypes);
+			//set group_id 5 to 0, cannot set 0 on insert since auto-inc columns in MySQL interpret 0 as "next id" instead of just 0.
+			$theSql = 'UPDATE '.$this->tnGroups.' SET group_id=0 WHERE group_id=5';
+			$this->execDML($theSql);
 		}
 	}
 	
@@ -99,8 +97,13 @@ class Groups extends BaseModel {
 		return parent::isEmpty($aTableName);
 	}
 	
-	public function getGroup($aId) {
-		$rs = $this->query($this->get_group,array('group_id'=>$aId));
+	public function getGroup($aGroupId) {
+		$theParams = array();
+		$theParamTypes = array();
+		$theSql = "SELECT * FROM {$this->tnGroups} WHERE group_id = :group_id";
+		$theParams['group_id'] = $aGroupId;
+		$theParamTypes['group_id'] = PDO::PARAM_INT;
+		$rs = $this->query($theSql,$theParams,$theParamTypes);
 		return $rs->fetch();
 	}
 	
@@ -143,6 +146,68 @@ class Groups extends BaseModel {
 			$theGroupId += 0;
 		}
 		return $theResult;
+	}
+	
+	public function createGroup($aGroupName, $aGroupParentId, $aGroupRegCode) {
+		$theSql = "INSERT INTO {$this->tnGroups} (group_name,parent_group_id) VALUES ('$aGroupName',$aGroupParentId)";
+		$theNewGroupId = $this->addAndGetId($theSql);
+		if (!empty($aGroupRegCode)) {
+			$theRegCode = substr($aGroupRegCode,0,64);
+			$theSql = "INSERT INTO {$this->tnGroupRegCodes} (group_id,reg_code) VALUES ($theNewGroupId,'$theRegCode')";
+			$theNewGroupId = $this->addAndGetId($theSql);
+		}
+	}
+
+	public function modifyGroup($aScene) {
+		$v = &$aScene;
+		if (!empty($this->db) && isset($v->group_id) && $v->group_id>=0 && $v->group_id!=1) {
+			try {
+				$theParams = array();
+				$theParamTypes = array();
+				$theSql = 'UPDATE '.$this->tnGroups;
+				$theSql .= ' SET group_name=:group_name, parent_group_id=:parent_group_id';
+				$theSql .= ' WHERE group_id=:group_id';
+				$theParams['group_id'] = $v->group_id;
+				$theParamTypes['group_id'] = PDO::PARAM_INT;
+				$theParams['group_name'] = $v->group_name;
+				$theParamTypes['group_name'] = PDO::PARAM_STR;
+				$theParams['parent_group_id'] = $v->group_parent;
+				$theParamTypes['parent_group_id'] = PDO::PARAM_INT;
+				$this->execDML($theSql, $theParams, $theParamTypes);
+
+				$theSql = "DELETE FROM {$this->tnGroupRegCodes} WHERE group_id=:group_id";
+				$this->execDML($theSql, array('group_id'=>$v->group_id), array('group_id'=>PDO::PARAM_INT));
+								
+				if (!empty($v->group_reg_code)) {
+					$theRegCode = substr($v->group_reg_code,0,64);
+					$theSql = "INSERT INTO {$this->tnGroupRegCodes} (group_id,reg_code) VALUES ({$v->group_id},'{$theRegCode}')";
+					$theNewGroupId = $this->addAndGetId($theSql);
+				}
+			} catch (PDOException $pdoe) {
+				throw new DbException($pdoe, 'modifyGroup() failed.');
+			}
+		}
+	}
+	
+	public function getGroupRegCodes() {
+		$theSql = "SELECT * FROM {$this->tnGroupRegCodes} ORDER BY group_id";
+		$ps = $this->query($theSql);
+		$theResult = Arrays::array_column_as_key($ps->fetchAll(), 'group_id');
+		return $theResult;
+	}
+	
+	public function findGroupIdByRegCode($aAppId, $aRegCode) {
+		if (!$this->isEmpty($this->tnGroupRegCodes)) {
+			$theParams = array();
+			$theParamTypes = array();
+			$theSql = "SELECT group_id FROM {$this->tnGroupRegCodes} WHERE reg_code = :reg_code";
+			$theParams['reg_code'] = $aRegCode;
+			$theParamTypes['reg_code'] = PDO::PARAM_STR;
+			$theRow = $this->getTheRow($theSql,$theParams,$theParamTypes);
+			return (!empty($theRow)) ? $theRow['group_id'] : 0;
+		} else {
+			return ($aRegCode==$aAppId) ? 3 : 0;
+		}
 	}
 
 }//end class

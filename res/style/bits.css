@@ -205,10 +205,16 @@ ul.user-msgs li.error {
 	color:white;
 }
 
-tr.rowh { /*row header*/
+tr.rowh, thead { /*row header*/
 	background-color: Navy;
 	color: LightSteelBlue;
 	text-decoration: underline;
+}
+
+tr.rowh a:link, tr.rowh a:active, tr.rowh a:visited, 
+thead a:link, thead a:active, thead a:visited {
+	color: White;
+	text-decoration: none;
 }
 
 tr.row1 {
@@ -275,7 +281,7 @@ input.hidden {
 }
 
 input.field, textarea.field, select.field {
-
+	color: initial;
 }
 
 /*

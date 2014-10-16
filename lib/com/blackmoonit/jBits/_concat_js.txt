@@ -38,6 +38,152 @@ function zulu_to_local(id, phpTs) {
 }
 
 /*
+ * Copyright (C) 2008 John Resig
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+ * and associated documentation files (the "Software"), to deal in the Software without
+ * restriction, including without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or
+ * substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+ * FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
+
+/* Simple JavaScript Inheritance
+ * By John Resig http://ejohn.org/
+ * MIT Licensed.
+ */
+// Inspired by base2 and Prototype
+// changes by Ryan Fischbach: Class -> StdClass, init -> onCreate
+(function(){
+	var bLoadClassDef = false, fnTest = /xyz/.test(function(){xyz;}) ? /\b_super\b/ : /.*/;
+
+	// The base StdClass implementation (does nothing)
+	this.StdClass = function(){};
+	
+	// Create a new StdClass that inherits from this class
+	StdClass.extend = function(prop) {
+		var _super = this.prototype;
+
+		// Instantiate a base class (but only create the instance,
+		// don't run the onCreate constructor)
+		bLoadClassDef = true;
+		var prototype = new this();
+		bLoadClassDef = false;
+
+		// Copy the properties over onto the new prototype
+		for (var name in prop) {
+			// Check if we're overwriting an existing function
+			prototype[name] = typeof prop[name] === "function" &&
+				typeof _super[name] === "function" && fnTest.test(prop[name]) ?
+					(function(name, fn){
+						return function() {
+							var tmp = this._super;
+
+							// Add a new ._super() method that is the same method
+							// but on the super-class
+							this._super = _super[name];
+
+							// The method only need to be bound temporarily, so we
+							// remove it when we're done executing
+							var ret = fn.apply(this, arguments);
+							this._super = tmp;
+
+							return ret;
+						};
+					})(name, prop[name]) :
+					prop[name];
+		}
+
+		// The dummy class constructor
+		function StdClass() {
+			// All construction is actually done in the onCreate method
+			if ( !bLoadClassDef && this.onCreate )
+				this.onCreate.apply(this, arguments);
+		}
+
+		// Populate our constructed prototype object
+		StdClass.prototype = prototype;
+
+		// Enforce the constructor to be what we expect
+		StdClass.prototype.constructor = StdClass;
+
+		// And make this class extendable
+		StdClass.extend = arguments.callee;
+
+		return StdClass;
+	};
+})();
+/*
+ * Copyright (C) 2014 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+var BaseClass = StdClass.extend({
+	onCreate: function() {
+		//defined just to avoid a crash if you call _super() during onCreate
+	}
+});
+
+/**
+ * Since JS cannot handle default values in the function definition,
+ * this function will return the arg or the default if arg is undefined.
+ * @param aArg - the argument
+ * @param aDef - the default
+ * @returns Arg unless it is undefined, else Default.
+ */
+BaseClass.prototype.argOrDefault = function(aArg, aDef) {
+	return ((typeof aArg) !== 'undefined') ? aArg : aDef;
+};
+
+/**
+ * Helper function to bind methods as callback functions.
+ * @param aMethodName - name of method to call
+ * @returns {Function} Returns the anonymous function used as a callback.
+ */
+BaseClass.prototype.asCB = function(aMethodName) {
+	var thisone = this;
+	return function() {
+		return thisone[aMethodName].apply(thisone,arguments);
+	};
+};
+
+/**
+ * Pseudo-UUID, random + time "version 4" generated UUID.
+ * @param {string} aGlue - (optional) defaults to "-".
+ * @returns {String} v4 UUID.
+ * @see http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
+ */
+BaseClass.prototype.createUUID = function(aGlue) {
+	var g = this.argOrDefault(aGlue,'-');
+	var d = new Date().getTime();
+	var s = 'xxxxxxxx'+g+'xxxx'+g+'4xxx'+g+'yxxx'+g+'xxxxxxxxxxxx';
+	var uuid = s.replace(/[xy]/g, function(c) {
+		var r = (d + Math.random()*16)%16 | 0;
+		d = Math.floor(d/16);
+		return (c==='x' ? r : (r&0x7|0x8)).toString(16);
+	});
+	return uuid;
+};
+/*
  * Copyright (C) 2014 Blackmoon Info Tech Services
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -97,16 +243,25 @@ BasicObj.prototype.randomFromInterval = function(aMin,aMax) {
 
 /**
  * Sometimes the image is not loaded yet and we wish to draw it.
+ * @param {element} aElem - element to drawImage() on.
+ * @param {image} aImage - image to draw.
+ * @param {int} x - x position.
+ * @param {int} y - y position.
+ * @param {int} w - (optional) width to use.
+ * @param {int} h - (optional) height to use.
+ * @returns {BasicObj} Returns this for chaining.
  */
-BasicObj.prototype.drawImage = function(aContext, aImage, x,y,w,h) {
+BasicObj.prototype.drawImage = function(aElem, aImage, x,y,w,h) {
 	w = this.argOrDefault(w,aImage.width);
 	h = this.argOrDefault(h,aImage.height);
 	if (aImage.complete) {
-		aContext.drawImage(aImage,x,y,w,h);
+		aElem.drawImage(aImage,x,y,w,h);
 	} else {
-		aImage.onload = function() { aContext.drawImage(aImage,x,y,w,h); }
-	}
+		aImage.onload = function() { aElem.drawImage(aImage,x,y,w,h); };
 }
+	//return this for chaining calls
+	return this;
+};
 
 /**
  * Generic "set event handler".
@@ -115,7 +270,7 @@ BasicObj.prototype.drawImage = function(aContext, aImage, x,y,w,h) {
  * @param aObj - element to set the listener, defaults to window if not passed in
  */
 BasicObj.prototype.addEvent = function(aEvent, aHandler, aObj) {
-	var theHandler = (typeof aHandler != 'string') ? aHandler : this.bind(this,aHandler);
+	var theHandler = (typeof aHandler !== 'string') ? aHandler : this.bind(this,aHandler);
 	var theObj = aObj || window;
 	if (theObj.addEventListener) { // W3C standard
 		theObj.addEventListener(aEvent,theHandler,false);
@@ -124,6 +279,8 @@ BasicObj.prototype.addEvent = function(aEvent, aHandler, aObj) {
 	} else {
 		theObj['on'+aEvent]=theHandler;
 	}
+	//return this for chaining calls
+	return this;
 }
 
 /**

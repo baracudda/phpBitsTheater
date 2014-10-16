@@ -13,11 +13,13 @@ print "<script>function checkPassword(p1,p2) { if (p1.value!=p2.value) {p2.setCu
 $w .= '<h2>Register</h2>';
 if (isset($v->err_msg)) {
 	$w .= '<span class="msg-error">'.$v->err_msg.'</span>';
+} else {
+	$w .= $v->renderMyUserMsgsAsString();
 }
 $w .= '<table class="data-entry">';
 
 //make sure fields will not interfere with any login user/pw field in header
-$userKey = $v->getUsernameKey().'_reg';	
+$userKey = $v->getUsernameKey().'_reg';
 $pwKey = $v->getPwInputKey().'_reg';
 $w .= '<tr><td class="data-label">'.$v->getRes('account/label_name').':</td><td class="data-field">'.
 		Widgets::createTextBox($userKey,$v->$userKey,true)."</td></tr>\n";

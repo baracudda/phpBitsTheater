@@ -55,8 +55,12 @@ class Director extends BaseDirector implements ArrayAccess {
 	protected $auth = null; //cache of Auth model
 
 	public function setup() {
-		if (session_id() === '') try {
-			session_start();
+		try {
+			if (!$this->check_session_start()) {
+				session_id( uniqid() );
+				session_start();
+				session_regenerate_id();
+			}
 		} catch (Exception $e) {
 			$this->resetSession();
 		}
@@ -102,6 +106,26 @@ class Director extends BaseDirector implements ArrayAccess {
 	}
 	
 	//----- IMPLEMENTS handled, get on with being a Director below -----
+
+	/**
+	 * PHP's session_start() may be vulnerable to a modified cookie attack.
+	 * @see http://stackoverflow.com/questions/3185779/
+	 * @return boolean return TRUE if a session was successfully started
+	 */
+	protected function check_session_start() {
+		$theName = session_name();
+		if (!empty($_COOKIE[$theName])) {
+			$theId = $_COOKIE[$theName];
+		} else if (!empty($_GET[$theName])) {
+			$theId = $_GET[$theName];
+		} else {
+			return session_start();
+		}
+		if (preg_match('/^[a-zA-Z0-9,\-]{22,40}$/',$theId)) {
+			return session_start();
+		}
+		return false;
+	}
 
 	public function resetSession() {
 		//throw new \Exception('resetSession');
@@ -337,7 +361,7 @@ class Director extends BaseDirector implements ArrayAccess {
 		$resObj = $this->_resMaster[$aResClass];
 		if (is_callable(array($resObj,$aRes))) {
 			try {
-				return call_user_func_array(array($resObj,$aRes),$args);
+				return call_user_func_array(array($resObj,$aRes),(!is_null($args)?$args:array()));
 			} catch (Exception $e) {
 				throw new ResException($this->_resManager,$aRes,$aResClass,$args,$e);
 			}

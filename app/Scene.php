@@ -580,9 +580,11 @@ class Scene extends BaseScene {
 
 			$dbAuth = $d->getProp('Auth');
 			$dbAuth->checkTicket($theUserName, $theUserPw);
+			/* if using basic http auth, no need for cookies
 			if (isset($d->account_info)) {
 				$dbAuth->updateCookie($d[$dbAuth::KEY_userinfo]);
 			}
+			*/
 		}
 	}
 	
@@ -604,9 +606,9 @@ class Scene extends BaseScene {
 		//TODO $this->_config['disply/query_limit'];
 		$theLimit = max($aDefaultPageSize,1);
 		if (!empty($this->query_limit) && is_numeric($this->query_limit))
-			$theLimit = max($this->query_limit,1);
+			$theLimit = min(max($this->query_limit,1),1000);
 		else if (!empty($this->pagesz) && is_numeric($this->pagesz))
-			$theLimit = max($this->pagesz,1);
+			$theLimit = min(max($this->pagesz,1),1000);
 		return $theLimit;
 	}
 	
