@@ -17,12 +17,25 @@
 
 namespace BitsTheater\models;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\costumes\IFeatureVersioning;
+use BitsTheater\costumes\SqlBuilder;
+use BitsTheater\models\SetupDb as MetaModel;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Arrays;
+use com\blackmoonit\Strings;
 use \PDO;
+use \PDOException;
 {//begin namespace
 
-class Groups extends BaseModel {
+class Groups extends BaseModel implements IFeatureVersioning {
+	/**
+	 * Used by meta data mechanism to keep the database up-to-date with the code.
+	 * A non-NULL string value here means alter-db-schema needs to be managed.
+	 * @var string
+	 */
+	const FEATURE_ID = 'BitsTheater/groups';
+	const FEATURE_VERSION_SEQ = 3; //always ++ when making db schema changes
+
 	public $tnGroups;			const TABLE_Groups = 'groups';
 	public $tnGroupMap;			const TABLE_GroupMap = 'groups_map';
 	public $tnGroupRegCodes;	const TABLE_GroupRegCodes = 'groups_reg_codes';
@@ -38,7 +51,12 @@ class Groups extends BaseModel {
 		return $this->tnGroups;
 	}
 	
+	/**
+	 * Called during website installation and db re-setupDb feature.
+	 * Never assume the database is empty.
+	 */
 	public function setupModel() {
+		//Groups table
 		switch ($this->dbType()) {
 		case 'mysql': default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnGroups} ".
@@ -49,7 +67,9 @@ class Groups extends BaseModel {
 				", PRIMARY KEY (group_id)".
 				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		}
-		$r = $this->execDML($theSql);
+		$this->execDML($theSql);
+		
+		//Group Map table
 		switch ($this->dbType()) {
 		case 'mysql': default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnGroupMap} ".
@@ -59,7 +79,9 @@ class Groups extends BaseModel {
 				//", UNIQUE KEY (group_id, account_id)".  IDK if it'd be useful
 				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		}
-		$r = $this->execDML($theSql);
+		$this->execDML($theSql);
+		
+		//Group Reg Codes table (added v2)
 		switch ($this->dbType()) {
 		case 'mysql': default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnGroupRegCodes} ".
@@ -71,9 +93,14 @@ class Groups extends BaseModel {
 		$r = $this->execDML($theSql);
 	}
 	
+	/**
+	 * When tables are created, default data may be needed in them. Check
+	 * the table(s) for isEmpty() before filling it with default data.
+	 * @param Scene $aScene - (optional) extra data may be supplied
+	 */
 	public function setupDefaultData($aScene) {
 		if ($this->isEmpty()) {
-			$group_names = $aScene->getRes('setupDefaultData/group_names');
+			$group_names = $aScene->getRes('groups/group_names');
 			$default_data = array(
 					array('group_id'=>1, 'group_name'=>$group_names[1],),
 					array('group_id'=>2, 'group_name'=>$group_names[2],),
@@ -91,10 +118,66 @@ class Groups extends BaseModel {
 		}
 	}
 	
-	public function isEmpty($aTableName=null) {
-		if ($aTableName==null)
-			$aTableName = $this->tnGroups;
-		return parent::isEmpty($aTableName);
+	/**
+	 * Returns the current feature metadata for the given feature ID.
+	 * @param string $aFeatureId - the feature ID needing its current metadata.
+	 * @return array Current feature metadata.
+	 */
+	public function getCurrentFeatureVersion($aFeatureId=null) {
+		return array(
+				'feature_id' => self::FEATURE_ID,
+				'model_class' => $this->mySimpleClassName,
+				'version_seq' => self::FEATURE_VERSION_SEQ,
+		);
+	}
+	
+	/**
+	 * Meta data may be necessary to make upgrades-in-place easier. Check for
+	 * existing meta data and define if not present.
+	 * @param Scene $aScene - (optional) extra data may be supplied
+	 */
+	public function setupFeatureVersion($aScene) {
+		/* @var $dbMeta MetaModel */
+		$dbMeta = $this->getProp('SetupDb');
+		$theFeatureData = $dbMeta->getFeature(self::FEATURE_ID);
+		if (empty($theFeatureData)) {
+			$theFeatureData = $this->getCurrentFeatureVersion();
+			//GroupRegCodes added in v2
+			if (!$this->exists($this->tnGroupRegCodes)) {
+				$theFeatureData['version_seq'] = 1;
+			}
+			//group_type removed in v3
+			try {
+				$theSql = 'SELECT group_type FROM '.$this->tnGroups.' LIMIT 1';
+				$this->query($theSql);
+				$theFeatureData['version_seq'] = 2;
+			} catch(PDOException $e) {
+			}
+			$dbMeta->insertFeature($theFeatureData);
+		}
+	}
+	
+	/**
+	 * Check current feature version and compare it to the
+	 * current version, upgrading the db schema as needed.
+	 * @param array $aFeatureMetaData - the models current feature metadata.
+	 * @param Scene $aScene - (optional) extra data may be supplied
+	 */
+	public function upgradeFeatureVersion($aFeatureMetaData, $aScene) {
+		$theSeq = $aFeatureMetaData['version_seq'];
+		switch (true) {
+			//cases should always be lo->hi, never use break; so all changes are done in order.
+			case ($theSeq<=1):
+				//create new GroupRegCodes table
+				$this->setupModel();
+			case ($theSeq==2):
+				//two step process to remove the unused field: re-number the group_id=5, 0-group-type to ID=0
+				$theSql = 'UPDATE '.$this->tnGroups.' SET group_id=0 WHERE group_id=5 AND group_type=0 LIMIT 1';
+				$this->execDML($theSql);
+				//now alter the table and drop the column
+				$theSql = 'ALTER TABLE '.$this->tnGroups.' DROP group_type';
+				$this->execDML($theSql);
+		}
 	}
 	
 	public function getGroup($aGroupId) {

@@ -150,9 +150,9 @@ abstract class ABitsCostume extends BaseCostume {
 	 * @return \BitsTheater\costumes\mixed Returns the converted class.
 	 */
 	static public function fromStdClass(Director $aDirector, StandardClass $aStdClass) {
-		//Strings::debugLog('joka stdcls: '.Strings::debugStr($aStdClass));
+		//Strings::debugLog('costume stdcls: '.Strings::debugStr($aStdClass));
 		$o = self::cnvStdClassToXClass($aStdClass, get_called_class());
-		//Strings::debugLog('joka cls: '.Strings::debugStr($o));
+		//Strings::debugLog('costume cls: '.Strings::debugStr($o));
 		$o->director = $aDirector;
 		return $o;
 	}

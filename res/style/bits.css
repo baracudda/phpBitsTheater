@@ -157,33 +157,30 @@ div#container-error .msg-trace {
  */
 div#container-user-msgs {
 	text-decoration: none;
-	padding-top: 1em;
-	padding-bottom: 1em;
+	padding: 1em;
 }
 
 ul.user-msgs {
 	padding-top: 1em;
-	padding-right: 3em;
 	padding-bottom: 1em;
+	padding-left: 2em;
+	padding-right: 2em;
 	background-color: #FFFF99;
 	border:solid 2px #330099;
 	font-size: 12px;
 }
 
 ul.user-msgs li.notice {
-	padding-top: 1em;
-	padding-bottom: 1em;
+	padding: 1em;
 }
 
 ul.user-msgs li.warning {
-	padding-top: 1em;
-	padding-bottom: 1em;
+	padding: 1em;
 	background-color: #FFCC33;
 }
 
 ul.user-msgs li.error {
-	padding-top: 1em;
-	padding-bottom: 1em;
+	padding: 1em;
 	color: white;
 	background-color: red;
 }
@@ -242,21 +239,21 @@ td.num {
 	text-align: right;
 }
 
-table.data-entry td, table.data-entry th {
+table.db-entry td, table.db-entry th {
 	padding: 2px;
 }
 
-table.data-entry .data-label {
+table.db-entry .db-field-label {
 	font-size: 12px;
 	font-weight: bolder;
 	text-align: right;
 }
 
-table.data-entry .data-field {
+table.db-entry .db-field {
 	font-size: 12px;
 }
 
-table.data-display td, table.data-display th {
+table.db-display td, table.db-display th {
 	font-size: 12px;
 	padding: 2px;
 }

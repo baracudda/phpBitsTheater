@@ -3,11 +3,8 @@ namespace BitsTheater\res\en;
 use BitsTheater\res\Resources as BaseResources;
 {
 
-class SetupDefaultData extends BaseResources {
+class Groups extends BaseResources {
 
-	//install page defauts
-	public $continue_button_text = '&gt;&gt; Continue';
-	public $back_button_text = 'Back &lt;&lt;';
 
 	//note, this could have been a static function that loaded it's array from a file and returned it
 	public $group_names = array(

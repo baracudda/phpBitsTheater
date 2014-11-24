@@ -19,7 +19,7 @@ $w .= "<br />\n";
 foreach ($v->config_areas as $theNamespaceInfo) {
 	$v->_rowClass = 1; //reset row counter back to 1 for each table created (resets the row formatting)
 	$w .= "<h2>{$theNamespaceInfo->label}</h2>";
-	$w .= '<table class="data-entry">'."\n";
+	$w .= '<table class="db-entry">'."\n";
 	$w .= '  <thead><tr class="rowh">'."\n";
 	$w .= '    <th>Setting</th><th>Value</th><th>Description</th>'."\n";
 	$w .= "  </tr></thead>\n";
@@ -27,8 +27,8 @@ foreach ($v->config_areas as $theNamespaceInfo) {
 	/* @var $theSettingInfo ConfigSettingInfo */
 	foreach ($theNamespaceInfo->settings_list as $theSettingName => $theSettingInfo) {
 		$theWidgetName = $theSettingInfo->getWidgetName();
-		$cellLabel = '<td class="data-label"><label for="'.$theWidgetName.'" >'.$theSettingInfo->label.'</label></td>';
-		$cellInput = '<td class="data-field">';
+		$cellLabel = '<td class="db-field-label"><label for="'.$theWidgetName.'" >'.$theSettingInfo->label.'</label></td>';
+		$cellInput = '<td class="db-field">';
 		$cellInput .= $theSettingInfo->getInputWidget();
 		$cellInput .= '</td>';
 		$cellDesc = '<td class="data-desc">'.$theSettingInfo->desc.'</td>';

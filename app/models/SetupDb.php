@@ -17,21 +17,342 @@
 
 namespace BitsTheater\models;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\costumes\SqlBuilder;
+use BitsTheater\costumes\IFeatureVersioning;
+use com\blackmoonit\exceptions\DbException;
+use com\blackmoonit\Arrays;
 use com\blackmoonit\Strings;
+use \PDO;
+use \PDOException;
+use \Exception;
 {//namespace begin
 
-class SetupDb extends BaseModel {
+class SetupDb extends BaseModel implements IFeatureVersioning {
+	const FEATURE_ID = 'BitsTheater/framework';
+	const FEATURE_VERSION_SEQ = 2; //always ++ when making db schema changes
+		
+	public $tnSiteVersions; const TABLE_SiteVersions = 'zz_versions';
+	
+	public function setupAfterDbConnected() {
+		parent::setupAfterDbConnected();
+		$this->tnSiteVersions = $this->tbl_.self::TABLE_SiteVersions;
+	}
+	
+	public function setupModel() {
+		switch ($this->dbType()) {
+		case self::DB_TYPE_MYSQL: default:
+			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnSiteVersions} ".
+					"( feature_id CHAR(120) CHARACTER SET utf8 NOT NULL".
+					", model_class CHAR(120) NOT NULL".
+					", version_display CHAR(40) CHARACTER SET utf8 NULL".
+					", version_seq INT(11) NOT NULL DEFAULT 0".
+					", created_ts timestamp NOT NULL DEFAULT '0000-00-00 00:00:00' COMMENT 'row created ts'".
+					", updated_ts timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'row updated ts'".
+					", PRIMARY KEY (feature_id, model_class)".
+					") CHARACTER SET utf8 COLLATE utf8_general_ci";
+			try {
+				$this->execDML($theSql);
+			} catch (PDOException $pdoe) {
+				throw new DbException($pdoe,$theSql);
+			}
+			break;
+		}
+	}
+	
+	/**
+	 * When tables are created, default data may be needed in them. Check
+	 * the table(s) for isEmpty() before filling it with default data.
+	 * @param Scene $aScene - (optional) extra data may be supplied
+	 */
+	public function setupDefaultData($aScene) {
+		if ($this->isEmpty()) {
+			$this->insertFeature($this->getCurrentFeatureVersion());
+		}
+	}
+	
+	/**
+	 * Meta data may be necessary to make upgrades-in-place easier. Check for
+	 * existing meta data and define if not present.
+	 * @param Scene $aScene - (optional) extra data may be supplied
+	 */
+	public function setupFeatureVersion($aScene) {
+		//framework version
+		$theFeatureData = $this->getFeature(self::FEATURE_ID);
+		if (empty($theFeatureData)) {
+			$this->insertFeature($this->getCurrentFeatureVersion());
+		}
+		//website version
+		$theFeatureId = $this->getRes('website/getFeatureId');
+		$theFeatureData = $this->getFeature($theFeatureId);
+		if (empty($theFeatureData)) {
+			$theFeatureData = array(
+					'feature_id' => $theFeatureId,
+					'model_class' => $this->mySimpleClassName,
+					'version_seq' => $this->getRes('website/version_seq'),
+					'version_display' => $this->getRes('website/version'),
+			);
+			$this->insertFeature($theFeatureData);
+		}
+	}
+	
+	/**
+	 * Returns the current feature metadata for the given feature ID.
+	 * @param string $aFeatureId - the feature ID needing its current metadata.
+	 * @return array Current feature metadata.
+	 */
+	public function getCurrentFeatureVersion($aFeatureId=null) {
+		$theWebsiteFeatureId = $this->getRes('website/getFeatureId');
+		if (!empty($aFeatureId) && $aFeatureId===$theWebsiteFeatureId) {
+			/*
+			 list($theSiteVerMajor, $theSiteVerMinor, $theSiteVerInc) = explode('.',$theSiteVersion);
+			if (strpos($theSiteVerInc, ' ')!==false) {
+			list($theSiteVerInc, $junk) = explode(' ', $theSiteVerInc);
+			}
+			*/
+			return array(
+					'feature_id' => $theWebsiteFeatureId,
+					'model_class' => $this->mySimpleClassName,
+					'version_seq' => $this->getRes('website/version_seq'),
+					'version_display' => $this->getRes('website/version'),
+			);
+		} else {
+			$theFrameworkVersion = $this->getRes('website/getFrameworkVersion/'.self::FEATURE_VERSION_SEQ);
+			return array(
+					'feature_id' => self::FEATURE_ID,
+					'model_class' => $this->mySimpleClassName,
+					'version_seq' => self::FEATURE_VERSION_SEQ,
+					'version_display' => $theFrameworkVersion,
+			);
+		}
+	}
+	
+	/**
+	 * Check current feature version and compare it to the
+	 * current version, upgrading the db schema as needed.
+	 * @param array $aFeatureMetaData - the models current feature metadata.
+	 * @param Scene $aScene - (optional) extra data may be supplied
+	 */
+	public function upgradeFeatureVersion($aFeatureMetaData, $aScene) {
+		$theSeq = $aFeatureMetaData['version_seq'];
+		if ($aFeatureMetaData['feature_id']==self::FEATURE_ID) {
+			//framework update
+			switch (true) {
+				//cases should always be lo->hi, never use break; so all changes are done in order.
+				case ($theSeq<=self::FEATURE_VERSION_SEQ):
+					//no changes needed at this time
+			}//switch
+		} else if ($aFeatureMetaData['feature_id']==$this->getWebsiteFeatureId()) {
+			//website update
+			if ($this->getRes('website/updateVersion/'.$theSeq)) {
+				//success
+			} else {
+				//fail
+			}
+		}
+		//always update the feature table
+		$theModels = self::getAllModelClassInfo();
+		$this->callModelMethod($this->director, $theModels,'setupFeatureVersion',$aScene);
+		array_walk($theModels, function(&$n) { unset($n); } );
+		unset($theModels);
+	}
+	
+	protected function exists($aTableName=null) {
+		return parent::exists( empty($aTableName) ? $this->tnSiteVersions : $aTableName );
+	}
+	
+	public function isEmpty($aTableName=null) {
+		return parent::isEmpty( empty($aTableName) ? $this->tnSiteVersions : $aTableName );
+	}
+	
+	/**
+	 * Calls all models to create their tables and insert default data, if necessary.
+	 * @param $aScene - the currently running page's Scene object.
+	 */
 
 	public function setupModels($aScene) {
+		$this->setupModel($aScene);
+		$this->setupDefaultData($aScene);
+		
 		$models = self::getAllModelClassInfo();
 		
 		//Strings::debugLog('SetupModels: '.Strings::debugStr($models));
 
 		$this->callModelMethod($this->director, $models,'setupModel',$aScene);
 		$this->callModelMethod($this->director, $models,'setupDefaultData',$aScene);
+		$this->callModelMethod($this->director, $models,'setupFeatureVersion',$aScene);
 
 		array_walk($models, function(&$n) { unset($n); } );
 		unset($models);
+	}
+	
+	/**
+	 * @param string $aFeature - the feature name
+	 * @param string $aFieldList - (optional) which fields to return, default is all of them.
+	 * @return array Returns the feature row as an array.
+	 */
+	public function getFeature($aFeatureId, $aFieldList=null) {
+		$theResultSet = null;
+		if ($this->isConnected()) try {
+			$theSql = SqlBuilder::withModel($this)->setDataSet(array('feature_id' => $aFeatureId));
+			$theSql->startWith('SELECT')->addFieldList($aFieldList)->add('FROM')->add($this->tnSiteVersions);
+			$theSql->setParamPrefix(' WHERE ')->mustAddParam('feature_id');
+			$theResultSet = $theSql->getTheRow();
+			if (!empty($theResultSet) && empty($theResultSet['version_display'])) {
+				$theResultSet['version_display'] = 'v'.$theResultSet['version_seq'];
+			}
+		} catch (PDOException $pdoe) {
+			throw new DbException($pdoe,  __METHOD__.' failed.');
+		}
+		return $theResultSet;
+	}
+	
+	
+	/**
+	 * @param string $aFieldList - which fields to return, default is all of them.
+	 * @return array Returns all rows as an array.
+	 */
+	public function getFeatureVersionList($aFieldList=null) {
+		$theResultSet = null;
+		if ($this->isConnected() && $this->exists()) {
+			try {
+				$theSql = SqlBuilder::withModel($this);
+				$theSql->startWith('SELECT')->addFieldList($aFieldList)->add('FROM')->add($this->tnSiteVersions);
+				//$theSql->add('ORDER BY feature_id');
+				$ps = $theSql->query();
+				if ($ps) {
+					$theFeatures = $ps->fetchAll();
+					foreach($theFeatures as &$theFeatureRow) {
+						$dbModel = $this->getProp($theFeatureRow['model_class']);
+						$theNewFeatureData = $dbModel->getCurrentFeatureVersion($theFeatureRow['feature_id']);
+						if (empty($theNewFeatureData['version_display'])) {
+							$theNewFeatureData['version_display'] = 'v'.$theNewFeatureData['version_seq'];
+						}
+						$theFeatureRow['version_display_new'] = $theNewFeatureData['version_display'];
+						
+						$theResultSet[$theFeatureRow['feature_id']] = $theFeatureRow;
+					}
+				}
+			} catch (PDOException $pdoe) {
+				throw new DbException($pdoe,  __METHOD__.' failed.');
+			}
+		} else {
+			$theResultSet = array( self::FEATURE_ID => array(
+					'feature_id' => self::FEATURE_ID,
+					'model_class' => $this->mySimpleClassName,
+					'version_display' => 'v1',
+					'version_display_new' => 'v'.self::FEATURE_VERSION_SEQ,
+			));
+		}
+		return $theResultSet;
+	}
+	
+	/**
+	 * Insert the feature into our table.
+	 * @param $aDataObject - object containing data to be used on INSERT.
+	 * @throws DbException
+	 * @return Returns array(feature info) on success, else NULL.
+	 */
+	public function insertFeature($aDataObject) {
+		$theResultSet = null;
+		if ($this->isConnected()) try {
+			$theSql = SqlBuilder::withModel($this)->setDataSet($aDataObject);
+			$theSql->startWith('INSERT INTO '.$this->tnSiteVersions);
+			$theSql->setParamPrefix(' SET ')->mustAddParam('feature_id');
+			$theSql->setParamPrefix(', ')->mustAddParam('model_class');
+			$theSql->mustAddParam('created_ts', null);
+			$theSql->mustAddParam('version_seq', 1, PDO::PARAM_INT);
+			$theSql->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
+			//$this->debugLog($this->debugStr($theSql));
+			if ($theSql->execDML()) {
+				$theResultSet = $theSql->myParams;
+			}
+		} catch (PDOException $pdoe) {
+			throw new DbException($pdoe,  __METHOD__.' failed.');
+		}
+		return $theResultSet;
+	}
+	
+	/**
+	 * Update an existing Feature record, version_seq is REQUIRED.
+	 * @param $aDataObject - object containing data to be used on UPDATE.
+	 * @throws DbException
+	 * @return Returns array(device_id, name) on success, else NULL.
+	 */
+	public function updateFeature($aDataObject) {
+		$theResultSet = null;
+		if ($this->isConnected()) try {
+			$theSql = SqlBuilder::withModel($this)->setDataSet($aDataObject);
+			$theSql->startWith('UPDATE '.$this->tnSiteVersions);
+			$theSql->setParamPrefix(' SET ')->mustAddParam('version_seq');
+			$theSql->setParamPrefix(', ')->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
+			$theSql->setParamPrefix(' WHERE ')->mustAddParam('feature_id');
+			//$this->debugLog('update sql='.$theSql->mySql.' params='.$this->debugStr($theSql->myParams));
+			if ($theSql->execDML()) {
+				$theResultSet = $theSql->myParams;
+			}
+		} catch (PDOException $pdoe) {
+			throw new DbException($pdoe,  __METHOD__.' failed.');
+		}
+		return $theResultSet;
+	}
+	
+	/**
+	 * Using the data given, update the feature described.
+	 * @param $aDataObject - object containing data to be used.
+	 */
+	public function upgradeFeature($aDataObject) {
+		//$this->debugLog('v='.$this->debugStr($aDataObject->feature_id));
+		if (!empty($aDataObject) && $this->exists()) {
+			$theFeatureData = null;
+			if (is_string($aDataObject)) {
+				$theFeatureData = $this->getFeature($aDataObject);
+			} else if (is_object($aDataObject)) {
+				if (!empty($aDataObject->feature_data))
+					$theFeatureData = $aDataObject->feature_data;
+				else
+					$theFeatureData = $this->getFeature($aDataObject->feature_id);
+			} else if (is_array($aDataObject)) {
+				if (!empty($aDataObject['feature_data']))
+					$theFeatureData = $aDataObject['feature_data'];
+				else
+					$theFeatureData = $this->getFeature($aDataObject['feature_id']);
+			}
+			//$this->debugLog('feature='.$this->debugStr($theFeatureData));
+			if (!empty($theFeatureData)) {
+				try {
+					$dbModel = $this->getProp($theFeatureData['model_class']);
+					$dbModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
+					//if no exception occurs, all went well
+					$this->updateFeature($dbModel->getCurrentFeatureVersion(self::FEATURE_ID));
+					$this->updateFeature($dbModel->getCurrentFeatureVersion($this->getRes('website/getFeatureId')));
+					
+					if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'),true)) {
+						$aDataObject->addUserMsg($this->getRes('admin/msg_update_success'));
+					}
+				} catch (Exception $e) {
+					$this->debugLog($e->getMessage());
+					if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'),true)) {
+						$aDataObject->addUserMsg($e->getMessage(), $aDataObject::USER_MSG_ERROR);
+					}
+				}
+			}
+		} else if (!empty($aDataObject)) {
+			try {
+				$this->setupModel();
+				$this->setupDefaultData($aDataObject);
+				
+				$this->upgradeFeatureVersion($this->getFeature(self::FEATURE_ID), $aDataObject);
+					
+				if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'))) {
+					$aDataObject->addUserMsg($this->getRes('admin/msg_update_success'));
+				}
+			} catch (Exception $e) {
+				$this->debugLog($e->getMessage());
+				if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'))) {
+					$aDataObject->addUserMsg($e->getMessage(), $aDataObject::USER_MSG_ERROR);
+				}
+			}
+		}
 	}
 	
 

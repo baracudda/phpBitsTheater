@@ -83,6 +83,12 @@ class MenuInfoBase extends Resources {
 				'link' => '&view@account/buildAuthLogout',
 				'filter' => '&method@isGuest/false',
 		);
+		$this->menu_item_website = array(
+				'link' => BITS_URL.'/admin/website_status',
+				'filter' => '&right@config/modify',
+				'label' => '&res@admin/menu_website_status_label',
+				'subtext' => '&res@admin/menu_website_status_subtext',
+		);
 		
 		//==================================
 		// Menu Group Definitions
@@ -96,6 +102,7 @@ class MenuInfoBase extends Resources {
 		$this->menu_admin = array(
 				'config' => $this->menu_item_config,
 				'rights' => $this->menu_item_rights,
+				'website' => $this->menu_item_website,
 		);
 	
 		$this->bHasBeenSetup = true;

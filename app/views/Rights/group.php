@@ -25,7 +25,7 @@ foreach ($v->right_groups as $ns => $nsInfo) {
 		if ($thePermissionValue=='deny-disable')
 			continue;
 		//if (Auth::TYPE!='basic' && $ns=='auth' && $theRight!='modify') continue;
-		$cellLabel = '<td style="width:20em" class="data-label">'.$theRightInfo['label'].'</td>';
+		$cellLabel = '<td style="width:20em" class="db-field-label">'.$theRightInfo['label'].'</td>';
 		$cellInput = '<td style="width:12em;text-align:center">'.Widgets::createRadioSet($ns.'__'.$theRight,
 				$v->getShortRightValues(), $thePermissionValue,	'right',"&nbsp;&nbsp;").'</td>';
 		$cellDesc = '<td style="width:40em">'.$theRightInfo['desc'].'</td>';
@@ -34,7 +34,7 @@ foreach ($v->right_groups as $ns => $nsInfo) {
 	}//end foreach
 	if (!empty($thePermissionRows)) {
 		$w .= "<h2>{$nsInfo['desc']}</h2>";
-		$w .= '<table class="data-entry">'."\n";
+		$w .= '<table class="db-entry">'."\n";
 		$w .= '<thead><tr class="rowh">'."\n";
 		$w .= '<th class="text-right">'.$v->getRes('permissions/colheader_right_name').'</th>';
 		$w .= '<th class="text-center">'.$v->getRes('permissions/colheader_right_value').'</th>';

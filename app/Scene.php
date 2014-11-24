@@ -20,6 +20,7 @@ use com\blackmoonit\AdamEve as BaseScene;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
+use \Exception;
 use \ReflectionClass;
 use \ReflectionMethod;
 use BitsTheater\Director;
@@ -395,9 +396,9 @@ class Scene extends BaseScene {
 	 * @return string Returns the site mode config setting.
 	 */
 	public function getSiteMode() {
-		if ($this->_config)
+		if ($this->_config) {
 			return $this->_config['site/mode'];
-		else
+		} else
 			return self::SITE_MODE_NORMAL;
 	}
 	
@@ -549,7 +550,7 @@ class Scene extends BaseScene {
 			return;
 		if (empty($aLocation))
 			$aLocation = BITS_LIB;
-		return Strings::format('<script type="text/javascript" src="%s/%s"></script>'."\n", $aLocation, $aFilename);
+		return Strings::format('<script type="text/javascript" src="%s/%s"></script>', $aLocation, $aFilename);
 	}
 	
 	/**
@@ -558,7 +559,7 @@ class Scene extends BaseScene {
 	 * @param string $aLocation - URL to prepend to $aFilename, if NULL or not supplied, defaults to BITS_LIB.
 	 */
 	public function loadScript($aFilename, $aLocation=null) {
-		print($this->getScriptTag($aFilename, $aLocation));
+		print($this->getScriptTag($aFilename, $aLocation)."\n");
 	}
 	
 	/**

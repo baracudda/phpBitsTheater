@@ -129,13 +129,13 @@ class Install extends Scene {
 		$w = '';
 		switch ($theDnsScheme) {
 			case DbConnOptions::DB_CONN_SCHEME_INI:
-				$w .= '<table class="data-entry">';
+				$w .= '<table class="db-entry">';
 
 				$w .= '<tr>';
 				$theWidgetName = $theFormIdPrefix.'_dbhost';
 				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->host))
 					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->host;
-				$w .= '<td class="data-label">'.$this->getRes('install/label_dns_dbhost').': </td>';
+				$w .= '<td class="db-field-label">'.$this->getRes('install/label_dns_dbhost').': </td>';
 				$w .= '<td>'.Widgets::createTextBox($theWidgetName,$v->$theWidgetName,true,30).'</td>';
 				$w .= "</tr>\n";
 
@@ -143,7 +143,7 @@ class Install extends Scene {
 				$theWidgetName = $theFormIdPrefix.'_dbtype';
 				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->driver))
 					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->driver;
-				$w .= '<td class="data-label">'.$this->getRes('install/label_dns_dbtype').': </td>';
+				$w .= '<td class="db-field-label">'.$this->getRes('install/label_dns_dbtype').': </td>';
 				$w .= '<td>'.Widgets::createDropDown($theWidgetName,$v->getDbTypes(),$v->$theWidgetName).'</td>';
 				$w .= "</tr>\n";
 				
@@ -151,7 +151,7 @@ class Install extends Scene {
 				$theWidgetName = $theFormIdPrefix.'_dbname';
 				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->dbname))
 					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->dbname;
-				$w .= '<td class="data-label">'.$this->getRes('install/label_dns_dbname').': </td>';
+				$w .= '<td class="db-field-label">'.$this->getRes('install/label_dns_dbname').': </td>';
 				$w .= '<td>'.Widgets::createTextBox($theWidgetName,$v->$theWidgetName,true,30).'</td>';
 				$w .= "</tr>\n";
 				
@@ -159,7 +159,7 @@ class Install extends Scene {
 				$theWidgetName = $theFormIdPrefix.'_dbuser';
 				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->username))
 					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->username;
-				$w .= '<td class="data-label">'.$this->getRes('install/label_dns_dbuser').': </td>';
+				$w .= '<td class="db-field-label">'.$this->getRes('install/label_dns_dbuser').': </td>';
 				$w .= '<td>'.Widgets::createTextBox($theWidgetName,$v->$theWidgetName,false,30).'</td>';
 				$w .= "</tr>\n";
 				
@@ -167,7 +167,7 @@ class Install extends Scene {
 				$theWidgetName = $theFormIdPrefix.'_dbpwrd';
 				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->password))
 					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->password;
-				$w .= '<td class="data-label">'.$this->getRes('install/label_dns_dbpwrd').': </td>';
+				$w .= '<td class="db-field-label">'.$this->getRes('install/label_dns_dbpwrd').': </td>';
 				$w .= '<td>'.Widgets::createPassBox($theWidgetName,$v->$theWidgetName,false,30).'</td>';
 				$w .= "</tr>\n";
 				$w .= "</table>\n";

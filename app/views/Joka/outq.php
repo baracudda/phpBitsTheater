@@ -35,7 +35,7 @@ if (!empty($v->results)) {
 	$thePager = $v->getPagerHtml('commlog');
 	$w .= $thePager;
 	
-	$w .= '<table id="joka_outq" class="data-display">';
+	$w .= '<table id="joka_outq" class="db-display">';
 
 	//header row
 	$w .= '<thead><tr class="rowh">';

@@ -16,24 +16,24 @@ if (isset($v->err_msg)) {
 } else {
 	$w .= $v->renderMyUserMsgsAsString();
 }
-$w .= '<table class="data-entry">';
+$w .= '<table class="db-entry">';
 
 //make sure fields will not interfere with any login user/pw field in header
 $userKey = $v->getUsernameKey().'_reg';
 $pwKey = $v->getPwInputKey().'_reg';
-$w .= '<tr><td class="data-label">'.$v->getRes('account/label_name').':</td><td class="data-field">'.
+$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_name').':</td><td class="db-field">'.
 		Widgets::createTextBox($userKey,$v->$userKey,true)."</td></tr>\n";
-$w .= '<tr><td class="data-label">'.$v->getRes('account/label_email').':</td><td class="data-field">'.
+$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_email').':</td><td class="db-field">'.
 		Widgets::createEmailBox('email',$recite->email,true)."</td></tr>\n";
-$w .= '<tr><td class="data-label">'.$v->getRes('account/label_pwinput').':</td><td class="data-field">'.
+$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwinput').':</td><td class="db-field">'.
 		Widgets::createPassBox($pwKey,$v->$pwKey,true,60,120)."</td></tr>\n";
 $chkpwJs = "checkPassword(document.getElementById('{$pwKey}'), this);";
 $js = "onfocus=\"{$chkpwJs}\" oninput=\"{$chkpwJs}\"";
-$w .= '<tr><td class="data-label">'.$v->getRes('account/label_pwconfirm').':</td><td class="data-field">'.
+$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwconfirm').':</td><td class="db-field">'.
 		Widgets::createPassBox('password_confirm',$recite->password_confirm,true,60,120,$js)."</td></tr>\n";
-$w .= '<tr><td class="data-label">'.$v->getRes('account/label_regcode').':</td><td class="data-field">'.
+$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_regcode').':</td><td class="db-field">'.
 		Widgets::createTextBox('reg_code',$recite->reg_code,true)."</td></tr>\n";
-$w .= '<tr><td class="data-label"></td><td class="data-field">'.
+$w .= '<tr><td class="db-field-label"></td><td class="db-field">'.
 		Widgets::createSubmitButton('button_register',$v->getRes('account/label_submit'));
 		
 $w .= "</table>\n";

@@ -233,11 +233,12 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 
 	//----- IMPLEMENTS handled -----
 	
-	public function exists($aTableName = NULL) {
-		if (empty($aTableName)) {
-			$aTableName = $this->getTableName();
-		}
-		return parent::exists($aTableName);
+	public function exists($aTableName=null) {
+		return parent::exists( empty($aTableName) ? $this->getTableName() : $aTableName );
+	}
+
+	public function isEmpty($aTableName=null) {
+		return parent::isEmpty( empty($aTableName) ? $this->getTableName() : $aTableName );
 	}
 
 }//end class

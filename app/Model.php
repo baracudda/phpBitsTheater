@@ -30,12 +30,21 @@ use BitsTheater\DbConnInfo;
  * Base class for Models.
  */
 class Model extends BaseModel {
-	const _SetupArgCount = 1; //number of args required to call the setup() method.
+	/**
+	 * The number of args required to call the setup() method.
+	 * @var number
+	 */
+	const _SetupArgCount = 1;
 	/**
 	 * Use the named connection found in director->dbConnInfo[].
 	 * @var string
 	 */
 	public $dbConnName = 'webapp';
+	/**
+	 * The prefix all database tables will use. Defined in DbConnInfo.
+	 * Usually descendents will also prefix the database name as well.
+	 * @var string
+	 */
 	public $tbl_ = '';
 	/**
 	 * @var Director
@@ -212,7 +221,7 @@ class Model extends BaseModel {
 		try {
 			$this->query("SELECT 1 FROM $aTableName WHERE 1=0");
 			return true;
-		} catch (DbException $dbe) {
+		} catch (PDOException $e) {
 			return false;
 		}
 	}
@@ -222,8 +231,9 @@ class Model extends BaseModel {
 	 */
 	public function isEmpty($aTableName) {
 		if ($this->exists($aTableName)) {
-			$r = $this->query("SELECT 1 FROM $aTableName WHERE EXISTS(SELECT * FROM $aTableName LIMIT 1)");
-			return ($r->fetch()==null);
+			$ps = $this->query("SELECT 1 FROM $aTableName WHERE EXISTS(SELECT * FROM $aTableName LIMIT 1)");
+			$theResult = $ps->fetch();
+			return (empty($theResult));
 		} else {
 			return false;
 		}

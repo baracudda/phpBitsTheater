@@ -17,12 +17,26 @@
 
 namespace BitsTheater\models; 
 use BitsTheater\models\KeyValueModel as BaseModel;
+use BitsTheater\costumes\IFeatureVersioning;
+use BitsTheater\costumes\SqlBuilder;
+use BitsTheater\models\SetupDb as MetaModel;
 use BitsTheater\costumes\ConfigNamespaceInfo;
 use BitsTheater\costumes\ConfigSettingInfo;
+use com\blackmoonit\Arrays;
+use com\blackmoonit\Strings;
+use \PDO;
 use \PDOException;
 {//namespace begin
 
-class Config extends BaseModel {
+class Config extends BaseModel implements IFeatureVersioning {
+	/**
+	 * Used by meta data mechanism to keep the database up-to-date with the code.
+	 * A non-NULL string value here means alter-db-schema needs to be managed.
+	 * @var string
+	 */
+	const FEATURE_ID = 'BitsTheater/config';
+	const FEATURE_VERSION_SEQ = 2; //always ++ when making db schema changes
+
 	const TABLE_NAME = 'config';
 	const MAPKEY_NAME = 'setting';
 	public $tnConfig;
@@ -32,21 +46,10 @@ class Config extends BaseModel {
 		$this->tnConfig = $this->getTableName();
 	}
 	
-	public function setupModel() {
-		parent::setupModel();
-
-		//realized that Config model should have a different mapkey name from what KeyValueModel defined.
-		//  existing sites may need to alter their definition so the updated code will work.
-		$theSql = 'SELECT '.static::MAPKEY_NAME.' FROM '.$this->tnConfig.' LIMIT 1';
-		try {
-			$this->query($theSql);
-		} catch(PDOException $e) {
-			//we need to alter the table
-			$theSql = 'ALTER TABLE '.$this->tnConfig.' CHANGE '.KeyValueModel::MAPKEY_NAME.' '.static::MAPKEY_NAME.' CHAR(40)';
-			$this->execDML($theSql);
-		}
-	}
-	
+	/**
+	 * When tables are created, default data may be needed in them.
+	 * @param Scene $aScene - (optional) extra data may be supplied
+	 */
 	protected function getDefaultData($aScene) {
 		if (empty($aScene->auth_registration_url))
 			$aScene->auth_register_url = 'account/register';
@@ -64,6 +67,62 @@ class Config extends BaseModel {
 			array('ns' => 'auth', 'key'=>'logout_url', 'value'=>$aScene->auth_logout_url, 'default'=>'account/logout', ),
 		);
 		return $r;
+	}
+
+	/**
+	 * Returns the current feature metadata for the given feature ID.
+	 * @param string $aFeatureId - the feature ID needing its current metadata.
+	 * @return array Current feature metadata.
+	 */
+	public function getCurrentFeatureVersion($aFeatureId=null) {
+		return array(
+				'feature_id' => self::FEATURE_ID,
+				'model_class' => $this->mySimpleClassName,
+				'version_seq' => self::FEATURE_VERSION_SEQ,
+		);
+	}
+	
+	/**
+	 * Meta data may be necessary to make upgrades-in-place easier. Check for
+	 * existing meta data and define if not present.
+	 * @param Scene $aScene - (optional) extra data may be supplied
+	 */
+	public function setupFeatureVersion($aScene) {
+		/* @var $dbMeta MetaModel */
+		$dbMeta = $this->getProp('SetupDb');
+		$theFeatureData = $dbMeta->getFeature(self::FEATURE_ID);
+		if (empty($theFeatureData)) {
+			$theFeatureData = $this->getCurrentFeatureVersion();
+			//realized that Config model should have a different mapkey name from what KeyValueModel defined.
+			//  existing sites may need to alter their definition so the updated code will work.
+			try {
+				$theSql = 'SELECT '.static::MAPKEY_NAME.' FROM '.$this->tnConfig.' LIMIT 1';
+				$this->query($theSql);
+			} catch(PDOException $e) {
+				//orig version
+				$theFeatureData['version_seq'] = 1;
+			}
+			$dbMeta->insertFeature($theFeatureData);
+		}
+	}
+	
+	/**
+	 * Check current feature version and compare it to the
+	 * current version, upgrading the db schema as needed.
+	 * @param array $aFeatureMetaData - the models current feature metadata.
+	 * @param Scene $aScene - (optional) extra data may be supplied
+	 */
+	public function upgradeFeatureVersion($aFeatureMetaData, $aScene) {
+		$theSeq = $aFeatureMetaData['version_seq'];
+		switch (true) {
+			//cases should always be lo->hi, never use break; so all changes are done in order.
+			case ($theSeq<=1):
+				//NOTE: this change needed to happen manually since you cannot login to even get to the update page as the
+				//  login mechanism relies strongly on reading several config settings.
+				//realized that Config model should have a different mapkey name from what KeyValueModel defined.
+				$theSql = 'ALTER TABLE '.$this->tnConfig.' CHANGE '.KeyValueModel::MAPKEY_NAME.' '.static::MAPKEY_NAME.' CHAR(40)';
+				$this->execDML($theSql);
+		}
 	}
 
 	public function getConfigLabel($aNamespace, $aKey) {

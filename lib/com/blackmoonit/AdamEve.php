@@ -116,6 +116,15 @@ class AdamEve extends BaseClass {
 	}
 	
 	/**
+	 * Send string out to the debug log (or std log as [dbg]).
+	 * @param string $s - string parameter to print out
+	 * @see Strings::debugLog($s)
+	 */
+	public function debugLog($s) {
+		Strings::debugLog($s);
+	}
+	
+	/**
 	 * Returns string of "deep debug output" for arrays, objects, etc.
 	 * @param mixed $aVar - variable to output
 	 * @param string $aNewLineReplacement - (optional) default is space ' '.

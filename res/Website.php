@@ -4,6 +4,9 @@ use BitsTheater\res\Resources as BaseResources;
 {//begin namespace
 
 class Website extends BaseResources {
+	public $version_seq = 1;		//build number, inc if db models need updating, override this in descendant
+	public $version = 'CHANGE ME';	//displayed version text, override this in descendant
+	
 	public $js_load_list; //defined in setup()
 	public $css_load_list; //defined in setup()
 
@@ -50,6 +53,42 @@ class Website extends BaseResources {
 		$this->css_load_list = array(
 				'bits.css' => BITS_RES.'/style',
 		);
+	}
+
+	/**
+	 * Overall website feature ID will be assigned the namespace unless a string
+	 * is explicity defined as "feature_id".
+	 * @return string Returns defined website feature ID or default namespace one.
+	 */
+	public function getFeatureId() {
+		if (!empty($this->feature_id)) {
+			return $this->feature_id;
+		} else {
+			return substr(WEBAPP_NAMESPACE,0,-1).'/version';
+		}
+	}
+	
+	/**
+	 * SetupDb defines the SeqNum being passed in, this converts it to a more conventional display.
+	 * @param number $aSeqNum - SetupDb::FEATURE_VERSION_SEQ value.
+	 * @return string Returns the version display fit for human consumption.
+	 */
+	public function getFrameworkVersion($aSeqNum) {
+		switch(true) {
+			case ($aSeqNum<1):
+				return '2.4.9';
+			case ($aSeqNum>=2):
+				return '3.0.'.($aSeqNum-2);
+		}//switch
+	}
+	
+	/**
+	 * Override this function if your website needs to do some updates that are not database related.
+	 * @param number $aSeqNum
+	 * @return Return true if successfull, else FALSE.
+	 */
+	public function updateVersion($aSeqNum) {
+		return true;
 	}
 	
 }//end class

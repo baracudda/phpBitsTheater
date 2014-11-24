@@ -103,8 +103,13 @@ class Actor extends BaseActor {
 		$myView = $recite->getViewPath($recite->actor_view_path.$anAction);
 		if (file_exists($myView))
 			include($myView);
-		else
-			throw new FourOhFourExit(str_replace(BITS_ROOT,'',$myView));
+		else {
+			$theAppView = $recite->getViewPath($recite->view_path.$anAction);
+			if (file_exists($theAppView))
+				include($theAppView);
+			else
+				throw new FourOhFourExit(str_replace(BITS_ROOT,'',$myView));
+		}
 	}
 	
 	/**

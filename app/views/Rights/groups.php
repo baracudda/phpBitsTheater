@@ -129,5 +129,5 @@ print($w);
 $v->loadScript('RightGroups.js',WEBAPP_JS_URL);
 
 print($v->createJsTagBlock($jsCode));
-print(str_repeat('<br />',3));
+print(str_repeat('<br />',8));
 $recite->includeMyFooter();
