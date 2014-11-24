@@ -75,7 +75,7 @@ class Website extends BaseResources {
 	 */
 	public function getFrameworkVersion($aSeqNum) {
 		switch(true) {
-			case ($aSeqNum<1):
+			case ($aSeqNum<=1):
 				return '2.4.9';
 			case ($aSeqNum>=2):
 				return '3.0.'.($aSeqNum-2);

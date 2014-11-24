@@ -239,8 +239,8 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 			$theResultSet = array( self::FEATURE_ID => array(
 					'feature_id' => self::FEATURE_ID,
 					'model_class' => $this->mySimpleClassName,
-					'version_display' => 'v1',
-					'version_display_new' => 'v'.self::FEATURE_VERSION_SEQ,
+					'version_display' => $this->getRes('website/getFrameworkVersion/1'),
+					'version_display_new' => $this->getRes('website/getFrameworkVersion/'.self::FEATURE_VERSION_SEQ),
 			));
 		}
 		return $theResultSet;
