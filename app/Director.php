@@ -407,10 +407,20 @@ class Director extends BaseDirector implements ArrayAccess {
 	}
 	
 	public function isGuest() {
+		$theAcctInfo =& $this->account_info;
+		if (empty($theAcctInfo)) {
+			$theAcctInfo['account_id'] = 0;
+			$theAcctInfo['groups'] = array(0); //if still no account, use group_id = 0.
+		}
+		//$this->debugPrint($this->debugStr($theAcctInfo));
 		if (isset($this->auth) && $this->auth->isCallable('isGuest')) {
-			return $this->auth->isGuest();
+			return $this->auth->isGuest($theAcctInfo);
 		} else {
-			return (empty($this->account_info) || empty($this->account_info['groups']) || count($this->account_info['groups'])<1);
+			if (!empty($theAcctInfo) && !empty($theAcctInfo['account_id']) && !empty($theAcctInfo['groups'])) {
+				return ( array_search(0, $theAcctInfo['groups'], true) !== false );
+			} else {
+				return true;
+			}
 		}
 	}
 	

@@ -45,10 +45,51 @@ class Groups extends BaseModel implements IFeatureVersioning {
 		$this->tnGroups = $this->tbl_.self::TABLE_Groups;
 		$this->tnGroupMap = $this->tbl_.self::TABLE_GroupMap;
 		$this->tnGroupRegCodes = $this->tbl_.self::TABLE_GroupRegCodes;
-	}
+	}	
 	
-	protected function getTableName() {
-		return $this->tnGroups;
+	/**
+	 * In case future db schema updates need to create a temp of one
+	 * of the tables, putting the schemas here and supplying a way to
+	 * provide a different name allows this process.
+	 * @param string $aTABLEconst - one of the defined table name consts.
+	 * @param string $aTableNameToUse - (optional) alternate name to use.
+	 */
+	protected function getTableDefSql($aTABLEconst, $aTableNameToUse=null) {
+		switch($aTABLEconst) {
+		case self::TABLE_Groups:
+			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnGroups;
+			switch ($this->dbType()) {
+			case self::DB_TYPE_MYSQL: default:
+				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
+						"( group_id INT NOT NULL AUTO_INCREMENT".
+						", group_name NCHAR(60) NOT NULL".
+						", parent_group_id INT NULL".
+						//", group_desc NCHAR(200) NULL".
+						", PRIMARY KEY (group_id)".
+						") CHARACTER SET utf8 COLLATE utf8_general_ci";
+			}//switch dbType
+		case self::TABLE_GroupMap:
+			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnGroupMap;
+			switch ($this->dbType()) {
+			case self::DB_TYPE_MYSQL: default:
+				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
+						"( account_id INT NOT NULL".
+						", group_id INT NOT NULL".
+						", PRIMARY KEY (account_id, group_id)".
+						//", UNIQUE KEY (group_id, account_id)".  IDK if it'd be useful
+						") CHARACTER SET utf8 COLLATE utf8_general_ci";
+			}//switch dbType
+		case self::TABLE_GroupRegCodes:
+			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnGroupRegCodes;
+			switch ($this->dbType()) {
+			case self::DB_TYPE_MYSQL: default:
+				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
+						"( group_id INT NOT NULL".
+						", reg_code NCHAR(64) NOT NULL".
+						", PRIMARY KEY (reg_code, group_id)".
+						") CHARACTER SET utf8 COLLATE utf8_general_ci COMMENT='Auto-assign group_id if Registration Code matches reg_code'";
+			}//switch dbType
+		}//switch TABLE const
 	}
 	
 	/**
@@ -56,41 +97,19 @@ class Groups extends BaseModel implements IFeatureVersioning {
 	 * Never assume the database is empty.
 	 */
 	public function setupModel() {
-		//Groups table
-		switch ($this->dbType()) {
-		case 'mysql': default:
-			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnGroups} ".
-				"( group_id INT NOT NULL AUTO_INCREMENT".
-				", group_name NCHAR(60) NOT NULL".
-				", parent_group_id INT NULL".
-				//", group_desc NCHAR(200) NULL".
-				", PRIMARY KEY (group_id)".
-				") CHARACTER SET utf8 COLLATE utf8_general_ci";
+		try {
+			$theSql = $this->getTableDefSql(self::TABLE_Groups);
+			$this->execDML($theSql);
+			$this->debugLog(__METHOD__.'.'.self::TABLE_Groups.' now exists.');
+			$theSql = $this->getTableDefSql(self::TABLE_GroupMap);
+			$this->execDML($theSql);
+			$this->debugLog(__METHOD__.'.'.self::TABLE_GroupMap.' now exists.');
+			$theSql = $this->getTableDefSql(self::TABLE_GroupRegCodes);
+			$this->execDML($theSql);
+			$this->debugLog(__METHOD__.'.'.self::TABLE_GroupRegCodes.' now exists.');
+		} catch (PDOException $pdoe) {
+			throw new DbException($pdoe,$theSql);
 		}
-		$this->execDML($theSql);
-		
-		//Group Map table
-		switch ($this->dbType()) {
-		case 'mysql': default:
-			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnGroupMap} ".
-				"( account_id INT NOT NULL".
-				", group_id INT NOT NULL".
-				", PRIMARY KEY (account_id, group_id)".
-				//", UNIQUE KEY (group_id, account_id)".  IDK if it'd be useful
-				") CHARACTER SET utf8 COLLATE utf8_general_ci";
-		}
-		$this->execDML($theSql);
-		
-		//Group Reg Codes table (added v2)
-		switch ($this->dbType()) {
-		case 'mysql': default:
-			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnGroupRegCodes} ".
-				"( group_id INT NOT NULL".
-				", reg_code NCHAR(64) NOT NULL".
-				", PRIMARY KEY (reg_code, group_id)".
-				") CHARACTER SET utf8 COLLATE utf8_general_ci COMMENT='Auto-assign group_id if Registration Code matches reg_code'";
-		}
-		$r = $this->execDML($theSql);
 	}
 	
 	/**
@@ -114,6 +133,10 @@ class Groups extends BaseModel implements IFeatureVersioning {
 			$this->execMultiDML($theSql,$default_data,$theParamTypes);
 			//set group_id 5 to 0, cannot set 0 on insert since auto-inc columns in MySQL interpret 0 as "next id" instead of just 0.
 			$theSql = 'UPDATE '.$this->tnGroups.' SET group_id=0 WHERE group_id=5';
+			$this->execDML($theSql);
+		}
+		if ($this->isEmpty($this->tnGroupRegCodes)) {
+			$theSql = "INSERT INTO {$this->tnGroupRegCodes} SET group_id=3, reg_code=".'"'.Settings::getAppId().'"';
 			$this->execDML($theSql);
 		}
 	}
@@ -142,10 +165,8 @@ class Groups extends BaseModel implements IFeatureVersioning {
 		$theFeatureData = $dbMeta->getFeature(self::FEATURE_ID);
 		if (empty($theFeatureData)) {
 			$theFeatureData = $this->getCurrentFeatureVersion();
-			//GroupRegCodes added in v2
-			if (!$this->exists($this->tnGroupRegCodes)) {
-				$theFeatureData['version_seq'] = 1;
-			}
+			//reverse check features so we do not end up with super-nested IF statements
+			
 			//group_type removed in v3
 			try {
 				$theSql = 'SELECT group_type FROM '.$this->tnGroups.' LIMIT 1';
@@ -153,6 +174,12 @@ class Groups extends BaseModel implements IFeatureVersioning {
 				$theFeatureData['version_seq'] = 2;
 			} catch(PDOException $e) {
 			}
+			
+			//GroupRegCodes added in v2
+			if (!$this->exists($this->tnGroupRegCodes)) {
+				$theFeatureData['version_seq'] = 1;
+			}
+			
 			$dbMeta->insertFeature($theFeatureData);
 		}
 	}
@@ -166,18 +193,27 @@ class Groups extends BaseModel implements IFeatureVersioning {
 	public function upgradeFeatureVersion($aFeatureMetaData, $aScene) {
 		$theSeq = $aFeatureMetaData['version_seq'];
 		switch (true) {
-			//cases should always be lo->hi, never use break; so all changes are done in order.
-			case ($theSeq<=1):
-				//create new GroupRegCodes table
-				$this->setupModel();
-			case ($theSeq==2):
-				//two step process to remove the unused field: re-number the group_id=5, 0-group-type to ID=0
-				$theSql = 'UPDATE '.$this->tnGroups.' SET group_id=0 WHERE group_id=5 AND group_type=0 LIMIT 1';
-				$this->execDML($theSql);
-				//now alter the table and drop the column
-				$theSql = 'ALTER TABLE '.$this->tnGroups.' DROP group_type';
-				$this->execDML($theSql);
-		}
+		//cases should always be lo->hi, never use break; so all changes are done in order.
+		case ($theSeq<=1):
+			//create new GroupRegCodes table
+			$this->setupModel();
+			$this->setupDefaultData($aScene);
+		case ($theSeq==2):
+			//two step process to remove the unused field: re-number the group_id=5, 0-group-type to ID=0
+			$theSql = 'UPDATE '.$this->tnGroups.' SET group_id=0 WHERE group_id=5 AND group_type=0 LIMIT 1';
+			$this->execDML($theSql);
+			//now alter the table and drop the column
+			$theSql = 'ALTER TABLE '.$this->tnGroups.' DROP group_type';
+			$this->execDML($theSql);
+		}//switch
+	}
+	
+	protected function exists($aTableName=null) {
+		return parent::exists( empty($aTableName) ? $this->tnGroups : $aTableName );
+	}
+	
+	public function isEmpty($aTableName=null) {
+		return parent::isEmpty( empty($aTableName) ? $this->tnGroups : $aTableName );
 	}
 	
 	public function getGroup($aGroupId) {

@@ -188,7 +188,7 @@ ul.user-msgs li.error {
 /*
  * Data Entry & Display
  */
-.data-outline {
+.db-outline {
 	border:solid 1px #000000;
 	font-size: 11px;
 }
@@ -209,24 +209,24 @@ tr.rowh, thead { /*row header*/
 }
 
 tr.rowh a:link, tr.rowh a:active, tr.rowh a:visited, 
-thead a:link, thead a:active, thead a:visited {
+thead a:link, thead a:active, thead a:visited, li.rowh {
 	color: White;
 	text-decoration: none;
 }
 
-tr.row1 {
+tr.row1, li.row1 {
 	background-color: #FFFF99;
 /*	background:url('../images/row1.gif'); */
 }
 
-tr.row2 {
+tr.row2, li.row2 {
 	background-color: #E8E8E8;
 /*	background-color: #FFFF66; */
 /*	background-color: #C0C0C0; */
 /*	background:url('../images/row2.gif'); */
 }
 
-tr.rowf {
+tr.rowf, li.rowf {
 	background-color: Navy;
 	color: LightSteelBlue;
 }

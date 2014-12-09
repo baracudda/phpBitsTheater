@@ -154,7 +154,7 @@ class Account extends Actor {
 			if ($theAcctId==$this->director->account_info['account_id'] || $this->isAllowed('account','modify')) {
 				$theOldEmail = trim($this->scene->ticket_email);
 				$theNewEmail = trim($this->scene->email);
-				/* !== returned TRUE, === retruend FALSE, but strcmp() returned 0 (meaning they are the same) O.o
+				/* !== returned TRUE, === returned FALSE, but strcmp() returned 0 (meaning they are the same) O.o
 				$b1 = ($theOldEmail!==$theNewEmail);
 				$b2 = ($theOldEmail===$theNewEmail);
 				$b3 = (strcmp($theOldEmail,$theNewEmail)!=0);

@@ -31,7 +31,7 @@ foreach ($v->config_areas as $theNamespaceInfo) {
 		$cellInput = '<td class="db-field">';
 		$cellInput .= $theSettingInfo->getInputWidget();
 		$cellInput .= '</td>';
-		$cellDesc = '<td class="data-desc">'.$theSettingInfo->desc.'</td>';
+		$cellDesc = '<td class="">'.$theSettingInfo->desc.'</td>';
 
 		$w .= '  <tr class="'.$v->_rowClass.' '.$theNamespaceInfo->namespace.'-'.$theSettingName.'">'.$cellLabel.$cellInput.$cellDesc."</tr>\n";
 	}//end foreach

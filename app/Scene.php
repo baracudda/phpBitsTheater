@@ -766,6 +766,25 @@ class Scene extends BaseScene {
 		return $thePager;
 	}
 	
+	/**
+	 * Useful for debugging sometimes.
+	 * @return string - returns GET and POST vars.
+	 */
+	public function getRequestVars() {
+		$s = 'GET={ ';
+		//grab all _GET vars and incorporate them
+		foreach ($_GET as $key => $val) {
+			$s .= $key.'='.$val.'; ';
+		}
+		$s .= '}, POST={ ';
+		//grab all _POST vars and incorporate them
+		foreach ($_POST as $key => $val) {
+			$s .= $key.'='.$val.'; ';
+		}
+		$s .= '}';
+		return $s;
+	}
+	
 	
 }//end class
 
