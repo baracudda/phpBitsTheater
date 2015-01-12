@@ -3,7 +3,7 @@ namespace BitsTheater\res\en;
 use BitsTheater\res\Resources as BaseResources;
 {
 
-class Groups extends BaseResources {
+class CoreGroups extends BaseResources {
 
 	//note, this could have been a static function that loaded it's array from a file and returned it
 	public $group_names = array(

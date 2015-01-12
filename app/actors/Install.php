@@ -333,7 +333,8 @@ class Install extends Actor {
 	
 	protected function installSettings($aNewAppId) {
 		$this->scene->app_id = (!empty($aNewAppId)) ? $aNewAppId : Strings::createUUID();
-		$theVarNames = array('app_id');
+		$this->scene->landing_page = $this->getRes('install/landing_page');
+		$theVarNames = array('app_id', 'landing_page');
 		return $this->installTemplate('Settings', BITS_CFG_PATH.'Settings.php', $theVarNames)
 				//&& $this->installTemplate('MenuInfo', BITS_RES_PATH.'MenuInfo.php', $theVarNames)
 				;

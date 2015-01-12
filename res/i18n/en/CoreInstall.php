@@ -6,8 +6,10 @@ use com\blackmoonit\database\DbConnSettings;
 use com\blackmoonit\database\DbConnInfo;
 {//begin namespace
 
-class Install extends BaseResources {
-
+class CoreInstall extends BaseResources {
+	
+	public $landing_page = 'home';
+	
 	public $continue_button_text = '&gt;&gt; Continue';
 	public $back_button_text = 'Back &lt;&lt;';
 	

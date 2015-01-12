@@ -23,7 +23,7 @@ class Settings extends \stdClass {
 
 	const APP_ID = '%app_id%';
 
-	const PAGE_Landing = 'home';
+	const PAGE_Landing = '%landing_page%';
 	
 	static function getAppId() {
 		return self::APP_ID;

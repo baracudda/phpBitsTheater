@@ -173,7 +173,7 @@ class Model extends BaseModel {
 	 * Execute Select query, returns PDOStatement.
 	 * Params should be ordered array with ? params OR associative array with :label params.
 	 * @param string $aSql - SQL statement (may be parameterized).
-	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too.
+	 * @param array $aParamValues - (optional) if the SQL statement is parameterized, pass in the values for them, too.
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
 	 * @throws DbException if there is an error.
 	 * @return PDOStatement on success.
@@ -201,7 +201,14 @@ class Model extends BaseModel {
 	}
 	
 	/**
-	 * combination query & fetch a single row, returns null if errored
+	 * A combination query & fetch a single row; returns null if error.
+	 * Params should be ordered array with ? params OR associative array with :label params.
+	 * @param string $aSql - SQL statement (may be parameterized).
+	 * @param array $aParamValues - (optional) if the SQL statement is parameterized, pass in the values for them, too.
+	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
+	 * @throws DbException if there is an error.
+	 * @return mixed Returns the fetched data as PDOStatement is set to return it as.
+	 * @see Model::query()
 	 */
 	public function getTheRow($aSql, $aParamValues=null, $aParamTypes=null) {
 		$theResult = null;
@@ -237,6 +244,25 @@ class Model extends BaseModel {
 		} else {
 			return false;
 		}
+	}
+	
+	/**
+	 * Return TRUE if SQL statement returns NO results.
+	 * Params should be ordered array with ? params OR associative array with :label params.
+	 * @param string $aSql - SQL statement (may be parameterized).
+	 * @param array $aParamValues - (optional) if the SQL statement is parameterized, pass in the values for them, too.
+	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
+	 * @throws DbException if there is an error.
+	 * @return boolean Returns TRUE if no data was returned.
+	 */
+	public function isNoResults($aSql, $aParamValues=null, $aParamTypes=null) {
+		$theResult = true;
+		$ps = $this->query($aSql,$aParamValues,$aParamTypes);
+		if ($ps) {
+			$theResult = ($ps->fetch()===false);
+			$ps->closeCursor();
+		}
+		return $theResult;
 	}
 	
 	//===== Parameterized queries =====

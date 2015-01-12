@@ -354,10 +354,9 @@ class Director extends BaseDirector implements ArrayAccess {
 			$theResClassName = 'Resources';
 			$theRes = array_shift($theResUri);
 		}
-		//$this->debugPrint('res name='.$theResClassName.', res class='.$theResClass.' / '.$this->debugStr($theRes));
 		try {
 			$theResClass = $this->_resManager->includeResClass($theResClassName);
-			//Strings::debugLog('res='.$aResName.' cls='.$theResClass);
+			//$this->debugLog('[res] name='.$theResClassName.', class='.$this->debugStr($theResClass).', res='.$theRes.', args='.$this->debugStr($theResUri));
 			if (!empty($theResUri))
 				return $this->loadRes($theResClass,$theRes,$theResUri);
 			else
@@ -380,7 +379,9 @@ class Director extends BaseDirector implements ArrayAccess {
 			$this->_resMaster[$aResClass] = new $aResClass($this);
 		}
 		$resObj = $this->_resMaster[$aResClass];
+		//$this->debugLog(__METHOD__.' resObj='.$this->debugStr($resObj).' method='.$aRes.' is_callable='.((is_callable(array($resObj,$aRes)))?'true':'false'));
 		if (is_callable(array($resObj,$aRes))) {
+			//$this->debugLog(__METHOD__.' resObj='.$this->debugStr($resObj).' cls='.$aResClass.' method='.$aRes.' args='.$this->debugStr($args));
 			try {
 				return call_user_func_array(array($resObj,$aRes),(!is_null($args)?$args:array()));
 			} catch (Exception $e) {

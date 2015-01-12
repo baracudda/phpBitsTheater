@@ -32,6 +32,15 @@ class Resources extends BaseResources {
 	protected $_director = null;
 	
 	/**
+	 * Magic PHP method to limit what var_dump() shows.
+	 */
+	public function __debugInfo() {
+		$vars = parent::__debugInfo();
+		unset($vars['_director']);
+		return $vars;
+	}
+	
+	/**
 	 * Some resources need to be initialized by running code rather than a static definition.
 	 */
 	public function setup(Director $aDirector) {

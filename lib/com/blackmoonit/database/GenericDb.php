@@ -84,19 +84,6 @@ class GenericDb extends BaseDbClass {
 	}
 	
 	/**
-	 * Return TRUE if SQL statement returns NO results.
-	 * @param string $aSql
-	 * @param array $aSqlParams
-	 */
-	public function isNoResults($aSql, array $aSqlParams) {
-		$theStatement = $this->prepareSQL($aSql);
-		foreach ($aSqlParams as $theKey=>$theValue) {
-			$theStatement->bindValue($theKey,$theValue);
-		}
-		return ($theStatement->execute() && ($theStatement->fetch()===FALSE) );
-	}
-	
-	/**
 	 * Params should be ordered array with ? params OR associative array with :label params.
 	 * @param string $aParamSql - the parameterized SQL string.
 	 * @return PDOStatement is returned, ready for binding to params.
