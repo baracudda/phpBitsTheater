@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\models; 
+namespace BitsTheater\models;
 use BitsTheater\models\KeyValueModel as BaseModel;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\SqlBuilder;
@@ -124,7 +124,7 @@ class Config extends BaseModel implements IFeatureVersioning {
 				$this->execDML($theSql);
 		}
 	}
-
+	
 	public function getConfigLabel($aNamespace, $aKey) {
 		$res =& $this->director->getRes('Config/'.$aNamespace);
 		return $res[$aKey]['label'];
@@ -157,7 +157,7 @@ class Config extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
-	 * Get all defined namespaces visible for current login and return them 
+	 * Get all defined namespaces visible for current login and return them
 	 * as ConfigNamespaceInfo objects.
 	 * @return array Returns an array of ConfigNamespaceInfo objects.
 	 */
@@ -175,7 +175,7 @@ class Config extends BaseModel implements IFeatureVersioning {
 	
 	/**
 	 * Get all defined settings for a particular namespace visible for the
-	 * current login and return them as ConfigSettingInfo objects. 
+	 * current login and return them as ConfigSettingInfo objects.
 	 * @param ConfigNamespaceInfo $aNamespaceInfo
 	 * @return array[ConfigSettingInfo] Returns an array of objects.
 	 */

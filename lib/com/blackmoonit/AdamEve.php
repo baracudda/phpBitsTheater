@@ -16,6 +16,7 @@
  */
 
 namespace com\blackmoonit;
+use com\blackmoonit\Strings;
 use \stdClass as BaseClass;
 use \ReflectionClass;
 {//begin namespace
@@ -76,6 +77,19 @@ class AdamEve extends BaseClass {
 		if (!$this->bHasBeenCleanup)
 			$this->cleanup();
 	}
+	
+	/**
+	 * Controls what info is displayed during a var_dump().
+	 */
+	public function __debugInfo() {
+		$vars = get_object_vars($this);
+		unset($vars['bHasBeenSetup']);
+		unset($vars['bHasBeenCleanup']);
+		unset($vars['myClassName']);
+		unset($vars['mySimpleClassName']);
+		unset($vars['myNamespaceName']);
+		return $vars;
+	}
 
 	/**
 	 * Checks _DEBUG_APP constant.
@@ -83,7 +97,7 @@ class AdamEve extends BaseClass {
 	 */
 	public function isDebugging() {
 		return defined('_DEBUG_APP') && constant('_DEBUG_APP');
-	}	
+	}
 
 	/**
 	 * Returns an array of constant values keyed by their const name.
@@ -103,13 +117,13 @@ class AdamEve extends BaseClass {
 	}
 	
 	/**
-	 * If isDebugging, this function will print out $s, else it will 
+	 * If isDebugging, this function will print out $s, else it will
 	 * log as [dbg] instead.
 	 * @param string $s - string parameter to print out
 	 * @see Strings::debugLog($s)
 	 */
 	public function debugPrint($s) {
-		if ($this->isDebugging()) 
+		if ($this->isDebugging())
 			print $s;
 		else
 			Strings::debugLog($s);

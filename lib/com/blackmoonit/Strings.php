@@ -17,6 +17,7 @@
 
 namespace com\blackmoonit;
 use com\blackmoonit\exceptions\IllegalArgumentException;
+use \Exception;
 {//begin namespace
 
 class Strings {
@@ -208,6 +209,109 @@ class Strings {
 	static public function createUUID() {
 		return Strings::createGUID();
 	}
+	
+	const DEBUG_VAR_DUMP_FLAG = '__DEBUG_VAR_DUMP_FLAG';
+	/**
+	 * Recursive var dump that takes into account the magic method __debugInfo(). This method
+	 * is used in PHP <5.6 since that is when __debugInfo() was introduced.
+	 * @param mixed $aVar - the var to dump.
+	 * @param boolean $bMultilineOutput - (OPTIONAL) defaults to TRUE.
+	 * @param string $aVarName - name of the var we're dumping (used during recursion).
+	 * @param string $aVarReference - complex name used to determine infinite recursion and avoid it.
+	 * @param string $aDeRefStr - string used to "de-reference" recursion values ("=" or "->").
+	 * @param number $depth - how deep into the var we've delved (25 is a hard limit).
+	 * @return string Returns the dumped var as a string ("- " per depth and "\n" used).
+	 */
+	static public function var_dump(&$aVar, $bMultilineOutput=true, $aVarName='', $aVarReference='', $aDeRefStr='=', $depth=0) {
+		static $varList;
+		static $varCount;
+		$nl = ($bMultilineOutput ? "\n" : '');
+		$fe = ($bMultilineOutput ? '' : ', ');
+		$indent = ($bMultilineOutput ? str_repeat('- ',$depth) : '');
+		$output = '';
+		switch (true) {
+			case ($depth===0):
+				$varList = array();
+				$varCount = 0;
+				break;
+			case ($depth<=25):
+				$output .= $indent.$aVarName.' '.$aDeRefStr.' ';
+				break;
+			default:
+				return $output;
+		}
+		$theVar =& $aVar;
+		$theVarType = gettype($theVar);
+		if ($theVarType==='array' && isset($theVar[self::DEBUG_VAR_DUMP_FLAG])) {
+			$output .= '[@see: |'.$theVar[self::DEBUG_VAR_DUMP_FLAG].'|]';
+		} else if ($theVarType==='object' && isset($theVar->{self::DEBUG_VAR_DUMP_FLAG})) {
+			$output .= '[@see: |'.$theVar->{self::DEBUG_VAR_DUMP_FLAG}.'|]';
+		} else { //we have not seen this var before
+			if (empty($aVarReference)) {
+				$aVarReference = $aVarName;
+			}
+			// print it out
+			switch ($theVarType) {
+				case 'array':
+					//update debug flag to preven recusion
+					array_push($varList,$theVar);
+					$theVar[self::DEBUG_VAR_DUMP_FLAG] = ++$varCount;
+					//dump var
+					$output .= 'Array('.(count($theVar)-1).')|'.$varCount.'|['.$nl;
+					foreach ($theVar as $key => &$val) {
+						if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
+							$s = self::var_dump($val, $bMultilineOutput, $key, $aVarReference.'["'.$key.'"]', '=', $depth+1);
+							$output .= $s.$fe;
+						}
+					}
+					$output .= $indent.']';
+					break;
+				case 'object':
+					//update debug flag to preven recusion
+					array_push($varList,$theVar);
+					$theVar->{self::DEBUG_VAR_DUMP_FLAG} = ++$varCount;
+					//dump var
+					$output .= '('.get_class($theVar).')|'.$varCount.'|{'.$nl;
+					if (is_callable(array($theVar,'__debugInfo'))) {
+						foreach ($theVar->__debugInfo() as $key => $val) {
+							if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
+								$s = self::var_dump($val, $bMultilineOutput, $key, $aVarReference.'->'.$key, '=>', $depth+1);
+								$output .= $s.$fe;
+							}
+						}
+					} else {
+						foreach ($theVar as $key => $val) {
+							if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
+								$s = self::var_dump($val, $bMultilineOutput, $key, $aVarReference.'->'.$key, '->', $depth+1);
+								$output .= $s.$fe;
+							}
+						}
+					}
+					$output .= $indent.'}';
+					break;
+				case 'string':
+					$output .= '"'.$theVar.'"';
+					break;
+				case 'boolean':
+					$output .= ($theVar?'true':'false');
+					break;
+				default:
+					$output .= '('.$theVarType.') '.$theVar;
+					break;
+			}//switch
+		}
+		if ($depth===0) {
+			foreach ($varList as $var) {
+				if (is_array($var))
+					unset($var[self::DEBUG_VAR_DUMP_FLAG]);
+				else if (is_object($var))
+					unset($var->{self::DEBUG_VAR_DUMP_FLAG});
+			}
+			unset($varList);
+			unset($varCount);
+		}
+		return $output.$nl;
+	}
 
 	/**
 	 * Captures the var_dump() of what is passed in.
@@ -216,12 +320,22 @@ class Strings {
 	 * @return string Returns the captured debug output as string.
 	 */
 	static public function debugStr($aVar, $aNewLineReplacement=' ') {
-		ob_start();
-		var_dump($aVar);
+		$s = '';
+		/* I like my own var_dump better now. :)
+		if (version_compare(phpversion(), "5.6.0", ">=")) {
+			ob_start();
+			var_dump($aVar); //5.6+ takes into account the magic method __debugInfo()
+			$s = ob_get_clean();
+		} else */{
+			$s = self::var_dump($aVar, !isset($aNewLineReplacement));
+			if (isset($aNewLineReplacement)) {
+				$s = str_replace('- ','',$s);
+			}
+		}
 		if (isset($aNewLineReplacement)) {
-			return str_replace("\n",$aNewLineReplacement,ob_get_clean());
+			return str_replace("\n",$aNewLineReplacement,$s);
 		} else {
-			return ob_get_clean();
+			return $s;
 		}
 	}
 

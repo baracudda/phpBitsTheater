@@ -151,6 +151,9 @@ div#container-error .msg-trace {
 	vertical-align: middle;
 	height: 24px;
 }
+div#menu span {
+	font-weight: normal;
+}
 
 /* 
  * User Messages
@@ -279,6 +282,7 @@ input.hidden {
 
 input.field, textarea.field, select.field {
 	color: initial;
+
 }
 
 /*

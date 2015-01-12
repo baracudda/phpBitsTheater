@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2012 Blackmoon Info Tech Services
+ * Copyright (C) 2014 Blackmoon Info Tech Services
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,43 +16,34 @@
  */
 
 namespace BitsTheater\res;
-use BitsTheater\res\CorePermissions as BaseResources;
+use BitsTheater\res\Resources as BaseResource;
 {//begin namespace
 
-class Permissions extends BaseResources {
+class CorePermissions extends BaseResource {
+	
+	public $enum_right_values = array('allow','disallow','deny');
 
-	public $enum_my_namespaces = array(
-			'ns_a',
-			'ns_b',
-			'ns_c',
-	);
+	public $enum_namespace = array('auth', 'config', 'accounts');
+			
+	public $enum_auth = array('modify','create','delete');
 	
-	public $enum_ns_a = array(
-			'view',
-			'modify',
-			'view_more_custom1',
-			'send_stuff_custom2',
-	);
+	public $enum_config = array('modify');
 	
-	public $enum_ns_b = array(
-			'view',
-			'add',
-			'modify',
-			'delete',
-			'copy',
-	);
-	
-	public $enum_ns_c = array(
-			'access',
-	);
+	public $enum_accounts = array('modify','delete'); //anyone can create/register a new account
 	
 	/**
 	 * Some resources need to be initialized by running code rather than a static definition.
+	 * Merging Enums with their UI counterparts is common.
 	 */
 	public function setup($aDirector) {
-		$this->res_array_merge($this->enum_namespace, $this->enum_my_namespaces);
-		//parent can handle the rest once "enum_namespace" is updated
 		parent::setup($aDirector);
+
+		$this->mergeEnumEntryInfo('right_values');
+		
+		$this->mergeEnumEntryInfo('namespace');
+		foreach ($this->namespace as $theEnumName => $theEnumEntry) {
+			$this->mergeEnumEntryInfo($theEnumName);
+		}
 	}
 	
 }//end class

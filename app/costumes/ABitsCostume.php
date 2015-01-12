@@ -25,7 +25,19 @@ use com\blackmoonit\Strings;
 
 abstract class ABitsCostume extends BaseCostume {
 	const _SetupArgCount = 1; //number of args required to call the setup() method.
+	/**
+	 * @var Director
+	 */
 	public $_director = null;
+	
+	/**
+	 * Magic PHP method to limit what var_dump() shows.
+	 */
+	public function __debugInfo() {
+		$vars = parent::__debugInfo();
+		unset($vars['_director']);
+		return $vars;
+	}
 	
 	/**
 	 * Costume classes know about the Director.
@@ -58,12 +70,12 @@ abstract class ABitsCostume extends BaseCostume {
 	}
 	
 	/**
-	 * Copies array values into matching property names
-	 * based on the array keys.
-	 * @param array $anArray - array to copy from.
+	 * Copies values into matching property names
+	 * based on the array keys or object property names.
+	 * @param array|object $aThing - array or object to copy from.
 	 */
-	protected function copyFromArray(&$anArray) {
-		foreach ($anArray as $theName => $theValue) {
+	protected function copyFrom(&$aThing) {
+		foreach ($aThing as $theName => $theValue) {
 			if (property_exists($this, $theName)) {
 				$this->{$theName} = $theValue;
 			}
@@ -71,13 +83,13 @@ abstract class ABitsCostume extends BaseCostume {
 	}
 	
 	/**
-	 * Given an array, set the data members to its contents.
-	 * @param array $anArray - associative array of data
+	 * Given an array or object, set the data members to its contents.
+	 * @param array|object $aThing - associative array or object
 	 * @return Returns $this for chaining purposes.
 	 */
-	public function setDataFromArray($anArray) {
-		if (!empty($anArray))
-			$this->copyFromArray($anArray);
+	public function setDataFrom($aThing) {
+		if (!empty($aThing))
+			$this->copyFrom($aThing);
 		return $this;
 	}
 
@@ -93,7 +105,22 @@ abstract class ABitsCostume extends BaseCostume {
 	static public function fromArray(Director $aDirector, $anArray) {
 		$theClassName = get_called_class();
 		$o = new $theClassName($aDirector);
-		return $o->setDataFromArray($anArray);
+		return $o->setDataFrom($anArray);
+	}
+	
+	/**
+	 * Create a new instance of whatever class this method
+	 * is called from (MyClass::fromObj() makes a MyClass
+	 * instance) and sets its properties to the values of the
+	 * object param.
+	 * @param Director $aDirector - site director object
+	 * @param object $anObj - object to copy data from.
+	 * @return ABitsCostume Returns the new instance.
+	 */
+	static public function fromObj(Director $aDirector, $anObj) {
+		$theClassName = get_called_class();
+		$o = new $theClassName($aDirector);
+		return $o->setDataFrom($anObj);
 	}
 	
 	/**

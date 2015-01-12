@@ -100,7 +100,7 @@ class Rights extends Actor {
 			$dbGroups->createGroup($v->group_name, $v->group_parent, $v->group_reg_code);
 		}
 	}
-		
+	
 }//end class
 
 }//end namespace

@@ -9,10 +9,11 @@ $w = '';
 $w .= "<h1>{$v->getRes('permissions/title_group/'.$v->group['group_name'])}</h1>\n";
 $w .= $v->renderMyUserMsgsAsString();
 $res = $v->getPermissionRes('right_values');
+//$v->debugLog($v->debugStr($res));
 $w .= '<table border="0">';
-$w .= '<tr><td align="right"><b>+</b> = </td><td>'.$res['allow']['label'].': '.$res['allow']['desc']."</td></tr>\n";
-$w .= '<tr><td align="right"><b>-</b> = </td><td>'.$res['disallow']['label'].': '.$res['disallow']['desc']."</td></tr>\n";
-$w .= '<tr><td align="right"><b>x</b> = </td><td>'.$res['deny']['label'].': '.$res['deny']['desc']."</td></tr>\n";
+$w .= '<tr><td align="right"><b>+</b> = </td><td>'.$res['allow']->label.': '.$res['allow']->desc."</td></tr>\n";
+$w .= '<tr><td align="right"><b>-</b> = </td><td>'.$res['disallow']->label.': '.$res['disallow']->desc."</td></tr>\n";
+$w .= '<tr><td align="right"><b>x</b> = </td><td>'.$res['deny']->label.': '.$res['deny']->desc."</td></tr>\n";
 $w .= "</table>\n";
 $w .= "<br/>\n";
 $w .= Widgets::createHiddenPost('group_id',$v->group['group_id']);
@@ -25,15 +26,15 @@ foreach ($v->right_groups as $ns => $nsInfo) {
 		if ($thePermissionValue=='deny-disable')
 			continue;
 		//if (Auth::TYPE!='basic' && $ns=='auth' && $theRight!='modify') continue;
-		$cellLabel = '<td style="width:20em" class="db-field-label">'.$theRightInfo['label'].'</td>';
+		$cellLabel = '<td style="width:20em" class="db-field-label">'.$theRightInfo->label.'</td>';
 		$cellInput = '<td style="width:12em;text-align:center">'.Widgets::createRadioSet($ns.'__'.$theRight,
 				$v->getShortRightValues(), $thePermissionValue,	'right',"&nbsp;&nbsp;").'</td>';
-		$cellDesc = '<td style="width:40em">'.$theRightInfo['desc'].'</td>';
+		$cellDesc = '<td style="width:40em">'.$theRightInfo->desc.'</td>';
 	
 		$thePermissionRows .= '<tr class="'.$v->_rowClass.'">'.$cellLabel.$cellInput.$cellDesc."</tr>\n";
 	}//end foreach
 	if (!empty($thePermissionRows)) {
-		$w .= "<h2>{$nsInfo['desc']}</h2>";
+		$w .= "<h2>{$nsInfo->desc}</h2>";
 		$w .= '<table class="db-entry">'."\n";
 		$w .= '<thead><tr class="rowh">'."\n";
 		$w .= '<th class="text-right">'.$v->getRes('permissions/colheader_right_name').'</th>';

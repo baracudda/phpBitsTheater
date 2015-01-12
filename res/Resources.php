@@ -20,6 +20,8 @@ use com\blackmoonit\AdamEve as BaseResources;
 use BitsTheater\Director;
 use com\blackmoonit\Strings;
 use com\blackmoonit\exceptions\IllegalArgumentException;
+use BitsTheater\costumes\EnumResEntry;
+use BitsTheater\costumes\ConfigResEntry;
 {//begin namespace
 
 class Resources extends BaseResources {
@@ -180,6 +182,82 @@ class Resources extends BaseResources {
 				return $theResult;
 			}
 		}
+	}
+	
+	/**
+	 * Build the enum info from separate parts. Allows us to define the enum
+	 * values separate from UI presentation / language concerns.
+	 * @param string $aEnumName - name of variable resulting from combined "enum_*",
+	 * "label_*", and "desc_*" parts.
+	 */
+	public function mergeEnumEntryInfo($aEnumName) {
+		$theProp = $aEnumName;
+		$this->{$theProp} = array();
+		$eprop = 'enum_'.$theProp;
+		$lprop = 'label_'.$theProp;
+		$dprop = 'desc_'.$theProp;
+		if (isset($this->{$eprop})) {
+			$this->{$theProp} = array();
+			foreach ($this->{$eprop} as $theEnumValue) {
+				$res = new EnumResEntry($theEnumValue);
+				
+				if (isset($this->{$lprop}[$theEnumValue]))
+					$res->label = $this->{$lprop}[$theEnumValue];
+	
+				if (isset($this->{$dprop}[$theEnumValue]))
+					$res->desc = $this->{$dprop}[$theEnumValue];
+	
+				$this->{$theProp}[$theEnumValue] = $res;
+			}//foreach
+			//no need to keep the un-merged data around, unset it to recover its memory
+			unset($this->{$eprop});
+			if (isset($this->{$lprop}))
+				unset($this->{$lprop});
+			if (isset($this->{$dprop}))
+				unset($this->{$dprop});
+		}//if
+		//$this->debugLog(__METHOD__.'('.$theProp.'): '.$this->debugStr($this->{$theProp}));
+	}
+	
+	/**
+	 * Build the config enum info from separate parts. Allows us to define the config
+	 * values separate from UI presentation / language concerns.
+	 * @param string $aConfigEnumName - name of variable resulting from combined "enum_*",
+	 * "label_*", "desc_*", and input parts.
+	 */
+	public function mergeConfigEntryInfo($aConfigEnumName) {
+		$theProp = $aConfigEnumName;
+		$this->{$theProp} = array();
+		$eprop = 'enum_'.$theProp;
+		$lprop = 'label_'.$theProp;
+		$dprop = 'desc_'.$theProp;
+		$iprop = 'input_'.$theProp;
+		if (isset($this->{$eprop})) {
+			$this->{$theProp} = array();
+			foreach ($this->{$eprop} as $theEnumValue) {
+				$res = new ConfigResEntry($theEnumValue);
+				
+				if (isset($this->{$lprop}[$theEnumValue]))
+					$res->label = $this->{$lprop}[$theEnumValue];
+	
+				if (isset($this->{$dprop}[$theEnumValue]))
+					$res->desc = $this->{$dprop}[$theEnumValue];
+	
+				if (isset($this->{$iprop}[$theEnumValue]))
+					$res->setInput($this->{$iprop}[$theEnumValue]);
+				
+				$this->{$theProp}[$theEnumValue] = $res;
+			}//foreach
+			//no need to keep the un-merged data around, unset it to recover its memory
+			unset($this->{$eprop});
+			if (isset($this->{$lprop}))
+				unset($this->{$lprop});
+			if (isset($this->{$dprop}))
+				unset($this->{$dprop});
+			if (isset($this->{$iprop}))
+				unset($this->{$iprop});
+		}//if
+		//$this->debugLog(__METHOD__.'('.$theProp.'): '.$this->debugStr($this->{$theProp}));
 	}
 	
 }//end class

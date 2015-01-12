@@ -25,7 +25,7 @@ use com\blackmoonit\Arrays;
 {//namespace begin
 
 /**
- * Configuration setting information in class form 
+ * Configuration setting information in class form
  * instead of associative array form.
  */
 class ConfigSettingInfo extends BaseCostume {
@@ -57,7 +57,15 @@ class ConfigSettingInfo extends BaseCostume {
 	 */
 	static public function fromConfigRes(ConfigNamespaceInfo $aNamespaceInfo, $aSettingName, $aSettingInfo) {
 		if ($aNamespaceInfo!=null) {
-			$o = static::fromArray($aNamespaceInfo->getDirector(),$aSettingInfo);
+			if (is_array($aSettingInfo))
+				$o = static::fromArray($aNamespaceInfo->getDirector(),$aSettingInfo);
+			else {
+				$o = new ConfigSettingInfo($aNamespaceInfo->getDirector());
+				$o->label = $aSettingInfo->label;
+				$o->desc = $aSettingInfo->desc;
+				$o->input = $aSettingInfo->input_type;
+				$o->dropdown_values = $aSettingInfo->input_enums;
+			}
 			$o->config_namespace_info = $aNamespaceInfo;
 			$o->ns = $aNamespaceInfo->namespace;
 			$o->key = $aSettingName;
@@ -87,7 +95,7 @@ class ConfigSettingInfo extends BaseCostume {
 	}
 	
 	/**
-	 * Get the HTML string to use as a widget for this setting. 
+	 * Get the HTML string to use as a widget for this setting.
 	 * @return string Returns the HTML to use as a setting widget.
 	 */
 	public function getInputWidget() {
@@ -100,10 +108,12 @@ class ConfigSettingInfo extends BaseCostume {
 				return Widgets::createCheckBox($theWidgetName,$theValue,!empty($theValue));
 			case self::INPUT_DROPDOWN:
 				$theValue = (!isset($theValue)) ? $this->default_value : $theValue;
-				//$theItemList = Arrays::array_column($this->dropdown_values,'label');
 				$theItemList = array();
 				foreach((array)$this->dropdown_values as $key => $valueRow) {
-					$theItemList[$key] = $valueRow['label'];
+					if (is_array($valueRow))
+						$theItemList[$key] = $valueRow['label'];
+					else
+						$theItemList[$key] = $valueRow->label;
 				}
 				return Widgets::createDropDown($theWidgetName, $theItemList, $theValue);
 			default:
@@ -136,9 +146,7 @@ class ConfigSettingInfo extends BaseCostume {
 				return $aScene->$theWidgetName;
 		}
 	}
-
+	
 }//end class
 	
 }//end namespace
-	
-	

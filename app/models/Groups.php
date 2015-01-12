@@ -17,6 +17,7 @@
 
 namespace BitsTheater\models;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\configs\Settings;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\models\SetupDb as MetaModel;
@@ -45,7 +46,7 @@ class Groups extends BaseModel implements IFeatureVersioning {
 		$this->tnGroups = $this->tbl_.self::TABLE_Groups;
 		$this->tnGroupMap = $this->tbl_.self::TABLE_GroupMap;
 		$this->tnGroupRegCodes = $this->tbl_.self::TABLE_GroupRegCodes;
-	}	
+	}
 	
 	/**
 	 * In case future db schema updates need to create a temp of one

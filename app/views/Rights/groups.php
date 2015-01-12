@@ -67,15 +67,23 @@ foreach ($v->groups as $theGroup) {
 		$theLink = '<a href="'.BITS_URL.'/rights/group/'.$theGroup['group_id'].'">'.$theGroup['group_name'].'</a>';
 	$r .= '<td>'.$theLink.'</td>';
 
-	$r .= '<td>';
-	if ($theGroup['group_id']==0) //guest, not logged in
-		$r .= $v->getRes('permissions/display_group_0_desc');
-	else if ($theGroup['group_id']==1) //super-admin group cannot be subclassed
-		$r .= $v->getRes('permissions/display_group_1_desc');
-	else if (!empty($theGroup['parent_group_id'])) {
-		$r .= $v->getRes('permissions/display_parent_group/'.$v->groups[$theGroup['parent_group_id']]['group_name']);
+	$theGroupDesc = '';
+	if ($theGroup['group_id']==1) //super-admin group cannot be subclassed
+		$theGroupDesc = $v->getRes('permissions/display_group_1_desc');
+	else {
+		if ($theGroup['group_id']==0) { //guest, not logged in
+			$theGroupDesc = $v->getRes('permissions/display_group_0_desc');
+		}
+		if (!empty($theGroup['parent_group_id'])) {
+			$s = $v->getRes('permissions/display_parent_group/'.$v->groups[$theGroup['parent_group_id']]['group_name']);
+			if (!empty($theGroupDesc)) {
+				$theGroupDesc .= ' ('.$s.')';
+			} else {
+				$theGroupDesc .= $s;
+			}
+		}
 	}
-	$r .= '</td>';
+	$r .= '<td>'.$theGroupDesc.'</td>';
 	
 	$r .= '<td>';
 	if (!empty($v->group_reg_codes[$theGroup['group_id']]))

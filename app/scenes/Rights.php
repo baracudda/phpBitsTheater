@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\scenes; 
+namespace BitsTheater\scenes;
 use BitsTheater\Scene;
 use com\blackmoonit\Widgets;
 {//namespace begin
@@ -43,7 +43,7 @@ class Rights extends Scene {
 		$res = $this->getPermissionRes('right_values');
 		$theResult = array();
 		foreach ($res as $key => $keyInfo) { //allow, disallow, deny
-			$theResult[$key] = $keyInfo['label'];
+			$theResult[$key] = $keyInfo->label;
 		}
 		return $theResult;
 	}

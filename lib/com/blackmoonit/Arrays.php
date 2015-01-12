@@ -198,7 +198,6 @@ class Arrays {
 		}
 	}
 
-
 }//end class
 
 }//end namespace

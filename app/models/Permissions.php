@@ -202,12 +202,12 @@ class Permissions extends BaseModel {
 	 * @return array Returns the assigned rights for a given group.
 	 */
 	public function getAssignedRights($aGroupId) {
-		$theGroupId = $aGroupId;
+		$theGroupId = $aGroupId+0;
 		//check rights for group passed in, and then all its parents
 		$theMergeList = array($theGroupId => -1);
 		$dbAuth = $this->getProp('Auth');
 		$theGroupList = Arrays::array_column_as_key($dbAuth->getGroupList(),'group_id');
-		while (!empty($theGroupId) && !empty($theGroupList[$theGroupId]) && !empty($theGroupList[$theGroupId]['parent_group_id'])) {
+		while ($theGroupId>=0 && !empty($theGroupList[$theGroupId]) && !empty($theGroupList[$theGroupId]['parent_group_id'])) {
 			$theGroupId = $theGroupList[$theGroupId]['parent_group_id'];
 			//to prevent infinite loops
 			if (empty($theMergeList[$theGroupId]))

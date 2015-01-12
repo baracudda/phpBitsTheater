@@ -23,7 +23,7 @@ use com\blackmoonit\excpetions\SystemExit;
 use \Exception;
 {//namespace begin
 
-try { 
+try {
 	require_once('bootstrap.php');
 	//now let us get on with it
 	require_once('router.php');
@@ -45,7 +45,7 @@ try {
 	}
 	header("HTTP/1.0 500 Internal Server Error");
 	die();
-} catch (Exception $e) { 
+} catch (Exception $e) {
 	if (is_callable(array($e,'debugPrint'))) {
 		$e->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
 		$e->debugPrint();
@@ -58,8 +58,8 @@ try {
 	if (ini_get('log_errors')) {
 		Strings::debugLog($e->getMessage().' cs: '.$e->getTraceAsString());
 	}
-	header("HTTP/1.0 500 Internal Server Error"); 
-	die(); 
+	header("HTTP/1.0 500 Internal Server Error");
+	die();
 }
 
 }//end namespace

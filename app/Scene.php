@@ -319,7 +319,7 @@ class Scene extends BaseScene {
 			return $aFilePath.'.php';
 	}
 
-	public function includeMyHeader() {
+	public function includeMyHeader($aExtraHeaderHtml=null) {
 		$myHeader = $this->page_header;
 		if (!file_exists($myHeader))
 			$myHeader = $this->app_header;
@@ -429,13 +429,15 @@ class Scene extends BaseScene {
 
 	/**
 	 * Render a fragment and return the string rather than automatically pass it to the output.
-	 * @param string $anActorName
-	 * @param string $anAction
-	 * @param array $args
+	 * @param string $anActorName - the actor to instantiate and use.
+	 * @param string $anAction - the actor's method to call
+	 * @param array $_ - other params that will be passed on to Director::cue().
 	 */
 	
-	public function cueActor($anActorName, $anAction, $args=array()) {
-		return $this->_director->cue($this,$anActorName,$anAction,$args);
+	public function cueActor($anActorName, $anAction, $_=null) {
+		$args = func_get_args();
+		array_unshift($args,$this);
+		return call_user_func_array(array($this->_director,'cue'), $args);
 	}
 	
 	/**

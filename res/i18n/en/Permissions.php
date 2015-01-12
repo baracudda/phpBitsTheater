@@ -1,64 +1,67 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\Permissions as BaseResources;
-{
+use BitsTheater\res\en\CorePermissions as BaseResources;
+use BitsTheater\costumes\EnumResEntry;
+{//begin namespace
 
 class Permissions extends BaseResources {
-	public $menu_rights_label = 'Permissions';
-	public $menu_rights_subtext = '';
 	
-	public $title_groups = 'Assign Rights To Groups';
-	public $colheader_group_id = '#';
-	public $colheader_group_name = 'Rights Group';
-	public $colheader_group_parent = 'Description';
-	public $display_group_0_desc = 'visitor that is not logged in';
-	public $display_group_1_desc = 'always passes permission checks';
-	public $display_parent_group = 'subset of %s';
-	
-	public $title_group = 'Assign Rights for Group: %s';
-	public $colheader_right_name = 'Right';
-	public $colheader_right_value = 'Assign';
-	public $colheader_right_desc = 'Description';
-	public $colheader_group_reg_code = 'Matches Registration Code';
-	
-
-	public $anonymous_group_name = 'anonymous'; //name of "group 0" when not logged in so you can still assign rights
-
-	public $right_values = array(
-			'allow' => array('label'=>'Allow', 'desc'=>'Access granted, if no parent group explicitly Denies.', ),
-			'disallow' => array('label'=>'Disallow', 'desc'=>'Access denied unless a parent group explicitly Allows.', ),
-			'deny' => array('label'=>'Deny', 'desc'=>'Access will be denied for this and all child groups.', ),
+	public $label_my_namespaces = array(
+		'ns_a' => 'My WebApp Right Group A',
+		'ns_b' => 'My WebApp Right Group B',
+		'ns_c' => 'My WebApp Right Group C',
+	);
+	public $desc_my_namespaces = array(
+		'ns_a' => 'Widget Area 1 Activities',
+		'ns_b' => 'ACME Spanner Activities',
+		'ns_c' => 'ACME API',
 	);
 	
-	//when adding new rights, add their namespace info here
-	public $namespace = array(
-			'auth' => array('label'=>'Authorization', 'desc'=>'Authorization Rights', ),
-			'config' => array('label'=>'Settings', 'desc'=>'Settings/Configuration/Preferences', ),
-			'accounts' => array('label'=>'Accounts', 'desc'=>'Membership Account Rights', ),
+	public $label_ns_a = array(
+		'view' => 'View A',
+		'modify' => 'Modify A',
+		'view_more_custom1' => 'View Sub-A Stuff',
+		'send_stuff_custom2' => 'Send Message To A',
+	);
+	public $desc_ns_a = array(
+		'view' => 'View the A entries.',
+		'modify' => 'Add and modify the A entries.',
+		'view_more_custom1' => 'View child entries of A.',
+		'send_stuff_custom2' => 'Send a short message to A.',
 	);
 	
-	public $auth = array(
-			'modify' => array('label'=>'Modify Permission Groups', 'desc'=>'Assign rights to groups.', ),
-			'create' => array('label'=>'Create Permission Groups', 'desc'=>'Define new rights groups.', ),
-			'delete' => array('label'=>'Delete Permission Groups', 'desc'=>'Remove existing rights groups.', ),
+	public $label_ns_b = array(
+		'view' => 'Right to View',
+		'add' => 'Right to Add',
+		'modify' => 'Right to Change',
+		'delete' => 'Right to Remove',
+		'copy' => 'Right to Copy',
+	);
+	public $desc_ns_b = array(
+		'view' => 'View ACME spanners.',
+		'add' => 'Add ACME spanners.',
+		'modify' => 'Change ACME spanners.',
+		'delete' => 'Remove spanners.',
+		'copy' => 'Copy a spanner.',
 	);
 	
-	public $config = array(
-			'modify' => array('label'=>'Modify System Settings', 'desc'=>'Modify system settings.', ),
+	public $label_ns_c = array(
+		'access' => 'Access the Data API',
+	);
+	public $desc_ns_c = array(
+		'access' => 'Allows a user to interact with the cloud data.',
 	);
 	
-	public $accounts = array(
-			'modify' => array('label'=>'Modify Accounts', 'desc'=>'Modify any existing account.', ),
-			//no need for create right as everyone can create an account by registering
-			'delete' => array('label'=>'Delete Accounts', 'desc'=>'Remove any existing account (requires Modify too).', ),
-	);
-	
-	//new rights use their key as a variable name which is an array of the diff rights
-	public $my_new_right_group = array(
-			'my_new_right' => array('label'=>'New Right', 'desc'=>'Desc for my new right'),
+	/**
+	 * Some resources need to be initialized by running code rather than a static definition.
+	 */
+	public function setup($aDirector) {
+		$this->res_array_merge($this->label_namespace, $this->label_my_namespaces);
+		$this->res_array_merge($this->desc_namespace, $this->desc_my_namespaces);
+		//parent can handle the rest once "*_namespace" is updated
+		parent::setup($aDirector);
+	}
 			
-	);
-
 }//end class
 
 }//end namespace

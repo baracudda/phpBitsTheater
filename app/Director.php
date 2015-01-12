@@ -47,6 +47,11 @@ class Director extends BaseDirector implements ArrayAccess {
 	 */
 	const SITE_MODE_DEMO = 'demo';
 	
+	/**
+	 * The app ID found in the [cfg]Settings class.
+	 * @var string
+	 */
+	public $app_id = __DIR__;
 	public $account_info = null;//array('account_id'=>-1, 'account_name'=>'', 'email'=>'', 'groups'=>array(), 'tz'=>'',);
 	public $dbConnInfo = array(); //database connections to share with the models
 	protected $_propMaster = array(); //cache models created so app doesn't need to create 12 instances of any single model
@@ -65,7 +70,8 @@ class Director extends BaseDirector implements ArrayAccess {
 			$this->resetSession();
 		}
 		if ($this->isInstalled()) {
-			$this['app_id'] = configs\Settings::APP_ID;
+			$this->app_id = configs\Settings::APP_ID;
+			$this['app_id'] = $this->app_id;
 		}
 		$this->bHasBeenSetup = true;
 	}
@@ -90,19 +96,19 @@ class Director extends BaseDirector implements ArrayAccess {
 	//----- methods required for various IMPLEMENTS interfaces
 	//NOTE: $this['key'] works for simple types, but not arrays.  Avoid arrays!
 	public function offsetSet($aOffset, $aValue) {
-		$_SESSION[$aOffset] = $aValue;
+		$_SESSION[$this->app_id][$aOffset] = $aValue;
 	}
 
 	public function offsetExists($aOffset) {
-		return isset($_SESSION[$aOffset]);
+		return isset($_SESSION[$this->app_id][$aOffset]);
 	}
 
 	public function offsetUnset($aOffset) {
-		unset($_SESSION[$aOffset]);
+		unset($_SESSION[$this->app_id][$aOffset]);
 	}
 
 	public function offsetGet($aOffset) {
-		return isset($_SESSION[$aOffset])?$_SESSION[$aOffset]:null;
+		return isset($_SESSION[$this->app_id][$aOffset]) ? $_SESSION[$this->app_id][$aOffset] : null;
 	}
 	
 	//----- IMPLEMENTS handled, get on with being a Director below -----
@@ -174,19 +180,19 @@ class Director extends BaseDirector implements ArrayAccess {
 				if ($this->isInstalled()) {
 					$this['played'] = configs\Settings::APP_ID; //app_id -> play_id -> "played"
 				}
-				//Strings::debugLog('raiseCurtain: '.$theActorClass.', '.$theAction.', '.Strings::debugStr($aQuery));
+				//$this->debugLog(__METHOD__.$theActorClass.'::'.$theAction.'('.$this->debugStr($aQuery).')');
 				$theActorClass::perform($this,$theAction,$aQuery);
 				return true;
 			} else {
         	    return false;
 			}
 		} else {
-			Strings::debugLog(__NAMESPACE__.': cannot find Actor class: '.$theActorClass);
+			Strings::debugLog(__METHOD__.' cannot find Actor class: '.$theActorClass.' url='.$_GET['url']);
 			return false;
 		}
 	}
 	
-	public function cue($aScene, $anActorName, $anAction, $args=array()) {
+	public function cue($aScene, $anActorName, $anAction, $_=null) {
 		$theActorClass = self::getActorClass($anActorName);
 		//Strings::debugLog('rC: class='.$theActorClass.', exist?='.class_exists($theActorClass));
 		if (class_exists($theActorClass)) {
@@ -196,16 +202,31 @@ class Director extends BaseDirector implements ArrayAccess {
 				//if no exception, instantiate the class and call the method
 				$theActor = new $theActorClass($this,$theAction);
 				$theMethod->setAccessible(true); //protected from direct "raiseCurtain" calls, but ok for cue().
-				$args['aScene'] = $aScene; //append the scene of our caller as last param in case called method wants it
+				
+				$args = func_get_args();
+				//remove first 3 params as they are used to call the method, rest are passed in as args
+				array_shift($args);
+				array_shift($args);
+				array_shift($args);
+				//append the scene of our caller as last param in case called method wants it
+				array_push($args,$aScene);
 				$theResult = $theMethod->invokeArgs($theActor,$args);
+				
+				//$this->debugLog(__METHOD__.' actorClass="'.$theActorClass.'", renderThisView="'.$theActor->viewToRender().'"');
 				if (empty($theResult)) {
-					$s = $theActor->renderFragment($anAction);
+					$theView = $theActor->viewToRender();
+					if (empty($theView))
+						$theView = $anAction;
+					//$this->debugLog(__METHOD__.' theView="'.$theView.'"');
+					$s = $theActor->renderFragment($theView);
+					//$this->debugLog(__METHOD__.' s="'.$s.'"');
 					unset($theActor);
 					return $s;
 				} else {
 					header('Location: '.$theResult);
 				}
 			} catch (ReflectionException $e) {
+				$this->debugLog($e->getMessage());
 				//no method to call, just ignore it
 			}
 		}

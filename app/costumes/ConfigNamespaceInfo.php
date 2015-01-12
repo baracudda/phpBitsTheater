@@ -22,7 +22,7 @@ use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
- * Configuration Namespace information in class form 
+ * Configuration Namespace information in class form
  * instead of associative array form.
  */
 class ConfigNamespaceInfo extends BaseCostume {
@@ -30,7 +30,7 @@ class ConfigNamespaceInfo extends BaseCostume {
 	public $label;
 	public $desc;
 	
-	//restricted to only this group id 
+	//restricted to only this group id
 	public $group_id;
 	
 	//useful for displaying settings based on namespace
@@ -44,14 +44,16 @@ class ConfigNamespaceInfo extends BaseCostume {
 	 * @return ConfigNamespaceInfo Returns the created object.
 	 */
 	static public function fromConfigArea(Director $aDirector, $aNamespace, $aNsData) {
-		$o = static::fromArray($aDirector, $aNsData);
+		$o = new ConfigNamespaceInfo($aDirector);
 		$o->namespace = $aNamespace;
+		$o->group_id = ($aNamespace=='auth') ? 1 : null;
+		$o->setDataFrom($aNsData);
 		return $o;
 	}
 	
 	public function isAllowed() {
 		//TODO better auth mechanism needed
-		return (empty($this->group_id) || in_array($this->group_id,$this->_director->account_info['groups']));
+		return (!isset($this->group_id) || in_array($this->group_id,$this->_director->account_info['groups']));
 	}
 	
 }//end class

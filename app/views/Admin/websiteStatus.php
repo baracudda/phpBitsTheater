@@ -68,8 +68,13 @@ $theFrameworkFeatureId = MetaModel::FEATURE_ID;
 $theWebsiteFeatureId = $v->getRes('website/getFeatureId');
 if ($theFeatureList[$theFrameworkFeatureId]['version_display']!==$theFeatureList[$theFrameworkFeatureId]['version_display_new']) {
 	$theFeatureList = array($theFrameworkFeatureId => $theFeatureList[$theFrameworkFeatureId]);
-} else if ($theFeatureList[$theWebsiteFeatureId]['version_display']!==$theFeatureList[$theWebsiteFeatureId]['version_display_new']) {
-	$theFeatureList = array($theWebsiteFeatureId => $theFeatureList[$theWebsiteFeatureId]);
+} else if (empty($theFeatureList[$theWebsiteFeatureId]) ||
+		$theFeatureList[$theWebsiteFeatureId]['version_display']!==$theFeatureList[$theWebsiteFeatureId]['version_display_new']) {
+	$theFeatureList = array($theWebsiteFeatureId => array(
+			'feature_id' => $theWebsiteFeatureId,
+			'version_display' => $v->getRes('admin/field_value_unknown_version'),
+			'version_display_new' => $v->getRes('website/version'),
+	));
 }
 
 foreach ($theFeatureList as $theFeatureInfo) {

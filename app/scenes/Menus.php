@@ -17,52 +17,38 @@
 
 namespace BitsTheater\scenes;
 use BitsTheater\Scene;
+use BitsTheater\costumes\MenuItemResEntry;
 use com\blackmoonit\Strings;
 {//namespace begin
 
 class Menus extends Scene {
 	const IS_SUBTEXT_SUPPORTED = false;
 
-	public function getText($aMenuItem,$aKey) {
-		if (empty($aMenuItem[$aKey]))
-			return '';
-		if ($aMenuItem[$aKey]{0}=='&') {
-			$sa = explode('@',$aMenuItem[$aKey],2);
-			switch ($sa[0]) {
-			case '&config':
-				return $this->_director[$sa[1]];
-			case '&res':
-				return $this->getRes($sa[1]);
-			case '&method':
-				return $this->$sa[1]();
-			case '&view':
-				$meth = explode('/',$sa[1]);
-				return $this->cueActor($meth[0],$meth[1]);
-			}//switch
-		} else
-			return $aMenuItem[$aKey];
-	}
-	
-	public function getMenuIcon($aMenuItem) {
-		$src = $this->getText($aMenuItem,'icon');
+	public function getMenuIcon(MenuItemResEntry $aMenuItem) {
+		$src = $aMenuItem->getIconSrc();
 		if (!empty($src))
 			return sprintf('<img src="%s" border="0" class="menu_icon" />',$src);
 		else
 			return '';
 	}
 	
-	public function getMenuDisplay($aMenuItem) {
-		$theResult = trim($this->getMenuIcon($aMenuItem).' '.$this->getText($aMenuItem,'label'));
-		if (self::IS_SUBTEXT_SUPPORTED && !empty($aMenuItem['subtext']))
-			$theResult .= '<span class="subtext">'.$this->getText($aMenuItem,'subtext').'</span>';
+	public function getMenuDisplay(MenuItemResEntry $aMenuItem) {
+		$theResult = trim($this->getMenuIcon($aMenuItem).' '.$aMenuItem->getLabel());
+		$theSubtext = $aMenuItem->getSubtext();
+		if (self::IS_SUBTEXT_SUPPORTED && !empty($theSubtext))
+			$theResult .= '<span class="subtext">'.$thSubtext.'</span>';
 		return $theResult;
 	}
 
-	public function renderMenuItem($aMenuKey, $aMenuItem, $aSubLevel=0) {
-		$isLast = (isset($aMenuItem['last']));
-		$isSubMenu = ((empty($aMenuItem['link']) || !empty($aMenuItem['hasSubmenu'])) && isset($aMenuItem['submenu']));
-		$theLink = $this->getText($aMenuItem,'link');
-
+	public function renderMenuItem($aMenuKey, MenuItemResEntry $aMenuItem, $aSubLevel=0) {
+		$aMenuItem->scene($this);
+		$isLast = $aMenuItem->last();
+		$isSubMenu = $aMenuItem->isSubMenu();
+		$theLink = $aMenuItem->getLink();
+		//empty links need to be "#" instead so mobile devices can use menu
+		if (empty($theLink))
+			$theLink = '#';
+		
 		$theClasses = '';
 		if ($isSubMenu)
 			$theClasses .= 'parent ';
@@ -74,7 +60,7 @@ class Menus extends Scene {
 		$theItem = sprintf('<a href="%1$s" %3$s><span>%2$s</span></a>',
 				$theLink,$this->getMenuDisplay($aMenuItem),$theClasses);
 		if ($isSubMenu) {
-			$theItem .= "\n".$this->renderMenu($aMenuItem['submenu'],$aSubLevel+1)."\n";
+			$theItem .= "\n".$this->renderMenu($aMenuItem->submenu(),$aSubLevel+1)."\n";
 		}
 		
 		
@@ -94,7 +80,7 @@ class Menus extends Scene {
 			$w .= $this->renderMenuItem($theMenuKey,$theMenuItem,$aSubLevel);
 		}
 		$w .= str_repeat("\t",$aSubLevel)."</ul></div>";
-		if (!$this->_director->isGuest())
+		if (!empty($this->_director->account_info['account_id']))
 			$w = str_replace('%account_id%',$this->_director->account_info['account_id'],$w);
 		return $w;
 	}

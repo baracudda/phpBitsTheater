@@ -115,7 +115,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 			if (!is_array($aMapInfo)) {
 				$aMapInfo = array('key'=>$aMapInfo);
 			}
-			if (!isset($aMapInfo['key'])) 
+			if (!isset($aMapInfo['key']))
 				return;
 			if (!isset($aMapInfo['ns'])) {
 				$sa = $this->splitKeyName($aMapInfo['key']);
@@ -240,7 +240,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	public function isEmpty($aTableName=null) {
 		return parent::isEmpty( empty($aTableName) ? $this->getTableName() : $aTableName );
 	}
-
+	
 }//end class
 
 }//end namespace

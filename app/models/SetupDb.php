@@ -29,7 +29,7 @@ use \Exception;
 
 class SetupDb extends BaseModel implements IFeatureVersioning {
 	const FEATURE_ID = 'BitsTheater/framework';
-	const FEATURE_VERSION_SEQ = 2; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 3; //always ++ when making db schema changes
 		
 	public $tnSiteVersions; const TABLE_SiteVersions = 'zz_versions';
 	
@@ -65,9 +65,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 	 * @param Scene $aScene - (optional) extra data may be supplied
 	 */
 	public function setupDefaultData($aScene) {
-		if ($this->isEmpty()) {
-			$this->insertFeature($this->getCurrentFeatureVersion());
-		}
+		$this->setupFeatureVersion($aScene);
 	}
 	
 	/**
@@ -85,13 +83,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 		$theFeatureId = $this->getRes('website/getFeatureId');
 		$theFeatureData = $this->getFeature($theFeatureId);
 		if (empty($theFeatureData)) {
-			$theFeatureData = array(
-					'feature_id' => $theFeatureId,
-					'model_class' => $this->mySimpleClassName,
-					'version_seq' => $this->getRes('website/version_seq'),
-					'version_display' => $this->getRes('website/version'),
-			);
-			$this->insertFeature($theFeatureData);
+			$this->insertFeature($this->getCurrentFeatureVersion($theFeatureId));
 		}
 	}
 	
@@ -127,33 +119,80 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
+	 * Copy the contents of a file into another using template replacements, if defined.
+	 * @param string $aSrcFilePath - template source.
+	 * @param string $aDestFilePath - template destination.
+	 * @param array $aReplacements - replacement name=>value inside the template.
+	 * @throws Exception on failure.
+	 */
+	protected function copyFileContents($aSrcFilePath, $aDestFilePath, $aReplacements) {
+		try {
+			$theSrcContents = file_get_contents($aSrcFilePath);
+			if ($theSrcContents) {
+				foreach ($aReplacements as $theReplacementName => $theReplacementValue) {
+					$theSrcContents = str_replace('%'.$theReplacementName.'%', $theReplacementValue, $theSrcContents);
+				}
+				if (file_put_contents($aDestFilePath,$theSrcContents, LOCK_EX)===false) {
+					$theMsg = $this->getRes('admin/msg_copy_cfg_fail/'.basename($aDestFilePath));
+					throw new Exception($theMsg);
+				}
+			}
+		} catch (Exception $e) {
+			$this->debugLog(__METHOD__."('$aSrcFilePath','$aDestFilePath') failed: ".$e->getMessage());
+			throw $e;
+		}
+	}
+	
+	/**
+	 * Copies the named template stored in the standard template folder using the replacements
+	 * param, if defined.
+	 * @param string $aTemplateName - name of template minus path and file extension.
+	 * @param string $aNewFilePath - new path and filename to use.
+	 * @param array $aReplacements - (OPTIONAL) replacement name=>value inside the template.
+	 * @return string|boolean Returns the destination filepath or FALSE on failure.
+	 */
+	protected function installTemplate($aTemplateName, $aNewFilePath, $aReplacements) {
+		//copy the .tpl and fill in the replacements
+		$theTemplateFilePath = BITS_RES_PATH.'templates'.DIRECTORY_SEPARATOR.$aTemplateName.'.tpl';
+		$this->copyFileContents($theTemplateFilePath, $aNewFilePath, $aReplacements);
+	}
+
+	/**
 	 * Check current feature version and compare it to the
 	 * current version, upgrading the db schema as needed.
 	 * @param array $aFeatureMetaData - the models current feature metadata.
-	 * @param Scene $aScene - (optional) extra data may be supplied
+	 * @param Scene $aScene - extra data may be supplied
 	 */
 	public function upgradeFeatureVersion($aFeatureMetaData, $aScene) {
 		$theSeq = $aFeatureMetaData['version_seq'];
-		if ($aFeatureMetaData['feature_id']==self::FEATURE_ID) {
+		if ($aFeatureMetaData['feature_id']!==self::FEATURE_ID) {
+			//website update
+			$this->getRes('website/updateVersion/'.$theSeq);
+		} else {
 			//framework update
 			switch (true) {
 				//cases should always be lo->hi, never use break; so all changes are done in order.
-				case ($theSeq<=self::FEATURE_VERSION_SEQ):
-					//no changes needed at this time
+				case ($theSeq<3):
+					//replace old class file with new class file
+					$this->installTemplate('I18N', BITS_CFG_PATH.'I18N.php', array(
+							//no other lang possible at this time
+							'default_lang' => 'en',
+							'default_region' => 'US',
+					), $aScene);
 			}//switch
-		} else if ($aFeatureMetaData['feature_id']==$this->getWebsiteFeatureId()) {
-			//website update
-			if ($this->getRes('website/updateVersion/'.$theSeq)) {
-				//success
-			} else {
-				//fail
+
+			//update the feature table with all but our own model
+			$theModels = self::getAllModelClassInfo();
+			for ($i=0; $i<count($theModels); $i++) {
+				if ($theModels[$i]->getShortName()===$this->mySimpleClassName) {
+					unset($theModels[$i]);
+					break;
+				}
 			}
+			$this->callModelMethod($this->director, $theModels, 'setupFeatureVersion', $aScene);
+			array_walk($theModels, function(&$n) { unset($n); } );
+			unset($theModels);
 		}
-		//always update the feature table
-		$theModels = self::getAllModelClassInfo();
-		$this->callModelMethod($this->director, $theModels,'setupFeatureVersion',$aScene);
-		array_walk($theModels, function(&$n) { unset($n); } );
-		unset($theModels);
 	}
 	
 	protected function exists($aTableName=null) {
@@ -168,7 +207,6 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 	 * Calls all models to create their tables and insert default data, if necessary.
 	 * @param $aScene - the currently running page's Scene object.
 	 */
-
 	public function setupModels($aScene) {
 		$this->setupModel($aScene);
 		$this->setupDefaultData($aScene);
@@ -180,7 +218,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 		$this->callModelMethod($this->director, $models,'setupModel',$aScene);
 		$this->callModelMethod($this->director, $models,'setupDefaultData',$aScene);
 		$this->callModelMethod($this->director, $models,'setupFeatureVersion',$aScene);
-
+		
 		array_walk($models, function(&$n) { unset($n); } );
 		unset($models);
 	}
@@ -285,8 +323,8 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 			$theSql->startWith('UPDATE '.$this->tnSiteVersions);
 			$theSql->setParamPrefix(' SET ')->mustAddParam('version_seq');
 			$theSql->setParamPrefix(', ')->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
+			$theSql->addFieldAndParam('feature_id', 'new_feature_id');
 			$theSql->setParamPrefix(' WHERE ')->mustAddParam('feature_id');
-			//$this->debugLog('update sql='.$theSql->mySql.' params='.$this->debugStr($theSql->myParams));
 			if ($theSql->execDML()) {
 				$theResultSet = $theSql->myParams;
 			}
@@ -323,8 +361,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 					$dbModel = $this->getProp($theFeatureData['model_class']);
 					$dbModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
 					//if no exception occurs, all went well
-					$this->updateFeature($dbModel->getCurrentFeatureVersion(self::FEATURE_ID));
-					$this->updateFeature($dbModel->getCurrentFeatureVersion($this->getRes('website/getFeatureId')));
+					$this->updateFeature($dbModel->getCurrentFeatureVersion($theFeatureData['feature_id']));
 					
 					if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'),true)) {
 						$aDataObject->addUserMsg($this->getRes('admin/msg_update_success'));
@@ -339,10 +376,14 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 		} else if (!empty($aDataObject)) {
 			try {
 				$this->setupModel();
-				$this->setupDefaultData($aDataObject);
-				
+				//$this->setupDefaultData($aDataObject);
 				$this->upgradeFeatureVersion($this->getFeature(self::FEATURE_ID), $aDataObject);
-					
+				//update the feature table
+				$theModels = self::getAllModelClassInfo();
+				$this->callModelMethod($this->director, $theModels, 'setupFeatureVersion', $aDataObject);
+				array_walk($theModels, function(&$n) { unset($n); } );
+				unset($theModels);
+				
 				if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'))) {
 					$aDataObject->addUserMsg($this->getRes('admin/msg_update_success'));
 				}

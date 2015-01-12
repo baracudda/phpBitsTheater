@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\actors; 
+namespace BitsTheater\actors;
 use BitsTheater\Actor;
 use BitsTheater\Scene as MyScene;
 	/* @var $v MyScene */
@@ -41,6 +41,7 @@ class Config extends Actor {
 		$v->config_areas = $dbConfig->getConfigAreas();
 		foreach ($v->config_areas as $theNamespaceInfo) {
 			$theNamespaceInfo->settings_list = $dbConfig->getConfigSettings($theNamespaceInfo);
+			//$this->debugPrint(__METHOD__.' nsi='.$this->debugStr($theNamespaceInfo,null));
 		}
 		
 		$v->redirect = $this->getMyUrl('edit');

@@ -18,6 +18,8 @@
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseActor;
 use BitsTheater\Scene as MyScene;
+use BitsTheater\Director;
+use BitsTheater\models\Config;
 use com\blackmoonit\Strings;
 use \ReflectionClass;
 use \BadMethodCallException;
@@ -53,24 +55,36 @@ class Actor extends BaseActor {
 	 * @var Director
 	 */
 	public $director = NULL; //session vars can be accessed like property (ie. director->some_session_var; )
-	//public $config = NULL; //config model used essentially like property (ie. config[some_key]; ) Dynamically created when accessed for 1st time.
+	/**
+	 * @var Config
+	 */
+	public $config = NULL; //config model used essentially like property (ie. config[some_key]; )
 	/**
 	 * @var MyScene
 	 */
 	public $scene = NULL; //scene ui interface used like properties (ie. scene->some_var; (which can be functions))
+	/**
+	 * @var string
+	 */
 	protected $action = NULL;
-	protected $renderThisView = NULL; // REST service actions may wish to render a single view e.g. JSONoutput.php or XMLout.php
-
-	//static public function _rest_handler() {}; //define this static function if Actor is actually a REST handler.
+	/**
+	 * '_blank' will not render anything, NULL renders the view with the same name as the action
+	 * being performed, any other value tried to render that view file.
+	 * @var string
+	 */
+	protected $renderThisView = NULL;
 	
 	public function setup(Director $aDirector, $anAction) {
 		$this->director = $aDirector;
 		$this->action = $anAction;
 		$theSceneClass = Director::getSceneClass($this->mySimpleClassName);
 		if (!class_exists($theSceneClass)) {
-			Strings::debugLog(__NAMESPACE__.': cannot find Scene class: '.$theSceneClass);
+			Strings::debugLog(__METHOD__.': cannot find Scene class: '.$theSceneClass);
 		}
 		$this->scene = new $theSceneClass($this,$anAction);
+		if ($this->director->canConnectDb() && $this->director->isInstalled()) {
+			$this->config = $this->director->getProp('Config');
+		}
 		$this->bHasBeenSetup = true;
 	}
 
@@ -96,7 +110,7 @@ class Actor extends BaseActor {
 	
 	public function renderView($anAction=null) {
 		if ($anAction=='_blank') return;
-		if (!$this->bHasBeenSetup) throw new BadMethodCallException('setup() must be called first.');
+		if (!$this->bHasBeenSetup) throw new BadMethodCallException(__CLASS__.'::setup() must be called first.');
 		if (empty($anAction))
 			$anAction = $this->action;
 		$recite =& $this->scene; $v =& $recite; //$this->scene, $recite, $v are all the same
@@ -113,15 +127,32 @@ class Actor extends BaseActor {
 	}
 	
 	/**
+	 * If param is passed in, sets the value; otherwise
+	 * returns the current value.
+	 * @param string $aViewName - if set, will store it and return $this.
+	 * @return Actor Returns the value of renderThisView if nothing is passed in,
+	 * otherwise $this is returned if a param isset().
+	 */
+	public function viewToRender($aViewName=null) {
+		if (isset($aViewName)) {
+			$this->renderThisView = $aViewName;
+			return $this; //for chaining
+		} else {
+			return $this->renderThisView;
+		}
+	}
+	
+	/**
 	 * Used for partial page renders so sections can be compartmentalized and/or reused by View designers.
 	 * @param aViewName - renders app/view/%name%.php, defaults to currently running action if name is empty.
 	 */
 	public function renderFragment($aViewName=null) {
-		if (!$this->bHasBeenSetup) throw new BadMethodCallException('setup() must be called first.');
+		if (!$this->bHasBeenSetup) throw new BadMethodCallException(__CLASS__.'::setup() must be called first.');
 		if (empty($aViewName))
 			$aViewName = $this->action;
 		$recite =& $this->scene; $v =& $recite; //$this->scene, $recite, $v are all the same
 		$myView = $recite->getViewPath($recite->actor_view_path.$aViewName);
+		//$this->debugLog(__METHOD__.' myView="'.$myView.'", args='.$this->debugStr(func_get_args()));
 		if (file_exists($myView)) {
 			ob_start();
 			include($myView);
@@ -129,27 +160,12 @@ class Actor extends BaseActor {
 		}
 	}
 	
-	public function __get($aName) {
-		//Strings::debugLog('actor->'.$aName.', is_empty='.empty($this->$aName).', canConnDb='.$this->director->canConnectDb());
-		switch ($aName) {
-			case 'config':
-				if (empty($this->$aName) && $this->director->canConnectDb() && $this->director->isInstalled()) {
-					try {
-						$theResult = $this->director->getProp('Config');
-						$this->config = $theResult;
-						return $theResult;
-					} catch (Exception $e) {
-						syslog(LOG_ERR,'load config model failed: '.$e->getMessage());
-					}
-				}
-				return null;
-			default:
-				if ($this->director->isDebugging())
-					throw new Exception('Cannot find actor->'.$aName.', check spelling.');
-				return null;
-		}
-	}
-	
+	/**
+	 * Return TRUE if the specified action can be activated via a browsers URL. Useful to
+	 * restrict actions based on AJAX calls vs. regular URL browsing.
+	 * @param string $aAction
+	 * @return boolean
+	 */
 	static public function isActionUrlAllowed($aAction) {
 		if (static::ALLOW_URL_ACTIONS) {
 			$bIsAjaxCall = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
