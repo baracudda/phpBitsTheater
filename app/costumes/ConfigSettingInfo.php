@@ -22,6 +22,7 @@ use BitsTheater\Director;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use com\blackmoonit\Arrays;
+use BitsTheater\models\Config;
 {//namespace begin
 
 /**
@@ -49,6 +50,17 @@ class ConfigSettingInfo extends BaseCostume {
 	public $dropdown_values;
 	
 	/**
+	 * Magic PHP method to limit what var_dump() shows.
+	 */
+	public function __debugInfo() {
+		$vars = parent::__debugInfo();
+		unset($vars['config_namespace_info']);
+		unset($vars['ns']);
+		unset($vars['key']);
+		return $vars;
+	}
+	
+	/**
 	 * Given namespace data and setting data, convert to this class.
 	 * @param ConfigNamespaceInfo $aNamespaceInfo - instance of namespace info.
 	 * @param string $aSettingName - the setting name (machine name, not human label).
@@ -65,15 +77,18 @@ class ConfigSettingInfo extends BaseCostume {
 				$o->desc = $aSettingInfo->desc;
 				$o->input = $aSettingInfo->input_type;
 				$o->dropdown_values = $aSettingInfo->input_enums;
+				$o->default_value = $aSettingInfo->default_value;
 			}
 			$o->config_namespace_info = $aNamespaceInfo;
 			$o->ns = $aNamespaceInfo->namespace;
 			$o->key = $aSettingName;
 			$o->config_key = $o->ns.'/'.$o->key;
+			/* @var $dbConfig Config */
 			$dbConfig = $o->getDirector()->getProp('config');
 			$o->value = $dbConfig->getMapValue($o->config_key);
-			$o->default_value = $dbConfig->getMapDefault($o->config_key);
-			
+			if (!isset($o->default_value)) {
+				$o->default_value = $dbConfig->getMapDefault($o->config_key);
+			}
 			return $o;
 		}
 	}
@@ -100,14 +115,13 @@ class ConfigSettingInfo extends BaseCostume {
 	 */
 	public function getInputWidget() {
 		$theWidgetName = $this->getWidgetName();
-		$theValue = $this->value;
+		$theValue = (isset($this->value)) ? $this->value : $this->default_value;
 		switch ($this->input) {
 			case self::INPUT_STRING:
 				return Widgets::createTextBox($theWidgetName,$theValue);
 			case self::INPUT_BOOLEAN:
 				return Widgets::createCheckBox($theWidgetName,$theValue,!empty($theValue));
 			case self::INPUT_DROPDOWN:
-				$theValue = (!isset($theValue)) ? $this->default_value : $theValue;
 				$theItemList = array();
 				foreach((array)$this->dropdown_values as $key => $valueRow) {
 					if (is_array($valueRow))
@@ -117,7 +131,7 @@ class ConfigSettingInfo extends BaseCostume {
 				}
 				return Widgets::createDropDown($theWidgetName, $theItemList, $theValue);
 			default:
-				return Widgets::createTextBox($theWidgetName,$theValue);
+				return Widgets::createTextBox($theWidgetName, $theValue);
 		}
 	}
 	

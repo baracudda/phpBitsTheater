@@ -28,6 +28,7 @@ use \PDOExeption;
 abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	const TABLE_NAME = 'map'; //excluding prefix
 	const MAPKEY_NAME = 'mapkey';
+	protected $_mapcached = array();
 	protected $_mapdata = array();
 	protected $_mapdefault = array();
 	//protected $value_select; auto-created on first use
@@ -56,6 +57,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	}
 	
 	public function cleanup() {
+		array_walk($this->_mapcached, function(&$n) {$n = null;} );
 		array_walk($this->_mapdata, function(&$n) {$n = null;} );
 		array_walk($this->_mapdefault, function(&$n) {$n = null;} );
 		parent::cleanup();
@@ -162,10 +164,11 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	}
 
 	public function getMapValue($aKey) {
-		if (empty($this->_mapdata[$aKey])) {
+		if (empty($this->_mapcached[$aKey])) {
 			$row = $this->getMapData($aKey);
-			$this->_mapdata[$aKey] = (isset($row['value']))?$row['value']:'';
-			$this->_mapdefault[$aKey] = (isset($row['val_def']))?$row['val_def']:'';
+			$this->_mapcached[$aKey] = 1;
+			$this->_mapdata[$aKey] = (isset($row['value'])) ? $row['value'] : null;
+			$this->_mapdefault[$aKey] = (isset($row['val_def'])) ? $row['val_def'] : null;
 		}
 		//Strings::debugLog('key='.$aKey.' val='.$this->_mapdata[$aKey]);
 		return $this->_mapdata[$aKey];

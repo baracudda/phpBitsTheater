@@ -26,6 +26,7 @@ use BitsTheater\costumes\EnumResEntry as BaseCostume;
 class ConfigResEntry extends BaseCostume {
 	public $input_type = null;
 	public $input_enums = null;
+	public $default_value = null;
 	
 	public function setInputType($aInputType) {
 		$this->input_type = $aInputType;
@@ -54,12 +55,16 @@ class ConfigResEntry extends BaseCostume {
 		} else if (is_array($aInput)) {
 			if (isset($aInput['type']))
 				$this->setInputType($aInput['type']);
-	
+			
+			if (isset($aInput['default']))
+				$this->default_value = $aInput['default'];
+			
 			if (isset($aInput['enums']))
 				$this->setInputEnums($aInput['enums']);
 			else if (isset($aInput['values']))
 				$this->setInputEnums($aInput['values']);
 		}
+		return $this; //for chaining
 	}
 
 }//end class

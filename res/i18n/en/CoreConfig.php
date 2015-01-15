@@ -1,6 +1,7 @@
 <?php
 namespace BitsTheater\res\en;
 use BitsTheater\res\Config as BaseResources;
+use BitsTheater\costumes\ConfigSettingInfo;
 {//begin namespace
 
 class CoreConfig extends BaseResources {
@@ -28,7 +29,7 @@ class CoreConfig extends BaseResources {
 	);
 	public $input_site = array(
 			'mode' => array(
-					'type' => 'dropdown',
+					'type' => ConfigSettingInfo::INPUT_DROPDOWN,
 					'values' => array(
 							'normal' => 'Normal',
 							'maintenance' => 'Maintenance',

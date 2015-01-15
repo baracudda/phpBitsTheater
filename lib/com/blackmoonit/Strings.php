@@ -243,9 +243,9 @@ class Strings {
 		$theVar =& $aVar;
 		$theVarType = gettype($theVar);
 		if ($theVarType==='array' && isset($theVar[self::DEBUG_VAR_DUMP_FLAG])) {
-			$output .= '[@see: |'.$theVar[self::DEBUG_VAR_DUMP_FLAG].'|]';
+			$output .= '[@see: |A-'.$theVar[self::DEBUG_VAR_DUMP_FLAG].'|]';
 		} else if ($theVarType==='object' && isset($theVar->{self::DEBUG_VAR_DUMP_FLAG})) {
-			$output .= '[@see: |'.$theVar->{self::DEBUG_VAR_DUMP_FLAG}.'|]';
+			$output .= '[@see: |O-'.$theVar->{self::DEBUG_VAR_DUMP_FLAG}.'|]';
 		} else { //we have not seen this var before
 			if (empty($aVarReference)) {
 				$aVarReference = $aVarName;
@@ -257,7 +257,7 @@ class Strings {
 					array_push($varList,$theVar);
 					$theVar[self::DEBUG_VAR_DUMP_FLAG] = ++$varCount;
 					//dump var
-					$output .= 'Array('.(count($theVar)-1).')|'.$varCount.'|['.$nl;
+					$output .= 'Array('.(count($theVar)-1).')|A-'.$varCount.'|['.$nl;
 					foreach ($theVar as $key => &$val) {
 						if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
 							$s = self::var_dump($val, $bMultilineOutput, $key, $aVarReference.'["'.$key.'"]', '=', $depth+1);
@@ -271,7 +271,7 @@ class Strings {
 					array_push($varList,$theVar);
 					$theVar->{self::DEBUG_VAR_DUMP_FLAG} = ++$varCount;
 					//dump var
-					$output .= '('.get_class($theVar).')|'.$varCount.'|{'.$nl;
+					$output .= '('.get_class($theVar).')|O-'.$varCount.'|{'.$nl;
 					if (is_callable(array($theVar,'__debugInfo'))) {
 						foreach ($theVar->__debugInfo() as $key => $val) {
 							if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
