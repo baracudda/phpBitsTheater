@@ -99,6 +99,32 @@ class Scene extends BaseScene {
 	 */
 	public $_pager_total_row_count = null;
 	
+	/**
+	 * Magic PHP method to limit what var_dump() shows.
+	 */
+	public function __debugInfo() {
+		$vars = parent::__debugInfo();
+		unset($vars['me']);
+		unset($vars['_actor']);
+		unset($vars['_director']);
+		unset($vars['_config']);
+		unset($vars['_methodList']);
+		unset($vars['_properties']);
+		unset($vars['_dbResNames']);
+		unset($vars['_pager_total_row_count']);
+		unset($vars['myIconStyle']);
+		unset($vars['is_mobile']);
+		unset($vars['view_path']);
+		unset($vars['actor_view_path']);
+		unset($vars['page_header']);
+		unset($vars['page_footer']);
+		unset($vars['page_user_msgs']);
+		unset($vars['app_header']);
+		unset($vars['app_footer']);
+		unset($vars['app_user_msgs']);
+		return $vars;
+	}
+	
 	public function __call($aName, $args) {
 		//Strings::debugLog('call:'.$aName);
 		if (isset($this->_methodList[$aName])) {
@@ -220,17 +246,49 @@ class Scene extends BaseScene {
 		$this->myIconStyle = "none";
 	}
 	
+	/**
+	 * Convert JSON data and incorporate them like POST and GET vars.
+	 * @param string $aJsonData - JSON data to incorporate.
+	 */
+	protected function setupJsonVars($aJsonData) {
+		$theData = json_decode($aJsonData,true);
+		//$this->debugLog('SETUP JSON VARS: '.$this->debugStr($theData));
+		/*
+		if (json_last_error() === JSON_ERROR_NONE) {
+			$this->debugLog('SETUP JSON VARS: no json error');
+		} else {
+			$this->debugLog('SETUP JSON VARS: yes, a json error: '.json_last_error());
+		}
+		*/
+		foreach ($theData as $key => $val) {
+			$this->$key = $val;
+		}
+	}
+	
+	/**
+	 * grab all $_GET vars and incorporate them
+	 */
 	protected function setupGetVars() {
-		//grab all _GET vars and incorporate them
 		foreach ($_GET as $key => $val) {
 			$this->$key = $val;
 		}
 	}
 	
+	/**
+	 * grab all $_POST vars and incorporate them
+	 */
 	protected function setupPostVars() {
-		//grab all _POST vars and incorporate them
-		foreach ($_POST as $key => $val) {
-			$this->$key = $val;
+		if (count($_POST)>0) {
+			foreach ($_POST as $key => $val) {
+				if ($key!=='post_as_json')
+					$this->$key = $val;
+				else
+					$this->setupJsonVars($val);
+			}
+		} else {
+			$theRawPostData = file_get_contents('php://input');
+			if (!empty($theRawPostData))
+				$this->setupJsonVars($theRawPostData);
 		}
 	}
 	
