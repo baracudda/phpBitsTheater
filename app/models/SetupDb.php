@@ -297,7 +297,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 			$theSql->startWith('INSERT INTO '.$this->tnSiteVersions);
 			$theSql->setParamPrefix(' SET ')->mustAddParam('feature_id');
 			$theSql->setParamPrefix(', ')->mustAddParam('model_class');
-			$theSql->mustAddParam('created_ts', null);
+			$theSql->mustAddParam('created_ts', 'NOW()');
 			$theSql->mustAddParam('version_seq', 1, PDO::PARAM_INT);
 			$theSql->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
 			//$this->debugLog($this->debugStr($theSql));
