@@ -80,7 +80,7 @@ class Menus extends Scene {
 			$w .= $this->renderMenuItem($theMenuKey,$theMenuItem,$aSubLevel);
 		}
 		$w .= str_repeat("\t",$aSubLevel)."</ul></div>";
-		if (!empty($this->_director->account_info['account_id']))
+		if (!$this->_director->isGuest())
 			$w = str_replace('%account_id%',$this->_director->account_info['account_id'],$w);
 		return $w;
 	}

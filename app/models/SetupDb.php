@@ -168,6 +168,8 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 		if ($aFeatureMetaData['feature_id']!==self::FEATURE_ID) {
 			//website update
 			$this->getRes('website/updateVersion/'.$theSeq);
+			//check for new features
+			$this->refreshFeatureTable($aScene);
 		} else {
 			//framework update
 			switch (true) {
@@ -237,6 +239,10 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 			$theResultSet = $theSql->getTheRow();
 			if (!empty($theResultSet) && empty($theResultSet['version_display'])) {
 				$theResultSet['version_display'] = 'v'.$theResultSet['version_seq'];
+			} else if ($aFeatureId == $this->getRes('website/getFeatureId')) {
+				$theResultSet['feature_id'] = $aFeatureId;
+				$theResultSet['model_class'] = $this->mySimpleClassName;
+				$theResultSet['version_seq'] = null;
 			}
 		} catch (PDOException $pdoe) {
 			throw new DbException($pdoe,  __METHOD__.' failed.');
@@ -378,11 +384,8 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 				$this->setupModel();
 				//$this->setupDefaultData($aDataObject);
 				$this->upgradeFeatureVersion($this->getFeature(self::FEATURE_ID), $aDataObject);
-				//update the feature table
-				$theModels = self::getAllModelClassInfo();
-				$this->callModelMethod($this->director, $theModels, 'setupFeatureVersion', $aDataObject);
-				array_walk($theModels, function(&$n) { unset($n); } );
-				unset($theModels);
+				
+				$this->refreshFeatureTable($aDataObject);
 				
 				if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'))) {
 					$aDataObject->addUserMsg($this->getRes('admin/msg_update_success'));
@@ -394,6 +397,19 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Update the features table in case there's new ones since last time it was run.
+	 * Ususally performed on framework/website update.
+	 * @param $aDataObject
+	 */
+	public function refreshFeatureTable($aDataObject) {
+		//update the feature table
+		$theModels = self::getAllModelClassInfo();
+		$this->callModelMethod($this->director, $theModels, 'setupFeatureVersion', $aDataObject);
+		array_walk($theModels, function(&$n) { unset($n); } );
+		unset($theModels);
 	}
 	
 

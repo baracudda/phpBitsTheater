@@ -16,7 +16,7 @@ foreach ($v->groups as $gid => $row) {
 $theParentGroupsJS = Strings::phpArray2jsArray($theParentGroups,'');
 $jsCode = <<<EOD
 $(document).ready(function(){
-	var rg = new RightGroups('{$v->getSiteURL('rights/ajaxUpdateGroup')}',{$theParentGroupsJS}).setup();
+	var rg = new BitsRightGroups('{$v->getSiteURL('rights/ajaxUpdateGroup')}',{$theParentGroupsJS}).setup();
 });
 
 EOD;
@@ -134,7 +134,6 @@ print($w);
 	</div><!-- /.modal -->
 
 <?php
-$v->loadScript('RightGroups.js',WEBAPP_JS_URL);
 
 print($v->createJsTagBlock($jsCode));
 print(str_repeat('<br />',8));

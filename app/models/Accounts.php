@@ -29,6 +29,10 @@ class Accounts extends BaseModel {
 		$this->tnAccounts = $this->tbl_.self::TABLE_Accounts;
 	}
 	
+	protected function getTableName() {
+		return $this->tnAccounts;
+	}
+	
 	public function setupModel() {
 		switch ($this->dbType()) {
 		case 'mysql': default:

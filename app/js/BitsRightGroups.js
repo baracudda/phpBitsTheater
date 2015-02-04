@@ -1,4 +1,4 @@
-var RightGroups = BaseClass.extend({
+var BitsRightGroups = BaseClass.extend({
 	mUrlUpdateGroup: null
 	,
 	mDialogGroup: null
@@ -26,7 +26,7 @@ var RightGroups = BaseClass.extend({
 	}
 });
 
-RightGroups.prototype.onAddGroupClick = function(e) {
+BitsRightGroups.prototype.onAddGroupClick = function(e) {
 	$('#dialog_title',this.mDialogGroup).html('Add Group');
 
 	$('#group_id',this.mDialogGroup).val('-1');
@@ -42,7 +42,7 @@ RightGroups.prototype.onAddGroupClick = function(e) {
 	this.mDialogGroup.modal('toggle');
 };
 
-RightGroups.prototype.onEditGroupClick = function(e) {
+BitsRightGroups.prototype.onEditGroupClick = function(e) {
 	$('#dialog_title',this.mDialogGroup).html('Edit Group');
 	
 	var id = e.currentTarget.getAttribute('group_id');
@@ -71,7 +71,7 @@ RightGroups.prototype.onEditGroupClick = function(e) {
 	this.mDialogGroup.modal('toggle');
 };
 
-RightGroups.prototype.onGroupSaveClick = function(e) {
+BitsRightGroups.prototype.onGroupSaveClick = function(e) {
 	var thisone = this;
 	var id = $('#group_id',this.mDialogGroup).val();
 	var gn = $('#group_name',this.mDialogGroup).val();

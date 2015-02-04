@@ -38,7 +38,7 @@ del _concat_js.txt
 :: ^ the above wont work because we need a specific order of files to make the mini-js version work correctly.
 
 copy /A webapp.js _concat_js.txt /B /Y
-copy /A _concat_js.txt+RightGroups.js _concat_js.txt /B /Y
+copy /A _concat_js.txt+BitsRightGroups.js _concat_js.txt /B /Y
 
 ::copy /A _concat_js.txt+blah1.js _concat_js.txt /B /Y
 ::copy /A _concat_js.txt+blah2.js _concat_js.txt /B /Y

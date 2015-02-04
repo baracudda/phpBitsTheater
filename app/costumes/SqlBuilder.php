@@ -251,8 +251,19 @@ class SqlBuilder extends BaseCostume {
 	 */
 	protected function addingParam($aFieldName, $aParamKey, $aParamValue, $aParamType) {
 		if (!is_array($aParamValue) || empty($aParamValue)) {
-			$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.$this->myParamOperator.':'.$aParamKey;
-			$this->setParam($aParamKey,$aParamValue,$aParamType);
+			if (!is_null($aParamValue)) {
+				$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.$this->myParamOperator.':'.$aParamKey;
+				$this->setParam($aParamKey,$aParamValue,$aParamType);
+			} else {
+				switch (trim($this->myParamOperator)) {
+					case '=':
+						$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.' IS NULL';
+						break;
+					case '<>':
+						$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.' IS NOT NULL';
+						break;
+				}//switch
+			}
 		} else {
 			$saveParamOp = $this->myParamOperator;
 			switch (trim($this->myParamOperator)) {

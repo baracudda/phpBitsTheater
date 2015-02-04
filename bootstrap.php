@@ -64,13 +64,18 @@ define('SERVER_URL',((array_key_exists('HTTPS',$_SERVER) && $_SERVER['HTTPS']=='
  * Current, site-relative URL.
  * @var string
  */
-define('REQUEST_URL',array_key_exists('url',$_GET)?$_GET['url']:'');
+define('REQUEST_URL', array_key_exists('url',$_GET)?$_GET['url']:'');
 
 /**
  * Site URL that does not end in a /.
  * @var string
  */
-define('BITS_URL',dirname($_SERVER['SCRIPT_NAME']));
+define('BITS_URL', (dirname($_SERVER['SCRIPT_NAME'])!=='.') ? str_replace(DIRECTORY_SEPARATOR,'/',dirname($_SERVER['SCRIPT_NAME'])) : '' );
+
+/**
+ * Virtual Host folder name, if exists.
+ */
+define('VIRTUAL_HOST_NAME', (strlen(BITS_URL)>0) ? explode('/', BITS_URL)[1] : '');
 
 /**
  * Resource URL that does not end in a /.
