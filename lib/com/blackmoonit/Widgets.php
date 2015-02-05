@@ -120,7 +120,7 @@ class Widgets {
 				if ($showLabels=='left')
 					$theWidget .= '<label for="'.$aWidgetName.'" class="radiolabel">'.$value.'</label>';
 				$theWidget .= "\t".'<input type="radio" name="'.$aWidgetName.'" id="'.$aWidgetName.'" class="radiobutton"';
-				$theWidget .= 'value="'.$key.'"';
+				$theWidget .= ' value="'.$key.'"';
 				if (isset($aKeySelected))
 					$theWidget .= (($aKeySelected==$key)?' checked':'');
 				$theWidget .= ' />';

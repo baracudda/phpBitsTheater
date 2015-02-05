@@ -41,6 +41,13 @@ class SqlBuilder extends BaseCostume {
 	 * @var string
 	 */
 	public $field_quotes = '`';
+	/**
+	 * Using the "=" when NULL is involved is ambiguous unless you know
+	 * if it is part of a SET clause or WHERE clause.  Explicitly set
+	 * this flag to let the SqlBuilder know it is in a WHERE clause.
+	 * @var boolean
+	 */
+	public $bUseIsNull = false;
 	
 	public $myDataSet = null;
 	public $myParamPrefix = ' ';
@@ -251,7 +258,7 @@ class SqlBuilder extends BaseCostume {
 	 */
 	protected function addingParam($aFieldName, $aParamKey, $aParamValue, $aParamType) {
 		if (!is_array($aParamValue) || empty($aParamValue)) {
-			if (!is_null($aParamValue)) {
+			if (!is_null($aParamValue) || !$this->bUseIsNull) {
 				$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.$this->myParamOperator.':'.$aParamKey;
 				$this->setParam($aParamKey,$aParamValue,$aParamType);
 			} else {
@@ -466,6 +473,23 @@ class SqlBuilder extends BaseCostume {
 			}
 			$this->add(implode(',', $theOrderByList));
 		}
+		return $this;
+	}
+	
+	/**
+	 * Some operators require alternate handling during WHERE clauses (e.g. "=" with NULLs).
+	 * This will setParamPrefix(" WHERE ") which will apply to the next addParam.
+	 */
+	public function startWhereClause() {
+		$this->bUseIsNull = true;
+		return $this->setParamPrefix(' WHERE ');
+	}
+	
+	/**
+	 * Some operators require alternate handling during WHERE clauses (e.g. "=" with NULLs).
+	 */
+	public function endWhereClause() {
+		$this->bUseIsNull = false;
 		return $this;
 	}
 	

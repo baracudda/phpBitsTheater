@@ -3,7 +3,21 @@ use BitsTheater\scenes\Rights as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
 use com\blackmoonit\Widgets;
-$recite->includeMyHeader();
+$w = '<style>';
+$w .= <<<EOM
+input[type="radio"]+label {
+	min-width: 2em;
+}
+input[type="radio"][value="deny"]:checked+label {
+	background: tomato;
+}
+input[type="radio"][value="allow"]:checked+label {
+	background: lime;
+}
+
+EOM;
+$w .= '</style>';
+$recite->includeMyHeader($w);
 $w = '';
 
 $w .= "<h1>{$v->getRes('permissions/title_group/'.$v->group['group_name'])}</h1>\n";
@@ -27,7 +41,7 @@ foreach ($v->right_groups as $ns => $nsInfo) {
 			continue;
 		//if (Auth::TYPE!='basic' && $ns=='auth' && $theRight!='modify') continue;
 		$cellLabel = '<td style="width:20em" class="db-field-label">'.$theRightInfo->label.'</td>';
-		$cellInput = '<td style="width:12em;text-align:center">'.Widgets::createRadioSet($ns.'__'.$theRight,
+		$cellInput = '<td style="width:15em;text-align:center">'.Widgets::createRadioSet($ns.'__'.$theRight,
 				$v->getShortRightValues(), $thePermissionValue,	'right',"&nbsp;&nbsp;").'</td>';
 		$cellDesc = '<td style="width:40em">'.$theRightInfo->desc.'</td>';
 	
