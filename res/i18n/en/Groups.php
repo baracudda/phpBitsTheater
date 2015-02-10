@@ -1,6 +1,6 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\en\CoreGroups as BaseResources;
+use BitsTheater\res\en\BitsGroups as BaseResources;
 {//begin namespace
 
 class Groups extends BaseResources {

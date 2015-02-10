@@ -25,7 +25,7 @@ class Website extends BaseResources {
 	 */
 	public function setup($aDirector) {
 		parent::setup($aDirector);
-
+		
 		//default page tab label is virtual host, but can be static or whatever you desire.
 		if (!empty(VIRTUAL_HOST_NAME))
 			$this->header_meta_title = VIRTUAL_HOST_NAME;
@@ -41,12 +41,7 @@ class Website extends BaseResources {
 				//'AnotherFile.js' => WEBAPP_JS_URL,
 				/* end of webapp JS */
 		));
-		
-		//NULL path means use default lib path path
-		$this->res_array_merge($this->css_load_list, array(
-				'joka.css' => BITS_RES.'/style',
-		));
-		
+
 		//$this->res_array_merge($this->list_credits_html, $this->list_credits_html_more);
 	}
 

@@ -3,7 +3,7 @@ namespace BitsTheater\res\en;
 use BitsTheater\res\Resources as BaseResources;
 {//begin namespace
 
-class CorePager extends BaseResources {
+class BitsPager extends BaseResources {
 
 	public $label_first = '|&lt; first';
 	public $label_previous = '&lt; previous';

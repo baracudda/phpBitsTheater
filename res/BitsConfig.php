@@ -3,7 +3,7 @@ namespace BitsTheater\res;
 use BitsTheater\res\Resources as BaseResources;
 {//begin namespace
 
-class CoreConfig extends BaseResources {
+class BitsConfig extends BaseResources {
 
 	public $enum_namespace = array(
 			'site',

@@ -3,7 +3,7 @@ namespace BitsTheater\res\en;
 use BitsTheater\res\Resources as BaseResources;
 {//begin namespace
 
-class CoreAccount extends BaseResources {
+class BitsAccount extends BaseResources {
 	public $menu_account_label = 'My Account';
 	public $menu_account_subtext = 'me, myself, &amp; I';
 	

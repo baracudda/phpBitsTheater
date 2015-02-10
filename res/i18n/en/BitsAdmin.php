@@ -3,7 +3,7 @@ namespace BitsTheater\res\en;
 use BitsTheater\res\Resources as BaseResources;
 {//begin namespace
 
-class CoreAdmin extends BaseResources {
+class BitsAdmin extends BaseResources {
 
 	public $menu_website_status_label = 'Website Status';
 	public $menu_website_status_subtext = '';

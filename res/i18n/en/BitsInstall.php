@@ -6,7 +6,7 @@ use com\blackmoonit\database\DbConnSettings;
 use com\blackmoonit\database\DbConnInfo;
 {//begin namespace
 
-class CoreInstall extends BaseResources {
+class BitsInstall extends BaseResources {
 	
 	public $landing_page = 'home';
 	

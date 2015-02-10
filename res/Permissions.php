@@ -16,7 +16,7 @@
  */
 
 namespace BitsTheater\res;
-use BitsTheater\res\CorePermissions as BaseResources;
+use BitsTheater\res\BitsPermissions as BaseResources;
 {//begin namespace
 
 class Permissions extends BaseResources {

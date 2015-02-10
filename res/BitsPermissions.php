@@ -19,7 +19,7 @@ namespace BitsTheater\res;
 use BitsTheater\res\Resources as BaseResource;
 {//begin namespace
 
-class CorePermissions extends BaseResource {
+class BitsPermissions extends BaseResource {
 	
 	public $enum_right_values = array('allow','disallow','deny');
 

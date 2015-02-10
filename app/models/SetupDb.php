@@ -412,7 +412,6 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 		unset($theModels);
 	}
 	
-
 }//end class
 
 }//end namespace

@@ -1,6 +1,6 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\en\CorePermissions as BaseResources;
+use BitsTheater\res\en\BitsPermissions as BaseResources;
 use BitsTheater\costumes\EnumResEntry;
 {//begin namespace
 
@@ -61,7 +61,7 @@ class Permissions extends BaseResources {
 		//parent can handle the rest once "*_namespace" is updated
 		parent::setup($aDirector);
 	}
-			
+	
 }//end class
 
 }//end namespace

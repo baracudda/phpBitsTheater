@@ -213,6 +213,8 @@ class OutputToCSV {
 				}
 				$theColValue = str_replace($this->mEnclosureLeft,$this->mReplaceEnclosureLeft,$theColValue);
 				$theColValue = str_replace($this->mEnclosureRight,$this->mReplaceEnclosureRight,$theColValue);
+				// Carriage Return and/or New Line converted to the literal '\n'
+				$theColValue = str_replace(array("\r\n", "\n", "\r"),'\n',$theColValue);
 				$this->csv .= $this->mEnclosureLeft.$theColValue.$this->mEnclosureRight.$this->mValueDelimiter;
 			}
 			$this->csv .= $this->mLineDelimiter;

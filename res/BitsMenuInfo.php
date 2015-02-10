@@ -19,7 +19,7 @@ namespace BitsTheater\res;
 use BitsTheater\costumes\MenuItemResEntry;
 {//begin namespace
 
-class CoreMenuInfo extends Resources {
+class BitsMenuInfo extends Resources {
 	//menu items
 	public $menu_item_home;
 	public $menu_item_account;

@@ -145,7 +145,7 @@ class Model extends BaseModel {
 	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too.
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
 	 * @throws DbException if there is an error.
-	 * @return number of rows affected; using params returns TRUE instead.
+	 * @return number|PDOStatement Returns the number of rows affected OR if using params, the PDOStatement.
 	 */
 	public function execDML($aSql, $aParamValues=null, $aParamTypes=null) {
 		$theRetries = 0;
@@ -159,7 +159,7 @@ class Model extends BaseModel {
 					return $thePdoStatement;
 				}
 			} catch (PDOException $pdoe) {
-				if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
+				if ($theRetries<static::MAX_RETRY_COUNT && DbUtils::isDbConnTimeout($this->db, $pdoe)) {
 					//connection timed out, reconnect and try again
 					$this->connect();
 				} else {
@@ -176,7 +176,7 @@ class Model extends BaseModel {
 	 * @param array $aParamValues - (optional) if the SQL statement is parameterized, pass in the values for them, too.
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
 	 * @throws DbException if there is an error.
-	 * @return PDOStatement on success.
+	 * @return number|PDOStatement Returns the number of rows affected OR if using params, the PDOStatement.
 	 */
 	public function query($aSql, $aParamValues=null, $aParamTypes=null) {
 		$theRetries = 0;
@@ -190,7 +190,7 @@ class Model extends BaseModel {
 					return $thePdoStatement;
 				}
 			} catch (PDOException $pdoe) {
-				if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
+				if ($theRetries<static::MAX_RETRY_COUNT && DbUtils::isDbConnTimeout($this->db, $pdoe)) {
 					//connection timed out, try to reconnect
 					$this->connect();
 				} else {
@@ -286,7 +286,7 @@ class Model extends BaseModel {
 				}
 				return; //break out of retry loop if all went well
 			} catch (PDOException $pdoe) {
-				if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
+				if ($theRetries<static::MAX_RETRY_COUNT && DbUtils::isDbConnTimeout($this->db, $pdoe)) {
 					//connection timed out, try to reconnect
 					$this->connect();
 				} else {
@@ -320,10 +320,12 @@ class Model extends BaseModel {
 					}
 					return $theResult; //break out of retry loop if all went well
 				} catch (PDOException $pdoe) {
-					if (DbUtils::isDbConnTimeout($this->db, $pdoe)) {
+					if ($theRetries<static::MAX_RETRY_COUNT && DbUtils::isDbConnTimeout($this->db, $pdoe)) {
 						//connection timed out, try to reconnect
 						$this->connect();
 					} else {
+						if ($this->db->inTransaction())
+							$this->db->rollBack ();
 						throw new DbException($pdoe);
 					}
 				}

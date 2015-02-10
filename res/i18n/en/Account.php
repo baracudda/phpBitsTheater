@@ -1,6 +1,6 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\en\CoreAccount as BaseResources;
+use BitsTheater\res\en\BitsAccount as BaseResources;
 {//begin namespace
 
 class Account extends BaseResources {

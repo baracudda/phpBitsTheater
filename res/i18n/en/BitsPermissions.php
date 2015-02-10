@@ -3,7 +3,7 @@ namespace BitsTheater\res\en;
 use BitsTheater\res\Permissions as BaseResources;
 {//begin namespace
 
-class CorePermissions extends BaseResources {
+class BitsPermissions extends BaseResources {
 	public $menu_rights_label = 'Permissions';
 	public $menu_rights_subtext = '';
 	

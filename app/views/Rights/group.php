@@ -3,8 +3,9 @@ use BitsTheater\scenes\Rights as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
 use com\blackmoonit\Widgets;
-$w = '<style>';
-$w .= <<<EOM
+$h = '';
+$h .= '<style>';
+$h .= <<<EOM
 input[type="radio"]+label {
 	min-width: 2em;
 }
@@ -16,8 +17,8 @@ input[type="radio"][value="allow"]:checked+label {
 }
 
 EOM;
-$w .= '</style>';
-$recite->includeMyHeader($w);
+$h .= '</style>';
+$recite->includeMyHeader($h);
 $w = '';
 
 $w .= "<h1>{$v->getRes('permissions/title_group/'.$v->group['group_name'])}</h1>\n";

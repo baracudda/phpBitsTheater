@@ -1,6 +1,6 @@
 <?php
 namespace BitsTheater\res;
-use BitsTheater\res\CoreConfig as BaseResources;
+use BitsTheater\res\BitsConfig as BaseResources;
 {//begin namespace
 
 class Config extends BaseResources {

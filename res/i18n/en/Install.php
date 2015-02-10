@@ -1,6 +1,6 @@
 <?php
 namespace BitsTheater\res\en;
-use BitsTheater\res\en\CoreInstall as BaseResources;
+use BitsTheater\res\en\BitsInstall as BaseResources;
 {//begin namespace
 
 class Install extends BaseResources {

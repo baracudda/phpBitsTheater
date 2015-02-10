@@ -16,7 +16,7 @@
  */
 
 namespace BitsTheater\res;
-use BitsTheater\res\CoreMenuInfo as BaseResources;
+use BitsTheater\res\BitsMenuInfo as BaseResources;
 use BitsTheater\costumes\MenuItemResEntry;
 {//begin namespace
 

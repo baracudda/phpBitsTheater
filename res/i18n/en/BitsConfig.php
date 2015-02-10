@@ -4,7 +4,7 @@ use BitsTheater\res\Config as BaseResources;
 use BitsTheater\costumes\ConfigSettingInfo;
 {//begin namespace
 
-class CoreConfig extends BaseResources {
+class BitsConfig extends BaseResources {
 	public $menu_admin_label = 'Admin';
 	public $menu_admin_subtext = 'nuts &amp; bolts';
 	public $menu_settings_label = 'Settings';
