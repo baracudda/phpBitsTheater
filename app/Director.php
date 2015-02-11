@@ -69,10 +69,23 @@ class Director extends BaseDirector implements ArrayAccess {
 		} catch (Exception $e) {
 			$this->resetSession();
 		}
+		
+		//if we are installing the website, check virtual-host-name-based session global
+		$theSessionGlobalVarName = 'VH_'.VIRTUAL_HOST_NAME.'_played';
+		//APP_ID is important since it is used for creating unique session variables
 		if ($this->isInstalled()) {
+			//website is installed, always get app_id from the Settings class.
 			$this->app_id = configs\Settings::APP_ID;
-			$this['app_id'] = $this->app_id;
+		} else if (!empty($_SESSION[$theSessionGlobalVarName])) {
+			//website is being installed, grab app_id from session global.
+			$this->app_id = $_SESSION[$theSessionGlobalVarName];
+		} else {
+			//website is initiating install, create a new app_id and place it in session global.
+			$this->app_id = Strings::createUUID();
+			$_SESSION[$theSessionGlobalVarName] = $this->app_id;
 		}
+		$this['played'] = $this->app_id; //app_id -> play_id -> "played"
+		
 		$this->bHasBeenSetup = true;
 	}
 
@@ -177,9 +190,6 @@ class Director extends BaseDirector implements ArrayAccess {
 			$theAction = (!empty($anAction)) ? $anAction : $theActorClass::DEFAULT_ACTION;
 			$methodExists = method_exists($theActorClass,$theAction) && is_callable(array($theActorClass,$theAction));
 			if ($methodExists && $theActorClass::isActionUrlAllowed($theAction)) {
-				if ($this->isInstalled()) {
-					$this['played'] = configs\Settings::APP_ID; //app_id -> play_id -> "played"
-				}
 				//$this->debugLog(__METHOD__.$theActorClass.'::'.$theAction.'('.$this->debugStr($aQuery).')');
 				$theActorClass::perform($this,$theAction,$aQuery);
 				return true;
@@ -336,7 +346,7 @@ class Director extends BaseDirector implements ArrayAccess {
 	
 	public function getRes($aResName) {
 		if (empty($this->_resManager)) {
-			if ($this->isInstalled()) {
+			if ($this->canGetRes()) {
 				//TODO create a user config for "en/US" and pass that into the constructor. (lang/region)
 				$this->_resManager = new configs\I18N();
 			} else {

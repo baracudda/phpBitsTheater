@@ -233,7 +233,7 @@ class Actor extends BaseActor {
 	}
 
 	public function getAppId() {
-		return $this->director['played'];
+		return $this->director->app_id;
 	}
 	
 	public function getHomePage() {

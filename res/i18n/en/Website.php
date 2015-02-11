@@ -27,9 +27,9 @@ class Website extends BaseResources {
 		parent::setup($aDirector);
 		
 		//default page tab label is virtual host, but can be static or whatever you desire.
-		if (!empty(VIRTUAL_HOST_NAME))
+		if (VIRTUAL_HOST_NAME)
 			$this->header_meta_title = VIRTUAL_HOST_NAME;
-
+		
 		//NULL path means use default lib path
 		$this->res_array_merge($this->js_load_list, array(
 				//minification from http://www.jsmini.com/ using Basic and no jquery included.

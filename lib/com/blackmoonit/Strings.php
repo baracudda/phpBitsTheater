@@ -242,63 +242,71 @@ class Strings {
 		}
 		$theVar =& $aVar;
 		$theVarType = gettype($theVar);
-		if ($theVarType==='array' && isset($theVar[self::DEBUG_VAR_DUMP_FLAG])) {
-			$output .= '[@see: |A-'.$theVar[self::DEBUG_VAR_DUMP_FLAG].'|]';
-		} else if ($theVarType==='object' && isset($theVar->{self::DEBUG_VAR_DUMP_FLAG})) {
-			$output .= '[@see: |O-'.$theVar->{self::DEBUG_VAR_DUMP_FLAG}.'|]';
-		} else { //we have not seen this var before
-			if (empty($aVarReference)) {
-				$aVarReference = $aVarName;
+		
+		try {
+			if (is_null($theVar)) {
+				$output .= '('.$theVarType.') NULL';
+			} else if ($theVarType==='array' && isset($theVar[self::DEBUG_VAR_DUMP_FLAG])) {
+				$output .= '[@see: |A-'.$theVar[self::DEBUG_VAR_DUMP_FLAG].'|]';
+			} else if ($theVarType==='object' && isset($theVar->{self::DEBUG_VAR_DUMP_FLAG})) {
+				$output .= '[@see: |O-'.$theVar->{self::DEBUG_VAR_DUMP_FLAG}.'|]';
+			} else { //we have not seen this var before
+				if (empty($aVarReference)) {
+					$aVarReference = $aVarName;
+				}
+				// print it out
+				switch ($theVarType) {
+					case 'array':
+						//update debug flag to preven recusion
+						array_push($varList,$theVar);
+						$theVar[self::DEBUG_VAR_DUMP_FLAG] = ++$varCount;
+						//dump var
+						$output .= 'Array('.(count($theVar)-1).')|A-'.$varCount.'|['.$nl;
+						foreach ($theVar as $key => &$val) {
+							if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
+								$s = self::var_dump($val, $bMultilineOutput, $key, $aVarReference.'["'.$key.'"]', '=', $depth+1);
+								$output .= $s.$fe;
+							}
+						}
+						$output .= $indent.']';
+						break;
+					case 'object':
+						//update debug flag to preven recusion
+						array_push($varList,$theVar);
+						$theVar->{self::DEBUG_VAR_DUMP_FLAG} = ++$varCount;
+						//dump var
+						$output .= '('.get_class($theVar).')|O-'.$varCount.'|{'.$nl;
+						if (is_callable(array($theVar,'__debugInfo'))) {
+							foreach ($theVar->__debugInfo() as $key => $val) {
+								if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
+									$s = self::var_dump($val, $bMultilineOutput, $key, $aVarReference.'->'.$key, '=>', $depth+1);
+									$output .= $s.$fe;
+								}
+							}
+						} else {
+							foreach ($theVar as $key => $val) {
+								if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
+									$s = self::var_dump($val, $bMultilineOutput, $key, $aVarReference.'->'.$key, '->', $depth+1);
+									$output .= $s.$fe;
+								}
+							}
+						}
+						$output .= $indent.'}';
+						break;
+					case 'string':
+						$output .= '"'.$theVar.'"';
+						break;
+					case 'boolean':
+						$output .= ($theVar?'true':'false');
+						break;
+					default:
+						$output .= '('.$theVarType.') '.$theVar;
+						break;
+				}//switch
 			}
-			// print it out
-			switch ($theVarType) {
-				case 'array':
-					//update debug flag to preven recusion
-					array_push($varList,$theVar);
-					$theVar[self::DEBUG_VAR_DUMP_FLAG] = ++$varCount;
-					//dump var
-					$output .= 'Array('.(count($theVar)-1).')|A-'.$varCount.'|['.$nl;
-					foreach ($theVar as $key => &$val) {
-						if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
-							$s = self::var_dump($val, $bMultilineOutput, $key, $aVarReference.'["'.$key.'"]', '=', $depth+1);
-							$output .= $s.$fe;
-						}
-					}
-					$output .= $indent.']';
-					break;
-				case 'object':
-					//update debug flag to preven recusion
-					array_push($varList,$theVar);
-					$theVar->{self::DEBUG_VAR_DUMP_FLAG} = ++$varCount;
-					//dump var
-					$output .= '('.get_class($theVar).')|O-'.$varCount.'|{'.$nl;
-					if (is_callable(array($theVar,'__debugInfo'))) {
-						foreach ($theVar->__debugInfo() as $key => $val) {
-							if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
-								$s = self::var_dump($val, $bMultilineOutput, $key, $aVarReference.'->'.$key, '=>', $depth+1);
-								$output .= $s.$fe;
-							}
-						}
-					} else {
-						foreach ($theVar as $key => $val) {
-							if ($key!==self::DEBUG_VAR_DUMP_FLAG) {
-								$s = self::var_dump($val, $bMultilineOutput, $key, $aVarReference.'->'.$key, '->', $depth+1);
-								$output .= $s.$fe;
-							}
-						}
-					}
-					$output .= $indent.'}';
-					break;
-				case 'string':
-					$output .= '"'.$theVar.'"';
-					break;
-				case 'boolean':
-					$output .= ($theVar?'true':'false');
-					break;
-				default:
-					$output .= '('.$theVarType.') '.$theVar;
-					break;
-			}//switch
+		} catch (Exception $e) {
+			$depth = 0;
+			$output .= ' ERR='.$e->getMessage();
 		}
 		if ($depth===0) {
 			foreach ($varList as $var) {
@@ -338,6 +346,18 @@ class Strings {
 			return $s;
 		}
 	}
+	
+	/**
+	 * Sets/Gets the debug prefix string in use.
+	 * @param string $aPrefix - (optional) if not null, it will set the value.
+	 * @return string Returns the currently set debug prefix (defaults to "[dbg] ").
+	 */
+	static public function debugPrefix($aPrefix=null) {
+		static $myDebugPrefix = '[dbg] ';
+		if (isset($aPrefix))
+			$myDebugPrefix = $aPrefix;
+		return $myDebugPrefix;
+	}
 
 	/**
 	 * Send the string parameter to the debug log.
@@ -347,7 +367,7 @@ class Strings {
 	 */
 	static public function debugLog($s) {
 		//syslog(LOG_DEBUG,$s);
-		syslog(LOG_ERR,'[dbg] '.$s);
+		syslog(LOG_ERR,self::debugPrefix().$s);
 	}
 
 	/**

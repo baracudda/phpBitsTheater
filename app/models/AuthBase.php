@@ -41,7 +41,7 @@ abstract class AuthBase extends Model {
 	
 	public function checkTicket() {
 		if ($this->director->isInstalled()) {
-			if ($this->director['app_id'] != Settings::APP_ID) {
+			if ($this->director->app_id != Settings::APP_ID) {
 				$this->ripTicket();
 			}
 		}

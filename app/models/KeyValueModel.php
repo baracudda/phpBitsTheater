@@ -35,6 +35,23 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	//protected $value_update; auto-created on first use
 	//protected $value_insert; auto-created on first use
 	
+	/**
+	 * Magic PHP method to limit what var_dump() shows.
+	 */
+	public function __debugInfo() {
+		$vars = parent::__debugInfo();
+		unset($vars['_mapcached']);
+		unset($vars['_mapdata']);
+		unset($vars['_mapdefault']);
+		unset($vars['sql_value_select']);
+		unset($vars['sql_value_update']);
+		unset($vars['sql_value_insert']);
+		unset($vars['value_select']);
+		unset($vars['value_update']);
+		unset($vars['value_insert']);
+		return $vars;
+	}
+	
 	protected function getTableName() {
 		return $this->tbl_.static::TABLE_NAME;
 	}

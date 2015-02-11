@@ -239,10 +239,6 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 			$theResultSet = $theSql->getTheRow();
 			if (!empty($theResultSet) && empty($theResultSet['version_display'])) {
 				$theResultSet['version_display'] = 'v'.$theResultSet['version_seq'];
-			} else if ($aFeatureId == $this->getRes('website/getFeatureId')) {
-				$theResultSet['feature_id'] = $aFeatureId;
-				$theResultSet['model_class'] = $this->mySimpleClassName;
-				$theResultSet['version_seq'] = null;
 			}
 		} catch (PDOException $pdoe) {
 			throw new DbException($pdoe,  __METHOD__.' failed.');
@@ -275,6 +271,14 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 						
 						$theResultSet[$theFeatureRow['feature_id']] = $theFeatureRow;
 					}
+					//webapp version may be missing, specifically check and add if so
+					$theWebappFeatureId = $this->getRes('website/getFeatureId');
+					if (empty($theResultSet[$theWebappFeatureId])) {
+						$theResultSet[$theWebappFeatureId]['feature_id'] = $theWebappFeatureId;
+						$theResultSet[$theWebappFeatureId]['model_class'] = $this->mySimpleClassName;
+						$theResultSet[$theWebappFeatureId]['version_seq'] = null;
+						$theResultSet[$theWebappFeatureId]['version_display_new'] = $this->getRes('website/version');
+					}
 				}
 			} catch (PDOException $pdoe) {
 				throw new DbException($pdoe,  __METHOD__.' failed.');
@@ -301,9 +305,9 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 		if ($this->isConnected()) try {
 			$theSql = SqlBuilder::withModel($this)->setDataSet($aDataObject);
 			$theSql->startWith('INSERT INTO '.$this->tnSiteVersions);
-			$theSql->setParamPrefix(' SET ')->mustAddParam('feature_id');
-			$theSql->setParamPrefix(', ')->mustAddParam('model_class');
-			$theSql->mustAddParam('created_ts', 'NOW()');
+			$theSql->add('SET created_ts=NOW()')->setParamPrefix(', ');
+			$theSql->mustAddParam('feature_id');
+			$theSql->mustAddParam('model_class');
 			$theSql->mustAddParam('version_seq', 1, PDO::PARAM_INT);
 			$theSql->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
 			//$this->debugLog($this->debugStr($theSql));

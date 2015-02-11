@@ -18,6 +18,22 @@
 namespace com\blackmoonit\database;
 {//begin namespace
 
+/**
+ * Database connection information used to connect a PDO class instance.<pre>
+ * 	const DRIVER_CUBRID	= 'cubrid';	//Cubrid
+ *	const DRIVER_DBLIB	= 'dblib';	//FreeTDS / Microsoft SQL Server / Sybase
+ *	const DRIVER_FIREBIRD	= 'firebird';	//Firebird/Interbase 6
+ *	const DRIVER_IBM	= 'ibm';	//IBM DB2
+ *	const DRIVER_INFORMIX	= 'informix';	//IBM Informix Dynamic Server
+ *	const DRIVER_MYSQL	= 'mysql';	//MySQL 3.x/4.x/5.x
+ *	const DRIVER_OCI	= 'oci';	//Oracle Call Interface
+ *	const DRIVER_ODBC	= 'odbc';	//ODBC v3 (IBM DB2, unixODBC and win32 ODBC)
+ *	const DRIVER_PGSQL	= 'pgsql';	//PostgreSQL
+ *	const DRIVER_SQLITE	= 'sqlite';	//SQLite 3 and SQLite 2
+ *	const DRIVER_SQLSRV	= 'sqlsrv';	//Microsoft SQL Server / SQL Azure
+ *	const DRIVER_4D		= '4d';		//4D
+ *	</pre>
+ */
 class DbConnSettings {
 	const DRIVER_CUBRID		= 'cubrid';		//Cubrid
 	const DRIVER_DBLIB		= 'dblib';		//FreeTDS / Microsoft SQL Server / Sybase

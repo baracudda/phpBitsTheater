@@ -98,11 +98,7 @@ class Install extends Scene {
 	public function getDbConns() {
 		$db_conns = array();
 		
-		$theDbConnInfo = new DbConnInfo();
-		$theDbConnInfo->dbConnOptions->ini_filename = 'dbconn-webapp';
-		$theDbConnInfo->dbConnOptions->table_prefix = 'webapp_';
-		$theDbConnInfo->dbConnOptions->dns_scheme = DbConnOptions::DB_CONN_SCHEME_INI;
-		$theDbConnInfo->dbConnSettings->driver = DbConnSettings::DRIVER_MYSQL;
+		$theDbConnInfo = DbConnInfo::asSchemeINI('webapp');
 		$theDbConnInfo->dbConnSettings->dbname = '';
 		$theDbConnInfo->dbConnSettings->host = '';
 		$theDbConnInfo->dbConnSettings->username = '';
@@ -111,25 +107,17 @@ class Install extends Scene {
 		return $db_conns;
 	}
 	
-	public function getFormIdPrefix(DbConnInfo $aDbConnInfo) {
-		if (!empty($aDbConnInfo) && !empty($aDbConnInfo->dbConnSettings->dbname)) {
-			return $aDbConnInfo->dbConnSettings->dbname;
-		} else {
-			return 'webapp';
-		}
-	}
-
 	public function getDnsWidgets(DbConnInfo $aDbConnInfo, $aScene) {
 		/* @var $v Install */
 		$v =& $this;
 		$theDnsScheme = $aDbConnInfo->dbConnOptions->dns_scheme;
 		if (empty($theDnsScheme))
 			return;
-		$theFormIdPrefix = $v->getFormIdPrefix($aDbConnInfo);
+		$theFormIdPrefix = $aDbConnInfo->myDbConnName;
 		$w = '';
 		switch ($theDnsScheme) {
 			case DbConnOptions::DB_CONN_SCHEME_INI:
-				$w .= '<table class="db-entry">';
+				$w .= '<table class="db-entry" id="'.$theFormIdPrefix.'">';
 
 				$w .= '<tr>';
 				$theWidgetName = $theFormIdPrefix.'_dbhost';

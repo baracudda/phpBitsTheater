@@ -56,6 +56,15 @@ class Model extends BaseModel {
 	public $myDbConnInfo = null;
 	
 	/**
+	 * Magic PHP method to limit what var_dump() shows.
+	 */
+	public function __debugInfo() {
+		$vars = parent::__debugInfo();
+		unset($vars['director']);
+		return $vars;
+	}
+	
+	/**
 	 * Setup Model for use; connect to db if not done yet.
 	 * @param Director $aDirector - site director object
 	 */

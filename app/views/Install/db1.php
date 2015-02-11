@@ -25,7 +25,7 @@ foreach($v->db_conns as $theDbConnInfo) {
 		$r .= "<br />\n";
 	}
 
-	$theFormIdPrefix = $v->getFormIdPrefix($theDbConnInfo);
+	$theFormIdPrefix = $theDbConnInfo->myDbConnName;
 	$r .= '<span class="db-field-label">'.$v->getRes('install/label_dns_table_prefix').': </span>';
 	$r .= Widgets::createTextBox($theFormIdPrefix.'_table_prefix',$theDbConnInfo->dbConnOptions->table_prefix,false,20)."<br/>\n";
 	$r .= "<br />\n";

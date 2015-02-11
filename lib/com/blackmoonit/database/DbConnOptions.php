@@ -24,6 +24,8 @@ class DbConnOptions {
 	const DB_CONN_SCHEME_URI = 'uri';		//uri to a file containing the DNS value
 	//custom scheme is none of the above
 	
+	public $myDbConnName = null;
+	
 	/**
 	 * Prefix all table names with this value when using this connection.
 	 * @var string
@@ -46,6 +48,28 @@ class DbConnOptions {
 	 */
 	public $ini_filename = null;
 
+	/**
+	 * Standard constructor takes a name and defaults some properties based on the name.
+	 * @param string $aDbConnName - the name to use.
+	 */
+	public function __construct($aDbConnName=null) {
+		$this->myDbConnName = $aDbConnName;
+		if (!empty($aDbConnName))
+			$this->table_prefix = $aDbConnName.'_';
+	}
+	
+	/**
+	 * Constructs dbconn options for an INI scheme with default values.
+	 * @param string $aDbConnName - the name to use.
+	 * @return \com\blackmoonit\database\DbConnOptions Return the newly constructed object.
+	 */
+	static public function asSchemeINI($aDbConnName) {
+		$o = new DbConnOptions($aDbConnName);
+		$o->dns_scheme = self::DB_CONN_SCHEME_INI;
+		$o->ini_filename = 'dbconn-'.$aDbConnName;
+		return $o;
+	}
+	
 	/**
 	 * Copies array values into matching property names 
 	 * based on the array keys.

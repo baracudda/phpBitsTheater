@@ -18,6 +18,7 @@
 namespace com\blackmoonit\database;
 use com\blackmoonit\database\DbConnOptions;
 use com\blackmoonit\database\DbConnSettings;
+use com\blackmoonit\Strings;
 use \InvalidArgumentException;
 use \RuntimeException;
 use \PDO;
@@ -30,6 +31,12 @@ class DbConnInfo {
 	const INI_SECTION_DB_OPTIONS = 'dbopts';
 	const INI_SECTION_DB_CONN_INFO = 'dbconn';
 	
+	/**
+	 * Used to name the object to differentiate it from other connections.
+	 * @var string
+	 */
+	public $myDbConnName;
+
 	/**
 	 * @var DbConnOptions
 	 */
@@ -45,11 +52,34 @@ class DbConnInfo {
 	public $password;
 	
 	/**
-	 * @return DbConnInfo Returns the newly constructed object.
+	 * Standard constructor takes a name and defaults some properties based on the name.
+	 * @param string $aDbConnName - the name to use (should be unique if you have more objects).
 	 */
-	public function __construct() {
-		$this->dbConnOptions = new DbConnOptions();
-		$this->dbConnSettings = new DbConnSettings();
+	public function __construct($aDbConnName=null, DbConnOptions $aDbConnOptions=null, DbConnSettings $aDbConnSettings=null) {
+		$this->myDbConnName = (!empty($aDbConnName)) ? $aDbConnName : 'id-'.Strings::createUUID();
+		if (!empty($aDbConnOptions)) {
+			$this->dbConnOptions = $aDbConnOptions;
+		} else {
+			$this->dbConnOptions = new DbConnOptions($aDbConnName);
+		}
+		if (!empty($aDbConnSettings)) {
+			$this->dbConnSettings = $aDbConnSettings;
+		} else {
+			$this->dbConnSettings = new DbConnSettings();
+		}
+	}
+
+	/**
+	 * Typical db connection information constructor which defaults some data based on the DbConnName.
+	 * @param string $aDbConnName - the name to use (should be unique if you have more objects).
+	 * @param string $aDbConnDriver - (optional) one of the DbConnSettings::DRIVER_* consts (defaults to MySQL).
+	 * @return \com\blackmoonit\database\DbConnInfo - returns the newly constructed object.
+	 * @see \com\blackmoonit\database\DbConnSettings
+	 */
+	static public function asSchemeINI($aDbConnName, $aDbConnDriver=DbConnSettings::DRIVER_MYSQL) {
+		$o = new DbConnInfo($aDbConnName, DbConnOptions::asSchemeINI($aDbConnName));
+		$o->dbConnSettings->driver = $aDbConnDriver;
+		return $o;
 	}
 	
 	/**
@@ -109,6 +139,11 @@ class DbConnInfo {
 	public function loadDbConnInfoFromIniFile($aIniFilePath) {
 		if (empty($aIniFilePath)) {
 			throw new InvalidArgumentException('Db INI filename is empty.');
+		}
+		$theFilename = basename($aIniFilePath,'.ini');
+		if (Strings::beginsWith($theFilename,'dbconn-')) {
+			$this->myDbConnName = Strings::strstr_after($theFilename,'dbconn-');
+			$this->dbConnOptions->myDbConnName = $this->myDbConnName;
 		}
 		if ($theConfig = parse_ini_file($aIniFilePath, TRUE)) {
 			$this->dbConnOptions->copyFromArray($theConfig[self::INI_SECTION_DB_OPTIONS]);

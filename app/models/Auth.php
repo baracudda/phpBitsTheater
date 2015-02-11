@@ -290,7 +290,7 @@ class Auth extends BaseModel {
 		$this->director->returnProp($dbGroups);
 		return $theResult;
 	}
-
+	
 }//end class
 
 }//end namespace

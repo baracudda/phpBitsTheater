@@ -17,7 +17,6 @@
 
 namespace BitsTheater\models;
 use BitsTheater\Model as BaseModel;
-use BitsTheater\configs\Settings;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\models\SetupDb as MetaModel;
@@ -137,7 +136,7 @@ class Groups extends BaseModel implements IFeatureVersioning {
 			$this->execDML($theSql);
 		}
 		if ($this->isEmpty($this->tnGroupRegCodes)) {
-			$theSql = "INSERT INTO {$this->tnGroupRegCodes} SET group_id=3, reg_code=".'"'.Settings::getAppId().'"';
+			$theSql = "INSERT INTO {$this->tnGroupRegCodes} SET group_id=3, reg_code=".'"'.$this->director->app_id.'"';
 			$this->execDML($theSql);
 		}
 	}

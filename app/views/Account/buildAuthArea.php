@@ -10,7 +10,7 @@ if ($recite->getDirector()->isGuest()) {
 	$w .= Widgets::createTextBox($v->getUsernameKey(),$v->getUsername(),false,10,255)." ";
 	$w .= Widgets::createPassBox($v->getPwInputKey(),$v->getPwInput(),false,10,255)."<br />\n";
 	$w .= '<a href="'.$v->action_url_register.'">Register</a>'."&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\n";
-	$w .= $v->getRes('account/label_save_cookie').' '.Widgets::createCheckBox($v->getUseCookieKey(),true)."\n";
+	$w .= $v->getRes('account/label_save_cookie').' '.Widgets::createCheckBox($v->getUseCookieKey(),false)."\n";
 	if (empty($v->redirect)) {
 		/*
 		if (!empty($_SERVER['HTTP_REFERER'])) {
