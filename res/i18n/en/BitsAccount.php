@@ -38,6 +38,7 @@ class BitsAccount extends BaseResources {
 	public $msg_pw_nomatch = 'passwords do not match';
 	public $msg_acctexists = '%1$s already exists. Please use a different one.';
 	public $msg_update_success = 'Successfully updated the account.';
+	public $msg_reg_too_fast = 'In an effort to thwart spam bots, please wait a few seconds before submitting.';
 	
 	public function setup($aDirector) {
 		parent::setup($aDirector);

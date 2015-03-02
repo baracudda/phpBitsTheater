@@ -65,7 +65,9 @@ $w .= '</td>'."\n";
 
 //login info
 $w .= '<td class="auth-area">'."\n";
-$w .= $recite->cueActor('Account','buildAuthArea');
+if ($v->form_name!=='register_user') {
+	$w .= $recite->cueActor('Account','buildAuthArea');
+}
 $w .= '</td>'."\n";
 
 $w .= '</tr>'."\n";

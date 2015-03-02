@@ -24,12 +24,12 @@ use BitsTheater\models\Permissions;
 	/* @var $dbRights Permissions */
 use BitsTheater\models\Auth;
 	/* @var $dbAuth Auth */
-use BitsTheater\models\AuthGroups as ModelAuthGroups;
-	/* @var $dbAuthGroups ModelAuthGroups */
+use BitsTheater\models\AuthGroups as AuthGroups;
+	/* @var $dbAuthGroups AuthGroups */
 use com\blackmoonit\Strings;
 {//namespace begin
 
-class AuthGroups extends BaseActor {
+class BitsGroups extends BaseActor {
 	const DEFAULT_ACTION = 'groups';
 	
 	public function groups() {

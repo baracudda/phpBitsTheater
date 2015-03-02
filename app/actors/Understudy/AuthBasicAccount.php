@@ -84,43 +84,75 @@ class AuthBasicAccount extends BaseActor {
 		}
 	}
 	
-	public function register($aTask='data-entry') {
+	protected function processRegistrationForm() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		//make sure user/pw reg fields will not interfere with any login user/pw field in header
-		$userKey = $this->scene->getUsernameKey().'_reg';
-		$pwKey = $this->scene->getPwInputKey().'_reg';
-		if ($aTask==='new' && !empty($theRegCode) && $this->scene->$pwKey===$this->scene->password_confirm) {
+		$userKey = $v->getUsernameKey().'_reg';
+		$pwKey = $v->getPwInputKey().'_reg';
+		$bPwOk = ($v->$pwKey===$v->password_confirm);
+		$bRegCodeOk = (!empty($v->reg_code));
+		$bPostKeyOk = ($this->director['post_key']===$v->post_key);
+		$bPostKeyOldEnough = ($this->director['post_key_ts'] < time());
+		if ($bPostKeyOk && $bPwOk && $bRegCodeOk && $bPostKeyOldEnough) {
 			$dbAuth = $this->getProp('Auth');
-			$theRegResult = $this->registerNewAccount($this->scene->$userKey, $this->scene->$pwKey, 
-					$this->scene->email, $this->scene->reg_code);
+			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey, $v->email, $v->reg_code);
+			$this->debugLog('new account registered for '.$v->$userKey.' code='.$theRegResult. ' redirect='.$v->redirect);
 			if (isset($theRegResult)) {
 				if ($theRegResult===$dbAuth::REGISTRATION_EMAIL_TAKEN) {
 					$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email')),$v::USER_MSG_ERROR);
-					return $this->getMyUrl('register');
 				} else if ($theRegResult===$dbAuth::REGISTRATION_NAME_TAKEN) {
 					$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_name')),$v::USER_MSG_ERROR);
-					return $this->getMyUrl('register');
+				} else {
+					if (!empty($v->redirect)) {
+						//registration succeeded, save the account id in session cache
+						$theAuthRow = $dbAuth->getAuthByEmail($v->email);
+						$this->director[$v->getUsernameKey()] = $theAuthRow['account_id'];
+						//if the above session cache is not set, the redirect will probably fail (since they are not logged in)
+						return $v->redirect;
+					} else {
+						return $this->getHomePage();
+					}
 				}
-			} else {
-				return $this->getMyUrl('register');
 			}
 		} else {
-			//$this->scene->err_msg = $_SERVER['QUERY_STRING'];
-			//$this->scene->err_msg = array_key_exists('err_msg',$_GET)?$_GET['err_msg']:null;
-			$this->scene->form_name = 'register_user';
-			$this->scene->action_url_register = $this->getMyUrl('register/new');
-			$this->scene->post_key = $this->getAppId();
-			$dbAccounts = $this->getProp('Accounts');
-			if ($dbAccounts->isEmpty()) {
-				$this->scene->redirect = $this->getMyUrl('/rights');
-				$this->scene->reg_code = $this->getAppId();
-			} else {
-				$this->scene->redirect = $this->getHomePage();
+			$this->debugLog('registration failed for '.$v->$userKey.' regok='.($bRegCodeOk?'yes':'no'). ' postkeyok='.($bPostKeyOk?'yes':'no'));
+			if ($bPostKeyOk && !$bPostKeyOldEnough) {
+				$v->addUserMsg($this->getRes('account/msg_reg_too_fast'));
 			}
 		}
-		//indicate what top menu we are currently in
-		$this->setCurrentMenuKey('account');
+		return $this->getMyUrl('register');
+	}
+	
+	public function register($aTask='data-entry') {
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		if ($aTask==='new') {
+			return $this->processRegistrationForm();
+		} else {
+			//indicate what top menu we are currently in
+			$this->setCurrentMenuKey('account');
+			
+			//make sure user/pw reg fields will not interfere with any login user/pw field in header
+			$userKey = $v->getUsernameKey().'_reg';
+			$pwKey = $v->getPwInputKey().'_reg';
+			
+			//post_key needed to actually register (prevent mass bot-fueled registries)
+			$this->director['post_key'] = Strings::createUUID();
+			$this->director['post_key_ts'] = time()+10; //you can only register 10 seconds after the page loads
+			$v->post_key = $this->director['post_key'];
+			
+			$v->form_name = 'register_user'; //used to prevent login area from displaying
+			
+			$v->action_url_register = $this->getMyUrl('register/new');
+			$dbAccounts = $this->getProp('Accounts');
+			if ($dbAccounts->isEmpty()) {
+				$v->redirect = $this->getMyUrl('/rights');
+				$v->reg_code = $this->getAppId();
+			} else {
+				$v->redirect = $this->getHomePage();
+			}
+		}
 	}
 	
 	public function modify() {
@@ -230,4 +262,3 @@ class AuthBasicAccount extends BaseActor {
 }//end class
 
 }//end namespace
-
