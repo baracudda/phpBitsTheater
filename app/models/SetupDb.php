@@ -235,7 +235,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
-	 * @param string $aFeature - the feature name
+	 * @param string $aFeatureId - the feature ID
 	 * @param string $aFieldList - (optional) which fields to return, default is all of them.
 	 * @return array Returns the feature row as an array.
 	 */
@@ -255,6 +255,19 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 		return $theResultSet;
 	}
 	
+	/**
+	 * A feature listed in the table did not map to any model class in the website, remove it.
+	 * Most likely, the feature changed its feature id and/or model class name.
+	 * @param string $aFeatureId - the feature ID.
+	 */
+	protected function removeFeature($aFeatureId) {
+		if ($this->isConnected()) try {
+			$this->execDML('DELETE FROM '.$this->tnSiteVersions.' WHERE feature_id=:feature_id',
+					array('feature_id' => $aFeatureId));
+		} catch (PDOException $pdoe) {
+			throw new DbException($pdoe,  __METHOD__.' failed.');
+		}
+	}
 	
 	/**
 	 * @param string $aFieldList - which fields to return, default is all of them.
@@ -272,8 +285,10 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 					$theFeatures = $ps->fetchAll();
 					foreach($theFeatures as &$theFeatureRow) {
 						$dbModel = $this->getProp($theFeatureRow['model_class']);
-						if (empty($dbModel))
+						if (empty($dbModel)) {
+							$this->removeFeature($theFeatureRow['feature_id']);
 							continue;
+						}
 						$theNewFeatureData = $dbModel->getCurrentFeatureVersion($theFeatureRow['feature_id']);
 						if (empty($theNewFeatureData['version_display'])) {
 							$theNewFeatureData['version_display'] = 'v'.$theNewFeatureData['version_seq'];
