@@ -7,6 +7,7 @@ class Website extends BaseResources {
 	//public $feature_id = 'my namespace: website';
 	public $version_seq = 1;	//build number, inc'ing by 10 in dev, 1 in hot-fixes
 	public $version = '1.0.0';	//displayed version text
+	public $api_version_seq = 1;    //api version number, inc if Actor methods change to force other apps to update
 	
 	//public $header_meta_title = 'mywebsite tab label';
 	//public $header_title = 'My Web Site';
@@ -25,10 +26,6 @@ class Website extends BaseResources {
 	 */
 	public function setup($aDirector) {
 		parent::setup($aDirector);
-		
-		//default page tab label is virtual host, but can be static or whatever you desire.
-		if (VIRTUAL_HOST_NAME)
-			$this->header_meta_title = VIRTUAL_HOST_NAME;
 		
 		//NULL path means use default lib path
 		$this->res_array_merge($this->js_load_list, array(
@@ -55,7 +52,9 @@ class Website extends BaseResources {
 		try {
 			//nothing to do, yet
 		} catch (Exception $e) {
-			$this->debugLog($e->getMessage());
+			//throw expection if your update code fails (logging it would be a good idea, too).
+			$this->debugLog(__METHOD__.' '.$e->getMessage());
+			throw $e;
 		}
 	}
 

@@ -96,10 +96,14 @@ class Actor extends BaseActor {
 		parent::cleanup();
 	}
 	
+	static public function getDefaultAction($anAction=null) {
+		return (!empty($anAction)) ? $anAction : static::DEFAULT_ACTION;
+	}
+	
 	static public function perform(Director $aDirector, $anAction, array $aQuery=array()) {
 		$myClass = get_called_class();
 		$theActor = new $myClass($aDirector,$anAction);
-		$aDirector->admitAudience(); //even guests may get to see some pages, ignore function result
+		$aDirector->admitAudience($theActor->scene); //even guests may get to see some pages, ignore function result
 		$theResult = call_user_func_array(array($theActor,$anAction),$aQuery);
 		if (!empty($theResult))
 			header('Location: '.$theResult);
@@ -248,7 +252,7 @@ class Actor extends BaseActor {
 	}
 	
 	public function getMyAccountID() {
-		return $this->director->account_info['account_id'];
+		return $this->director->account_info->account_id;
 	}
 	
 	/**

@@ -15,14 +15,15 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\models; 
-use BitsTheater\Model;
-use BitsTheater\configs\Settings;
+namespace BitsTheater\models\PropCloset; 
+use BitsTheater\Model as BaseModel;
 {//namespace begin
 
-abstract class AuthBase extends Model {
+abstract class AuthBase extends BaseModel {
 	const TYPE = 'abstract'; //decendants must override this
-	const ALLOW_REGISTRATION = false; //only 1 type allows it
+	const ALLOW_REGISTRATION = false; //only 1 type allows it, so far
+	const KEY_userinfo = 'ticketholder'; //var name in checkTicket($aScene) for username
+	const KEY_pwinput = 'pwinput'; //var name in checkTicket($aScene) for pw
 	protected $permissions = null;
 	
 	public function cleanup() {
@@ -39,9 +40,9 @@ abstract class AuthBase extends Model {
 		return static::ALLOW_REGISTRATION;
 	}
 	
-	public function checkTicket() {
+	public function checkTicket($aScene) {
 		if ($this->director->isInstalled()) {
-			if ($this->director->app_id != Settings::APP_ID) {
+			if ($this->director->app_id != \BitsTheater\configs\Settings::getAppId()) {
 				$this->ripTicket();
 			}
 		}

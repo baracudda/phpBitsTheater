@@ -24,9 +24,34 @@ use BitsTheater\costumes\EnumResEntry as BaseCostume;
  * Helper class for Resource-based config work.
  */
 class ConfigResEntry extends BaseCostume {
+	protected $configNamespace = null;
+	protected $is_editable = true; //false prevents its display on website config page
 	public $input_type = null;
 	public $input_enums = null;
 	public $default_value = null;
+	
+	public function __construct($aConfigNamespace=null, $aConfigSetting=null, $aLabel=null, $aDesc=null) {
+		parent::__construct($aConfigSetting, $aLabel, $aDesc);
+		$this->config_namespace($aConfigNamespace);
+	}
+	
+	public function config_namespace($aConfigNamespace=null) {
+		if (!empty($aConfigNamespace))
+			$this->configNamespace = $aConfigNamespace;
+		return $this->configNamespace;
+	}
+	
+	public function config_setting($aConfigSetting=null) {
+		if (!empty($aConfigSetting))
+			$this->value = $aConfigSetting;
+		return $this->value;
+	}
+	
+	public function config_is_allowed($bIsAllowed=null) {
+		if (isset($bIsAllowed))
+			$this->is_editable = $bIsAllowed;
+		return $this->is_editable;
+	}
 	
 	public function setInputType($aInputType) {
 		$this->input_type = $aInputType;
@@ -58,6 +83,9 @@ class ConfigResEntry extends BaseCostume {
 			
 			if (isset($aInput['default']))
 				$this->default_value = $aInput['default'];
+			
+			if (isset($aInput['is_editable']))
+				$this->config_is_allowed(!empty($aInput['is_editable']));
 			
 			if (isset($aInput['enums']))
 				$this->setInputEnums($aInput['enums']);

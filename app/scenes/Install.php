@@ -95,18 +95,6 @@ class Install extends Scene {
 		return array_combine($theList,$theList);
 	}
 	
-	public function getDbConns() {
-		$db_conns = array();
-		
-		$theDbConnInfo = DbConnInfo::asSchemeINI('webapp');
-		$theDbConnInfo->dbConnSettings->dbname = '';
-		$theDbConnInfo->dbConnSettings->host = '';
-		$theDbConnInfo->dbConnSettings->username = '';
-		$db_conns[] = $theDbConnInfo;
-		
-		return $db_conns;
-	}
-	
 	public function getDnsWidgets(DbConnInfo $aDbConnInfo, $aScene) {
 		/* @var $v Install */
 		$v =& $this;

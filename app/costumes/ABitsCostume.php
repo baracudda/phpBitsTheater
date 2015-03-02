@@ -133,9 +133,7 @@ abstract class ABitsCostume extends BaseCostume {
 	 * @return ABitsCostume Returns the new instance.
 	 */
 	static public function fromJson(Director $aDirector, &$asJson) {
-		//Strings::debugLog('joka json: '.Strings::debugStr($asJson));
 		$o = self::fromArray($aDirector, json_decode($asJson,true));
-		//Strings::debugLog('joka cls: '.Strings::debugStr($o));
 		return $o;
 	}
 	

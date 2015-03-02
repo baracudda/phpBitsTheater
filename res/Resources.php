@@ -244,7 +244,7 @@ class Resources extends BaseResources {
 		if (isset($this->{$eprop})) {
 			$this->{$theProp} = array();
 			foreach ($this->{$eprop} as $theEnumValue) {
-				$res = new ConfigResEntry($theEnumValue);
+				$res = new ConfigResEntry($aConfigEnumName, $theEnumValue);
 				
 				if (isset($this->{$lprop}[$theEnumValue]))
 					$res->label = $this->{$lprop}[$theEnumValue];

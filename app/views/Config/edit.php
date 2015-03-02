@@ -27,11 +27,11 @@ foreach ($v->config_areas as $theNamespaceInfo) {
 	/* @var $theSettingInfo ConfigSettingInfo */
 	foreach ($theNamespaceInfo->settings_list as $theSettingName => $theSettingInfo) {
 		$theWidgetName = $theSettingInfo->getWidgetName();
-		$cellLabel = '<td class="db-field-label"><label for="'.$theWidgetName.'" >'.$theSettingInfo->label.'</label></td>';
+		$cellLabel = '<td class="db-field-label"><label for="'.$theWidgetName.'" >'.$theSettingInfo->getLabel().'</label></td>';
 		$cellInput = '<td class="db-field">';
 		$cellInput .= $theSettingInfo->getInputWidget();
 		$cellInput .= '</td>';
-		$cellDesc = '<td class="">'.$theSettingInfo->desc.'</td>';
+		$cellDesc = '<td class="">'.$theSettingInfo->getDescription().'</td>';
 
 		$w .= '  <tr class="'.$v->_rowClass.' '.$theNamespaceInfo->namespace.'-'.$theSettingName.'">'.$cellLabel.$cellInput.$cellDesc."</tr>\n";
 	}//end foreach

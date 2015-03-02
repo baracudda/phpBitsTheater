@@ -1,11 +1,28 @@
 <?php
+/*
+ * Copyright (C) 2015 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace BitsTheater\res;
 use BitsTheater\res\Resources as BaseResources;
 {//begin namespace
 
 class Website extends BaseResources {
-	public $version_seq = 1;		//build number, inc if db models need updating, override this in descendant
+	public $version_seq = 2;		//build number, inc if db models need updating, override this in descendant
 	public $version = 'CHANGE ME';	//displayed version text, override this in descendant
+	public $api_version_seq = 0;    //api version number, inc if Actor methods change to force other apps to update
 	
 	public $css_load_list;		//defined in setup()
 	public $js_libs_load_list;	//defined in setup()
@@ -38,6 +55,10 @@ class Website extends BaseResources {
 	 */
 	public function setup($aDirector) {
 		parent::setup($aDirector);
+		
+		//default page tab label is virtual host, but can be static or whatever you desire.
+		if (VIRTUAL_HOST_NAME)
+			$this->header_meta_title = VIRTUAL_HOST_NAME;
 		
 		//NULL path means use default lib path path
 		$this->css_load_list = array(
@@ -91,8 +112,10 @@ class Website extends BaseResources {
 		switch(true) {
 			case ($aSeqNum<=1):
 				return '2.4.9';
-			case ($aSeqNum>=2):
-				return '3.0.'.($aSeqNum-2);
+			case ($aSeqNum==2):
+				return '3.0.0';
+			case ($aSeqNum>=3):
+				return '3.1.'.($aSeqNum-3);
 		}//switch
 	}
 	
@@ -103,7 +126,18 @@ class Website extends BaseResources {
 	 * @throws Exception on failure.
 	 */
 	public function updateVersion($aSeqNum) {
-		//throw expection if your update code fails.
+		//NO NEED TO CALL PARENT! (this class)
+		try {
+			switch (true) {
+			//cases should always be lo->hi, never use break; so all changes are done in order.
+			case ($theSeq<2):
+				//do your stuff here
+			}//end switch
+		} catch (Exception $e) {
+			//throw expection if your update code fails (logging it would be a good idea, too).
+			$this->debugLog(__METHOD__.' '.$e->getMessage());
+			throw $e;
+		}
 	}
 	
 }//end class

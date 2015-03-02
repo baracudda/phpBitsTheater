@@ -16,7 +16,7 @@
  */
 
 namespace BitsTheater\costumes;
-use \stdClass as BaseCostume;
+use BitsTheater\costumes\ASimpleCostume as BaseCostume;
 {//namespace begin
 
 /**

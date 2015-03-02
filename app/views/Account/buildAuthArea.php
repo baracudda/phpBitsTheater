@@ -27,6 +27,6 @@ if ($recite->getDirector()->isGuest()) {
 	$form_html = Widgets::createForm($v->action_url_login,$w,$v->redirect);
 	print($form_html);
 } else {
-	print($recite->getDirector()->account_info['account_name'].' (<a href="'.$v->action_url_logout.'">'.
+	print($recite->getDirector()->account_info->account_name.' (<a href="'.$v->action_url_logout.'">'.
 			$recite->getRes('account/label_logout').'</a>) ');
 }

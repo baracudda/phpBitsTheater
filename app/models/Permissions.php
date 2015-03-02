@@ -17,13 +17,14 @@
 
 namespace BitsTheater\models;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\costumes\SqlBuilder;
+use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\models\Auth;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
 use \PDO;
 use \PDOStatement;
-use BitsTheater\models\Auth;
-	/* @var $dbAuth Auth */
 {//namespace begin
 
 class Permissions extends BaseModel {
@@ -37,85 +38,62 @@ class Permissions extends BaseModel {
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
 		$this->tnPermissions = $this->tbl_.self::TABLE_Permissions;
-		$this->sql_get_namespace = "SELECT * FROM {$this->tnPermissions} WHERE namespace = :ns AND value = :value";
-		$this->sql_del_group = "DELETE FROM {$this->tnPermissions} WHERE group_id = :group_id";
-		$this->sql_add_right = "INSERT INTO {$this->tnPermissions} (namespace, permission, group_id, value) VALUES (:ns,:perm,:group_id,:value)";
-	}
-	
-	protected function getTableName() {
-		return $this->tnPermissions;
-	}
-	
-	public function setupModel() {
-		$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnPermissions} ".
-				"( namespace CHAR(40) NULL".
-				", permission CHAR(40) NOT NULL".
-				", group_id INT NOT NULL".
-				", value CHAR(1) CHARACTER SET ascii COLLATE ascii_bin NOT NULL".
-				", PRIMARY KEY (namespace, permission, group_id)".
-				", KEY IdxValuePermissions (namespace, value)".
-				", UNIQUE KEY IdxGroupPermissions (group_id, namespace, permission)".
-				") CHARACTER SET utf8 COLLATE utf8_general_ci";
-		$this->execDML($theSql);
-	}
-	
-	public function isEmpty($aTableName=null) {
-		if ($aTableName==null)
-			$aTableName = $this->tnPermissions;
-		return parent::isEmpty($aTableName);
 	}
 	
 	/**
-	 * @deprecated
+	 * Future db schema updates may need to create a temp table of one
+	 * of the table definitions in order to update the contained data,
+	 * putting schema here and supplying a way to provide a different name
+	 * allows this process.
+	 * @param string $aTABLEconst - one of the defined table name consts.
+	 * @param string $aTableNameToUse - (optional) alternate name to use.
 	 */
-	public function isAllowed_OLD($aNamespace, $aPermission, $acctInfo=null) {
-		if (empty($this->_permCache[$aNamespace])) {
-			$this->_permCache[$aNamespace]['allow'] = array();
-			$this->_permCache[$aNamespace]['deny'] = array();
+	protected function getTableDefSql($aTABLEconst, $aTableNameToUse=null) {
+		switch($aTABLEconst) {
+		case self::TABLE_Permissions:
+			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnPermissions;
+			switch ($this->dbType()) {
+			case self::DB_TYPE_MYSQL: default:
+				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
+						"( namespace CHAR(40) NULL".
+						", permission CHAR(40) NOT NULL".
+						", group_id INT NOT NULL".
+						", value CHAR(1) CHARACTER SET ascii COLLATE ascii_bin NOT NULL".
+						", PRIMARY KEY (namespace, permission, group_id)".
+						", KEY IdxValuePermissions (namespace, value)".
+						", UNIQUE KEY IdxGroupPermissions (group_id, namespace, permission)".
+						") CHARACTER SET utf8 COLLATE utf8_general_ci";
+			}//switch dbType
+		}//switch TABLE const
+	}
+	
+	/**
+	 * Called during website installation to create whatever the models needs.
+	 * Check the database to be sure anything needs to be done and do not assume
+	 * a blank database as updates/reinstalls against recovered databases may
+	 * occur as well.
+	 * @throws DbException
+	 */
+	public function setupModel() {
+		switch ($this->dbType()) {
+		case self::DB_TYPE_MYSQL: default:
 			try {
-				$r = $this->query($this->sql_get_namespace,array('ns'=>$aNamespace,'value'=>self::VALUE_Allow));
-				while ($row = $r->fetch()) {
-					if (empty($this->_permCache[$aNamespace]['allow'][$row['permission']]))
-						$this->_permCache[$aNamespace]['allow'][$row['permission']] = array();
-					$this->_permCache[$aNamespace]['allow'][$row['permission']][] = $row['group_id'];
-				}
-				$r->closeCursor();
-				$this->bindValues($r,array('ns'=>$aNamespace,'value'=>self::VALUE_Deny));
-				$r->execute();
-				while ($row = $r->fetch()) {
-					if (empty($this->_permCache[$aNamespace]['deny'][$row['permission']]))
-						$this->_permCache[$aNamespace]['deny'][$row['permission']] = array();
-					$this->_permCache[$aNamespace]['deny'][$row['permission']][] = $row['group_id'];
-				}
-				$r->closeCursor();
-			} catch (DbException $dbe) {
-				//use default empty arrays which will mean all permissions will be not allowed
+				$theSql = $this->getTableDefSql(self::TABLE_Permissions);
+				$this->execDML($theSql);
+				$this->debugLog('Create table (if not exist) "'.$this->tnPermissions.'" succeeded.');
+			} catch (PDOException $pdoe){
+				throw new DbException($pdoe,$theSql);
 			}
+			break;
 		}
-		if (empty($acctInfo)) {
-			$acctInfo =& $this->director->account_info;
-		}
-		if (empty($acctInfo)) {
-			return false; //if still no account, nothing to check against, return false.
-		}
-		//Strings::debugLog('acctinfo:'.Strings::debugStr($acctInfo));
-		//Strings::debugLog('perms:'.Strings::debugStr($this->_permCache));
-		if (!empty($acctInfo['groups']) && !(array_search(1,$acctInfo['groups'],true)===false)) {
-			return true; //group 1 is always allowed everything
-		}
-		//check deny first
-		if (!empty($this->_permCache[$aNamespace]['deny'][$aPermission])) {
-			if (count(array_intersect($this->_permCache[$aNamespace]['deny'][$aPermission],$acctInfo['groups']))>0)
-				return false;
-		}
-		//check allow next
-		//Strings::debugLog($aNamespace.'/'.$aPermission.'&allow:'.Strings::debugStr(array_intersect($this->_permCache[$aNamespace]['allow'][$aPermission],$acctInfo['groups'])));
-		if (!empty($this->_permCache[$aNamespace]['allow'][$aPermission])) {
-			if (count(array_intersect($this->_permCache[$aNamespace]['allow'][$aPermission],$acctInfo['groups']))>0)
-				return true;
-		}
-		//if neither denied, nor allowed, then it is not allowed
-		return false;
+	}
+	
+	protected function exists($aTableName=null) {
+		return parent::exists( empty($aTableName) ? $this->tnPermissions : $aTableName );
+	}
+	
+	public function isEmpty($aTableName=null) {
+		return parent::isEmpty( empty($aTableName) ? $this->tnPermissions : $aTableName );
 	}
 	
 	/**
@@ -130,19 +108,18 @@ class Permissions extends BaseModel {
 			$acctInfo =& $this->director->account_info;
 		}
 		if (empty($acctInfo)) {
-			$acctInfo['account_id'] = 0;
-			$acctInfo['groups'] = array(0); //if still no account, use group_id = 0.
+			$acctInfo = new AccountInfoCache();
 		}
 		//Strings::debugLog('acctinfo:'.Strings::debugStr($acctInfo));
-		if (!empty($acctInfo['groups']) && (array_search(1,$acctInfo['groups'],true)!==false)) {
+		if (!empty($acctInfo->groups) && (array_search(1,$acctInfo->groups,true)!==false)) {
 			return true; //group 1 is always allowed everything
 		}
 		//cache the current users permissions
-		if (empty($this->_permCache[$acctInfo['account_id']])) {
+		if (empty($this->_permCache[$acctInfo->account_id])) {
 			try {
-				$this->_permCache[$acctInfo['account_id']] = array();
-				foreach ($acctInfo['groups'] as $theGroupId) {
-					$this->_permCache[$acctInfo['account_id']][$theGroupId] = $this->getAssignedRights($theGroupId);
+				$this->_permCache[$acctInfo->account_id] = array();
+				foreach ($acctInfo->groups as $theGroupId) {
+					$this->_permCache[$acctInfo->account_id][$theGroupId] = $this->getAssignedRights($theGroupId);
 				}
 			} catch (DbException $dbe) {
 				//use default empty arrays which will mean all permissions will be not allowed
@@ -151,7 +128,7 @@ class Permissions extends BaseModel {
 		//Strings::debugLog('perms:'.Strings::debugStr($this->_permCache));
 
 		//if any group allows the permission, then we allow it.
-		foreach ($this->_permCache[$acctInfo['account_id']] as $theGroupId => $theAssignedRights) {
+		foreach ($this->_permCache[$acctInfo->account_id] as $theGroupId => $theAssignedRights) {
 			$theResult = 'disallow';
 			if (!empty($theAssignedRights[$aNamespace]) && !empty($theAssignedRights[$aNamespace][$aPermission]))
 				$theResult = $theAssignedRights[$aNamespace][$aPermission];
@@ -170,12 +147,12 @@ class Permissions extends BaseModel {
 	 * @return PDOStatement Returns the executed query statement.
 	 */
 	protected function getGroupRightsCursor($aGroupId) {
-		$theParams = array();
-		$theParamTypes = array();
-		$theSql = "SELECT * FROM {$this->tnPermissions} WHERE group_id = :group_id";
-		$theParams['group_id'] = $aGroupId;
-		$theParamTypes['group_id'] = PDO::PARAM_INT;
-		return $this->query($theSql,$theParams,$theParamTypes);
+		$theSql = SqlBuilder::withModel($this)->setDataSet(array(
+				'group_id' => $aGroupId,
+		));
+		$theSql->startWith('SELECT * FROM')->add($this->tnPermissions);
+		$theSql->startWhereClause()->mustAddParam('group_id', 0, PDO::PARAM_INT)->endWhereClause();
+		return $theSql->query();
 	}
 	
 	/**
@@ -205,6 +182,7 @@ class Permissions extends BaseModel {
 		$theGroupId = $aGroupId+0;
 		//check rights for group passed in, and then all its parents
 		$theMergeList = array($theGroupId => -1);
+		/* @var $dbAuth Auth */
 		$dbAuth = $this->getProp('Auth');
 		$theGroupList = Arrays::array_column_as_key($dbAuth->getGroupList(),'group_id');
 		while ($theGroupId>=0 && !empty($theGroupList[$theGroupId]) && !empty($theGroupList[$theGroupId]['parent_group_id'])) {
@@ -223,22 +201,38 @@ class Permissions extends BaseModel {
 		return $theAssignedRights;
 	}
 	
+	/**
+	 * Modify the saved permissions for a particular group.
+	 * @param Scene $aScene
+	 */
 	public function modifyGroupRights($aScene) {
-		$theGroupId = $aScene->group_id;
-		$this->execDML($this->sql_del_group,array('group_id'=>$theGroupId));
-		$right_groups = $aScene->getPermissionRes('namespace');
-		foreach ($right_groups as $ns => $nsInfo) {
+		//remove existing permissions
+		$theSql = SqlBuilder::withModel($this)->setDataSet($aScene);
+		$theSql->startWith('DELETE FROM')->add($this->tnPermissions);
+		$theSql->startWhereClause()->mustAddParam('group_id')->endWhereClause();
+		$theSql->execDML();
+		
+		//add new permissions
+		$theRightsList = array();
+		$theRightGroups = $aScene->getPermissionRes('namespace');
+		foreach ($theRightGroups as $ns => $nsInfo) {
 			foreach ($aScene->getPermissionRes($ns) as $theRight => $theRightInfo) {
 				$varName = $ns.'__'.$theRight;
 				$theAssignment = $aScene->$varName;
 				//Strings::debugLog($varName.'='.$theAssignment);
 				if ($theAssignment=='allow') {
-					$this->query($this->sql_add_right,array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$theGroupId, 'value'=>self::VALUE_Allow));
+					array_push($theRightsList, array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$aScene->group_id, 'value'=>self::VALUE_Allow) );
 				} elseif ($theAssignment=='deny') {
-					$this->query($this->sql_add_right,array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$theGroupId, 'value'=>self::VALUE_Deny));
+					array_push($theRightsList, array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$aScene->group_id, 'value'=>self::VALUE_Deny) );
 				}
 			}//end foreach
 		}//end foreach
+		if (!empty($theRightsList)) {
+			$theSql = SqlBuilder::withModel($this)->setDataSet($aScene);
+			$theSql->startWith('INSERT INTO')->add($this->tnPermissions);
+			$theSql->add('(namespace, permission, group_id, value) VALUES (:ns, :perm, :group_id, :value)');
+			$theSql->execMultiDML($theRightsList);
+		}
 	}
 
 }//end class

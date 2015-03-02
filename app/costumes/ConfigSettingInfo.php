@@ -18,6 +18,7 @@
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\costumes\ConfigNamespaceInfo;
+use BitsTheater\costumes\ConfigResEntry;
 use BitsTheater\Director;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
@@ -41,13 +42,12 @@ class ConfigSettingInfo extends BaseCostume {
 	public $ns;
 	public $key;
 	public $value;
-	public $default_value;
 	
-	//from config res arrays
-	public $label;
-	public $desc;
-	public $input;
-	public $dropdown_values;
+	/**
+	 * The Config resource entry. 
+	 * @var ConfigResEntry
+	 */
+	public $mSettingInfo = null;
 	
 	/**
 	 * Magic PHP method to limit what var_dump() shows.
@@ -69,36 +69,50 @@ class ConfigSettingInfo extends BaseCostume {
 	 */
 	static public function fromConfigRes(ConfigNamespaceInfo $aNamespaceInfo, $aSettingName, $aSettingInfo) {
 		if ($aNamespaceInfo!=null) {
-			if (is_array($aSettingInfo))
-				$o = static::fromArray($aNamespaceInfo->getDirector(),$aSettingInfo);
-			else {
-				$o = new ConfigSettingInfo($aNamespaceInfo->getDirector());
-				$o->label = $aSettingInfo->label;
-				$o->desc = $aSettingInfo->desc;
-				$o->input = $aSettingInfo->input_type;
-				$o->dropdown_values = $aSettingInfo->input_enums;
-				$o->default_value = $aSettingInfo->default_value;
+			$o = new ConfigSettingInfo($aNamespaceInfo->getDirector());
+			if ($aSettingInfo instanceof ConfigResEntry) {
+				$o->mSettingInfo = $aSettingInfo;
+			} else {
+				$o->mSettingInfo = new ConfigResEntry($aNamespaceInfo->namespace, $aSettingName);
+				$o->mSettingInfo->setDataFrom($aSettingInfo);
 			}
+			
 			$o->config_namespace_info = $aNamespaceInfo;
 			$o->ns = $aNamespaceInfo->namespace;
 			$o->key = $aSettingName;
 			$o->config_key = $o->ns.'/'.$o->key;
-			/* @var $dbConfig Config */
-			$dbConfig = $o->getDirector()->getProp('config');
-			$o->value = $dbConfig->getMapValue($o->config_key);
-			if (!isset($o->default_value)) {
-				$o->default_value = $dbConfig->getMapDefault($o->config_key);
-			}
 			return $o;
 		}
 	}
-
+	
+	public function getLabel() {
+		return $this->mSettingInfo->label;
+	}
+	
+	public function getDescription() {
+		return $this->mSettingInfo->desc;
+	}
+	
+	public function getCurrentValue() {
+		if ($this->getDirector()->isInstalled()) {
+			/* @var $dbConfig Config */
+			$dbConfig = $this->getDirector()->getProp('config');
+			$this->value = $dbConfig->getMapValue($this->config_key);
+			if (!isset($this->mSettingInfo->default_value)) {
+				//preserve whatever default is now in the config table (admin set it, so honor it)
+				$this->mSettingInfo->default_value = $dbConfig->getMapDefault($this->config_key);
+			}
+			$this->getDirector()->returnProp($dbConfig);
+		}
+		return (isset($this->value)) ? $this->value : $this->mSettingInfo->default_value;
+	}
+	
 	/**
-	 * See if this setting is restricted somehow (future use, no restrictions yet).
+	 * See if this setting is restricted.
 	 * @return boolean
 	 */
 	public function isAllowed() {
-		return true;
+		return $this->mSettingInfo->config_is_allowed();
 	}
 	
 	/**
@@ -115,15 +129,15 @@ class ConfigSettingInfo extends BaseCostume {
 	 */
 	public function getInputWidget() {
 		$theWidgetName = $this->getWidgetName();
-		$theValue = (isset($this->value)) ? $this->value : $this->default_value;
-		switch ($this->input) {
+		$theValue = $this->getCurrentValue();
+		switch ($this->mSettingInfo->input_type) {
 			case self::INPUT_STRING:
 				return Widgets::createTextBox($theWidgetName,$theValue);
 			case self::INPUT_BOOLEAN:
 				return Widgets::createCheckBox($theWidgetName,$theValue,!empty($theValue));
 			case self::INPUT_DROPDOWN:
 				$theItemList = array();
-				foreach((array)$this->dropdown_values as $key => $valueRow) {
+				foreach($this->mSettingInfo->input_enums as $key => $valueRow) {
 					if (is_array($valueRow))
 						$theItemList[$key] = $valueRow['label'];
 					else
@@ -143,18 +157,18 @@ class ConfigSettingInfo extends BaseCostume {
 	 */
 	public function getInputValue($aScene) {
 		$theWidgetName = $this->getWidgetName();
-		switch ($this->input) {
+		switch ($this->mSettingInfo->input_type) {
 			case self::INPUT_STRING:
 				return $aScene->$theWidgetName;
 			case self::INPUT_BOOLEAN:
 				return (!empty($aScene->$theWidgetName)) ? 1 : 0;
 			case self::INPUT_DROPDOWN:
-				$theValueList = array_keys($this->dropdown_values);
+				$theValueList = array_keys($this->mSettingInfo->input_enums);
 				//$aScene->addUserMsg($this->debugStr($theValueList));
 				if (in_array($aScene->$theWidgetName,$theValueList)) {
 					return $aScene->$theWidgetName;
 				} else {
-					return $this->default_value;
+					return $this->getCurrentValue();
 				}
 			default:
 				return $aScene->$theWidgetName;

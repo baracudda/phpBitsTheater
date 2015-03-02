@@ -17,16 +17,17 @@
 
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseScene;
+use BitsTheater\Director;
+use BitsTheater\Actor;
+use BitsTheater\Model;
+use BitsTheater\models\Config;
+use BitsTheater\models\PropCloset\AuthBase;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use \Exception;
 use \ReflectionClass;
 use \ReflectionMethod;
-use BitsTheater\Director;
-use BitsTheater\Actor;
-use BitsTheater\Model;
-use BitsTheater\models\Config;
 {//begin namespace
 
 /**
@@ -628,27 +629,38 @@ class Scene extends BaseScene {
 	 * If not logged in, check for "Basic HTTP Auth" header/POST var and attempt to log in with that user/pw info.
 	 */
 	public function checkForBasicHttpAuth() {
-		$d = $this->getDirector();
-		if (!$d->isGuest())
-			return;
-		//authenticate
-		if (empty($_SERVER['PHP_AUTH_USER']) && empty($_SERVER['PHP_AUTH_PW'])) {
-			$theAuthKey = (!empty($_SERVER['HTTP_AUTHORIZATION'])) ? $_SERVER['HTTP_AUTHORIZATION'] : $this->HTTP_AUTHORIZATION;
-			if (!empty($theAuthKey))
-				list($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']) = explode(':', base64_decode(substr($theAuthKey,6)));
-		}
-		if (!empty($_SERVER['PHP_AUTH_USER']) && !empty($_SERVER['PHP_AUTH_PW'])) {
-			$theUserName = $_SERVER['PHP_AUTH_USER'];
-			$theUserPw = $_SERVER['PHP_AUTH_PW'];
-
-			$dbAuth = $d->getProp('Auth');
-			$dbAuth->checkTicket($theUserName, $theUserPw);
-			/* if using basic http auth, no need for cookies
-			if (isset($d->account_info)) {
-				$dbAuth->updateCookie($d[$dbAuth::KEY_userinfo]);
+		$theDirector = $this->getDirector();
+		if ($theDirector->isGuest()) {
+			//authenticate
+			if (empty($_SERVER['PHP_AUTH_USER']) && empty($_SERVER['PHP_AUTH_PW'])) {
+				$theAuthKey = (!empty($_SERVER['HTTP_AUTHORIZATION'])) ? $_SERVER['HTTP_AUTHORIZATION'] : $this->HTTP_AUTHORIZATION;
+				if (!empty($theAuthKey)) {
+					list($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']) = explode(':', base64_decode(substr($theAuthKey,6)));
+					unset($_SERVER['HTTP_AUTHORIZATION']);
+				}
 			}
-			*/
+			if (!empty($_SERVER['PHP_AUTH_USER']) && !empty($_SERVER['PHP_AUTH_PW'])) {
+				$this->{AuthBase::KEY_userinfo} = $_SERVER['PHP_AUTH_USER'];
+				$this->{AuthBase::KEY_pwinput} = $_SERVER['PHP_AUTH_PW'];
+				$theDirector->getProp('Auth')->checkTicket($this);
+			}
+			unset($_SERVER['PHP_AUTH_PW']);
 		}
+	}
+
+	/**
+	 * Immediately kills script processing and page rendering. 
+	 * Sends back the standard Basic HTTP auth failure headers along
+	 * with the 'auth/msg_basic_auth_fail' localized string resource
+	 * as the die() message if nothing is passed in.
+	 * @param string $aDieMsg - the die() string paramater to use.
+	 */
+	public function dieAsBasicHttpAuthFailure($aDieMsg=null) {
+		if (!isset($aDieMsg))
+			$aDieMsg = $this->getRes('auth/msg_basic_auth_fail');
+		header('WWW-Authenticate: Basic realm="'.$this->getRes('website/header_meta_title').'"');
+		header('HTTP/1.0 401 Unauthorized');
+		die($aDieMsg);
 	}
 	
 	public function getPagerTotalRowCount() {

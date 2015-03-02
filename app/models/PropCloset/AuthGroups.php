@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\models;
+namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\SqlBuilder;
@@ -27,7 +27,12 @@ use \PDO;
 use \PDOException;
 {//begin namespace
 
-class Groups extends BaseModel implements IFeatureVersioning {
+/**
+ * Groups were made its own model so that you could have a 
+ * auth setup where groups and group memebership were 
+ * defined by another entity (BBS auth or WordPress or whatever).
+ */
+class AuthGroups extends BaseModel implements IFeatureVersioning {
 	/**
 	 * Used by meta data mechanism to keep the database up-to-date with the code.
 	 * A non-NULL string value here means alter-db-schema needs to be managed.
@@ -48,9 +53,10 @@ class Groups extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
-	 * In case future db schema updates need to create a temp of one
-	 * of the tables, putting the schemas here and supplying a way to
-	 * provide a different name allows this process.
+	 * Future db schema updates may need to create a temp table of one
+	 * of the table definitions in order to update the contained data,
+	 * putting schema here and supplying a way to provide a different name
+	 * allows this process.
 	 * @param string $aTABLEconst - one of the defined table name consts.
 	 * @param string $aTableNameToUse - (optional) alternate name to use.
 	 */
@@ -100,13 +106,13 @@ class Groups extends BaseModel implements IFeatureVersioning {
 		try {
 			$theSql = $this->getTableDefSql(self::TABLE_Groups);
 			$this->execDML($theSql);
-			$this->debugLog(__METHOD__.'.'.self::TABLE_Groups.' now exists.');
+			$this->debugLog('Create table (if not exist) "'.$this->tnGroups.'" succeeded.');
 			$theSql = $this->getTableDefSql(self::TABLE_GroupMap);
 			$this->execDML($theSql);
-			$this->debugLog(__METHOD__.'.'.self::TABLE_GroupMap.' now exists.');
+			$this->debugLog('Create table (if not exist) "'.$this->tnGroupMap.'" succeeded.');
 			$theSql = $this->getTableDefSql(self::TABLE_GroupRegCodes);
 			$this->execDML($theSql);
-			$this->debugLog(__METHOD__.'.'.self::TABLE_GroupRegCodes.' now exists.');
+			$this->debugLog('Create table (if not exist) "'.$this->tnGroupRegCodes.'" succeeded.');
 		} catch (PDOException $pdoe) {
 			throw new DbException($pdoe,$theSql);
 		}
@@ -119,7 +125,7 @@ class Groups extends BaseModel implements IFeatureVersioning {
 	 */
 	public function setupDefaultData($aScene) {
 		if ($this->isEmpty()) {
-			$group_names = $aScene->getRes('groups/group_names');
+			$group_names = $aScene->getRes('AuthGroups/group_names');
 			$default_data = array(
 					array('group_id'=>1, 'group_name'=>$group_names[1],),
 					array('group_id'=>2, 'group_name'=>$group_names[2],),
@@ -148,9 +154,9 @@ class Groups extends BaseModel implements IFeatureVersioning {
 	 */
 	public function getCurrentFeatureVersion($aFeatureId=null) {
 		return array(
-				'feature_id' => self::FEATURE_ID,
+				'feature_id' => static::FEATURE_ID,
 				'model_class' => $this->mySimpleClassName,
-				'version_seq' => self::FEATURE_VERSION_SEQ,
+				'version_seq' => static::FEATURE_VERSION_SEQ,
 		);
 	}
 	
@@ -162,7 +168,7 @@ class Groups extends BaseModel implements IFeatureVersioning {
 	public function setupFeatureVersion($aScene) {
 		/* @var $dbMeta MetaModel */
 		$dbMeta = $this->getProp('SetupDb');
-		$theFeatureData = $dbMeta->getFeature(self::FEATURE_ID);
+		$theFeatureData = $dbMeta->getFeature(static::FEATURE_ID);
 		if (empty($theFeatureData)) {
 			$theFeatureData = $this->getCurrentFeatureVersion();
 			//reverse check features so we do not end up with super-nested IF statements

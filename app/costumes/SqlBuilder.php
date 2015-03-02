@@ -94,6 +94,16 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
+	 * Sets the dataset to be used by addParam methods. Alias for setDataSet().
+	 * @param array or StdClass $aDataSet - array or class used to get param data.
+	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
+	 */
+	public function obtainParamsFrom($aDataSet) {
+		$this->myDataSet = $aDataSet;
+		return $this;
+	}
+	
+	/**
 	 * Mainly used internally to get param data.
 	 * @param string $aDataKey - array key or property name used to retrieve
 	 * data set by the setDataSet() method.

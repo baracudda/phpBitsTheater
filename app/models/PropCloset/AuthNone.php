@@ -15,18 +15,22 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\res;
-{//begin namespace
+namespace BitsTheater\models\PropCloset;
+use BitsTheater\models\PropCloset\AuthBase as BaseModel;
+{//namespace begin
 
-class MenuInfo extends MenuInfoBase {
-	
-	public function setup($aDirector) {
-		parent::setup($aDirector);
-		//strings that require concatination need to be defined during setup()
-		
-		//app menu defined here so that updates to main program will not affect derived menus
+class AuthNone extends BaseModel {
+	const TYPE = 'None';  //skip all authentication methods
+	const ALLOW_REGISTRATION = false;
+
+	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
+		return true;
 	}
-		
+	
+	public function getGroupList() {
+		return array();
+	}
+
 }//end class
 
 }//end namespace

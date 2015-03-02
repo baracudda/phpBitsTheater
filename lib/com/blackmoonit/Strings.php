@@ -245,7 +245,7 @@ class Strings {
 		
 		try {
 			if (is_null($theVar)) {
-				$output .= '('.$theVarType.') NULL';
+				$output .= (($theVarType!=='NULL') ? '('.$theVarType.') ' : '').'NULL';
 			} else if ($theVarType==='array' && isset($theVar[self::DEBUG_VAR_DUMP_FLAG])) {
 				$output .= '[@see: |A-'.$theVar[self::DEBUG_VAR_DUMP_FLAG].'|]';
 			} else if ($theVarType==='object' && isset($theVar->{self::DEBUG_VAR_DUMP_FLAG})) {
