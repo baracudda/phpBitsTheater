@@ -17,17 +17,30 @@
 
 namespace BitsTheater\scenes; 
 use BitsTheater\Scene;
-use BitsTheater\models\Auth;
+use \ReflectionClass;
 {//namespace begin
 
 class Account extends Scene {
+	protected $KEY_userinfo = '';
+	protected $KEY_pwinput = '';
+	protected $KEY_cookie = '';
 
 	protected function setupDefaults() {
 		parent::setupDefaults();
+		$dbAuth = $this->getProp('Auth');
+		$theMetaAuth = new ReflectionClass($dbAuth);
+		if ($theMetaAuth->hasConstant('KEY_userinfo'))
+			$this->KEY_userinfo = $theMetaAuth->getConstant('KEY_userinfo');
+		if ($theMetaAuth->hasConstant('KEY_pwinput'))
+			$this->KEY_pwinput = $theMetaAuth->getConstant('KEY_pwinput');
+		if ($theMetaAuth->hasConstant('KEY_cookie'))
+			$this->KEY_cookie = $theMetaAuth->getConstant('KEY_cookie');
+		$theMetaAuth = null;
+		$this->returnProp($dbAuth);
 	}
 	
 	public function getUsernameKey() {
-		return Auth::KEY_userinfo;
+		return $this->KEY_userinfo;
 	}
 	
 	public function getUsername() {
@@ -36,7 +49,7 @@ class Account extends Scene {
 	}
 	
 	public function getPwInputKey() {
-		return Auth::KEY_pwinput;
+		return $this->KEY_pwinput;
 	}
 	
 	public function getPwInput() {
@@ -45,7 +58,7 @@ class Account extends Scene {
 	}
 	
 	public function getUseCookieKey() {
-		return Auth::KEY_cookie;
+		return $this->KEY_cookie;
 	}
 	
 	public function getUseCookie() {

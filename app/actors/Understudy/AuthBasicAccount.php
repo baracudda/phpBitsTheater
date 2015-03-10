@@ -211,9 +211,14 @@ class AuthBasicAccount extends BaseActor {
 		//$this->debugLog('regargs='.$v->name.', '.$v->salt.', '.$v->email.', '.$v->code);
 		$theRegResult = $this->registerNewAccount($v->name, $v->salt, $v->email, $v->code, false);
 		if ($theRegResult===$dbAuth::REGISTRATION_SUCCESS) {
-			$theUserToken = $dbAuth->registerMobileFingerprints($dbAuth->getAuthByEmail($v->email), $v->fingerprints);
-			$v->results = array('code' => $theRegResult, 'user_token' => $theUserToken);
-			$this->debugLog($v->name.' successfully registered an account via mobile: '.$theUserToken);
+			$theMobileRow = $dbAuth->registerMobileFingerprints($dbAuth->getAuthByEmail($v->email), 
+					$v->fingerprints, $v->circumstances);
+			$v->results = array(
+					'code' => $theRegResult,
+					'auth_id' => $theMobileRow['auth_id'],
+					'user_token' => $theMobileRow['account_token'],
+			);
+			$this->debugLog($v->name.' successfully registered an account via mobile: '.$theMobileRow['account_token']);
 		} else {
 			if (!isset($theRegResult))
 				$theRegResult = $dbAuth::REGISTRATION_UNKNOWN_ERROR;
@@ -233,12 +238,13 @@ class AuthBasicAccount extends BaseActor {
 		$v =& $this->scene;
 		$this->renderThisView = 'results_as_json';
 		if (empty($aPing)) {
+			$dbAuth = $this->getProp('Auth');
 			if (!$this->isGuest()) {
 				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
-						$this->director->account_info, $v->fingerprints);
+						$this->director->account_info, $v->fingerprints, $v->circumstances);
 			} else {
 				$v->results = $dbAuth->requestMobileAuthAutomatedByTokens(
-						$v->account_name, $v->user_token, $v->fingerprints);
+						$v->auth_id, $v->user_token, $v->fingerprints, $v->circumstances);
 			}
 			if (empty($v->results)) {
 				$this->director->logout();

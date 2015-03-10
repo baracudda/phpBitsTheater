@@ -281,17 +281,17 @@ class Scene extends BaseScene {
 	 * grab all $_POST vars and incorporate them
 	 */
 	protected function setupPostVars() {
-		if (count($_POST)>0) {
-			foreach ($_POST as $key => $val) {
-				if ($key!=='post_as_json')
-					$this->$key = $val;
-				else
-					$this->setupJsonVars($val);
-			}
+		//$this->debugLog(__METHOD__.' server='.$this->debugStr($_SERVER));
+		//Retro-fit REST library client seen sending: CONTENT_TYPE = "application/json; charset=UTF-8"
+		if (!empty($_SERVER['CONTENT_TYPE']) && Strings::beginsWith($_SERVER['CONTENT_TYPE'], 'application/json')) {
+			$this->setupJsonVars(file_get_contents('php://input'));
 		} else {
-			$theRawPostData = file_get_contents('php://input');
-			if (!empty($theRawPostData))
-				$this->setupJsonVars($theRawPostData);
+			//multipart/form-data or application/x-www-form-urlencoded will usually get auto-converted to $_POST[].
+			foreach ($_POST as $key => $val) {
+				$this->$key = $val;
+			}
+			if (!empty($_POST['post_as_json']))
+				$this->setupJsonVars($_POST['post_as_json']);
 		}
 	}
 	
@@ -629,6 +629,8 @@ class Scene extends BaseScene {
 	 * If not logged in, check for "Basic HTTP Auth" header/POST var and attempt to log in with that user/pw info.
 	 */
 	public function checkForBasicHttpAuth() {
+		return;
+		/* handled inside checkTicket() now
 		$theDirector = $this->getDirector();
 		if ($theDirector->isGuest()) {
 			//authenticate
@@ -646,6 +648,7 @@ class Scene extends BaseScene {
 			}
 			unset($_SERVER['PHP_AUTH_PW']);
 		}
+		*/
 	}
 
 	/**

@@ -163,7 +163,7 @@ class Arrays {
 	 * @see StackOverflow.com http://stackoverflow.com/a/21858025
 	 * @see OutputToCSV.
 	 */
-	function array_to_csv_string(array &$aInput, $aHeaderRow=null, $aStream=null, $aDelimiter=',', $aCallbacks) {
+	static public function array_to_csv_string(array &$aInput, $aHeaderRow=null, $aStream=null, $aDelimiter=',', $aCallbacks) {
 		if (empty($aInput))
 			return false;
 		// using concatenation since it is faster than fputcsv, and file size is smaller
@@ -196,6 +196,83 @@ class Arrays {
 		} else {
 			return $csv;
 		}
+	}
+	
+	/**
+	 * Convert an indexed array of 'key="value"' pairs of values into 
+	 * an associative array where key => value.
+	 * @param array $aPairs - numerically indexed array.
+	 * @param string $aDelimiter - (optional) key=value delimiter (defaults to '=').
+	 * @param string $aEnclosure - (optional) value may be enclosed (defaults to '"'),
+	 * set as NULL to keep the encloser intact.
+	 */
+	static public function cnvKeyValuePairsToAssociativeArray($aPairs, $aDelimiter='=', $aEnclosure='"') {
+		$theResult = array();
+		if (!empty($aPairs)) {
+			foreach ($aPairs as $theKeyValPair) {
+				list($theKey, $theValue) = Strings::strToKeyValue($theKeyValPair);
+				$theResult[$theKey] = Strings::stripEnclosure($theValue, $aEnclosure);
+			}
+		}
+		return $theResult;
+	}
+	
+	/**
+	 * Parsing a CSV file into a two-dimensional array seems as simple as
+	 * splitting a string by lines and commas, but this only works if tricks
+	 * are performed to ensure that you do NOT split on lines and commas that
+	 * are inside of double quotes.
+	 * @param string $aCsvString - the csv string to parse.
+	 * @param string $aDelimiter - (optional) delimiter string, defaults to ','.
+	 * @param string $aEnclosure - (optional) enclosure string, defaults to '"'.
+	 * @return array Returns a two-dimensional array split on LF and $aDelimiter.
+	 * @see http://php.net/manual/en/function.str-getcsv.php#113220
+	 */
+	static public function parse_csv_to_array($aCsvString, $aDelimiter=',', $aEnclosure='"') {
+		//Strings::debugLog(__METHOD__.' str='.Strings::debugStr($aCsvString));
+		if (empty($aCsvString))
+			return array();
+		
+		//anything inside the quotes that might be used to split the string into lines and fields later,
+		//  needs to be quoted. The only character we can guarantee as safe to use, because it will never 
+		//  appear in the unquoted text, is a CR. So we're going to use CR as a marker to make 
+		//  escape sequences for CR, LF, Quotes, and Commas.
+		$theTokens = array(
+				'to_replace' => array("\r","\n",$aEnclosure,$aDelimiter),
+				'replace_with' => array("\rR", "\rN", "\rE", "\rD"),
+				'delimiter' => $aDelimiter,
+				'enclosure' => $aEnclosure,
+		);
+
+		//match all the non-quoted text and one series of quoted text (or the end of the string)
+		//each group of matches will be parsed with the callback, with $matches[1] containing all the non-quoted text,
+		//and $matches[3] containing everything inside the quotes
+		$theCsvRegex = '/([^'.$aEnclosure.']*)('.$aEnclosure.'(('.$aEnclosure.''.$aEnclosure.'|[^'.$aEnclosure.'])*)'.$aEnclosure.'|$)/s';
+		//Strings::debugLog(__METHOD__.' regex='.Strings::debugStr($theCsvRegex));
+
+		$theCsvToParse = preg_replace_callback($theCsvRegex, function($aMatches) use ($theTokens) {
+				if (!empty($aMatches) && !empty($aMatches[0])) {
+					//Strings::debugLog(__METHOD__.' matches='.Strings::debugStr($aMatches));
+					//The unquoted text is where commas and newlines are allowed, and where the splits will happen
+					//  We're going to remove all CRs from the unquoted text, by normalizing all line endings to just LF
+					//  This ensures us that the only place CR is used, is inside quoted text as escape sequences.
+					$theResult = preg_replace('/\r\n?/', "\n", $aMatches[1]);
+					if (!empty($aMatches[3]))
+						$theResult .= str_replace($theTokens['to_replace'], $theTokens['replace_with'], $aMatches[3]);
+					return $theResult;
+				}
+		}, $aCsvString);
+				
+		//remove the very last newline to prevent a 0-field array for the last line
+		$theCsvToParse = preg_replace('/\n$/', '', $theCsvToParse);
+	
+		//split on LF and parse each line with a callback
+		return array_map(function($aCsvLine) use ($theTokens) {
+				return array_map(function($aCsvField) use ($theTokens) {
+						//restore any "csv-special" characters that are part of the data
+						return str_replace($theTokens['replace_with'], $theTokens['to_replace'], $aCsvField);
+				}, explode($theTokens['delimiter'], $aCsvLine));
+		}, explode("\n", $theCsvToParse));
 	}
 
 }//end class

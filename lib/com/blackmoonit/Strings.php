@@ -136,7 +136,7 @@ class Strings {
 	static public function randomSalt($aLen=16) {
 		$salt = str_repeat('.',$aLen);
 		for ($i = 0; $i<$aLen; $i++) {
-			$salt{$i} = substr("./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,63), 1);
+			$salt{$i} = substr(".-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,63), 1);
 		}
 		return $salt;
 	}
@@ -470,8 +470,41 @@ class Strings {
 	static public function wordWrap($aStr, $aWidth=75, $aWrapper="\n") {
 		return preg_replace('#(\S{'.$aWidth.',})#e', "chunk_split('$1', ".$aWidth.", '".$aWrapper."')", $aStr);
 	}
-	
-	
+
+	/**
+	 * Similar to trim, but only works on the outer most layer.
+	 * @param string $aStr - string to strip off a single enclosure layer.
+	 * @param string $aEnclosureA - (optional) the starting enclosure, defaults to '"'.
+	 * @param string $aEnclosureB - (optional) the ending enclosure, defaults to $aEnclosureA.
+	 * @return string Returns the string stripped of the enclosure, if there was one.
+	 */
+	static public function stripEnclosure($aStr, $aEnclosureA='"', $aEnclosureB=null) {
+		$theResult = $aStr;
+		if (empty($aEnclosureB))
+			$aEnclosureB = $aEnclosureA;
+		if (!empty($aEnclosureA) && !empty($aEnclosureB) &&
+				self::beginsWith($aStr, $aEnclosureA) && self::endsWith($aStr, $aEnclosureB)) {
+			$theResult = substr($aStr, 1, -1);
+		}
+		return $theResult;
+	}
+
+	/**
+	 * Convert a 'key=value' string into array(key, value).
+	 * @param string $aStr - the string to parse.
+	 * @param string $aDelimiter - (optional) key=value separator, defaults to '='.
+	 * @return array Returns array(key, value) or array() if none found.
+	 */
+	static public function strToKeyValue($aStr, $aDelimiter='=') {
+		$theResult = array();
+		$thePos = strpos($aStr, $aDelimiter);
+		if (is_int($thePos)) {
+			$theResult[0] = substr($aStr, 0, $thePos);
+			$theResult[1] = substr($aStr, $thePos+strlen($aDelimiter));
+		}
+		return $theResult;
+	}
+
 }//end class
 
 }//end namespace

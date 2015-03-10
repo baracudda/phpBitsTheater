@@ -8,31 +8,46 @@ use com\blackmoonit\Strings;
 
 class Account extends BaseActor {
 	
+	protected function cnvFingerprints2KeyedArray($aFingerprints) {
+		if (!empty($aFingerprints)) {
+			return array(
+					'device_id' => $aFingerprints[0],
+					'app_version' => $aFingerprints[1],
+					'device_memory' => (is_numeric($aFingerprints[2]) ? $aFingerprints[2] : null),
+					'locale' => $aFingerprints[3],
+					'app_signature' => $aFingerprints[4],
+			);
+		} else return array();
+	}
+
+	protected function cnvCircumstances2KeyedArray($aCircumstances) {
+		if (!empty($aCircumstances)) {
+			return array(
+					'now_ts' => $aCircumstances[0],
+					'latitude' => (is_numeric($aCircumstances[1]) ? $aCircumstances[1] : null),
+					'longitude' => (is_numeric($aCircumstances[2]) ? $aCircumstances[2] : null),
+					'device_name' => $aCircumstances[3],
+			);
+		} else return array();
+	}
+	
 	public function registerViaMobile() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
-		
-		if (!empty($v->fingerprints)) {
-			$theNewPrints = array(
-					'device_id' => $v->fingerprints[0],
-					'device_name' => $v->fingerprints[1],
-					'app_version_name' => $v->fingerprints[2],
-					'latitude' => (is_numeric($v->fingerprints[3]) ? $v->fingerprints[3] : null),
-					'longitude' => (is_numeric($v->fingerprints[4]) ? $v->fingerprints[4] : null),
-					'device_memory' => (is_numeric($v->fingerprints[5]) ? $v->fingerprints[5] : null),
-					'locale' => $v->fingerprints[6],
-					'app_fingerprint' => $v->fingerprints[7],
-			);
-			$v->fingerprints = $theNewPrints;
-		}
-		
+		$v->fingerprints = $this->cnvFingerprints2KeyedArray($v->fingerprints);
+		$v->circumstances = $this->cnvCircumstances2KeyedArray($v->circumstances);
 		return parent::registerViaMobile();
 	}
 	
 	public function requestMobileAuth($aPing=null) {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
+		$v->fingerprints = $this->cnvFingerprints2KeyedArray($v->fingerprints);
+		$v->circumstances = $this->cnvCircumstances2KeyedArray($v->circumstances);
+		//$this->debugLog(__METHOD__.' v='.$this->debugStr($v));
+		
 		parent::requestMobileAuth($aPing);
+		
 		if (empty($v->results) && $aPing==='fresnel') {
 			$v->results = array(
 					'user_token' => 'ping',

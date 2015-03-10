@@ -22,8 +22,10 @@ use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\costumes\HttpAuthHeader;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
+use com\blackmoonit\Arrays;
 use \PDO;
 {//namespace begin
 
@@ -34,7 +36,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 * @var string
 	 */
 	const FEATURE_ID = 'BitsTheater/AuthBasic';
-	const FEATURE_VERSION_SEQ = 2; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 3; //always ++ when making db schema changes
 
 	const TYPE = 'basic';
 	const ALLOW_REGISTRATION = true;
@@ -85,11 +87,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
 						"( auth_id CHAR(36) CHARACTER SET ascii NOT NULL COLLATE ascii_bin PRIMARY KEY".
-						", email NCHAR(255) NOT NULL". //store as typed, but collate as case-insensitive
-						", account_id INT NOT NULL". //link to Accounts
+						", email NCHAR(255) NOT NULL".		//store as typed, but collate as case-insensitive
+						", account_id INT NOT NULL".		//link to Accounts
 						", pwhash CHAR(85) CHARACTER SET ascii NOT NULL COLLATE ascii_bin".	//blowfish hash of pw & its salt
-						", verified DATETIME".					//UTC when acct was verified
-						", is_reset INT".						//force pw reset in effect since this unix timestamp (if set)
+						", verified DATETIME".				//UTC when acct was verified
+						", is_reset INT".					//force pw reset in effect since this unix timestamp (if set)
 						", _created TIMESTAMP NOT NULL DEFAULT '0000-00-00 00:00:00'".
 						", _changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP".
 						", UNIQUE KEY IdxEmail (email)".
@@ -110,27 +112,32 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 						", INDEX IdxAuthToken (token, _changed)".
 						") CHARACTER SET ascii COLLATE ascii_bin";
 			}//switch dbType
-		case self::TABLE_AuthMobile: //added in v2
+		case self::TABLE_AuthMobile: //added in v3
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnAuthMobile;
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-						"( `mobile_id` char(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL".
+						"( `mobile_id` char(36) NOT NULL".
+						", `auth_id` CHAR(36) NOT NULL".
 						", `account_id` int NOT NULL".
 						", `auth_type` char(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'FULL_ACCESS'".
 						", `account_token` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'STRANGE_TOKEN'".
-						", `device_id` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
 						", `device_name` char(64) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL".
-						", `app_version_name` char(128) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
 						", `latitude` decimal(11,8) DEFAULT NULL".
 						", `longitude` decimal(11,8) DEFAULT NULL".
+						/* might be considered "sensitive", storing hash instead
+						", `device_id` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
+						", `app_version_name` char(128) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
 						", `device_memory` BIGINT DEFAULT NULL".
 						", `locale` char(8) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
 						", `app_fingerprint` char(36) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
+						*/
+						", `fingerprint_hash` char(85) DEFAULT NULL".
 						", `created_ts` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'".
 						", `updated_ts` timestamp ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP".
 						", PRIMARY KEY (`mobile_id`)".
 						", KEY `account_id` (`account_id`)".
+						", KEY `auth_id` (`auth_id`)".
 						") CHARACTER SET ascii COLLATE ascii_bin";
 			}//switch dbType
 			
@@ -188,13 +195,22 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		$theFeatureData = $dbMeta->getFeature(self::FEATURE_ID);
 		if (empty($theFeatureData)) {
 			$theFeatureData = $this->getCurrentFeatureVersion();
+			$bKeepChecking = true;
 			//added an auth_id field in v2
-			try {
+			if ($bKeepChecking) try {
 				$theSql = 'SELECT auth_id FROM '.$this->tnAuth.' LIMIT 1';
 				$this->query($theSql);
+				$bKeepChecking = true;
 			} catch(DbException $e) {
-				//orig version
 				$theFeatureData['version_seq'] = 1;
+				$bKeepChecking = false;
+			}
+			//auth_mobile table added in v3
+			if ($bKeepChecking) {
+				if (!$this->exists($this->tnAuthMobile)) {
+					$theFeatureData['version_seq'] = 2;
+					$bKeepChecking = false;
+				}
 			}
 			$dbMeta->insertFeature($theFeatureData);
 		}
@@ -211,7 +227,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		$theSeq = $aFeatureMetaData['version_seq'];
 		switch (true) {
 		//cases should always be lo->hi, never use break; so all changes are done in order.
-		case ($theSeq<=1):
+		case ($theSeq<2):
 			//update the cookie table first since its easier and we should empty it
 			$tnAuthCookies = $this->tbl_.'auth_cookie'; //v1 table, renamed auth_tokens
 			$this->execDML("DROP TABLE IF EXISTS {$tnAuthCookies}");
@@ -236,6 +252,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			$this->execDML('ALTER TABLE '.$this->tnAuth.' ADD PRIMARY KEY (auth_id)');
 			//put unique key constraint back on email
 			$this->execDML('ALTER TABLE '.$this->tnAuth.' ADD UNIQUE KEY (email)');
+		case ($theSeq<3):
+			//add new table
+			$theSql = $this->getTableDefSql(self::TABLE_AuthMobile);
+			$this->execDML($theSql);
+			$this->debugLog('Create table (if not exist) "'.$this->tnAuthMobile.'" succeeded.');
 		}
 	}
 	
@@ -262,9 +283,32 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		return $this->getTheRow($theSql, array('id'=>$aAuthId));
 	}
 	
-	public function getAuthMobileTokensByAccountId($aAccountId) {
-		$theSql = "SELECT * FROM {$this->tnAuthTokens} WHERE account_id=:id";
-		return $this->query($theSql, array('id' => $aAccountId), array('id' => PDO::PARAM_INT));
+	public function getAuthTokenRow($aAuthId, $aAuthToken) {
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+				'auth_id' => $aAuthId,
+				'token' => $aAuthToken,
+		));
+		$theSql->startWith('SELECT * FROM')->add($this->tnAuthTokens);
+		$theSql->startWhereClause()->mustAddParam('auth_id');
+		$theSql->setParamPrefix(' AND ')->mustAddParam('token');
+		$theSql->endWhereClause();
+		return $theSql->getTheRow();
+	}
+	
+	public function getAuthMobilesByAccountId($aAccountId) {
+		$theSql = "SELECT * FROM {$this->tnAuthMobile} WHERE account_id=:id";
+		$ps = $this->query($theSql, array('id' => $aAccountId), array('id' => PDO::PARAM_INT));
+		if (!empty($ps)) {
+			return $ps->fetchAll();
+		}
+	}
+	
+	public function getAuthMobilesByAuthId($aAuthId) {
+		$theSql = "SELECT * FROM {$this->tnAuthMobile} WHERE auth_id=:id";
+		$ps = $this->query($theSql, array('id' => $aAuthId));
+		if (!empty($ps)) {
+			return $ps->fetchAll();
+		}
 	}
 	
 	/**
@@ -277,7 +321,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 */
 	public function generateAuthToken($aAuthId, $aAcctId, $aTweak=null) {
 		//64chars of unique gibberish
-		$theAuthToken = $aTweak.Strings::randomSalt(64-36-1-strlen($aTweak)).'/'.Strings::createUUID();
+		$theAuthToken = $aTweak.Strings::randomSalt(64-36-1-strlen($aTweak)).':'.Strings::createUUID();
 		//save in token table
 		$theSql = SqlBuilder::withModel($this)->setDataSet(array(
 				'auth_id' => $aAuthId,
@@ -350,7 +394,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
-	 * Delete stale auth tokens.
+	 * Delete stale cookie tokens.
 	 */
 	protected function removeStaleCookies() {
 		try {
@@ -364,6 +408,48 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			//do not care if removing stale cookies fails, log it so admin knows about it, though
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
+	}
+	
+	/**
+	 * Delete stale mobile auth tokens.
+	 */
+	protected function removeStaleMobileAuthTokens() {
+		try {
+			$delta = 1;
+			if (!empty($delta)) {
+				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
+				$theSql .= " WHERE token LIKE 'mA%' AND _changed < (NOW() - INTERVAL {$delta} DAY)";
+				$this->execDML($theSql);
+			}
+		} catch (DbException $e) {
+			//do not care if removing stale cookies fails, log it so admin knows about it, though
+			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+		}
+	}
+	
+	/**
+	 * Returns the token row if it existed and removes it.
+	 * @param string $aAuthId
+	 * @param string $aAuthToken
+	 */
+	public function getAndEatCookie($aAuthId, $aAuthToken) {
+		//toss out stale cookies first
+		$this->removeStaleCookies();
+		//now see if our cookie token still exists
+		$theAuthTokenRow = $this->getAuthTokenRow($aAuthId, $aAuthToken);
+		if (!empty($theAuthTokenRow)) {
+			//consume this particular cookie
+			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+					'auth_id' => $aAuthId,
+					'token' => $aAuthToken,
+			));
+			$theSql->startWith('DELETE FROM')->add($this->tnAuthTokens);
+			$theSql->startWhereClause()->mustAddParam('auth_id');
+			$theSql->setParamPrefix(' AND ')->mustAddParam('token');
+			$theSql->endWhereClause();
+			$theSql->execDML();
+		}
+		return $theAuthTokenRow;
 	}
 	
 	/**
@@ -468,40 +554,23 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		if (empty($theAuthId))
 			return false;
 		
-		$theToken = $aCookieMonster[self::KEY_token];
+		$theAuthToken = $aCookieMonster[self::KEY_token];
 		try {
-			$theSql = SqlBuilder::withModel($this)->setDataSet(array(
-					'auth_id' => $theAuthId,
-					'token' => $theToken,
-			));
-			$theSql->startWith('SELECT * FROM')->add($this->tnAuthTokens);
-			$theSql->startWhereClause()->mustAddParam('auth_id');
-			$theSql->setParamPrefix(' AND ')->mustAddParam('token');
-			$theSql->endWhereClause();
-			$theAuthRow = $theSql->getTheRow();
-			if (!empty($theAuthRow)) {
-				$this->removeStaleCookies();
-				//our cookie mechanism consumes cookie on use and creates a new one
-				//  by having rotating cookie tokens, stolen cookies have a limited window
-				//  in which to crack them before a new one is generated.
-				
-				//consume this particular cookie (single browser/device combo)
-				$theSql->reset();
-				$theSql->startWith('DELETE FROM')->add($this->tnAuthTokens);
-				$theSql->startWhereClause()->mustAddParam('auth_id');
-				$theSql->setParamPrefix(' AND ')->mustAddParam('token');
-				$theSql->endWhereClause();
-				$theSql->execDML();
-				
+			//our cookie mechanism consumes cookie on use and creates a new one
+			//  by having rotating cookie tokens, stolen cookies have a limited window
+			//  in which to crack them before a new one is generated.
+			$theAuthTokenRow = $this->getAndEatCookie($theAuthId, $theAuthToken);
+			if (!empty($theAuthTokenRow)) {
+				$theAccountId = $theAuthTokenRow['account_id'];
 				//authorized, load account data
-				$this->director->account_info = $this->getAccountInfoCache($dbAccounts, $theAuthRow['account_id']);
+				$this->director->account_info = $this->getAccountInfoCache($dbAccounts, $theAccountId);
 				if (!empty($this->director->account_info)) {
 					//data retrieval succeeded, save the account id in session cache
-					$this->director[self::KEY_userinfo] = $theAuthRow['account_id'];
+					$this->director[self::KEY_userinfo] = $theAccountId;
 					//bake (create) a new cookie for next time
-					$this->updateCookie($theAuthRow['auth_id'], $theAuthRow['account_id']);
+					$this->updateCookie($theAuthId, $theAccountId);
 				}
-				unset($theAuthRow);
+				unset($theAuthTokenRow);
 			}
 		} catch (DbException $e) {
 			//do not care if getting cookie fails, log it so admin knows about it, though
@@ -511,17 +580,62 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
-	 * Check submitted mobile data for account information.
+	 * HTTP Headers may contain authorization information, check for that information and populate whatever we find
+	 * for subsequent auth mechanisms to find and evaluate.
 	 * @param Accounts $dbAcct - the accounts model.
 	 * @param object $aScene - var container object for user/pw info.
 	 * @return boolean Returns TRUE if account was found and successfully loaded.
-	 * /
-	public function checkMobileTokensForTicket(Accounts $dbAcct, $aScene) {
-		$this->debugLog(__METHOD__.' data='.$this->debugStr($aScene));
-		//TODO place a marker if token auth so more scrutiny can be applied later
-		return false;
+	 */
+	protected function checkHeadersForTicket(Accounts $dbAccounts, $aScene) {
+		//PHP has some built in auth vars, check them and use if not empty
+		if (!empty($_SERVER['PHP_AUTH_USER']) && !empty($_SERVER['PHP_AUTH_PW'])) {
+			$aScene->{self::KEY_userinfo} = $_SERVER['PHP_AUTH_USER'];
+			$aScene->{self::KEY_pwinput} = $_SERVER['PHP_AUTH_PW'];
+			unset($_SERVER['PHP_AUTH_PW']);
+			return $this->checkWebFormForTicket($dbAccounts, $aScene);
+		}
+		//check for HttpAuth header
+		$theAuthHeader = new HttpAuthHeader($aScene->HTTP_AUTHORIZATION);
+		switch ($theAuthHeader->auth_scheme) {
+			case 'Basic':
+				$aScene->{self::KEY_userinfo} = $theAuthHeader->username;
+				$aScene->{self::KEY_pwinput} = $theAuthHeader->pw_input;
+				unset($this->HTTP_AUTHORIZATION); //keeping lightly protected pw in memory can be bad.
+				return $this->checkWebFormForTicket($dbAccounts, $aScene);
+			case 'Broadway':
+				$this->debugLog(__METHOD__.' chkhdr='.$this->debugStr($theAuthHeader));
+				if (!empty($theAuthHeader->auth_id) && !empty($theAuthHeader->auth_token)) {
+					$this->removeStaleMobileAuthTokens();
+					$theAuthTokenRow = $this->getAuthTokenRow($theAuthHeader->auth_id, $theAuthHeader->auth_token);
+					$this->debugLog(__METHOD__.' arow='.$this->debugStr($theAuthTokenRow));
+					if (!empty($theAuthTokenRow)) {
+						$theAuthMobileRows = $this->getAuthMobilesByAuthId($theAuthHeader->auth_id);
+						foreach ($theAuthMobileRows as $theMobileRow) {
+							$theFingerprintStr = $theAuthHeader->fingerprints;
+							$this->debugLog(__METHOD__.' fstr1='.$theFingerprintStr);
+							$this->debugLog(__METHOD__.' fstr2='.$theMobileRow['fingerprint_str']);
+							if (Strings::hasher($theFingerprintStr, $theMobileRow['fingerprint_hash'])) {
+								$this->debugLog(__METHOD__.' fmatch?=true');
+								
+								//TODO
+								//barring checking circumstances like is GPS outside pre-determined bounds, we authenticated!
+								
+								$theAccountId = $theAuthTokenRow['account_id'];
+								//authorized, load account data
+								$this->director->account_info = $this->getAccountInfoCache($dbAccounts, $theAccountId);
+								if (!empty($this->director->account_info)) {
+									//data retrieval succeeded, save the account id in session cache
+									$this->director[self::KEY_userinfo] = $theAccountId;
+								}
+								unset($theAuthTokenRow);
+								return true;
+							}
+						}
+					}//if auth token row !empty
+				}
+				break;
+		}//end switch
 	}
-	*/
 	
 	/**
 	 * Check various mechanisms for authentication.
@@ -530,11 +644,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	public function checkTicket($aScene) {
 		if ($this->director->canConnectDb()) {
 			$dbAccounts = $this->getProp('Accounts');
-			
-			if ($this->checkWebFormForTicket($dbAccounts, $aScene)) return;
+
 			if ($this->checkSessionForTicket($dbAccounts, $aScene)) return;
+			if ($this->checkHeadersForTicket($dbAccounts, $aScene)) return;
+			if ($this->checkWebFormForTicket($dbAccounts, $aScene)) return;
 			if ($this->checkCookiesForTicket($dbAccounts, $_COOKIE)) return;
-			//if ($this->checkMobileTokensForTicket($dbAcct, $aScene)) return;
 			
 			$this->returnProp($dbAccounts);
 			//all checks failed to authenticate, call parent to try more (if any)
@@ -653,29 +767,57 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
+	 * Standard mechanism to convert the fingerprint array to a string so it can be
+	 * hashed or matched against a prior hash. This should match how the mobile app
+	 * will be creating the string inside the http auth header.
+	 * @param string[] $aFingerprints - the fingerprint array
+	 * @return string Returns the array converted to a string.
+	 */
+	protected function cnvFingerprintArrayToString($aFingerprints) {
+		return '['.implode(', ', $aFingerprints).']';
+	}
+	
+	/**
 	 * Store device data so that we can determine if user/pw are required again.
 	 * @param array $aAuthRow - an array containing the auth row data.
-	 * @param array $aFingerprints - the device's information to store
-	 * @return string Returns the account_token (user_token) generated.
+	 * @param $aFingerprints - the device's information to store
+	 * @param $aCircumstances - mobile device circumstances (gps, timestamp, etc.)
+	 * @return array Returns the field data saved.
 	 */
-	public function registerMobileFingerprints($aAuthRow, $aFingerprints) {
+	public function registerMobileFingerprints($aAuthRow, $aFingerprints, $aCircumstances) {
 		if (!empty($aAuthRow) && !empty($aFingerprints)) {
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aFingerprints);
+			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aCircumstances);
 			$theSql->startWith('INSERT INTO '.$this->tnAuthMobile);
 			$theSql->add('SET created_ts=NOW(), mobile_id=UUID()')->setParamPrefix(', ');
-			$theSql->mustAddParam('account_id', $aAuthRow['account_id'], PDO::PARAM_STR);
+			$theSql->mustAddParam('auth_id', $aAuthRow['auth_id']);
+			$theSql->mustAddParam('account_id', $aAuthRow['account_id'], PDO::PARAM_INT);
 			$theUserToken = Strings::randomSalt(64-36-1).'/'.Strings::createUUID(); //unique 64char gibberish
 			$theSql->mustAddParam('account_token', $theUserToken);
-			$theSql->addParam('device_id');
 			$theSql->addParam('device_name');
-			$theSql->addParam('app_version_name');
 			$theSql->addParam('latitude');
 			$theSql->addParam('longitude');
+
+			//do not store the fingerprints as if db is compromised, this might be
+			//  considered "sensitive". just keep a hash instead, like a password.
+			//$this->debugLog(__METHOD__.' aid='.$aAuthRow['account_id'].' fp='.$this->debugStr($aFingerprints));
+			/*
+			$theSql->addParam('device_id');
+			$theSql->addParam('app_version_name');
 			$theSql->addParam('device_memory');
 			$theSql->addParam('locale');
 			$theSql->addParam('app_fingerprint');
+			*/
+			//mimics Java's Arrays.toString(arr) so we do not have to parse the auth header value
+			$theFingerprintStr = $this->cnvFingerprintArrayToString($aFingerprints);
+			$theFingerprintHash = Strings::hasher($theFingerprintStr);
+			$theSql->mustAddParam('fingerprint_hash', $theFingerprintHash);
+			
 			$theSql->execDML();
-			return $theUserToken;
+			
+			//secret should remain secret, don't blab it back to caller.
+			unset($theSql->myParams['fingerprint_hash']);
+			
+			return $theSql->myParams;
 		}
 	}
 	
@@ -697,58 +839,78 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	
 	/**
 	 * Someone entered a user/pw combo correctly from a mobile device, give them tokens!
-	 * @param AccountInfoCache $aAcctInfo - currently logged in user from mobile device.
-	 * @param array[strings] $aFingerprints - mobile device info
+	 * @param AccountInfoCache $aAcctInfo - successfully logged in account info.
+	 * @param $aFingerprints - mobile device info
+	 * @param $aCircumstances - mobile device circumstances (gps, timestamp, etc.)
 	 * @return array|NULL Returns the tokens needed for ez-auth later.
 	 */
-	public function requestMobileAuthAfterPwLogin(AccountInfoCache $aAcctInfo, $aFingerprints) {
+	public function requestMobileAuthAfterPwLogin(AccountInfoCache $aAcctInfo, $aFingerprints, $aCircumstances) {
 		$theResults = null;
 		$theAuthRow = $this->getAuthByAccountId($aAcctInfo->account_id);
 		if (!empty($theAuthRow) && !empty($aFingerprints)) {
+			$theMobileRow = null;
 			//see if they have a mobile auth row already
-			$theMobileRows = $this->getAuthMobileTokensByAccountId($aAcctInfo->account_id);
-			if (!empty($theMobileRows)) {
-				//TODO see if fingerprints match any of the existing records and return that user_token if so
-				$theUserToken = $theMobileRows[0]['account_token'];
-			} else {
-				//first time they logged in via a mobile device, record it
-				$theUserToken = $this->registerMobileFingerprints($theAuthRow, $aFingerprints);
+			$theAuthMobileRows = $this->getAuthMobilesByAccountId($aAcctInfo->account_id);
+			if (!empty($theAuthMobileRows)) {
+				$theFingerprintStr = $this->cnvFingerprintArrayToString($aFingerprints);
+				//see if fingerprints match any of the existing records and return that user_token if so
+				foreach ($theAuthMobileRows as $theAuthMobileRow) {
+					if (Strings::hasher($theFingerprintStr, $theAuthMobileRow['fingerprint_hash'])) {
+						$theMobileRow = $theAuthMobileRow;
+						break;
+					}
+				}
 			}
-			if (!empty($theUserToken)) {
+			//$this->debugLog('mobile_pwlogin'.' mar='.$this->debugStr($theAuthMobileRow));
+			if (empty($theMobileRow)) {
+				//first time they logged in via this mobile device, record it
+				$theMobileRow = $this->registerMobileFingerprints($theAuthRow, $aFingerprints, $aCircumstances);
+			}
+			if (!empty($theMobileRow)) {
+				$this->removeStaleMobileAuthTokens();
 				$theAuthToken = $this->generateAuthTokenForMobile($aAcctInfo->account_id, $theAuthRow['auth_id']);
 				$theResults = array(
 						'account_name' => $aAcctInfo->account_name,
-						'user_token' => $theUserToken,
+						'auth_id' => $theAuthRow['auth_id'],
+						'user_token' => $theMobileRow['account_token'],
 						'auth_token' => $theAuthToken,
 						'api_version_seq' => $this->getRes('website/api_version_seq'),
 				);
 			}
 		}
+		//$this->debugLog('mobile_pwlogin'.' r='.$this->debugStr($theResults));
 		return $theResults;
 	}
-
+	
 	/**
 	 * A mobile app is trying to automagically log someone in based on a previously
 	 * generated user token and their device fingerprints. If they mostly match, log them in
 	 * and generate the proper token cookies.
-	 * @param string $aAcctName - the account name.
+	 * @param string $aAuthId - the account's auth_id
 	 * @param string $aUserToken - the user token previously given by this website
-	 * @param array[strings] $aFingerprints - mobile device info
+	 * @param $aFingerprints - mobile device info
+	 * @param $aCircumstances - mobile device circumstances (gps, timestamp, etc.)
 	 * @return array|NULL Returns the tokens needed for ez-auth later.
 	 */
-	public function requestMobileAuthAutomatedByTokens($aAcctName, $aUserToken, $aFingerprints) {
+	public function requestMobileAuthAutomatedByTokens($aAuthId, $aUserToken, $aFingerprints, $aCircumstances) {
 		$theResults = null;
 		$dbAccounts = $this->getProp('Accounts');
-		$theAcctRow = $dbAccounts->getByName($aAcctName);
-		$theAuthRow = (!empty($theAcctRow)) ? $this->getAuthByAccountId($theAcctRow['account_id']) : null;
+		$theAuthRow = $this->getAuthByAuthId($aAuthId);
+		$theAcctRow = (!empty($theAuthRow)) ? $dbAccounts->getAccount($theAuthRow['account_id']) : null;
 		if (!empty($theAcctRow) && !empty($theAuthRow) && !empty($aFingerprints)) {
 			//they must have a mobile auth row already
-			$theMobileRows = $this->getAuthMobileTokensByAccountId($theAcctRow['account_id']);
-			if (!empty($theMobileRows)) {
-				//TODO see if fingerprints match any of the existing records and return that user_token if so
-				$theUserToken = $theMobileRows[0]['account_token'];
-
-				if (!empty($theUserToken)) {
+			$theAuthMobileRows = $this->getAuthMobilesByAccountId($theAcctRow['account_id']);
+			if (!empty($theAuthMobileRows)) {
+				$theFingerprintStr = $this->cnvFingerprintArrayToString($aFingerprints);
+				//see if fingerprints match any of the existing records and return that user_token if so
+				foreach ($theAuthMobileRows as $theAuthMobileRow) {
+					if (Strings::hasher($theFingerprintStr, $theAuthMobileRow['fingerprint_hash'])) {
+						$theUserToken = $theAuthMobileRow['account_token'];
+						break;
+					}
+				}
+				//if the user_token we found equals the one passed in as param, then authentication SUCCESS
+				if (!empty($theUserToken) && $theUserToken===$aUserToken) {
 					$theAuthToken = $this->generateAuthTokenForMobile($theAcctRow['account_id'], $theAuthRow['auth_id']);
 					$theResults = array(
 							'account_name' => $theAcctRow['account_name'],
