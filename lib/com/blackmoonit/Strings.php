@@ -136,7 +136,7 @@ class Strings {
 	static public function randomSalt($aLen=16) {
 		$salt = str_repeat('.',$aLen);
 		for ($i = 0; $i<$aLen; $i++) {
-			$salt{$i} = substr(".-ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,63), 1);
+			$salt{$i} = substr("._ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,63), 1);
 		}
 		return $salt;
 	}
@@ -155,12 +155,13 @@ class Strings {
 	 * else FALSE is returned.
 	 */
 	static public function hasher($aPwInput, $aEncryptedData = false) {
+		$thePwInput = urlencode($aPwInput); //some chars like "+" cannot be handled by blowfish in cyrpt()
 		$theCryptoInfo = '$2a$08$'; //2a = Blowfish, 08 = crypto strength, append actual 22 char salt to end of this
 		//if encrypted data is passed, check it against input ($info)
 		if ($aEncryptedData) {
 			$saltCrypto = substr($aEncryptedData,0,-16);
 			$saltPw = substr($aEncryptedData,-16);
-			if ($aEncryptedData==crypt($aPwInput.$saltPw,$saltCrypto).$saltPw) {
+			if ($aEncryptedData==crypt($thePwInput.$saltPw,$saltCrypto).$saltPw) {
 				return true;
 			} else {
 				return false;
@@ -169,7 +170,7 @@ class Strings {
 			$saltPw = self::randomSalt(16);
 			$saltCrypto = $theCryptoInfo.self::randomSalt(22);
 			//return 76 char string (60 char hash & 16 char salt)
-			return crypt($aPwInput.$saltPw,$saltCrypto).$saltPw;
+			return crypt($thePwInput.$saltPw,$saltCrypto).$saltPw;
 		}
 	}
 
