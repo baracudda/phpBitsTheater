@@ -114,7 +114,9 @@ class BitsConfig extends BaseResources {
 		$theVHN = VIRTUAL_HOST_NAME;
 		if (!empty($theVHN)) {
 			//define the site/mmr/default before it gets merged by parent::setup()
-			$this->input_site['mmr']['default'] = dirname(strstr(BITS_PATH, ¦.$theVHN, true)).¦.'mmr'.¦.$theVHN.¦;
+			$this->input_site['mmr']['default'] = dirname(
+					strstr(BITS_PATH, DIRECTORY_SEPARATOR.$theVHN, true))
+					.DIRECTORY_SEPARATOR.'mmr'.DIRECTORY_SEPARATOR.$theVHN.DIRECTORY_SEPARATOR;
 			//.../www/myhost/ -> .../mmr/myhost/
 		}
 		parent::setup($aDirector);
