@@ -8,26 +8,27 @@ use com\blackmoonit\Strings;
 {//namespace begin
 
 class Install extends BaseActor {
-	
+	/* exmple connection override	
 	public function getDbConns() {
 		$db_conns = array();
-	
+
 		$theDbConnInfo = DbConnInfo::asSchemeINI('webapp');
-		$theDbConnInfo->dbConnSettings->dbname = 'Fresnel';
+		$theDbConnInfo->dbConnSettings->dbname = 'MyDatabase';
 		$theDbConnInfo->dbConnSettings->host = '';
 		$theDbConnInfo->dbConnSettings->username = '';
 		$db_conns[] = $theDbConnInfo;
-	
-		$theDbConnInfo = DbConnInfo::asSchemeINI('fresnel');
+
+		//other connections?
+		$theDbConnInfo = DbConnInfo::asSchemeINI('maindb');
 		$theDbConnInfo->dbConnOptions->table_prefix = '';
-		$theDbConnInfo->dbConnSettings->dbname = 'Fresnel';
+		$theDbConnInfo->dbConnSettings->dbname = 'MainDatabase';
 		$theDbConnInfo->dbConnSettings->host = '';
 		$theDbConnInfo->dbConnSettings->username = '';
 		$db_conns[] = $theDbConnInfo;
 	
 		return $db_conns;
 	}
-	
+	*/	
 }//end class
 
 }//end namespace
