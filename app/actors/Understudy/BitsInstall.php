@@ -44,7 +44,7 @@ class BitsInstall extends BaseActor {
 	 * @return Returns false on failure, else num bytes stored.
 	 */
 	protected function file_force_contents($aDestFile, $aFileContents) {
-		return FileUtils::file_force_contents($aDestFile, $aFileContents);
+		return FileUtils::file_force_contents($aDestFile, $aFileContents, strlen($aFileContents));
 	}
 	
 	protected function copyFileContents($aSrcFilePath, $aDestFilePath, $aVarList) {

@@ -28,12 +28,16 @@ class FileUtils {
 	 * @param string $aFileContents - contents to be saved in $aDestFile.
 	 * @return Returns false on failure, else num bytes stored.
 	 */
-	static public function file_force_contents($aDestFile, $aFileContents, $mode=0755) {
+	static public function file_force_contents($aDestFile, $aData, $aDataSize, $mode=0755, $flags=0) {
 		$theFolders = dirname($aDestFile);
 		if (!is_dir($theFolders)) {
 			mkdir($theFolders, $mode, true);
 		}
-		return file_put_contents($aDestFile, $aFileContents);
+		try {
+			return (file_put_contents($aDestFile, $aData, $flags)==$aDataSize);
+		} catch (\Exception $e) {
+			return false;
+		}
 	}
 		
 	/**
@@ -45,13 +49,18 @@ class FileUtils {
 	 */
 	static public function copyFileContents($aSrcFilePath, $aDestFilePath, $aReplacements=array()) {
 		$theSrcContents = file_get_contents($aSrcFilePath);
-		if ($theSrcContents) {
-			foreach ($aReplacements as $theReplacementName => $theReplacementValue) {
-				$theSrcContents = str_replace('%'.$theReplacementName.'%', $theReplacementValue, $theSrcContents);
+		if (!empty($theSrcContents)) {
+			if (!empty($aReplacements)) {
+				$theTokens = array();
+				$theValues = array();
+				foreach ($aReplacements as $theReplacementName => $theReplacementValue) {
+					$theTokens[] = '%'.$theReplacementName.'%';
+					$theValues[] = $theReplacementValue;
+				}
+				$theSrcContents = str_replace($theTokens, $theValues, $theSrcContents);
 			}
-			if (file_put_contents($aDestFilePath, $theSrcContents, LOCK_EX)===false) {
-				return true;
-			}
+			
+			return self::file_force_contents($aDestFilePath, $theSrcContents, strlen($theSrcContents), 0755, LOCK_EX);
 		}
 		return false;
 	}
