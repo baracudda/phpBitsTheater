@@ -8,6 +8,12 @@ use com\blackmoonit\Strings;
 
 class Account extends BaseActor {
 	
+	/**
+	 * Example API fingerprints from mobile device. Recomended that
+	 * your website mixes their order up, at the very least.
+	 * @param string[] $aFingerprints - string array of device info.
+	 * @return string[] Return a keyed array of device info.
+	 */
 	protected function cnvFingerprints2KeyedArray($aFingerprints) {
 		if (!empty($aFingerprints)) {
 			return array(
@@ -20,6 +26,13 @@ class Account extends BaseActor {
 		} else return array();
 	}
 
+	/**
+	 * Example API circumstances from mobile device. Recommended that
+	 * your website mixes their order up, at the very least.
+	 * @param string[] $aCircumstances - string array of device meta,
+	 * such as current GPS, user device name setting, current timestamp, etc.
+	 * @return string[] Return a keyed array of device meta.
+	 */
 	protected function cnvCircumstances2KeyedArray($aCircumstances) {
 		if (!empty($aCircumstances)) {
 			return array(
@@ -31,6 +44,11 @@ class Account extends BaseActor {
 		} else return array();
 	}
 	
+	/**
+	 * Convert the fingerprint and circumstance string arrays into something
+	 * meaningful for the Account actor parent.
+	 * @see \BitsTheater\actors\Understudy\AuthBasicAccount::registerViaMobile()
+	 */
 	public function registerViaMobile() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -39,6 +57,12 @@ class Account extends BaseActor {
 		return parent::registerViaMobile();
 	}
 	
+	/**
+	 * Convert the fingerprint and circumstance string arrays into something
+	 * meaningful for the Account actor parent. Also, react to the ping/pong
+	 * request in our own fashion.
+	 * @see \BitsTheater\actors\Understudy\AuthBasicAccount::requestMobileAuth()
+	 */
 	public function requestMobileAuth($aPing=null) {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -48,7 +72,7 @@ class Account extends BaseActor {
 		
 		parent::requestMobileAuth($aPing);
 		
-		if (empty($v->results) && $aPing==='fresnel') {
+		if (empty($v->results) && $aPing===VIRTUAL_HOST_NAME) {
 			$v->results = array(
 					'user_token' => 'ping',
 					'auth_token' => 'pong',

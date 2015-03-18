@@ -46,6 +46,17 @@ class AuthBasicAccount extends BaseActor {
 		return $theImmediateRedirect;
 	}
 	
+	protected function addNewAccount($aAcctName) {
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		$dbAccounts = $this->getProp('Accounts');
+		$theResult = $dbAccounts->add(array(
+				'account_name' => $aAcctName,
+		));
+		$this->returnProp($dbAccounts);
+		return $theResult;
+	}
+	
 	protected function registerNewAccount($aAcctName, $aAcctPw, $aAcctEmail, $aRegCode, $bAllowGroup0toAutoRegister=true) {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -64,8 +75,8 @@ class AuthBasicAccount extends BaseActor {
 				} else {
 					$theVerifiedTs = null;
 				}
-				//now that we have a proper group and account name, lets save stuff!				
-				$theNewId = $dbAccounts->add(array('account_name' => $aAcctName));
+				//now that we have a proper group and account name, lets save stuff!
+				$theNewId = $this->addNewAccount($aAcctName);
 				if (!empty($theNewId)) {
 					$theNewAcct = array(
 							'email' => $aAcctEmail,
@@ -211,7 +222,7 @@ class AuthBasicAccount extends BaseActor {
 		//$this->debugLog('regargs='.$v->name.', '.$v->salt.', '.$v->email.', '.$v->code);
 		$theRegResult = $this->registerNewAccount($v->name, $v->salt, $v->email, $v->code, false);
 		if ($theRegResult===$dbAuth::REGISTRATION_SUCCESS) {
-			$theMobileRow = $dbAuth->registerMobileFingerprints($dbAuth->getAuthByEmail($v->email), 
+			$theMobileRow = $dbAuth->registerMobileFingerprints($dbAuth->getAuthByEmail($v->email),
 					$v->fingerprints, $v->circumstances);
 			$v->results = array(
 					'code' => $theRegResult,
@@ -251,7 +262,7 @@ class AuthBasicAccount extends BaseActor {
 			}
 		}
 		
-		/* exmple of descendant code 
+		/* exmple of descendant code
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		parent::requestMobileAuth($aPing);
