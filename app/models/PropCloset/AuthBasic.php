@@ -321,7 +321,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 */
 	public function generateAuthToken($aAuthId, $aAcctId, $aTweak=null) {
 		//64chars of unique gibberish
-		$theAuthToken = $aTweak.Strings::randomSalt(64-36-1-strlen($aTweak)).':'.Strings::createUUID();
+		$theAuthToken = $aTweak.Strings::urlSafeRandomChars(64-36-1-strlen($aTweak)).':'.Strings::createUUID();
 		//save in token table
 		$theSql = SqlBuilder::withModel($this)->setDataSet(array(
 				'auth_id' => $aAuthId,
@@ -613,7 +613,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 						foreach ($theAuthMobileRows as $theMobileRow) {
 							$theFingerprintStr = $theAuthHeader->fingerprints;
 							$this->debugLog(__METHOD__.' fstr1='.$theFingerprintStr);
-							$this->debugLog(__METHOD__.' fstr2='.$theMobileRow['fingerprint_str']);
 							if (Strings::hasher($theFingerprintStr, $theMobileRow['fingerprint_hash'])) {
 								$this->debugLog(__METHOD__.' fmatch?=true');
 								
@@ -700,7 +699,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	}
 		
 	/**
-	 * keys: email, account_id, pwinput, verified_timestamp
+	 * Register an account with our website.
+	 * @param array $aUserData - email, account_id, pwinput, verified_timestamp.
+	 * @param number $aDefaultGroup - (optional) default group membership.
+	 * @return boolean Returns TRUE if succeeded, FALSE otherwise.
 	 */
 	public function registerAccount($aUserData, $aDefaultGroup=0) {
 		if ($this->isEmpty()) {
@@ -722,6 +724,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			$dbGroupMap = $this->getProp('AuthGroups');
 			$dbGroupMap->addAcctMap($aDefaultGroup,$aUserData['account_id']);
 			$this->returnProp($dbGroupMap);
+			return true;
+		} else {
+			return false;
 		}
 	}
 	
@@ -791,7 +796,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			$theSql->add('SET created_ts=NOW(), mobile_id=UUID()')->setParamPrefix(', ');
 			$theSql->mustAddParam('auth_id', $aAuthRow['auth_id']);
 			$theSql->mustAddParam('account_id', $aAuthRow['account_id'], PDO::PARAM_INT);
-			$theUserToken = Strings::randomSalt(64-36-1).'/'.Strings::createUUID(); //unique 64char gibberish
+			$theUserToken = Strings::urlSafeRandomChars(64-36-1).':'.Strings::createUUID(); //unique 64char gibberish
 			$theSql->mustAddParam('account_token', $theUserToken);
 			$theSql->addParam('device_name');
 			$theSql->addParam('latitude');
@@ -811,6 +816,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			$theFingerprintStr = $this->cnvFingerprintArrayToString($aFingerprints);
 			$theFingerprintHash = Strings::hasher($theFingerprintStr);
 			$theSql->mustAddParam('fingerprint_hash', $theFingerprintHash);
+			//$theSql->mustAddParam('fingerprint_str', $theFingerprintStr);			
 			
 			$theSql->execDML();
 			
@@ -898,6 +904,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		$theAuthRow = $this->getAuthByAuthId($aAuthId);
 		$theAcctRow = (!empty($theAuthRow)) ? $dbAccounts->getAccount($theAuthRow['account_id']) : null;
 		if (!empty($theAcctRow) && !empty($theAuthRow) && !empty($aFingerprints)) {
+			//$this->debugLog(__METHOD__.' c='.$this->debugStr($aCircumstances));
 			//they must have a mobile auth row already
 			$theAuthMobileRows = $this->getAuthMobilesByAccountId($theAcctRow['account_id']);
 			if (!empty($theAuthMobileRows)) {
@@ -909,8 +916,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 						break;
 					}
 				}
+				//$this->debugLog(__METHOD__.' ut='.$theUserToken.' param='.$aUserToken);
 				//if the user_token we found equals the one passed in as param, then authentication SUCCESS
 				if (!empty($theUserToken) && $theUserToken===$aUserToken) {
+					//$this->debugLog(__METHOD__.' \o/');
 					$theAuthToken = $this->generateAuthTokenForMobile($theAcctRow['account_id'], $theAuthRow['auth_id']);
 					$theResults = array(
 							'account_name' => $theAcctRow['account_name'],

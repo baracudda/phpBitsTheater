@@ -39,19 +39,27 @@ class BitsConfig extends BaseResources {
 	
 	public $label_site = array(
 			'mode' => 'Operating Mode',
+			'mmr' => 'Managed Media Root',
 	);
 	public $desc_site = array(
 			'mode' => 'Normal is the standard operation mode; Maintenance will refuse connections; Demo/Kiosk mode will favor local resources.',
+			'mmr' => 'Managed media files will be located under the specified server file path (usually located outside www root)',
 	);
 	public $input_site = array(
 			'mode' => array(
 					'type' => ConfigSettingInfo::INPUT_DROPDOWN,
+					'is_editable' => true,
 					'default' => 'normal',
 					'values' => array(
 							'normal' => 'Normal',
 							'maintenance' => 'Maintenance',
 							'demo' => 'Demo/Kiosk',
 					),
+			),
+			'mmr' => array(
+					'type' => ConfigSettingInfo::INPUT_STRING,
+					'is_editable' => false,
+					'default' => '',
 			),
 	);
 	
@@ -98,6 +106,20 @@ class BitsConfig extends BaseResources {
 			),
 	);
 
+	/**
+	 * Some resources need to be initialized by running code rather than a static definition.
+	 * Merging Enums with their UI counterparts is common.
+	 */
+	public function setup($aDirector) {
+		$theVHN = VIRTUAL_HOST_NAME;
+		if (!empty($theVHN)) {
+			//define the site/mmr/default before it gets merged by parent::setup()
+			$this->input_site['mmr']['default'] = dirname(strstr(BITS_PATH, ¦.$theVHN, true)).¦.'mmr'.¦.$theVHN.¦;
+			//.../www/myhost/ -> .../mmr/myhost/
+		}
+		parent::setup($aDirector);
+	}
+	
 }//end class
 
 }//end namespace

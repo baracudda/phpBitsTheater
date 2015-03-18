@@ -30,6 +30,7 @@ use BitsTheater\models\SetupDb;
 use BitsTheater\models\Accounts;
 	/* @var $dbAccounts Accounts */
 use com\blackmoonit\Strings;
+use com\blackmoonit\FileUtils;
 use \PDOException;
 {//namespace begin
 
@@ -43,30 +44,23 @@ class BitsInstall extends BaseActor {
 	 * @return Returns false on failure, else num bytes stored.
 	 */
 	protected function file_force_contents($aDestFile, $aFileContents) {
-		$theFolders = dirname($aDestFile);
-		if (!is_dir($theFolders)) {
-			//umask(0777);
-			mkdir($theFolders,0777,true);
-		}
-		return file_put_contents($aDestFile, $aFileContents);
+		return FileUtils::file_force_contents($aDestFile, $aFileContents);
 	}
 	
 	protected function copyFileContents($aSrcFilePath, $aDestFilePath, $aVarList) {
 		if (file_exists($aDestFilePath))
 			return $aDestFilePath;
-		$theSrcContents = file_get_contents($aSrcFilePath);
-		if ($theSrcContents) {
-			foreach ($aVarList as $theReplacementName => $theVarName) {
-				if (is_int($theReplacementName)) {
-					$theReplacementName = $theVarName;
-				}
-				$theSrcContents = str_replace('%'.$theReplacementName.'%', $this->scene->$theVarName, $theSrcContents);
+		$theReplacements = array();
+		foreach ($aVarList as $theReplacementName => $theVarName) {
+			if (is_int($theReplacementName)) {
+				$theReplacementName = $theVarName;
 			}
-			if ($this->file_force_contents($aDestFilePath,$theSrcContents)) {
-				return $aDestFilePath;
-			}
+			$theReplacements[$theReplacementName] = $this->scene->$theVarName;
 		}
-		return false;
+		if (FileUtils::copyFileContents($aSrcFilePath, $aDestFilePath, $theReplacements))
+			return $aDestFilePath;
+		else
+			return false;
 	}
 	
 	protected function installTemplate($aTemplateName, $aNewName, $aVars) {

@@ -31,6 +31,7 @@ class BitsConfig extends BaseResources {
 			
 	public $enum_site = array(
 			'mode',
+			'mmr', //managed media root
 	);
 	
 	public $enum_auth = array(

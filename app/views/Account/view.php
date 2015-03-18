@@ -24,10 +24,10 @@ $w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwinput_old').
 		Widgets::createPassBox($pwKeyOld,$v->$pwKeyOld,true,60,120)."</td></tr>\n";
 //username
 $w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_name').':</td><td class="db-field">'.
-		$v->ticket_info['account_name']."</td></tr>\n";
+		$v->ticket_info->account_name."</td></tr>\n";
 //email
 $w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_email').':</td><td class="db-field">'.
-		Widgets::createEmailBox('email',$v->ticket_info['email'])."</td></tr>\n";
+		Widgets::createEmailBox('email',$v->ticket_info->email)."</td></tr>\n";
 //pw
 $w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwinput_new').':</td><td class="db-field">'.
 		Widgets::createPassBox($pwKeyNew,$v->$pwKeyNew,false,60,120)."</td></tr>\n";
@@ -42,8 +42,8 @@ $w .= '<tr><td class="db-field-label"></td><td class="db-field">'.
 		
 $w .= "</table>\n";
 
-$w .= Widgets::createHiddenPost('ticket_num',$v->ticket_info['account_id']);
-$w .= Widgets::createHiddenPost('ticket_email',$v->ticket_info['email']);
+$w .= Widgets::createHiddenPost('ticket_num',$v->ticket_info->account_id);
+$w .= Widgets::createHiddenPost('ticket_email',$v->ticket_info->email);
 $form_html = Widgets::createHtmlForm($recite->form_name,$recite->action_modify,$w,$v->redirect,false);
 print($form_html);
 print(str_repeat('<br />',3));

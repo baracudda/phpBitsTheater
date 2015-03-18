@@ -22,6 +22,7 @@ use BitsTheater\costumes\IFeatureVersioning;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\Strings;
+use com\blackmoonit\FileUtils;
 use \PDO;
 use \PDOException;
 use \Exception;
@@ -128,15 +129,9 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 	 */
 	protected function copyFileContents($aSrcFilePath, $aDestFilePath, $aReplacements) {
 		try {
-			$theSrcContents = file_get_contents($aSrcFilePath);
-			if ($theSrcContents) {
-				foreach ($aReplacements as $theReplacementName => $theReplacementValue) {
-					$theSrcContents = str_replace('%'.$theReplacementName.'%', $theReplacementValue, $theSrcContents);
-				}
-				if (file_put_contents($aDestFilePath,$theSrcContents, LOCK_EX)===false) {
-					$theMsg = $this->getRes('admin/msg_copy_cfg_fail/'.basename($aDestFilePath));
-					throw new Exception($theMsg);
-				}
+			if (!FileUtils::copyFileContents($aSrcFilePath, $aDestFilePath, $aReplacements)) {
+				$theMsg = $this->getRes('admin/msg_copy_cfg_fail/'.basename($aDestFilePath));
+				throw new Exception($theMsg);
 			}
 		} catch (Exception $e) {
 			$this->debugLog(__METHOD__."('$aSrcFilePath','$aDestFilePath') failed: ".$e->getMessage());

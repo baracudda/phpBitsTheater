@@ -129,14 +129,27 @@ class Strings {
 	}
 
 	/**
-	 * Generate a random string of variable length.
+	 * Generate a random string of variable length using Base64 alphabet.
 	 * @param int $aLen - (optional) length of the random string, default 16.
 	 * @return string - Returns the randomly generated string.
 	 */
 	static public function randomSalt($aLen=16) {
 		$salt = str_repeat('.',$aLen);
 		for ($i = 0; $i<$aLen; $i++) {
-			$salt{$i} = substr("._ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,63), 1);
+			$salt{$i} = substr("./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,63), 1);
+		}
+		return $salt;
+	}
+	
+	/**
+	 * Random string with just ".", "0 thru 9", and "A-Z,a-z".
+	 * @param number $aLen - (optional) length of random string, default 16.
+	 * @return string Returns a random string of length specified.
+	 */
+	static public function urlSafeRandomChars($aLen=16) {
+		$salt = str_repeat('.',$aLen);
+		for ($i = 0; $i<$aLen; $i++) {
+			$salt{$i} = substr(".ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,62), 1);
 		}
 		return $salt;
 	}
@@ -155,7 +168,13 @@ class Strings {
 	 * else FALSE is returned.
 	 */
 	static public function hasher($aPwInput, $aEncryptedData = false) {
-		$thePwInput = urlencode($aPwInput); //some chars like "+" cannot be handled by blowfish in cyrpt()
+		//only first 72 chars are encoded via blowfish,
+		//  and also try to protect against unseemly long string/time attacks
+		if (strlen($aPwInput)<64) {
+			$thePwInput = urlencode($aPwInput);
+		} else {
+			$thePwInput = urlencode(substr($aPwInput,0,64).min(array(999,strlen($aPwInput))));
+		}
 		$theCryptoInfo = '$2a$08$'; //2a = Blowfish, 08 = crypto strength, append actual 22 char salt to end of this
 		//if encrypted data is passed, check it against input ($info)
 		if ($aEncryptedData) {
