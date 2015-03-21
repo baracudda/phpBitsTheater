@@ -294,7 +294,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 		$theNsKey = $this->splitKeyName($aNsKey);
 		$theNsKeyStr = $this->implodeKeyName($theNsKey);
 		$old_value = $this->getMapValue($aNsKey);
-		if ($old_value != $aNewValue) {
+		if ($old_value !== $aNewValue) {
 			$this->_mapdata[$theNsKeyStr] = $aNewValue;
 			$theFinally = new FinallyBlock(function($aModel) {
 				if (!is_null($aModel->value_update)) {

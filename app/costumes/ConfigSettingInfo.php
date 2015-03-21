@@ -134,7 +134,7 @@ class ConfigSettingInfo extends BaseCostume {
 			case self::INPUT_STRING:
 				return Widgets::createTextBox($theWidgetName,$theValue);
 			case self::INPUT_BOOLEAN:
-				return Widgets::createCheckBox($theWidgetName,$theValue,!empty($theValue));
+				return Widgets::createCheckBox($theWidgetName,!empty($theValue));
 			case self::INPUT_DROPDOWN:
 				$theItemList = array();
 				foreach($this->mSettingInfo->input_enums as $key => $valueRow) {

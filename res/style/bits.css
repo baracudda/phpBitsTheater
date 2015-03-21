@@ -261,6 +261,11 @@ table.db-display td, table.db-display th {
 	padding: 2px;
 }
 
+table.db-display .db-field-label {
+	font-weight: bolder;
+	text-align: right;
+}
+
 .smalltext {
 	font-size: x-small;
 	font-family: verdana, sans-serif;

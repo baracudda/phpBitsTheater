@@ -181,7 +181,7 @@ class Config extends BaseModel implements IFeatureVersioning {
 	 */
 	public function defineMapValue($aMapInfo) {
 		if (parent::defineMapValue($aMapInfo)) {
-			$this->debugLog(__FUNCTION__.' inserted config: '.$this->implodeKeyName($aMapInfo));
+			$this->debugLog(__FUNCTION__.' config inserted: '.$this->implodeKeyName($aMapInfo));
 		} else {
 			$this->debugLog(__FUNCTION__.' config already exists: '.$this->implodeKeyName($aMapInfo));
 		}
@@ -224,11 +224,12 @@ class Config extends BaseModel implements IFeatureVersioning {
 	 * "/?" would store "?" instead of the default value.
 	 */
 	public function setMapValue($aKey, $aNewValue) {
-		if ($aNewValue=='\?') {
+		if ($aNewValue==='\?') {
 			$aNewValue = '?';
-		} else if ($aNewValue=='?' && isset($this->_mapdefault[$aKey])) {
+		} else if ($aNewValue==='?' && isset($this->_mapdefault[$aKey])) {
 			$aNewValue = $this->_mapdefault[$aKey];
 		}
+		//$this->debugLog(__METHOD__.' cfg='.$aKey.', '.$this->debugStr($aNewValue));
 		parent::setMapValue($aKey, $aNewValue);
 	}
 	
@@ -257,7 +258,7 @@ class Config extends BaseModel implements IFeatureVersioning {
 	 */
 	public function getConfigSettings(ConfigNamespaceInfo $aNamespaceInfo) {
 		$theSettings = array();
-		if ($aNamespaceInfo!=null) {
+		if (isset($aNamespaceInfo)) {
 			$theSettingList = $this->getRes('config/'.$aNamespaceInfo->namespace);
 			foreach ($theSettingList as $theSettingName => $theSettingInfo) {
 				$o = ConfigSettingInfo::fromConfigRes($aNamespaceInfo, $theSettingName, $theSettingInfo);

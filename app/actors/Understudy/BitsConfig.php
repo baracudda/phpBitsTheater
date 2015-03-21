@@ -65,11 +65,12 @@ class BitsConfig extends BaseActor {
 			$theNamespaceInfo->settings_list = $dbConfig->getConfigSettings($theNamespaceInfo);
 			foreach ($theNamespaceInfo->settings_list as $theSettingName => $theSettingInfo) {
 				$theNewValue = $theSettingInfo->getInputValue($v);
-				$theOldValue = $theSettingInfo->value;
-				//$v->addUserMsg(' ov='.$theOldValue.' nv='.$this->debugStr($theNewValue));
-				if ($theNewValue != $theOldValue) {
+				$theOldValue = $theSettingInfo->getCurrentValue();
+				//$this->debugLog(__METHOD__.' ov='.$theOldValue.' nv='.$this->debugStr($theNewValue));
+				if ($theNewValue !== $theOldValue) {
 					$dbConfig->setConfigValue($theSettingInfo->ns, $theSettingInfo->key, $theNewValue);
 					$bSaved = true;
+					//$this->debugLog(__METHOD__.' saved.');
 				}
 			}
 		}

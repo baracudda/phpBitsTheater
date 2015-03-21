@@ -274,6 +274,14 @@ class Arrays {
 				}, explode($theTokens['delimiter'], $aCsvLine));
 		}, explode("\n", $theCsvToParse));
 	}
+	
+	static public function removeValue(&$anArray, $aValue) {
+		foreach ($anArray as $theKey => &$theValue) {
+			if ($aValue===$theValue) {
+				unset($anArray[$theKey]);
+			}
+		}
+	}
 
 }//end class
 

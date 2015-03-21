@@ -529,7 +529,7 @@ class Scene extends BaseScene {
 	public function getMyUrl($aUrl='', array $aQuery=array()) {
 		$theUrl = null;
 		if (!empty($aUrl) && !is_array($aUrl) && !Strings::beginsWith($aUrl,'/') && !empty($this->_actor)) {
-			$theUrl = $this->_director->getSiteURL(strtolower($this->_actor->mySimpleClassName),$aUrl);
+			$theUrl = $this->_director->getSiteURL($this->_actor->mySimpleClassName,$aUrl);
 		} else {
 			$theUrl = $this->_director->getSiteURL($aUrl);
 		}

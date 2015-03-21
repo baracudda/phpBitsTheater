@@ -84,8 +84,8 @@ class FileUtils {
 			$theText = (!$isWindows) ? substr($aText, $num_wrote) : substr($aText, $num_wrote, 8100);
 			// only care about warnings if on last retry
 			$fwResult = ($num_retries > 1)
-			? @fwrite($aFileStream, $theText, strlen($theText))
-			: fwrite($aFileStream, $theText, strlen($theText));
+					? @fwrite($aFileStream, $theText, strlen($theText))
+					: fwrite($aFileStream, $theText, strlen($theText));
 			if (!empty($fwResult)) {
 				$num_wrote += $fwResult;
 			}
@@ -98,13 +98,12 @@ class FileUtils {
 				else {
 					$tl = microtime(true);
 					Strings::debugLog(__METHOD__.' wrote: '.$num_wrote.
-					' duration: '.number_format($tl-$ts).' text: '.$aText);
+							' duration: '.number_format($tl-$ts).' text: '.$aText);
 				}
 			}
 		}
 		return $num_wrote;
 	}
-	
 	
 }//end class
 
