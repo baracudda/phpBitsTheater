@@ -17,15 +17,11 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
-use BitsTheater\scenes\Rights as MyScene;
-	/* @var $v MyScene */
+use BitsTheater\scenes\Rights as MyScene; /* @var $v MyScene */
+use BitsTheater\models\Permissions; /* @var $dbRights Permissions */
+use BitsTheater\models\Auth; /* @var $dbAuth Auth */
+use BitsTheater\models\AuthGroups as AuthGroups; /* @var $dbAuthGroups AuthGroups */
 use com\blackmoonit\Arrays;
-use BitsTheater\models\Permissions;
-	/* @var $dbRights Permissions */
-use BitsTheater\models\Auth;
-	/* @var $dbAuth Auth */
-use BitsTheater\models\AuthGroups as AuthGroups;
-	/* @var $dbAuthGroups AuthGroups */
 use com\blackmoonit\Strings;
 {//namespace begin
 

@@ -626,6 +626,7 @@ class Scene extends BaseScene {
 	}
 	
 	/**
+	 * @deprecated NO-OP<br>
 	 * If not logged in, check for "Basic HTTP Auth" header/POST var and attempt to log in with that user/pw info.
 	 */
 	public function checkForBasicHttpAuth() {
@@ -652,7 +653,7 @@ class Scene extends BaseScene {
 	}
 
 	/**
-	 * Immediately kills script processing and page rendering. 
+	 * Immediately kills script processing and page rendering.
 	 * Sends back the standard Basic HTTP auth failure headers along
 	 * with the 'auth/msg_basic_auth_fail' localized string resource
 	 * as the die() message if nothing is passed in.

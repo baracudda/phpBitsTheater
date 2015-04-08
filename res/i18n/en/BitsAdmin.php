@@ -33,6 +33,7 @@ class BitsAdmin extends BaseResources {
 	
 	public $btn_label_update = '<span class="glyphicon glyphicon-wrench"></span> Update!';
 	public $btn_label_uptodate = '<span class="glyphicon glyphicon-ok"></span> Already up to date';
+	public $btn_label_resetup_db = '<span class="glyphicon glyphicon-asterisk"></span> Create Missing Tables';
 	
 	public $msg_warning_backup_db = "UPDATING COULD RESULT IN DATA LOSS IF A PROBLEM ARISES!<br>\nBACKUP YOUR DATABASE BEFORE UPDATING!";
 	public $msg_update_success = 'Update successful!';

@@ -17,12 +17,10 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
-use BitsTheater\Scene as MyScene;
-	/* @var $v MyScene */
+use BitsTheater\Scene as MyScene; /* @var $v MyScene */
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\database\DbUtils;
-use BitsTheater\models\SetupDb;
-	/* @var $dbMeta SetupDb */
+use BitsTheater\models\SetupDb; /* @var $dbMeta SetupDb */
 use com\blackmoonit\Strings;
 use \PDOException;
 {//namespace begin
@@ -54,12 +52,23 @@ class BitsAdmin extends BaseActor {
 	public function ajaxUpdateFeature() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
+		$this->viewToRender('_blank');
 		//auth
 		if ($this->isAllowed('config', 'modify')) {
 			$dbMeta = $this->getProp('SetupDb');
 			$dbMeta->upgradeFeature($v);
 		}
-		$this->renderThisView = '_blank';
+	}
+	
+	public function ajaxResetupDb() {
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		$this->viewToRender('_blank');
+		//auth
+		if ($this->isAllowed('config', 'modify')) {
+			$dbMeta = $this->getProp('SetupDb');
+			$dbMeta->setupModels($v);
+		}
 	}
 	
 }//end class

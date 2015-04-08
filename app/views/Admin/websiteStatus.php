@@ -42,6 +42,15 @@ $('button.btn-update-feature').click(function(e) {
 	bootbox.dialog(theWarningDialog);
 });
 
+$('#btn_resetup_db').click(function(e) {
+	$.post('{$v->getMyUrl('ajaxResetupDb')}',{}).done(function(aData) {
+		alert('Missing tables created.');
+		//console.log('resetup done');
+	}).fail(function(aData, textStatus, errorThrown) {
+		//console.log('resetup failed');
+	});
+});
+
 EOD;
 
 $w .= '<div class="panel panel-default">';
@@ -108,6 +117,12 @@ $w .= "</tbody>\n";
 $w .= "</table><br/>\n";
 
 $w .= '</div><span title=".panel" HIDDEN></span>'."\n";
+
+$w .= '<br>';
+$w .= 'Once all features are up-to-date, you may want to ensure all tables exist. ';
+$w .= 'This is usually important if restoring from a partial backup or imported data. ';
+$w .= '<br>';
+$w .= '<button type="button" id="btn_resetup_db" class="btn btn-warning">'.$v->getRes('admin/btn_label_resetup_db').'</button>';
 
 print($w);
 

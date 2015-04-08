@@ -16,6 +16,8 @@
 */
 
 namespace com\blackmoonit;
+use \PDO;
+use \PDOStatement;
 {//begin namespace
 
 /**
@@ -62,6 +64,11 @@ class OutputToCSV {
 	 */
 	protected $mLineDelimiter = PHP_EOL;
 	/**
+	 * Should a header row be generated? Default is FALSE.
+	 * @var boolean
+	 */
+	protected $bGenerateHeader = false;
+	/**
 	 * Generate a csv output header row based on input column keys.
 	 * @var boolean
 	 */
@@ -74,7 +81,7 @@ class OutputToCSV {
 	/**
 	 * Direct the csv output to the following stream. If this is not
 	 * defined, a string is created containing the entire output.
-	 * @var /Stream?
+	 * The var is a resource (stream).
 	 */
 	protected $mOutputStream = null;
 	/**
@@ -89,6 +96,11 @@ class OutputToCSV {
 	 */
 	protected $mInputArray = null;
 	/**
+	 * The input as PDOStatement used for output data.
+	 * @var PDOStatement
+	 */
+	protected $mInputPDOStatement = null;
+	/**
 	 * The csv output variable. It will be reset whenever it is pushed
 	 * out to a stream, else will contain the entire output.
 	 * @var string
@@ -99,6 +111,14 @@ class OutputToCSV {
 	 * Create a new instance of OutputToCSV.
 	 */
 	public function OutputToCSV() {
+	}
+	
+	/**
+	 * Factory method for those that like to use them.
+	 * @return \com\blackmoonit\OutputToCSV
+	 */
+	static public function newInstance() {
+		return new OutputToCSV();
 	}
 	
 	/**
@@ -143,70 +163,139 @@ class OutputToCSV {
 		return $this;
 	}
 	
-	public function setInputArray(array &$aInput) {
-		$this->mInputArray = $aInput;
-		return $this;
-	}
-
+	/**
+	 * Data used to export to CSV.
+	 * @param array|PDOStatement $aInput - input data.
+	 * @return \com\blackmoonit\OutputToCSV
+	 */
 	public function setInput($aInput) {
-		if (is_array($aInput))
+		if (is_array($aInput)) {
 			$this->mInputArray = $aInput;
-		else { //idk yet
+		} else if ($aInput instanceof PDOStatement) {
+			$this->mInputPDOStatement = $aInput;
+		} else {
 			//TODO input as stream too!
 		}
 		return $this;
 	}
 
+	/**
+	 * If output to a stream is desired, set the output stream
+	 * to use with this method. Streams are not a class, so no
+	 * type hints are possible, yet.
+	 * @param mixed $aOutputStream - the output stream to use.
+	 * @return \com\blackmoonit\OutputToCSV
+	 */
 	public function setOutputStream($aOutputStream) {
 		$this->mOutputStream = $aOutputStream;
 		return $this;
 	}
 	
+	/**
+	 * Setting for generating a header row (default FALSE).
+	 * @param boolean $bUseInputForHeaderRow - (optional) default is TRUE
+	 * since most that would call this method want to change it from its
+	 * default value.
+	 * @return \com\blackmoonit\OutputToCSV
+	 */
+	public function setGenerateHeaderRow($bGenerateHeaderRow=true) {
+		$this->bGenerateHeader = $bGenerateHeaderRow;
+		return $this;
+	}
+	
+	/**
+	 * Header row data to use in case you want something different
+	 * from the table column names.
+	 * @param array $aHeaderRow - associative array where the array
+	 * keys are the header names.
+	 * @return \com\blackmoonit\OutputToCSV
+	 */
 	public function setHeaderRowData($aHeaderRow) {
 		$this->mHeaderRow = $aHeaderRow;
 		return $this;
 	}
 	
+	/**
+	 * Setting for using input as header row (default FALSE). Setting
+	 * this to TRUE will also setGenerateHeaderRow() to TRUE as well.
+	 * @param boolean $bUseInputForHeaderRow - (optional) default is TRUE
+	 * since most that would call this method want to change it from its
+	 * default value.
+	 * @return \com\blackmoonit\OutputToCSV
+	 */
 	public function useInputForHeaderRow($bUseInputForHeaderRow=true) {
 		$this->bGenerateHeaderFromInput = $bUseInputForHeaderRow;
+		if ($bUseInputForHeaderRow && !$this->bGenerateHeader)
+			$this->bGenerateHeader = true;
 		return $this;
 	}
-	
+
+	/**
+	 * Some fields need special handling performed on export.
+	 * @param string $aColName - the column name on when callback is invoked.
+	 * @param function $aCallbackFunction - callback function to get value to
+	 * export. Callback signature: ( $col_value, $row_data[] ) returns string.
+	 * @return \com\blackmoonit\OutputToCSV
+	 */
 	public function setCallback($aColName, $aCallbackFunction) {
 		$this->mCallbacks[$aColName] = $aCallbackFunction;
 		return $this;
 	}
+
+	/**
+	 * Retrieve the row indicated by the param or just get the next
+	 * available row if indexing is not possible.
+	 * @param number $aIdx - (optional) mainly used for array index retrieval.
+	 * @return array Returns the associative array of data to output as CSV.
+	 */
+	protected function getInputRow($aIdx=0) {
+		if (!empty($this->mInputArray)) {
+			if (!empty($this->mInputArray[$aIdx]))
+				return $this->mInputArray[$aIdx];
+		} else if (!empty($this->mInputPDOStatement)) {
+			return $this->mInputPDOStatement->fetch(PDO::FETCH_ASSOC);
+		}
+		return null;
+	}
+
+	/**
+	 * Generate just the header CSV line based on param or prior set header row data.
+	 * @param string $aHeaderValues - (optional) header values to output; will use mHeaderRow
+	 * if nothing was passed in.
+	 * @return string Returns the CSV header line to output.
+	 */
+	protected function generateHeaderRow($aHeaderValues=null) {
+		$theHeaderValues = (!empty($aHeaderValues)) ? $aHeaderValues : $this->mHeaderRow; 
+		foreach ($theHeaderValues as &$theName) {
+			$theName = str_replace($this->mEnclosureLeft,$this->mReplaceEnclosureLeft,$theName);
+			$theName = str_replace($this->mEnclosureRight,$this->mReplaceEnclosureRight,$theName);
+		}
+		$theSeparator = $this->mEnclosureRight.$this->mValueDelimiter.$this->mEnclosureLeft;
+		return $this->mEnclosureLeft.implode($theSeparator, $theHeaderValues).$this->mEnclosureRight.$this->mLineDelimiter;
+	}
 	
 	/**
-	 * Convert the input into a CSV output using the defined options/settings.
-	 * @param array $aInput - (optional if already been set) array/stream to convert.
-	 * @return string - Returns a string if no output stream is defined, else !empty($this->mInput).
-	 * @see StackOverflow.com http://stackoverflow.com/a/21858025
+	 * Workhorse method that actually generates the CSV and either outputs each line to the
+	 * defined output stream or caches the entire CSV into an object property.
 	 */
-	public function generateCSV($aInput=null) {
-		if (!empty($aInput))
-			$this->setInput($aInput);
-		if (empty($this->mInputArray))
-			return false;
+	protected function generateCSVfromInput() {
 		// using concatenation since it is faster than fputcsv, and file size is smaller
 		$this->csv = '';
-		
-		//TODO when input is a stream, and bGenerateHeaderFromInput is used, need to do header/first line special
-		if (!empty($this->mHeaderRow) || $this->bGenerateHeaderFromInput) {
-			$theSeparator = $this->mEnclosureLeft.$this->mValueDelimiter.$this->mEnclosureRight;
-			$theHeaderValues = (!empty($this->mHeaderRow)) ? $this->mHeaderRow : array_keys($this->mInputArray[0]);
-			foreach ($theHeaderValues as &$theName) {
-				$theName = str_replace($this->mEnclosureLeft,$this->mReplaceEnclosureLeft,$theName);
-				$theName = str_replace($this->mEnclosureRight,$this->mReplaceEnclosureRight,$theName);
+
+		$theIdx = 0;
+		$theRow = $this->getInputRow($theIdx);
+		if (!empty($theRow) && $this->bGenerateHeader) {
+			if ($this->bGenerateHeaderFromInput || empty($this->mHeaderRow)) {
+				$this->setHeaderRowData(array_keys($theRow));
 			}
-			$this->csv .= $this->mEnclosureLeft.implode($theSeparator, $theHeaderValues).$this->mEnclosureRight.$this->mLineDelimiter;
+			$this->csv .= $this->generateHeaderRow();
 			if ($this->mOutputStream) {
-				$this->mOutputStream.put($this->csv);
+				fputs($this->mOutputStream, $this->csv, strlen($this->csv));
 				$this->csv = '';
 			}
 		}
-		//data output
-		foreach ($this->mInputArray as $theRow) {
+		while (!empty($theRow)) {
+			//generate output row
 			foreach ($theRow as $theColName => $theColValue) {
 				if (!empty($this->mCallbacks[$theColName])) {
 					$theColValue = $this->mCallbacks[$theColName]($theColValue, $theRow);
@@ -217,17 +306,65 @@ class OutputToCSV {
 				$theColValue = str_replace(array("\r\n", "\n", "\r"),'\n',$theColValue);
 				$this->csv .= $this->mEnclosureLeft.$theColValue.$this->mEnclosureRight.$this->mValueDelimiter;
 			}
-			$this->csv .= $this->mLineDelimiter;
+			$theDelimSize = strlen($this->mValueDelimiter);
+			$this->csv = substr_replace($this->csv, $this->mLineDelimiter, -$theDelimSize, $theDelimSize);
+			//if stream is defined, output to stream and reset csv (large data friendly, that way)
 			if ($this->mOutputStream) {
-				$this->mOutputStream.put($this->csv);
+				fputs($this->mOutputStream, $this->csv, strlen($this->csv));
 				$this->csv = '';
 			}
+			//get the next row to output
+			$theIdx += 1;
+			$theRow = $this->getInputRow($theIdx);
 		}
+	}
+	
+	/**
+	 * Convert the input into a CSV output using the defined options/settings.
+	 * @param $aInput - (optional if already been set) array/stream to convert.
+	 * @return \com\blackmoonit\OutputToCSV|string - Returns a string if no output stream is defined, else $this.
+	 * @see StackOverflow.com http://stackoverflow.com/a/21858025
+	 */
+	public function generateCSV($aInput=null) {
+		if (!empty($aInput))
+			$this->setInput($aInput);
+		$this->generateCSVfromInput();
 		if ($this->mOutputStream) {
-			return true;
+			return $this;
 		} else {
 			return $this->csv;
 		}
+	}
+	
+	/**
+	 * Save the CSV output to a file. If generateCSV() has not been
+	 * called yet, this method will setOutputStream() and then call
+	 * generateCSV() to write the output directly to the file. Use
+	 * the latter mechanism for large outputs to avoid running out
+	 * of memory PHP is allowed to use.
+	 * @param string $aFilePath - a destination filepath, ensure folders
+	 * exists before calling this method.
+	 * @return boolean Returns TRUE if file was successfully saved.
+	 */
+	public function generateOutputToFile($aFilePath) {
+		$bSuccess = false;
+		$theFileHandle = fopen($aFilePath, 'c');
+		if (flock($theFileHandle, LOCK_EX)) {
+			ftruncate($theFileHandle, 0);
+			if (!empty($this->csv)) {
+				FileUtils::fstream_write($theFileHandle, $this->csv);
+			} else {
+				$this->setOutputStream($theFileHandle);
+				$this->generateCSV();
+			}
+			fflush($theFileHandle);
+			flock($theFileHandle, LOCK_UN);
+			$bSuccess = true;
+		} else {
+			$this->debugLog(__METHOD__.' lock fail: '.$aFilePath);
+		}
+		fclose($theFileHandle);
+		return $bSuccess;
 	}
 
 }//end class

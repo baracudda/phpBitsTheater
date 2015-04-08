@@ -30,12 +30,6 @@ define('BITS_NAMESPACE_CFGS',BITS_NAMESPACE.'configs\\');
 define('BITS_NAMESPACE_MODELS',BITS_NAMESPACE.'models\\');
 define('BITS_NAMESPACE_SCENES',BITS_NAMESPACE.'scenes\\');
 
-//========================
-//=     CHANGE ME!       =
-define('WEBAPP_NAMESPACE','MyWebAppNamespace\\'); //always end with "\\"
-//========================
-//========================
-
 //paths
 define('¦',DIRECTORY_SEPARATOR);
 define('BITS_ROOT',dirname(__FILE__));
@@ -58,7 +52,7 @@ define('WEBAPP_PATH', BITS_APP_PATH);
 
 //domain url
 define('SERVER_URL',((array_key_exists('HTTPS',$_SERVER) && $_SERVER['HTTPS']=='on')?'https':'http').'://'.$_SERVER['SERVER_NAME'].
-		(($_SERVER['SERVER_PORT']=='80' || $_SERVER['SERVER_PORT']=='443')?'':':'.$_SERVER['SERVER_PORT']).'/');
+		(($_SERVER['SERVER_PORT']=='80' || $_SERVER['SERVER_PORT']=='443')?'':':'.$_SERVER['SERVER_PORT']));
 //relative urls
 /**
  * Current, site-relative URL.
@@ -96,6 +90,18 @@ define('BITS_LIB',BITS_URL.'/lib');
  */
 define('WEBAPP_JS_URL', BITS_URL.'/app/js');
 
+$theCustomDefinesFile = BITS_PATH.'appdefines.php';
+if (file_exists($theCustomDefinesFile)) {
+	/*************************************************************************
+	 * Special constants which may be defined by appdefines.php using the
+	* BitsTheater namespace:
+	*
+	* define('WEBAPP_NAMESPACE','MyWebAppNamespace\\'); //always end with "\\"
+	*
+	*************************************************************************/
+	include_once($theCustomDefinesFile);
+	unset($theCustomDefinesFile);
+}
 
 /**********************************
  * load required modules

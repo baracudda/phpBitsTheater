@@ -3,6 +3,7 @@
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use BitsTheater\costumes\JokaPackage;
+use BitsTheater\costumes\SqlBuilder;
 use com\blackmoonit\Strings;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\database\FinallyCursor;
@@ -339,23 +340,22 @@ class JokaQueues extends BaseModel {
 		return $theResultSet;
 	}
 	
-	public function getOutgoingPayloads($aPackageName=null) {
+	public function getOutgoingPayloads($aPackageName, $aDeviceId) {
 		$theResultSet = array();
 		if ($this->isConnected()) try {
 			$rs = null;
 			$myFinally = FinallyCursor::forDbCursor($rs);
 		
-			$theParams = array();
-			$theParamTypes = array();
-			$theSql = 'SELECT payload_id, payload, package_name, device_id, transmit_ts';
-			$theSql .= ' FROM '.$this->tnOutboundPayloads;
-			if (!empty($aPackageName)) {
-				$theSql .= ' WHERE package_name=:package_name';
-				$theParams['package_name'] = $aPackageName;
-				$theParamTypes['package_name'] = PDO::PARAM_STR;
-			}
-			$theSql .= ' ORDER BY transmit_ts '.$this->mSqlPayloadLimit;
-			$rs = $this->query($theSql,$theParams,$theParamTypes);
+			$theSql = SqlBuilder::withModel($this)->setDataSet(array(
+					'package_name' => $aPackageName,
+					'device_id' => $aDeviceId,
+			));
+			$theSql->startWith('SELECT payload_id, payload, package_name, device_id, transmit_ts');
+			$theSql->add('FROM')->add($this->tnOutboundPayloads);
+			$theSql->setParamPrefix(' WHERE ')->mustAddParam('package_name');
+			$theSql->setParamPrefix(' AND ')->mustAddParam('device_id');
+			$theSql->add('ORDER BY transmit_ts '.$this->mSqlPayloadLimit);
+			$rs = $theSql->query();
 			$theResultSet = $rs->fetchAll(PDO::FETCH_CLASS, $this->mSqlPayloadClass);
 			if (!empty($theResultSet)) {
 				foreach($theResultSet as &$theRow) {
@@ -363,9 +363,8 @@ class JokaQueues extends BaseModel {
 				}
 			}
 			$rs->closeCursor();
-			
 		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe, 'getOutgoingPayloads("'.$aPackageName.'") failed.');
+			throw new DbException($pdoe, __METHOD__.'("'.$aPackageName.', '.$aDeviceId.'") failed.');
 		}
 		return $theResultSet;
 	}

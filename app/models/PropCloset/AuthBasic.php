@@ -603,18 +603,18 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 				unset($this->HTTP_AUTHORIZATION); //keeping lightly protected pw in memory can be bad.
 				return $this->checkWebFormForTicket($dbAccounts, $aScene);
 			case 'Broadway':
-				$this->debugLog(__METHOD__.' chkhdr='.$this->debugStr($theAuthHeader));
+				//$this->debugLog(__METHOD__.' chkhdr='.$this->debugStr($theAuthHeader));
 				if (!empty($theAuthHeader->auth_id) && !empty($theAuthHeader->auth_token)) {
 					$this->removeStaleMobileAuthTokens();
 					$theAuthTokenRow = $this->getAuthTokenRow($theAuthHeader->auth_id, $theAuthHeader->auth_token);
-					$this->debugLog(__METHOD__.' arow='.$this->debugStr($theAuthTokenRow));
+					//$this->debugLog(__METHOD__.' arow='.$this->debugStr($theAuthTokenRow));
 					if (!empty($theAuthTokenRow)) {
 						$theAuthMobileRows = $this->getAuthMobilesByAuthId($theAuthHeader->auth_id);
 						foreach ($theAuthMobileRows as $theMobileRow) {
 							$theFingerprintStr = $theAuthHeader->fingerprints;
-							$this->debugLog(__METHOD__.' fstr1='.$theFingerprintStr);
+							//$this->debugLog(__METHOD__.' fstr1='.$theFingerprintStr);
 							if (Strings::hasher($theFingerprintStr, $theMobileRow['fingerprint_hash'])) {
-								$this->debugLog(__METHOD__.' fmatch?=true');
+								//$this->debugLog(__METHOD__.' fmatch?=true');
 								
 								//TODO
 								//barring checking circumstances like is GPS outside pre-determined bounds, we authenticated!

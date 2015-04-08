@@ -17,14 +17,10 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
-use BitsTheater\Scene as MyScene;
-	/* @var $v MyScene */
-use BitsTheater\models\Config as ConfigModel;
-	/* @var $dbConfig ConfigModel */
-use BitsTheater\costumes\ConfigNamespaceInfo;
-	/* @var $theNamespaceInfo ConfigNamespaceInfo */
-use BitsTheater\costumes\ConfigSettingInfo;
-	/* @var $theSettingInfo ConfigSettingInfo */
+use BitsTheater\Scene as MyScene; /* @var $v MyScene */
+use BitsTheater\models\Config as ConfigModel; /* @var $dbConfig ConfigModel */
+use BitsTheater\costumes\ConfigNamespaceInfo; /* @var $theNamespaceInfo ConfigNamespaceInfo */
+use BitsTheater\costumes\ConfigSettingInfo; /* @var $theSettingInfo ConfigSettingInfo */
 use com\blackmoonit\Widgets;
 {//namespace begin
 

@@ -22,12 +22,12 @@ header("Content-Type: application/download");
 header("Content-Disposition: attachment;filename={$v->output_filename}");
 header("Content-Transfer-Encoding: binary");
 
-$theCSV = new OutputToCSV();
 if ($v->results) {
+	$theCSV = OutputToCSV::newInstance()->setInput($v->results);
+	$theCSV->useInputForHeaderRow(true);
 	//TODO set all the various CSV options
-	$w = $theCSV->useInputForHeaderRow()->generateCSV($v->results);
-	print($w);
+	$theCSV->setOutputStream(fopen('php://output', 'w'));
+	$theCSV->generateCSV();
 } else {
 	//not sure
 }
-die();

@@ -19,9 +19,11 @@ namespace BitsTheater;
 use com\blackmoonit\database\GenericDb as BaseModel;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\exceptions\DbException;
+use com\blackmoonit\OutputToCSV;
 use com\blackmoonit\Strings;
 use \ReflectionClass;
 use \PDOException;
+use \PDOStatement;
 use BitsTheater\Director;
 use BitsTheater\DbConnInfo;
 {//begin namespace
@@ -450,10 +452,22 @@ class Model extends BaseModel {
 	 * Returns the URL for this site appended with relative path info.
 	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
 	 * equating to path segments.
-	 * @return string - returns the site domain + relative path URL.
+	 * @return string - returns the relative path URL.
 	 */
 	public function getSiteURL($aRelativeURL='', $_=null) {
 		return call_user_func_array(array($this->director, 'getSiteURL'), func_get_args());
+	}
+	
+	/**
+	 * Given a query result set and a file path, generate the CSV file.
+	 * @param PDOStatement $aQueryResults - the query result PDOStatement.
+	 * @param string $aFilePath - filename to create, intermediate folders should already exist.
+	 */
+	public function queryResultsToCsvFile(PDOStatement $aQueryResults, $aFilePath) {
+		$theCSV = OutputToCSV::newInstance()->useInputForHeaderRow();
+		//TODO set all the various CSV options
+		$theCSV->setInput($aQueryResults);
+		return $theCSV->generateOutputToFile($aFilePath);
 	}
 	
 }//end class

@@ -31,6 +31,7 @@ class Website extends BaseResources {
 	public $header_meta_title = 'BitsTheater';
 	public $header_title = 'BitsTheater Microframework';
 	public $header_subtitle = 'An ity-bity framework.';
+	public $site_logo = 'site_logo.png';
 	
 	public $menu_home_label = 'Home';
 	public $menu_home_subtext = '';
@@ -48,6 +49,21 @@ class Website extends BaseResources {
 	);
 	public $list_credits_glue = ' &nbsp; | &nbsp; ';
 	
+	
+	/**
+	 * Magic PHP method to limit what var_dump() shows.
+	 */
+	public function __debugInfo() {
+		$vars = parent::__debugInfo();
+		unset($vars['css_load_list']);
+		unset($vars['js_libs_load_list']);
+		unset($vars['js_load_list']);
+		unset($vars['list_patrons_html']);
+		unset($vars['list_patrons_glue']);
+		unset($vars['list_credits_html']);
+		unset($vars['list_credits_glue']);
+		return $vars;
+	}
 	
 	/**
 	 * Some resources need to be initialized by running code rather than a static definition.
@@ -140,6 +156,14 @@ class Website extends BaseResources {
 		}
 	}
 	
+	/**
+	 * Base the site_logo file to use on the VIRTUAL_HOST_NAME constant.
+	 * @return string Returns the "src" attribute value for an "img" HTML tag.
+	 */
+	public function site_logo_src() {
+		return $this->imgsrc($this->site_logo);
+	}
+
 }//end class
 
 }//end namespace

@@ -1,8 +1,7 @@
 <?php
 namespace BitsTheater\actors;
 use BitsTheater\actors\Understudy\BitsInstall as BaseActor;
-use BitsTheater\scenes\Install as MyScene;
-	/* @var $v MyScene */
+use BitsTheater\scenes\Install as MyScene; /* @var $v MyScene */
 use com\blackmoonit\database\DbConnInfo;
 use com\blackmoonit\Strings;
 {//namespace begin

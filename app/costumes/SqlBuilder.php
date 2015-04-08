@@ -58,6 +58,15 @@ class SqlBuilder extends BaseCostume {
 	public $myParamFuncs = array();
 	
 	/**
+	 * Magic PHP method to limit what var_dump() shows.
+	 */
+	public function __debugInfo() {
+		$vars = parent::__debugInfo();
+		unset($vars['myModel']);
+		return $vars;
+	}
+	
+	/**
 	 * Models can use this class to help build their SQL queries / PDO statements.
 	 * @param \BitsTheater\Model $aModel - the model being used.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns the created object.

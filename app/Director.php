@@ -488,17 +488,32 @@ class Director extends BaseDirector implements ArrayAccess {
 	 * Returns the URL for this site appended with relative path info.
 	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
 	 * equating to path segments.
-	 * @return string - returns the site domain + relative path URL.
+	 * @return string - returns the site relative path URL.
 	 */
 	public function getSiteURL($aRelativeURL='', $_=null) {
 		$theResult = BITS_URL;
 		if (!empty($aRelativeURL)) {
 			$theArgs = (is_array($aRelativeURL)) ? $aRelativeURL : func_get_args();
 			foreach ($theArgs as $pathPart) {
-				$theResult .= ((!empty($pathPart) && $pathPart[0]!='/') ? '/' : '' ) . $pathPart;
+				$theResult .= ((!empty($pathPart) && $pathPart[0]!=='/') ? '/' : '' ) . $pathPart;
 			}
 		}
 		return $theResult;
+	}
+	
+	/**
+	 * Returns the URL for this site appended with relative path info.
+	 * @param string $aRelativeURL - site path relative to site root.
+	 * @return string - returns the http scheme + site domain + relative path URL.
+	 */
+	public function getFullURL($aRelativeURL='') {
+		$theResult = SERVER_URL.'/';
+		if (strlen(VIRTUAL_HOST_NAME)>0)
+			$theResult .= VIRTUAL_HOST_NAME.'/';
+		if (Strings::beginsWith($aRelativeURL, '/'))
+			return $theResult.substr($aRelativeURL, 1);
+		else
+			return $theResult.$aRelativeURL;
 	}
 	
 	/**

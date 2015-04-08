@@ -173,7 +173,7 @@ class AuthBasicAccount extends BaseActor {
 		$pwKeyOld = $this->scene->getPwInputKey().'_old';
 		if ($dbAuth->isCallable('cudo') && $dbAuth->cudo($theAcctId,$this->scene->$pwKeyOld)) {
 			//if current pw checked out ok, see if its our own acct or have rights to modify other's accounts.
-			if ($theAcctId==$this->director->account_info['account_id'] || $this->isAllowed('account','modify')) {
+			if ($theAcctId==$this->director->account_info->account_id || $this->isAllowed('account','modify')) {
 				$theOldEmail = trim($this->scene->ticket_email);
 				$theNewEmail = trim($this->scene->email);
 				/* !== returned TRUE, === returned FALSE, but strcmp() returned 0 (meaning they are the same) O.o

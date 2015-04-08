@@ -32,7 +32,7 @@ try {
 	header("HTTP/1.0 404 Not Found");
 	header("Status: 404 Not Found");
 	$_SERVER['REDIRECT_STATUS'] = 404;
-	header('Location: '.SERVER_URL.'error.php?url='.$e404->url); //if custom 404 page, found! else generates a 404 =)
+	header('Location: '.SERVER_URL.'/error.php?url='.$e404->url); //if custom 404 page, found! else generates a 404 =)
 } catch (SystemExit $se) {
 	/* do nothing */
 } catch (IDebuggableException $e) {

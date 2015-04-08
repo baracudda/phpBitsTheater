@@ -21,7 +21,21 @@ namespace com\blackmoonit;
 class FileUtils {
 
 	private function __construct() {} //do not instantiate
-
+	
+	/**
+	 * Ensure parent folders exist given the destination file path.
+	 * @param string $aDestFilePath - the destination file path.
+	 * @param int $aMode - (optional) the mode assigned to the created folder;
+	 * For more information on modes, read the details on the chmod page.
+	 * @return boolean Return TRUE if folders exist.
+	 */
+	static public function ensureFoldersExist($aDestFilePath, $aMode=0755) {
+		$theParentPath = dirname($aDestFilePath);
+		if (!is_dir($theParentPath))
+			mkdir($theParentPath, $aMode, true);
+		return is_dir($theParentPath);
+	}
+	
 	/**
 	 * Similar to file_put_contents, but forces all parts of the folder path to exist first.
 	 * @param string $aDestFile - path and filename of destination.
@@ -29,11 +43,8 @@ class FileUtils {
 	 * @return Returns false on failure, else num bytes stored.
 	 */
 	static public function file_force_contents($aDestFile, $aData, $aDataSize, $mode=0755, $flags=0) {
-		$theFolders = dirname($aDestFile);
-		if (!is_dir($theFolders)) {
-			mkdir($theFolders, $mode, true);
-		}
 		try {
+			self::ensureFoldersExist($aDestFile);
 			return (file_put_contents($aDestFile, $aData, $flags)==$aDataSize);
 		} catch (\Exception $e) {
 			return false;
@@ -97,12 +108,25 @@ class FileUtils {
 				}
 				else {
 					$tl = microtime(true);
-					Strings::debugLog(__METHOD__.' wrote: '.$num_wrote.
+					Strings::debugLog(__METHOD__.' fwrite fail. wrote: '.$num_wrote.
 							' duration: '.number_format($tl-$ts).' text: '.$aText);
 				}
 			}
 		}
 		return $num_wrote;
+	}
+	
+	/**
+	 * Delete a file.
+	 * @param string $aFilePath - full path of file to delete.
+	 * @return boolean Returns TRUE if file does not exist anymore.
+	 */
+	static public function deleteFile($aFilePath) {
+		if (file_exists($aFilePath)) {
+			return unlink($aFilePath);
+		} else {
+			return true;
+		}
 	}
 	
 }//end class

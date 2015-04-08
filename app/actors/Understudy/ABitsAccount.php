@@ -17,10 +17,8 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
-use BitsTheater\scenes\Account as MyScene;
-	/* @var $v MyScene */
-use BitsTheater\models\Accounts;
-	/* @var $dbAccounts Accounts */
+use BitsTheater\scenes\Account as MyScene; /* @var $v MyScene */
+use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use BitsTheater\costumes\AccountInfoCache;
 use com\blackmoonit\Strings;
 {//namespace begin

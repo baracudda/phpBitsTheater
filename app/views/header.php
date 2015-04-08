@@ -48,7 +48,7 @@ $w .= '<tr>'."\n";
 //logo
 $w .= '<td class="logo">';
 $w .= '<a href="'.$v->getSiteURL().'">';
-$w .= '<img class="logo" title="logo" src="'.$v->getRes('website/imgsrc/site_logo.png').'">';
+$w .= '<img class="logo" title="logo" src="'.$v->getRes('website/site_logo_src').'">';
 $w .= '</a>';
 $w .= '</td>'."\n";
 

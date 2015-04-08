@@ -17,18 +17,14 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
-use BitsTheater\scenes\Install as MyScene;
-	/* @var $v MyScene */
+use BitsTheater\scenes\Install as MyScene; /* @var $v MyScene */
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\database\DbConnOptions;
 use com\blackmoonit\database\DbConnSettings;
-use com\blackmoonit\database\DbConnInfo;
-	/* @var $theDbConnInfo DbConnInfo */
+use com\blackmoonit\database\DbConnInfo; /* @var $theDbConnInfo DbConnInfo */
 use com\blackmoonit\database\DbUtils;
-use BitsTheater\models\SetupDb;
-	/* @var $dbSetupDb SetupDb */
-use BitsTheater\models\Accounts;
-	/* @var $dbAccounts Accounts */
+use BitsTheater\models\SetupDb; /* @var $dbSetupDb SetupDb */
+use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use com\blackmoonit\Strings;
 use com\blackmoonit\FileUtils;
 use \PDOException;
