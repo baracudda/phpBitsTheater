@@ -195,7 +195,7 @@ class SqlBuilder extends BaseCostume {
 			$this->myParams[$aParamKey] = $aParamValue;
 			if (isset($aParamType)) {
 				$this->myParamTypes[$aParamKey] = $aParamType;
-			} else if (empty($this->myParamTypes[$aParamKey])) {
+			} else if (!isset($this->myParamTypes[$aParamKey])) {
 				$this->myParamTypes[$aParamKey] = PDO::PARAM_STR;
 			}
 		} else {
@@ -230,16 +230,39 @@ class SqlBuilder extends BaseCostume {
 	 * @param array/string $aFieldList - the list or comma string of fieldnames.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
-	public function addFieldList($aFieldList) {
-		$theFieldList = '*';
-		if (!empty($aFieldList)) {
-			if (is_array($aFieldList)) {
-				$theFieldList = implode(', ', $aFieldList);
-			} else if (is_string($aFieldList)) {
-				$theFieldList = $aFieldList;
+	public function addFieldList($aFieldList)
+	{
+		$theFieldList = '*' ;
+		if( !empty($aFieldList) )
+		{
+			if( is_array($aFieldList) )
+			{
+				if( !empty($this->myParamPrefix) )
+				{ // ensure prefixes are applied
+					$thePrefixedFieldList = array() ;
+					foreach( $aFieldList as $aField )
+					{
+						if( strpos( $aField, $this->myParamPrefix ) !== 0 )
+							$thePrefixedFieldList[] =
+								$this->myParamPrefix . $aField ;
+						else
+							$thePrefixedFieldList[] = $aField ;
+					}
+					$theFieldList = implode( ', ', $thePrefixedFieldList ) ;
+				}
+				else
+					$theFieldList = implode( ', ', $aFieldList ) ;
+			}
+			else if( is_string($aFieldList) )
+			{ // add it as-is; let the caller beware
+				$theFieldList = $aFieldList ;
 			}
 		}
-		return $this->add($theFieldList);
+		else if( !empty( $this->myParamPrefix ) )
+		{
+			$theFieldList = $this->myParamPrefix . '*' ;
+		}
+		return $this->add($theFieldList) ;
 	}
 	
 	/**
@@ -568,5 +591,3 @@ class SqlBuilder extends BaseCostume {
 }//end class
 	
 }//end namespace
-	
-	
