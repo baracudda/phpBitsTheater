@@ -1,140 +1,43 @@
 <?php
-/*
- * Copyright (C) 2015 Blackmoon Info Tech Services
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 namespace BitsTheater\res;
-use BitsTheater\res\Resources as BaseResources;
+use BitsTheater\res\BitsWebsite as BaseResources;
 {//begin namespace
 
 class Website extends BaseResources {
-	public $version_seq = 2;		//build number, inc if db models need updating, override this in descendant
-	public $version = 'CHANGE ME';	//displayed version text, override this in descendant
-	public $api_version_seq = 0;    //api version number, inc if Actor methods change to force other apps to update
-	
-	public $css_load_list;		//defined in setup()
-	public $js_libs_load_list;	//defined in setup()
-	public $js_load_list;		//defined in setup()
-
-	public $header_meta_title = 'BitsTheater';
-	public $header_title = 'BitsTheater Microframework';
-	public $header_subtitle = 'An ity-bity framework.';
-	public $site_logo = 'site_logo.png';
-	
-	public $menu_home_label = 'Home';
-	public $menu_home_subtext = '';
+	//public $feature_id = 'my namespace: website'; //DO NOT TRANSLATE!
+	public $version_seq = 1;	//build number, inc'ing by 10 in dev, 1 in hot-fixes
+	public $version = '1.0.0';	//displayed version text
+	public $api_version_seq = 1;    //api version number, inc if Actor methods change to force other apps to update
 	
 	public $list_patrons_html = array(
-			'prime_investor' => '<a href="http://www.blackmoonit.com/">Blackmoon Info Tech Services</a>',
+			'prime_investor' => '<a href="http://www.example.com/">My Company, LLC.</a>',
 	);
-	public $list_patrons_glue = ' &nbsp; | &nbsp; ';
 	
-	public $list_credits_html = array(
-			'framework' => '<a target="_blank" href="https://github.com/baracudda/phpBitsTheater">BitsTheater framework by BITS</a>',
-			'menu' => '<a target="_blank" href="http://apycom.com/">jQuery Menu by Apycom</a>',
-			'icons' => '<a target="_blank" href="http://tango.freedesktop.org/Tango_Desktop_Project">Some icons by the Tango Project</a>',
-			'bootstrap-icons' => '<a href="http://glyphicons.com/">Glyphicons</a>',
-	);
-	public $list_credits_glue = ' &nbsp; | &nbsp; ';
-	
-	
-	/**
-	 * Magic PHP method to limit what var_dump() shows.
-	 */
-	public function __debugInfo() {
-		$vars = parent::__debugInfo();
-		unset($vars['css_load_list']);
-		unset($vars['js_libs_load_list']);
-		unset($vars['js_load_list']);
-		unset($vars['list_patrons_html']);
-		unset($vars['list_patrons_glue']);
-		unset($vars['list_credits_html']);
-		unset($vars['list_credits_glue']);
-		return $vars;
-	}
+	//public $list_credits_html_more = array(
+	//);
 	
 	/**
 	 * Some resources need to be initialized by running code rather than a static definition.
-	 * @see \BitsTheater\res\Resources::setup()
+	 * @see \BitsTheater\res\Website::setup()
 	 */
 	public function setup($aDirector) {
 		parent::setup($aDirector);
 		
-		//default page tab label is virtual host, but can be static or whatever you desire.
-		if (VIRTUAL_HOST_NAME)
-			$this->header_meta_title = VIRTUAL_HOST_NAME;
-		
-		//NULL path means use default lib path path
-		$this->css_load_list = array(
-				'bootstrap/css/bootstrap.css' => null,
-				'apycom/menu.css' => null,
-				'bits.css' => BITS_RES.'/style',
-		);
-		// external libs
-		$this->js_libs_load_list = array(
-				'jquery/jquery.min.js',
-				'bootstrap/js/bootstrap.min.js', //bootstrap needs to be after jQuery
-				'bootbox/bootbox.js',
-				
-				//apycom menu (needs to be after jQuery, else use the jquery sublib)
-				//'apycom/jquery.js', //do not need if already using jQuery
-				'apycom/menu.js',
-		
+		//NULL path means use default lib path
+		$this->res_array_merge($this->js_load_list, array(
 				//minification from http://www.jsmini.com/ using Basic and no jquery included.
-				'com/blackmoonit/jBits/jbits_mini.js',
+				'webapp_mini.js' => WEBAPP_JS_URL,
 				//  !-remove the below space and comment out the above line to debug un-minified JS code
 				/* * /
-				'com/blackmoonit/jBits/BasicObj.js',
-				'com/blackmoonit/jBits/AjaxDataUpdater.js',
-				/* end of jBits JS */
-		);
-		
-		//NULL path means use default lib path
-		$this->js_load_list = array(
-		);
+				'webapp.js' => WEBAPP_JS_URL,
+				'BitsRightGroups.js' => WEBAPP_JS_URL,
+				//'AnotherFile.js' => WEBAPP_JS_URL,
+				/* end of webapp JS */
+		));
+
+		//$this->res_array_merge($this->list_credits_html, $this->list_credits_html_more);
 	}
 
-	/**
-	 * Overall website feature ID will be assigned the namespace unless a string
-	 * is explicity defined as "feature_id".
-	 * @return string Returns defined website feature ID or default namespace one.
-	 */
-	public function getFeatureId() {
-		if (!empty($this->feature_id)) {
-			return $this->feature_id;
-		} else {
-			return substr(WEBAPP_NAMESPACE,0,-1).'/website';
-		}
-	}
-	
-	/**
-	 * SetupDb defines the SeqNum being passed in, this converts it to a more conventional display.
-	 * @param number $aSeqNum - SetupDb::FEATURE_VERSION_SEQ value.
-	 * @return string Returns the version display fit for human consumption.
-	 */
-	public function getFrameworkVersion($aSeqNum) {
-		switch(true) {
-			case ($aSeqNum<=1):
-				return '2.4.9';
-			case ($aSeqNum==2):
-				return '3.0.0';
-			case ($aSeqNum>=3):
-				return '3.1.'.($aSeqNum-3);
-		}//switch
-	}
-	
 	/**
 	 * Override this function if your website needs to do some updates that are not database related.
 	 * Throw an exception if your update did not succeed.
@@ -142,26 +45,13 @@ class Website extends BaseResources {
 	 * @throws Exception on failure.
 	 */
 	public function updateVersion($aSeqNum) {
-		//NO NEED TO CALL PARENT! (this class)
 		try {
-			switch (true) {
-			//cases should always be lo->hi, never use break; so all changes are done in order.
-			case ($theSeq<2):
-				//do your stuff here
-			}//end switch
+			//nothing to do, yet
 		} catch (Exception $e) {
 			//throw expection if your update code fails (logging it would be a good idea, too).
 			$this->debugLog(__METHOD__.' '.$e->getMessage());
 			throw $e;
 		}
-	}
-	
-	/**
-	 * Base the site_logo file to use on the VIRTUAL_HOST_NAME constant.
-	 * @return string Returns the "src" attribute value for an "img" HTML tag.
-	 */
-	public function site_logo_src() {
-		return $this->imgsrc($this->site_logo);
 	}
 
 }//end class
