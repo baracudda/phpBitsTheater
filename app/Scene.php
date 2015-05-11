@@ -613,6 +613,20 @@ class Scene extends BaseScene {
 			return;
 		if (empty($aLocation))
 			$aLocation = BITS_LIB;
+		
+		if (is_array($aFilename)) {
+			$script = "";
+			for ($ii = 0; $ii < count($aFilename); $ii++) {
+				$script = $script . $this->returnScriptTag($aFilename[$ii], $aLocation) . "\n";
+			}
+			
+			return $script;
+		} else {
+			return $this->returnScriptTag($aFilename, $aLocation);
+		}
+	}
+	
+	private function returnScriptTag($aFilename, $aLocation) {
 		return Strings::format('<script type="text/javascript" src="%s/%s"></script>', $aLocation, $aFilename);
 	}
 	

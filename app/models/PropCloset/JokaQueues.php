@@ -254,33 +254,26 @@ class JokaQueues extends BaseModel {
 
 	public function addOutgoingPayload(JokaPackage $aJokaPackage) {
 		if ($this->isConnected() && !empty($aJokaPackage)) {
-			$theParams = array();
-			$theParamTypes = array();
-			
-			$theSql = 'INSERT INTO '.$this->tnOutboundPayloads.' SET';
-			$theSql .= ' payload_id=:payload_id';
-			$theSql .= ', payload=:payload';
-			$theSql .= ', package_name=:package_name';
-			$theSql .= ', device_id=:device_id';
-			$theSql .= ', transmit_ts=:transmit_ts';
-				
-			//param values to save
-			$theParams['payload_id'] = $aJokaPackage->getOrCreatePayloadId();
-			$theParams['payload'] = $aJokaPackage->payload;
-			$theParams['package_name'] = $aJokaPackage->package_name;
-			$theParams['device_id'] = $aJokaPackage->device_id;
-			$theParams['transmit_ts'] = (empty($aJokaPackage->transmit_ts)) ? $this->utc_now(true) : $aJokaPackage->transmit_ts;
-			
-			$theParamTypes['payload_id'] = PDO::PARAM_STR;
-			$theParamTypes['payload'] = PDO::PARAM_STR;
-			$theParamTypes['package_name'] = PDO::PARAM_STR;
-			$theParamTypes['device_id'] = PDO::PARAM_STR;
-			$theParamTypes['transmit_ts'] = PDO::PARAM_STR;
-			
-			$this->execDML($theSql,$theParams,$theParamTypes);
+			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+					'payload_id' => $aJokaPackage->getOrCreatePayloadId(),
+					'payload' => $aJokaPackage->payload,
+					'package_name' => $aJokaPackage->package_name,
+					'device_id' => $aJokaPackage->device_id,
+					'transmit_ts' => (empty($aJokaPackage->transmit_ts)) ? $this->utc_now(true) : $aJokaPackage->transmit_ts,
+			));
+			$theSql->startWith('INSERT INTO')->add($this->tnOutboundPayloads);
+			$theSql->setParamPrefix(' SET ')->mustAddParam('payload_id')->setParamPrefix(', ');
+			$theSql->mustAddParam('payload');
+			$theSql->mustAddParam('package_name');
+			$theSql->mustAddParam('device_id');
+			$theSql->mustAddParam('transmit_ts');
+			$theSql->execDML();
+			//$this->debugLog(__METHOD__.' sql='.$this->debugStr($theSql));
 			if ($this->signalPid>0) {
 				posix_kill($this->signalPid, SIGUSR2);
 			}
+		} else {
+			$this->debugLog(__METHOD__.' pkg='.$this->debugStr($aJokaPackage));
 		}
 		return $aJokaPackage->payload_id;
 	}

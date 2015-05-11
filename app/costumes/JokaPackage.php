@@ -29,9 +29,17 @@ class JokaPackage extends BaseCostume {
 			throw new IllegalArgumentException($theClassName.'::replyTo requires a valid JokaPackage paramater.', 404);
 		$theJokaPackage = new $theClassName($aJokaPackage->getDirector());
 		$theJokaPackage->package_name = $aJokaPackage->package_name;
+
+		//TODO better integrate and use device_id and related meta info
+		//DEVICE_ID was not designed to be used for any mechanics, but its now
+		//  needed to make sure only the phone making the POST gets its own response.
+		/*
 		$theNamespace = array_shift(explode('\\', $theClassName,2));
 		$theAppId = Settings::getAppId();
 		$theJokaPackage->device_id = $theNamespace.'|'.$theAppId;
+		*/
+		$theJokaPackage->device_id = $aJokaPackage->device_id;
+		
 		return $theJokaPackage;
 	}
 	
