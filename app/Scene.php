@@ -28,6 +28,7 @@ use com\blackmoonit\Widgets;
 use \Exception;
 use \ReflectionClass;
 use \ReflectionMethod;
+use \Traversable;
 {//begin namespace
 
 /**
@@ -614,7 +615,7 @@ class Scene extends BaseScene {
 	
 	/**
 	 * Create standard HTML load JavaScript file tag.
-	 * @param string|array $aFilename - filename(s), may include relative URL (be sure not to lead with "/").
+	 * @param string|array|Traversable $aFilename - filename(s), may include relative URL (be sure not to lead with "/").
 	 * @param string $aLocation - (optional) URL to prepend to $aFilename, if NULL or not supplied, defaults to BITS_LIB.
 	 * @return string Returns the appropriate tag string that will load the JavaScript file if included in HTML page.
 	 */
@@ -624,7 +625,7 @@ class Scene extends BaseScene {
 		if (empty($aLocation))
 			$aLocation = BITS_LIB;
 		
-		if (is_array($aFilename)) {
+		if (is_array($aFilename) || $aFilename instanceof Traversable) {
 			$theResult = '';
 			foreach ($aFilename as $theFilename) {
 				$theResult .= $this->returnScriptTag($aLocation, $theFilename) . "\n";
