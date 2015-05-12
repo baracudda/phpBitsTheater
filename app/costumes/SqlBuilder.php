@@ -21,6 +21,7 @@ use BitsTheater\Director;
 use BitsTheater\Model;
 use com\blackmoonit\Strings;
 use \PDO;
+use \PDOException;
 {//namespace begin
 
 /**
@@ -586,6 +587,28 @@ class SqlBuilder extends BaseCostume {
 	 */
 	public function addAndGetId() {
 		return $this->myModel->addAndGetId($this->mySql, $this->myParams, $this->myParamTypes);
+	}
+	
+	/**
+	 * Sometimes pagers are used for larger sets of data. Use this method to determine what the
+	 * current query would return if the selected fields were replaced to count total rows.
+	 * @param string $aCountingColumnName - name of the column to run a DISTINCT count on.
+	 * @return number|NULL Returns the count of what this Sql object would return or null on fail.
+	 */
+	public function getQueryCountTotal($aSqlCountParam) {
+		//if we have a query limit, we may be using a pager, get total count for pager display
+		$theSqlFragment = '$1 SELECT count('.$aSqlCountParam.') as total_rows FROM $2';
+		$theSql = preg_replace('|(.*)SELECT .+ FROM (.+)|i', $theSqlFragment, $this->mySql, 1);
+		try {
+			$theRow = $this->myModel->getTheRow($theSql, $this->myParams, $this->myParamTypes);
+			if (!empty($theRow)) {
+				return $theRow['total_rows']+0;
+			}
+		} catch (PDOException $pdoe) {
+			$this->debugLog(__METHOD__.' failed: sql="'.$theSql->mySql.'" params='.$this->debugStr($theSql->myParams));
+			throw $pdoe;
+		}
+		return null;
 	}
 	
 }//end class
