@@ -323,7 +323,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 					$this->bindValues($this->value_insert, array(
 							'ns' => $theNsKey['ns'],
 							'key' => $theNsKey['key'],
-							'new_value' => $aNewValue,
+							'value' => $aNewValue,
 							'default' => '',
 					));
 					$this->value_insert->execute();

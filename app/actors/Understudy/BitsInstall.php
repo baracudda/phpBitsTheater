@@ -65,9 +65,14 @@ class BitsInstall extends BaseActor {
 		return $this->copyFileContents($src, $aNewName, $aVars);
 	}
 
-	public function install() {
+	/**
+	 * First step in the install process. Try to prevent install from being run after install finishes.
+	 * @param string $aOverride - sometimes install is not smooth; provide means to force db setup.
+	 * @return string May return a redirect URL, otherwise NULL.
+	 */
+	public function install($aOverride=null) {
 		//avoid installing more than once
-		if ($this->director->canCheckTickets() && $this->director->isInstalled()) {
+		if ($this->director->canCheckTickets() && $this->director->isInstalled() && $aOverride!==$this->director->app_id) {
 				return $this->getHomePage();
 		}
 	
