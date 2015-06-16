@@ -4,6 +4,9 @@ Options -MultiViews
 # Don't show directory listings for URLs which map to a directory.
 Options -Indexes
 
+# Set HTTPS environment variable if we came in over secure channel.
+SetEnvIf x-forwarded-proto https HTTPS=on
+
 #keep prying eyes out of our config files
 <files *.ini>
 	order allow,deny

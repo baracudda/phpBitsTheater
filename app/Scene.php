@@ -541,6 +541,13 @@ class Scene extends BaseScene {
 	}
 
 	/**
+	 * @return string - Returns the http/https scheme in use followed by '://'.
+	 */
+	public function getMyUrlScheme() {
+		return Strings::getUrlSchemeInUse();
+	}
+
+	/**
 	 * Push a message onto the UI message queue.
 	 * @param string $aMsgText - text of the message to display.
 	 * @param string $aMsgClass - class of the message, one of self::USER_MSG_* constants (default NOTICE).

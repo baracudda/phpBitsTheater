@@ -525,6 +525,25 @@ class Strings {
 		return $theResult;
 	}
 
+	/**
+	 * @return string - Returns the http/https scheme in use followed by '://'.
+	 */
+	static public function getUrlSchemeInUse() {
+		$bUsingHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']=='on')
+				/*
+				 * a de facto standard for identifying the originating protocol of an HTTP request, 
+				 * since a reverse proxy (load balancer) may communicate with a web server using HTTP 
+				 * even if the request to the reverse proxy is HTTPS.
+				 */
+				|| (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) &&  $_SERVER['HTTP_X_FORWARDED_PROTO']=='https')
+				/*
+				 * Non-standard header field used by Microsoft applications and load-balancers
+				 */
+				|| (!empty($_SERVER['FRONT-END-HTTPS']) &&  $_SERVER['FRONT-END-HTTPS']=='on')
+		;
+		return (($bUsingHttps) ? 'https' : 'http') . '://';
+	}
+	
 }//end class
 
 }//end namespace
