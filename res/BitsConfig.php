@@ -48,7 +48,7 @@ class BitsConfig extends BaseResources {
 	public function setup($aDirector) {
 		parent::setup($aDirector);
 
-		$this->mergeEnumEntryInfo('namespace');
+		$this->mergeConfigEntryInfo('namespace');
 		foreach ($this->namespace as $theEnumName => $theEnumEntry) {
 			$this->mergeConfigEntryInfo($theEnumName);
 		}
