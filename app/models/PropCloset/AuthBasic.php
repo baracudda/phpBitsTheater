@@ -51,6 +51,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 
 	const KEY_cookie = 'seasontickets';
 	const KEY_token = 'ticketmaster';
+	const KEY_MobileInfo = 'ticketenvelope';
 
 	public $tnAuth; const TABLE_Auth = 'auth';
 	public $tnAuthTokens; const TABLE_AuthTokens = 'auth_tokens';
@@ -580,6 +581,18 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
+	 * Descendants may wish to further scrutinize header information before allowing access.
+	 * @param HttpAuthHeader $aAuthHeader - the header info.
+	 * @param array $aMobileRow - the mobile row data.
+	 * @param AccountInfoCache $aUserAccount - the user account data.
+	 * @return boolean Returns TRUE if access is allowed.
+	 */
+	protected function checkHeadersForMobileCircumstances(HttpAuthHeader $aAuthHeader, $aMobileRow, AccountInfoCache $aUserAccount) {
+		//barring checking circumstances like is GPS outside pre-determined bounds, we authenticated!
+		return true;
+	}
+	
+	/**
 	 * HTTP Headers may contain authorization information, check for that information and populate whatever we find
 	 * for subsequent auth mechanisms to find and evaluate.
 	 * @param Accounts $dbAcct - the accounts model.
@@ -615,19 +628,19 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 							//$this->debugLog(__METHOD__.' fstr1='.$theFingerprintStr);
 							if (Strings::hasher($theFingerprintStr, $theMobileRow['fingerprint_hash'])) {
 								//$this->debugLog(__METHOD__.' fmatch?=true');
-								
-								//TODO
-								//barring checking circumstances like is GPS outside pre-determined bounds, we authenticated!
-								
-								$theAccountId = $theAuthTokenRow['account_id'];
-								//authorized, load account data
-								$this->director->account_info = $this->getAccountInfoCache($dbAccounts, $theAccountId);
-								if (!empty($this->director->account_info)) {
+								$theUserAccount = $this->getAccountInfoCache($dbAccounts, $theAuthTokenRow['account_id']);
+								if (!empty($theUserAccount) && 
+										$this->checkHeadersForMobileCircumstances($theAuthHeader, 
+												$theMobileRow, $theUserAccount) )
+								{
+									//succeeded, save the mobile id in session cache
+									$this->director[self::KEY_MobileInfo] = $theMobileRow['mobile_id'];
+									//authorized, cache the account data
+									$this->director->account_info = $theUserAccount;
 									//data retrieval succeeded, save the account id in session cache
-									$this->director[self::KEY_userinfo] = $theAccountId;
+									$this->director[self::KEY_userinfo] = $theUserAccount->account_id;
+									return true;
 								}
-								unset($theAuthTokenRow);
-								return true;
 							}
 						}
 					}//if auth token row !empty
