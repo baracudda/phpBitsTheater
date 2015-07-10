@@ -1,10 +1,9 @@
 <?php
-use BitsTheater\Scene;
-/* @var $recite Scene */
-/* @var $v Scene */
+use BitsTheater\Scene as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
 use com\blackmoonit\Strings;
 use com\blackmoonit\OutputToCSV;
-use \DateTime;
 
 // disable caching
 $theExpDate = gmdate('D, d M Y H:i:s');

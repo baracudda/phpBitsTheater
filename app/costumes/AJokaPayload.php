@@ -3,7 +3,6 @@
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\costumes\JokaPackage;
-use BitsTheater\Director;
 use \stdClass as StandardClass;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Strings;
@@ -40,7 +39,6 @@ abstract class AJokaPayload extends BaseCostume {
 		}
 	}
 	
-
 }//end class
 
 }//end namespace

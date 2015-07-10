@@ -333,7 +333,7 @@ class JokaQueues extends BaseModel {
 		return $theResultSet;
 	}
 	
-	public function getOutgoingPayloads($aPackageName, $aDeviceId) {
+	public function getOutgoingPayloadsAsClass($aPackageName, $aDeviceId, $aClass) {
 		$theResultSet = array();
 		if ($this->isConnected()) try {
 			$rs = null;
@@ -349,15 +349,19 @@ class JokaQueues extends BaseModel {
 			$theSql->setParamPrefix(' AND ')->mustAddParam('device_id');
 			$theSql->add('ORDER BY transmit_ts '.$this->mSqlPayloadLimit);
 			$rs = $theSql->query();
-			$theResultSet = $rs->fetchAll(PDO::FETCH_CLASS, $this->mSqlPayloadClass);
-			if (!empty($theResultSet)) {
-				foreach($theResultSet as &$theRow) {
-					$theRow->setDirector($this->director);
-				}
-			}
-			$rs->closeCursor();
+			$theResultSet = $rs->fetchAll(PDO::FETCH_CLASS, $aClass);
 		} catch (PDOException $pdoe) {
 			throw new DbException($pdoe, __METHOD__.'("'.$aPackageName.', '.$aDeviceId.'") failed.');
+		}
+		return $theResultSet;
+	}
+	
+	public function getOutgoingPayloads($aPackageName, $aDeviceId) {
+		$theResultSet = $this->getOutgoingPayloadsAsClass($aPackageName, $aDeviceId, $this->mSqlPayloadClass);
+		if (!empty($theResultSet)) {
+			foreach($theResultSet as &$theRow) {
+				$theRow->setDirector($this->director);
+			}
 		}
 		return $theResultSet;
 	}

@@ -295,6 +295,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 		$theNsKeyStr = $this->implodeKeyName($theNsKey);
 		$old_value = $this->getMapValue($aNsKey);
 		if ($old_value !== $aNewValue) {
+			//$this->debugLog(__METHOD__.' o='.$this->debugStr($old_value).' n='.$this->debugStr($aNewValue));
 			$this->_mapdata[$theNsKeyStr] = $aNewValue;
 			$theFinally = new FinallyBlock(function($aModel) {
 				if (!is_null($aModel->value_update)) {
@@ -310,8 +311,10 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 						'key' => $theNsKey['key'],
 						'new_value' => $aNewValue,
 				));
-				$this->value_update->execute();
-				if ($this->value_update->rowCount()<1) {
+				$bExecResult = $this->value_update->execute();
+				$numRowsUpdated = ($bExecResult) ? $this->value_update->rowCount() : 0;
+				if ($numRowsUpdated<1) {
+					//$this->debugLog(__METHOD__.' update count='.$numRowsUpdated.', inserting: '.$this->debugStr($theNsKey).', '.$aNewValue);
 					if ($this->isNoResults($this->sql_value_select, array('ns' => 'namespace', 'key' => $theNsKey['ns']))) {
 						$this->execDML($this->sql_value_insert,	array(
 								'ns' => 'namespace',
@@ -324,7 +327,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 							'ns' => $theNsKey['ns'],
 							'key' => $theNsKey['key'],
 							'value' => $aNewValue,
-							'default' => '',
+							'default' => (isset($this->_mapdefault[$theNsKeyStr])) ? $this->_mapdefault[$theNsKeyStr] : '',
 					));
 					$this->value_insert->execute();
 				}

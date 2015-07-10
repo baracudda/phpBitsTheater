@@ -33,19 +33,19 @@ if (!defined('CLASS_AUTOLOAD_PATHS')) {
 
 /*
  * CLASS_FILENAME_FORMATS can be defined to match your filename conventions for classes.
- * It is a semicolon seperated string of filename formats where %s is the class name being referenced. 
+ * It is a semicolon seperated string of filename formats where %s is the class name being referenced.
  */
 if (!defined('CLASS_FILENAME_FORMATS')) {
 	define('CLASS_FILENAME_FORMATS','%s.php;%s.class.php;class.%s.php');
 }
 
-/*
- * @param string $aClassName
- * 		Class or Interface name automatically passed to this function by the PHP Interpreter.
- * 		Function is capable of handling the PEAR style of naming classes, but will not use the
- * 		list of CLASS_AUTOLOAD_PATHS or CLASS_FILENAME_FORMATS in that case.
+/**
+ * Given a fully qualified namespace\classname, return the full file path of the class file.
+ * This autoloader function is capable of handling the PEAR style of naming classes,
+ * but will not use the list of CLASS_AUTOLOAD_PATHS or CLASS_FILENAME_FORMATS in that case.
+ * @param string $aClassName - Class or Interface name.
  */
-function autoloader($aClassName){
+function autoloader($aClassName) {
 	$folder_list = explode(';',CLASS_AUTOLOAD_PATHS);
 
 	if (!strpos($aClassName,'\\')) { //only try this section if namespace not detected

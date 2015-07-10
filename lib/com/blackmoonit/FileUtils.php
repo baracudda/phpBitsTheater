@@ -129,6 +129,17 @@ class FileUtils {
 		}
 	}
 	
+	/**
+	 * Appends a path segment onto an existing path which may or may not have 
+	 * a directory separator already.
+	 * @param string $aExistingPath - the existing path string.
+	 * @param string $aPathSegment - the path segment to append.
+	 * @return string Returns the existing path with the segment appended.
+	 */
+	static public function appendPath($aExistingPath, $aPathSegment) {
+		return rtrim($aExistingPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . ltrim($aPathSegment, DIRECTORY_SEPARATOR);
+	}
+	
 }//end class
 
 }//end namespace

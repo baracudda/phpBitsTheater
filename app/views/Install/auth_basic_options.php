@@ -2,7 +2,7 @@
 use BitsTheater\scenes\Install as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
-use \com\blackmoonit\Widgets;
+use com\blackmoonit\Widgets;
 $w = '';
 
 $w .= '<div align="left">'."\n";

@@ -18,18 +18,19 @@
 namespace BitsTheater;
 use BitsTheater\Model;
 use BitsTheater\DbConnInfo;
+use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\models\Auth;
 use BitsTheater\res\ResException;
 use com\blackmoonit\AdamEve as BaseDirector;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\database\DbUtils;
+use com\blackmoonit\FileUtils;
 use \ArrayAccess;
 use \ReflectionClass;
 use \ReflectionMethod;
 use \ReflectionException;
 use \Exception;
-use BitsTheater\costumes\AccountInfoCache;
-use BitsTheater\models\Auth;
 {//begin namespace
 
 class Director extends BaseDirector implements ArrayAccess {
@@ -60,18 +61,38 @@ class Director extends BaseDirector implements ArrayAccess {
 	 * @var AccountInfoCache
 	 */
 	public $account_info = null;
-	
-	public $dbConnInfo = array(); //database connections to share with the models
-	protected $_propMaster = array(); //cache models created so app doesn't need to create 12 instances of any single model
+	/**
+	 * Database connections to share with the models.
+	 * @var DbConnInfo[]
+	 */
+	public $dbConnInfo = array();
+	/**
+	 * Cache the models created so we do not create 12 instances of any single model.
+	 */
+	protected $_propMaster = array();
+	/**
+	 * Resource manager class (@var may not apply during installation).
+	 * @var configs\I18N
+	 */
 	protected $_resManager = null;
-	protected $_resMaster = array(); //cache of res classes
-	
+	/**
+	 * Cache of resource classes.
+	 */
+	protected $_resMaster = array();
+	/**
+	 * Cache of log filenames.
+	 * @var string[]
+	 */
+	protected $_logFilenameCache = array();
 	/**
 	 * Cache of the auth model in use.
 	 * @var Auth
 	 */
 	protected $dbAuth = null;
 
+	/**
+	 * Initialization method called during class construction.
+	 */
 	public function setup() {
 		try {
 			if (!$this->check_session_start()) {
@@ -527,6 +548,15 @@ class Director extends BaseDirector implements ArrayAccess {
 			return "";
 		}
 	}
+	
+	/**
+	 * Get the setting from the configuration model.
+	 * @param string $aSetting - setting in form of "namespace/setting"
+	 * @throws \Exception
+	 */
+	public function getConfigSetting($aSetting) {
+		return $this->getProp('Config')[$aSetting];
+	}
 
 	/**
 	 * Get the current mode of the site (normal/maintenance/demo).
@@ -534,13 +564,75 @@ class Director extends BaseDirector implements ArrayAccess {
 	 */
 	public function getSiteMode() {
 		try {
-			$dbConfig = $this->getProp('Config');
-			return $dbConfig['site/mode'];
+			return $this->getConfigSetting('site/mode');
 		} catch (Exception $e) {
 			return self::SITE_MODE_NORMAL;
 		}
 	}
 	
+	/**
+	 * Get the currently logged in user's account name.
+	 * @return Returns the logged in user's account name, if any.
+	 */
+	public function getMyUsername() {
+		if ($this->account_info!=null)
+			return $this->account_info->account_name;
+		else
+			return null;
+	}
+	
+	/**
+	 * Given the category of the logfile, return the filepath.
+	 * @param string $aMimeType
+	 */
+	public function getLogFileOf($aCategory=null) {
+		$thePath = FileUtils::appendPath($this->getConfigSetting('site/mmr'), 'logs');
+		// Make sure there are no shenanigans with special characters (like "../")
+		// which could be abused to write outside of the specified directory
+		$theSanitizedCategory = preg_replace('/[^a-zA-Z0-9]/', '_', $aCategory);
+		return FileUtils::appendPath($thePath, $theSanitizedCategory).'.log';
+	}
+	
+	/**
+	 * Log messages to a particular file (dictated by $aCategory).
+	 * @param string $aCategory - the file to write to in "config[mmr]/log".
+	 * @param string $aMessage - the text line to log (EOL will be appended if necessary).
+	 */
+	public function log($aCategory, $aMessage) {
+		$theCacheKey = VIRTUAL_HOST_NAME . '|' . $aCategory;
+		if (empty($this->_logFilenameCache[$theCacheKey])) {
+			$this->_logFilenameCache[$theCacheKey] = $this->getLogFileOf($aCategory);
+		}
+		$theFilename = $this->_logFilenameCache[$theCacheKey];
+		
+		if (!Strings::endsWith($aMessage, PHP_EOL))
+			$aMessage .= PHP_EOL;
+		
+		if (file_put_contents($theFilename, $aMessage, FILE_APPEND | LOCK_EX)!==strlen($aMessage)) {
+			mkdir(dirname($theFilename), 0777, true);
+			if (file_put_contents($theFilename, $aMessage, FILE_APPEND | LOCK_EX)!==strlen($aMessage)) {
+				error_log(VIRTUAL_HOST_NAME . ": Failed to open file '{$theFilename}' for appending.");
+			}
+		}
+	}
+
+	/**
+	 * Log messages to a particular file (dictated by $aCategory) prepended with a timestamp.
+	 * @param string $aCategory - the file to write to in "config[mmr]/log".
+	 * @param string $aMessage - the text line to log (EOL will be appended if necessary).
+	 * @param number $aTimestamp - (optional) Unix Timestamp to use instead of Now().
+	 */
+	public function logWithTimestamp($aCategory, $aMessage, $aTimestamp=null) {
+		$theTimeStr = null;
+		// Create the full message and append it to the file
+		if (empty($aTimestamp))
+			$theTimeStr = gmdate('Y-m-d\TH:i:s');
+		else
+			$theTimeStr = gmdate('Y-m-d\TH:i:s', $aTimestamp);
+		$theFullMsg = '['.$theTimeStr.'] '.$aMessage;
+		$this->log($aCategory, $theFullMsg);
+	}
+
 }//end class
 
 }//end namespace

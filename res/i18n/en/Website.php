@@ -1,6 +1,7 @@
 <?php
 namespace BitsTheater\res\en;
 use BitsTheater\res\Website as BaseResources;
+use com\blackmoonit\Strings;
 {//begin namespace
 
 class Website extends BaseResources {

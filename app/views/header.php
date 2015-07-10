@@ -1,7 +1,7 @@
 <?php
-use BitsTheater\Scene;
-/* @var $recite Scene */
-/* @var $v Scene */
+use BitsTheater\Scene as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
 //NOTE: $v and $recite are interchangable (one is more readable, one is nice and short (v for variables! ... and functions)
 $w = '';
 

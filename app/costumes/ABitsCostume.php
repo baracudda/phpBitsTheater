@@ -138,15 +138,20 @@ abstract class ABitsCostume extends BaseCostume {
 	}
 	
 	/**
-	 * Hide metadata before converting self to JSON, return string.
+	 * Return this payload data as a simple class, minus any metadata this class might have.
+	 * @return string Return self encoded as a standard class.
+	 */
+	public function exportData() {
+		//ancestors remove their own metadata when calling debug info magic method
+		return (object)$this->__debugInfo();
+	}
+	
+	/**
+	 * JSON string for this payload data, minus any metadata the class might have.
 	 * @return string Return self encoded to JSON.
 	 */
 	public function toJson() {
-		$d = $this->_director;
-		$this->_director = null;
-		$json = json_encode($this);
-		$this->_director = $d;
-		return $json;
+		return json_encode($this->exportData());
 	}
 	
 	/**

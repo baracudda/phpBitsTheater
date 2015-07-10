@@ -161,7 +161,7 @@ class ConfigSettingInfo extends BaseCostume {
 			case self::INPUT_STRING:
 				return $aScene->$theWidgetName;
 			case self::INPUT_BOOLEAN:
-				return (!empty($aScene->$theWidgetName)) ? 1 : 0;
+				return (!empty($aScene->$theWidgetName)) ? '1' : '0';
 			case self::INPUT_DROPDOWN:
 				$theValueList = array_keys($this->mSettingInfo->input_enums);
 				//$aScene->addUserMsg($this->debugStr($theValueList));

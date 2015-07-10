@@ -82,6 +82,7 @@ define('BITS_RES',BITS_URL.'/res');
  * @var string
  */
 define('BITS_LIB',BITS_URL.'/lib');
+
 //no need for app url as that is where all the urls normally get routed towards.
 
 /**
