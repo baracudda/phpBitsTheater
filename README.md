@@ -43,3 +43,6 @@ This mini-framework extends the Model-View-Controller site model:
     to be loaded in a similar manner to how Android handles its resources so that supporting multiple languages
     can be done easily by separate teams and still operate even if only a partial translation is available.
     
+<h2>Shout outs</h2>
+    Thanks, Pasha Paterson, for the wonderful new password reset via email feature!
+	
