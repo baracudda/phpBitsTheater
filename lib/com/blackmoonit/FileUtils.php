@@ -140,6 +140,6 @@ class FileUtils {
 		return rtrim($aExistingPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . ltrim($aPathSegment, DIRECTORY_SEPARATOR);
 	}
 	
-}//end class
+}//end class FileUtils
 
-}//end namespace
+}//end namespace com\blackmoonit

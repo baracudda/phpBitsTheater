@@ -26,8 +26,10 @@ var theWarningDialog = {
 			className: 'btn-danger'
 			,
 			callback: function(e) {
+				$("#overlay_please_stand_by").show();
 				$.post('{$v->getMyUrl('ajaxUpdateFeature')}',{feature_id:theWarningDialog.feature_id}).done(function(aData) {
 					location.reload(true);
+					$("#overlay_please_stand_by").hide();
 					//console.log('posted');
 				}).fail(function(aData, textStatus, errorThrown) {
 					location.reload(true);
@@ -52,7 +54,7 @@ $('#btn_resetup_db').click(function(e) {
 });
 
 EOD;
-
+$w .= '<img class="overlay" id="overlay_please_stand_by" src="'.BITS_RES.'/images/please_stand_by.png" >';
 $w .= '<div class="panel panel-default">';
 
 $w .= '<div class="panel-heading">';

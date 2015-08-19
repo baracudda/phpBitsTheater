@@ -468,7 +468,11 @@ class Director extends BaseDirector implements ArrayAccess {
 	public function admitAudience($aScene) {
 		if ($this->canCheckTickets()) {
 			$this->dbAuth = $this->getProp('Auth'); //director will close this on cleanup
-			return $this->dbAuth->checkTicket($aScene);
+			if (!empty($this->dbAuth)) {
+				return $this->dbAuth->checkTicket($aScene);
+			} else { 
+				return True; 
+			}
 		}
 		return false;
 	}
@@ -555,7 +559,10 @@ class Director extends BaseDirector implements ArrayAccess {
 	 * @throws \Exception
 	 */
 	public function getConfigSetting($aSetting) {
-		return $this->getProp('Config')[$aSetting];
+		$dbConfig = $this->getProp('Config');
+		if (!empty($dbConfig)) {
+			return $dbConfig[$aSetting];
+		}
 	}
 
 	/**
@@ -608,9 +615,9 @@ class Director extends BaseDirector implements ArrayAccess {
 		if (!Strings::endsWith($aMessage, PHP_EOL))
 			$aMessage .= PHP_EOL;
 		
-		if (file_put_contents($theFilename, $aMessage, FILE_APPEND | LOCK_EX)!==strlen($aMessage)) {
-			mkdir(dirname($theFilename), 0777, true);
-			if (file_put_contents($theFilename, $aMessage, FILE_APPEND | LOCK_EX)!==strlen($aMessage)) {
+		if (@file_put_contents($theFilename, $aMessage, FILE_APPEND | LOCK_EX)!==strlen($aMessage)) {
+			@mkdir(dirname($theFilename), 0777, true);
+			if (@file_put_contents($theFilename, $aMessage, FILE_APPEND | LOCK_EX)!==strlen($aMessage)) {
 				error_log(VIRTUAL_HOST_NAME . ": Failed to open file '{$theFilename}' for appending.");
 			}
 		}

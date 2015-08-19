@@ -88,7 +88,7 @@ class DbConnSettings {
 				default:
 					$theDns = $this->driver.':host='.$this->host.
 							((!empty($this->port)) ? (';port='.$this->port) : '' ).
-							';dbname='.$this->dbname;
+							';dbname='.$this->dbname.';charset=utf8';
 					break;
 			}//switch
 		}//if

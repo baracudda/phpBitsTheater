@@ -16,15 +16,15 @@
  */
 
 namespace BitsTheater\scenes;
-use BitsTheater\Scene;
+use BitsTheater\Scene as MyScene;
 use com\blackmoonit\Widgets;
 use com\blackmoonit\database\DbConnOptions;
 use com\blackmoonit\database\DbConnSettings;
 use com\blackmoonit\database\DbConnInfo;
-use \PDO;
+use PDO;
 {//namespace begin
 
-class Install extends Scene {
+class Install extends MyScene {
 	const INSTALL_PW_FILENAME = 'install.pw';
 
 	protected function setupDefaults() {

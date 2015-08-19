@@ -30,7 +30,7 @@ use \Exception;
 
 class SetupDb extends BaseModel implements IFeatureVersioning {
 	const FEATURE_ID = 'BitsTheater/framework';
-	const FEATURE_VERSION_SEQ = 5; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 6; //always ++ when making db schema changes
 		
 	public $tnSiteVersions; const TABLE_SiteVersions = 'zz_versions';
 	
@@ -53,7 +53,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 					") CHARACTER SET utf8 COLLATE utf8_general_ci";
 			try {
 				$this->execDML($theSql);
-				$this->debugLog('Create table (if not exist) "'.$this->tnSiteVersions.'" succeeded.');
+				$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnSiteVersions));
 			} catch (PDOException $pdoe) {
 				throw new DbException($pdoe,$theSql);
 			}
@@ -241,8 +241,11 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 			$theSql->startWith('SELECT')->addFieldList($aFieldList)->add('FROM')->add($this->tnSiteVersions);
 			$theSql->setParamPrefix(' WHERE ')->mustAddParam('feature_id');
 			$theResultSet = $theSql->getTheRow();
-			if (!empty($theResultSet) && empty($theResultSet['version_display'])) {
-				$theResultSet['version_display'] = 'v'.$theResultSet['version_seq'];
+			if (!empty($theResultSet)) {
+				$theResultSet['version_seq'] += 0;
+				if (empty($theResultSet['version_display'])) {
+					$theResultSet['version_display'] = 'v'.$theResultSet['version_seq'];
+				}
 			}
 		} catch (PDOException $pdoe) {
 			throw new DbException($pdoe,  __METHOD__.' failed.');

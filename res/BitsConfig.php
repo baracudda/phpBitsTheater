@@ -27,15 +27,27 @@ class BitsConfig extends BaseResources {
 	public $enum_namespace = array(
 			'site',
 			'auth',
+			'email_out',
 	);
 			
 	public $enum_site = array(
 			'mode',
 			'mmr', //managed media root
+			'maxfilesize',
+	);
+	
+	public $enum_email_out = array(
+			'host',
+			'port',
+			'user',
+			'pwd',
+			'security',
+			'default_from',
 	);
 	
 	public $enum_auth = array(
 			'register_url',
+			'request_pwd_reset_url',
 			'login_url',
 			'logout_url',
 			'cookie_freshness_duration',

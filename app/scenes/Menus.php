@@ -16,12 +16,12 @@
  */
 
 namespace BitsTheater\scenes;
-use BitsTheater\Scene;
+use BitsTheater\Scene as MyScene;
 use BitsTheater\costumes\MenuItemResEntry;
 use com\blackmoonit\Strings;
 {//namespace begin
 
-class Menus extends Scene {
+class Menus extends MyScene {
 	const IS_SUBTEXT_SUPPORTED = false;
 
 	public function getMenuIcon(MenuItemResEntry $aMenuItem) {

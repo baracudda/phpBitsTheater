@@ -37,9 +37,16 @@ function BitsTheater_autoloader($aClassName) {
 	} elseif (Strings::beginsWith($aClassName,BITS_NAMESPACE)) {
 		//convert namespace format ns\sub-ns\classname into folder paths
 		$theClassNamePath = BITS_APP_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName,BITS_NAMESPACE)).'.php';
+	} elseif (defined('WEBAPP_NAMESPACE') && Strings::beginsWith($aClassName, WEBAPP_NAMESPACE . 'res\\')) {
+		//convert namespace format ns\sub-ns\classname into folder paths
+		$theClassFile = str_replace('\\', ¦, Strings::strstr_after($aClassName, WEBAPP_NAMESPACE . 'res\\')).'.php';
+		if ($theClassFile{2}==¦) //en, de, es, etc. 2 letter language codes get directed to the i18n folder
+			$theClassNamePath = BITS_RES_PATH.'i18n'.¦.$theClassFile;
+		else
+			$theClassNamePath = BITS_RES_PATH.$theClassFile;
 	} elseif (defined('WEBAPP_NAMESPACE') && Strings::beginsWith($aClassName, WEBAPP_NAMESPACE)) {
 		//convert namespace format ns\sub-ns\classname into folder paths, starting from the BITS APP namespace.
-		$theClassNamePath = BITS_APP_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName,WEBAPP_NAMESPACE)).'.php';
+		$theClassNamePath = BITS_APP_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName, WEBAPP_NAMESPACE)).'.php';
 	} else {
 		$theClassNamePath = $aClassName;
 	}

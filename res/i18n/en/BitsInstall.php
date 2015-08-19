@@ -56,6 +56,8 @@ class BitsInstall extends BaseResources {
 	public $label_site_id = 'Site ID';
 	public $desc_site_id = 'A string used to identify this site. This is also used as the Registration Code for default privileges.';
 	
+	public $msg_create_table_x_success = 'Create table (if not exist) "%s" succeeded.';
+	
 }//end class
 
 }//end namespace

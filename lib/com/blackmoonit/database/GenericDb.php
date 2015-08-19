@@ -216,7 +216,7 @@ class GenericDb extends BaseDbClass {
 		switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL:
 				//MySQL <=5.5 works+warning with "Z" timezone, 5.6+ gives fatal error
-				return ($bUseMicroseconds) ? DbUtils::utc_now(true) : gmdate('Y-m-d H:i:s');
+				return ($bUseMicroseconds) ? DbUtils::utc_now(true) : gmdate(DbUtils::DATETIME_FORMAT_DEF_STD) ;
 			default:
 				return DbUtils::utc_now($bUseMicroseconds);
 		}

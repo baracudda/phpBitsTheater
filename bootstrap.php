@@ -69,7 +69,7 @@ define('BITS_URL', (dirname($_SERVER['SCRIPT_NAME'])!=='.') ? str_replace(DIRECT
 /**
  * Virtual Host folder name, if exists.
  */
-define('VIRTUAL_HOST_NAME', (strlen(BITS_URL)>0) ? explode('/', BITS_URL)[1] : '');
+define('VIRTUAL_HOST_NAME', (strlen(BITS_URL)>0 && count($urlsegs=explode('/', BITS_URL))>1) ? $urlsegs[1] : '');
 
 /**
  * Resource URL that does not end in a /.

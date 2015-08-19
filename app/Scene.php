@@ -579,12 +579,19 @@ class Scene extends BaseScene {
 
 	/**
 	 * Wrap JS code in the appropriate HTML tag block.
-	 * @param string $aJsCode
-	 * @return string Return the JS code wrapped appropriately for inclusion in HTML.
+	 * If the parameter is just empty or whitespace, nothing will be returned.
+	 * @param string $aJsCode - the JavaScript code.
+	 * @return string|NULL Return the JS code wrapped appropriately for
+	 * inclusion in HTML or NULL if $aJsCode is nothing but whitespace.
 	 */
 	public function createJsTagBlock($aJsCode, $aId=null) {
-		$theIdAttr = (empty($aId)) ? '' : 'id="'.$aId.'"';
-		return "<script type=\"text/javascript\" {$theIdAttr}>\n{$aJsCode}\n</script>\n";
+		if (!empty(trim($aJsCode))) {
+			$theIdAttr = (empty($aId)) ? '' : 'id="'.$aId.'"';
+			return "<script type=\"text/javascript\" {$theIdAttr}>" . PHP_EOL
+					. $aJsCode . PHP_EOL
+					. '</script>' . PHP_EOL
+			;
+		}
 	}
 
 	/**

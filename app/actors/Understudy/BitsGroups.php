@@ -63,10 +63,11 @@ class BitsGroups extends BaseActor {
 			$v->group = $v->groups[$aGroupId];
 		}
 		$dbRights = $this->getProp('Permissions');
-		$this->scene->right_groups = $v->getPermissionRes('namespace');
-		$this->scene->assigned_rights = $dbRights->getAssignedRights($aGroupId);
-		$this->scene->redirect = $this->getMyUrl('/rights');
-		$this->scene->next_action = $this->getMyUrl('/rights/modify');
+		$v->right_groups = $v->getPermissionRes('namespace');
+		$v->assigned_rights = $dbRights->getAssignedRights($aGroupId);
+		//$v->addUserMsg($this->debugStr($v->assigned_rights)); //DEBUG-ONLY
+		$v->redirect = $this->getMyUrl('/rights');
+		$v->next_action = $this->getMyUrl('/rights/modify');
 	}
 	
 	public function modify() {

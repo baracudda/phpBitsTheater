@@ -232,12 +232,27 @@ class Model extends BaseModel {
 	}
 	
 	/**
+	 * Return TRUE if field exists in table.
+	 * @param string $aFieldNames - the comma separated field names to check.
+	 * @param string $aTableName - the table to check.
+	 * @return boolean Return TRUE if the field exists in table.
+	 */
+	public function isFieldExists($aFieldNames, $aTableName) {
+		try {
+			$this->query("SELECT {$aFieldNames} FROM {$aTableName} LIMIT 1");
+			return true;
+		} catch (PDOException $e) {
+			return false;
+		}
+	}
+	
+	/**
 	 * Return TRUE if specified table exists.
 	 * @param string $aTableName
 	 */
 	protected function exists($aTableName) {
 		try {
-			$this->query("SELECT 1 FROM $aTableName WHERE 1=0");
+			$this->query("SELECT 1 FROM {$aTableName} WHERE 1=0");
 			return true;
 		} catch (PDOException $e) {
 			return false;
@@ -255,6 +270,13 @@ class Model extends BaseModel {
 		} else {
 			return false;
 		}
+	}
+
+	/**
+	 * return TRUE if table exists.
+	 */
+	public function isExists($aTableName) {
+		return ($this->exists($aTableName));
 	}
 	
 	/**

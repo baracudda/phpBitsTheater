@@ -20,8 +20,9 @@ use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\Director;
 use BitsTheater\Model;
 use com\blackmoonit\Strings;
-use \PDO;
-use \PDOException;
+use PDO;
+use PDOStatement;
+use PDOException;
 {//namespace begin
 
 /**
@@ -30,12 +31,31 @@ use \PDOException;
  */
 class SqlBuilder extends BaseCostume {
 	/**
+	 * 5 digit code meaning "successful completion/no error".
+	 * @var string
+	 */
+	const SQLSTATE_SUCCESS = PDO::ERR_NONE;
+	/**
+	 * 5 digit code meaning "no data"; e.g. UPDATE/DELETE failed due
+	 * to record(s) defined by WHERE clause returned no rows at all.
+	 * @var string
+	 */
+	const SQLSTATE_NO_DATA = '02000';
+	/**
 	 * The model class, so we can pass-thru some method calls like query.
 	 * Also useful for auto-determining database quirks like the char used
 	 * around field names.
 	 * @var \BitsTheater\Model
 	 */
 	public $myModel = null;
+	
+	public $mySql = '';
+	public $myParams = array();
+	public $myDataSet = null;
+	
+	public $myParamTypes = array();
+	public $myParamFuncs = array();
+	
 	/**
 	 * The char used around field names in case of spaces and keyword clashes.
 	 * Determined by the database type being used (MySQL vs Oracle, etc.).
@@ -50,13 +70,16 @@ class SqlBuilder extends BaseCostume {
 	 */
 	public $bUseIsNull = false;
 	
-	public $myDataSet = null;
+	/**
+	 * Temporary value used while constructing the SQL string.
+	 * @var string
+	 */
 	public $myParamPrefix = ' ';
+	/**
+	 * Temporary value used while constructing the SQL string.
+	 * @var string
+	 */
 	public $myParamOperator = '=';
-	public $mySql = '';
-	public $myParams = array();
-	public $myParamTypes = array();
-	public $myParamFuncs = array();
 	
 	/**
 	 * Magic PHP method to limit what var_dump() shows.
@@ -64,6 +87,8 @@ class SqlBuilder extends BaseCostume {
 	public function __debugInfo() {
 		$vars = parent::__debugInfo();
 		unset($vars['myModel']);
+		unset($vars['myParamPrefix']);
+		unset($vars['myParamOperator']);
 		return $vars;
 	}
 	
@@ -548,6 +573,53 @@ class SqlBuilder extends BaseCostume {
 	 */
 	public function execDML() {
 		return $this->myModel->execDML($this->mySql, $this->myParams, $this->myParamTypes);
+	}
+	
+	/**
+	 * Executes DML statement and then checks the returned SQLSTATE.
+	 * @param string|array $aSqlState5digitCodes - standard 5 digit codes to check,
+	 * defaults to '02000', meaning "no data"; e.g. UPDATE/DELETE failed due
+	 * to record defined by WHERE clause returned no data. May be a comma separated
+	 * list of codes or an array of codes to check against.
+	 * @return boolean Returns the result of the SQLSTATE check.
+	 */
+	public function execDMLandCheck($aSqlState5digitCodes=self::SQLSTATE_NO_DATA) {
+		$theExecResult = $this->execDML();
+		if (!empty($aSqlState5digitCodes)) {
+			$theStatesToCheck = null;
+			if (is_string($aSqlState5digitCodes)) {
+				$theStatesToCheck = explode(',', $aSqlState5digitCodes);
+			} else if (is_array($aSqlState5digitCodes)) {
+				$theStatesToCheck = &$aSqlState5digitCodes;
+			}
+			if (!empty($theStatesToCheck)) {
+				$theSqlState = $theExecResult->errorCode();
+				return (array_search($theSqlState, $theStatesToCheck, true)!==false);
+			}
+		}
+		return !empty($theExecResult);
+	}
+	
+	/**
+	 * Executes DML statement and then checks the returned SQLSTATE.
+	 * @param string $aSqlState5digitCode - a single standard 5 digit code to check,
+	 * defaults to '02000', meaning "no data"; e.g. UPDATE/DELETE failed due
+	 * to record defined by WHERE clause returned no data.
+	 * @return boolean Returns the result of the SQLSTATE check.
+	 */
+	public function execDMLandCheckCode($aSqlState5digitCode=self::SQLSTATE_NO_DATA) {
+		
+		$this->debugLog(__METHOD__.' sql='.$this->mySql.' params='.$this->debugStr($this->myParams));
+		// @var $ps PDOStatement
+		$ps = $this->execDML();
+		$this->debugLog(__METHOD__.' ec='.$ps->errorCode().' check='.$aSqlState5digitCode);
+		if ($aSqlState5digitCode==self::SQLSTATE_NO_DATA) {
+			return ($ps->errorCode()==$aSqlState5digitCode || $ps->rowCount()===0);
+		} else {
+			return ($ps->errorCode()==$aSqlState5digitCode);
+		}
+		
+		//return ($this->execDML()->errorCode()==$aSqlState5digitCode);
 	}
 	
 	/**

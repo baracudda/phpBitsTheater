@@ -28,9 +28,17 @@ class BitsGeneric extends BaseResources {
 	public $msg_nothing_found = 'Nothing found.';
 	public $msg_permission_denied = 'Permission Denied';
 	
+	public $errmsg_default = 'I am slain, Horatio...' ;
+	public $errmsg_not_done_yet = 'Feature is not yet implemented.' ;
+	
 	public $errmsg_database_not_connected = 'database connection missing';
 	public $errmsg_arg_is_empty = 'parameter %s must not be empty';
 	public $errmsg_var_is_empty = '%s must not be empty';
+	public $errmsg_mailer_missing_config =
+		'Mailer was not given the required setting [%1$s].' ;
+	public $errmsg_mailer_failed = 'Mailer failed. [%1$s]' ;
+	public $errmsg_db_exception =
+		'An error occurred while accessing the DB. [%1$s]' ;
 
 	public $label_header_title_suffix_demo_mode = '(demo)';
 	

@@ -183,12 +183,14 @@ class BitsWebsite extends BaseResources {
 	 */
 	public function getFrameworkVersion($aSeqNum) {
 		switch(true) {
-			case ($aSeqNum<=1):
+			case ($aSeqNum<2):
 				return '2.4.9';
-			case ($aSeqNum==2):
+			case ($aSeqNum<3):
 				return '3.0.0';
-			case ($aSeqNum>=3):
+			case ($aSeqNum<6):
 				return '3.1.'.($aSeqNum-3);
+			default:
+				return '3.2.'.($aSeqNum-6);
 		}//switch
 	}
 	

@@ -3,6 +3,8 @@ use BitsTheater\Scene as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
 //NOTE: $v and $recite are interchangable (one is more readable, one is nice and short (v for variables! ... and functions)
+use com\blackmoonit\Strings ;
+
 $w = '';
 
 //print('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">'."\n");
@@ -37,50 +39,69 @@ if (!empty($theJsList)) {
 	}//foreach
 }
 
-print($aExtraHeaderHtml."\n");
+print( $aExtraHeaderHtml . PHP_EOL ) ;
 
-print("</head>\n");
-$w = '<body>'."\n";
+print( '</head>' . PHP_EOL ) ;
+
+$w = '<body>' . Strings::eol(2) ;
 //=============================================================================
-$w .= '<table id="container-header">'."\n";
-$w .= '<tr>'."\n";
-
+$w .= '<table id="container-header">' . PHP_EOL
+   .  ' <tr>' . PHP_EOL
 //logo
-$w .= '<td class="logo">';
-$w .= '<a href="'.$v->getSiteURL().'">';
-$w .= '<img class="logo" title="logo" src="'.$v->getRes('website/site_logo_src').'">';
-$w .= '</a>';
-$w .= '</td>'."\n";
-
+   .  '  <td class="logo">'
+   .     '<a href="' . $v->getSiteURL() . '">'
+   .      '<img class="logo" title="logo" '
+   .       'src="' . $v->getRes('website/site_logo_src') . '">'
+   .     '</a>'
+   .    '</td>' . PHP_EOL
 //title & subtitle
-$w .= '<td>'."\n";
-$w .= '<a href="'.$v->getSiteURL().'">';
-$w .= '<span class="title">'.$v->getRes('website/header_title').'</span>';
-if ($v->getSiteMode() == $v::SITE_MODE_DEMO) {
-	$w .= ' <span class="title mode-demo">'.$v->getRes('generic/label_header_title_suffix_demo_mode').'</span>';
+   .  '  <td>' . PHP_EOL
+   .  '   <a href="' . $v->getSiteURL() . '">'
+   .      '<span class="title">' . $v->getRes('website/header_title')
+   .      '</span>'
+   ;
+if( $v->getSiteMode() == $v::SITE_MODE_DEMO )
+{
+	$w .= '   <span class="title mode-demo">'
+	   .  $v->getRes( 'generic/label_header_title_suffix_demo_mode' )
+	   .  '</span>'
+	   ;
 }
-$w .= '</a>'."<br />\n";
-$w .= '<span class="subtitle">'.$v->getRes('website/header_subtitle').'</span>';
-$w .= '</td>'."\n";
-
+$w .=    '</a><br/>' . PHP_EOL
+   .     '<span class="subtitle">'
+   .       $v->getRes( 'website/header_subtitle' )
+   .     '</span>' . PHP_EOL
+   .  '  </td>' . PHP_EOL
+   ;
 //login info
-$w .= '<td class="auth-area">'."\n";
-if ($v->form_name!=='register_user') {
-	$w .= $recite->cueActor('Account','buildAuthArea');
+$w .= '  <td class="auth-area">' . PHP_EOL
+   ;
+if( $v->form_name !== 'register_user' )
+{
+	$w .= $recite->cueActor( 'Account', 'buildAuthArea' ) ;
 }
-$w .= '</td>'."\n";
+$w .= PHP_EOL
+   .  '  </td>' . PHP_EOL
+   ;
+$w .= ' </tr>' . PHP_EOL;
+$w .= '</table>' . PHP_EOL;
 
-$w .= '</tr>'."\n";
-$w .= '</table>'."\n";
+print($w) ;
 
-print($w);
-$w = '';
+$w = '' ;
 //=============================================================================
 
 //menu
-$w .= '<table id="container-menu">'."\n";
-$w .= '<tr><td>'.$recite->cueActor('Menus','buildAppMenu').'</td></tr>'."\n";
-$w .= '</table>'."\n";
+$w .= '<table id="container-menu">' . PHP_EOL
+   .  ' <tr>' . PHP_EOL
+   .  '  <td>' . Strings::eol(2)
+   . $recite->cueActor('Menus','buildAppMenu') . PHP_EOL
+   .  '  </td>' . PHP_EOL
+   .  ' </tr>' . PHP_EOL
+   .  '</table>' . PHP_EOL
+   ;
 
-print($w);
-print('<div id="container-body">'."\n"); //this needs to be matched in the footer.php
+print($w) ;
+
+// Close this tag in footer.php!
+print( '<div id="container-body">' . Strings::eol(2) ) ;

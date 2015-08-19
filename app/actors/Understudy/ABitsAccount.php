@@ -49,15 +49,22 @@ abstract class ABitsAccount extends BaseActor {
 	public function login() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
-		if (!$this->director->isGuest()) {
+		if( !$this->director->isGuest() )
+		{
 			if ($v->redirect)
 				return $v->redirect;
 			else
 				return $this->getHomePage();
-		} else {
-			$v->action_url_register = $v->getSiteURL($this->config['auth/register_url']);
-			$v->action_url_login = $v->getSiteURL($this->config['auth/login_url']);
-			$v->redirect = $this->getHomePage();
+		}
+		else
+		{
+			$v->action_url_register =
+				$v->getSiteURL( $this->config['auth/register_url'] ) ;
+			$v->action_url_requestpwreset =
+				$v->getSiteUrl( $this->config['auth/request_pwd_reset_url'] ) ;
+			$v->action_url_login =
+				$v->getSiteURL( $this->config['auth/login_url'] ) ;
+			$v->redirect = $this->getHomePage() ;
 		}
 		//indicate what top menu we are currently in
 		$this->setCurrentMenuKey('account');
@@ -75,12 +82,18 @@ abstract class ABitsAccount extends BaseActor {
 	/**
 	 * Renders the login/logout area of a page.
 	 */
-	protected function buildAuthArea() {
+	protected function buildAuthArea()
+	{
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
-		$v->action_url_register = $v->getSiteURL($this->config['auth/register_url']);
-		$v->action_url_login = $v->getSiteURL($this->config['auth/login_url']);
-		$v->action_url_logout = $v->getSiteURL($this->config['auth/logout_url']);
+		$v->action_url_register =
+			$v->getSiteURL( $this->config['auth/register_url'] ) ;
+		$v->action_url_requestpwreset =
+			$v->getSiteUrl( $this->config['auth/request_pwd_reset_url'] ) ;
+		$v->action_url_login =
+			$v->getSiteURL( $this->config['auth/login_url'] ) ;
+		$v->action_url_logout =
+			$v->getSiteURL( $this->config['auth/logout_url'] ) ;
 	}
 	
 }//end class

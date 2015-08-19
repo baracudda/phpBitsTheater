@@ -25,7 +25,11 @@ use BitsTheater\models\Auth;
 	/* @var $dbAuth Auth */
 use BitsTheater\models\AuthGroups;
 	/* @var $dbAuthGroups AuthGroups */
-use com\blackmoonit\Strings;
+use BitsTheater\costumes\AuthPasswordReset ;
+use BitsTheater\costumes\AuthPasswordResetException ;
+use com\blackmoonit\MailUtils ;
+use com\blackmoonit\MailUtilsException ;
+use com\blackmoonit\Strings ;
 {//namespace begin
 
 class AuthBasicAccount extends BaseActor {
@@ -206,6 +210,102 @@ class AuthBasicAccount extends BaseActor {
 		} else {
 			return $this->getMyUrl('view',
 					array('err_msg'=>$this->getRes('generic/msg_permission_denied')));
+		}
+	}
+	
+	/**
+	 * Called by requestPasswordReset() when the action is "proc" (process a
+	 * request).
+	 */
+	private function processPasswordResetRequest()
+	{
+		$v =& $this->scene ;
+		$theAddr =& $v->send_to_email ;
+		$dbAuth = $this->getProp('Auth') ;
+		$theResetUtils = AuthPasswordReset::withModel($dbAuth) ;
+		
+		if( ! $dbAuth->isPasswordResetAllowedFor( $theAddr, $theResetUtils ) )
+		{ // Deny the request.
+			$v->err_msg = $v->getRes( 'account/msg_pw_request_denied' ) ;
+			return $this->requestPasswordReset(null) ;
+		}
+		
+		try
+		{
+			$dbAuth->generatePasswordRequestFor( $theResetUtils ) ;
+			$theMailer = MailUtils::buildMailerFromBitsConfig(
+					$this->config, 'email_out' ) ;
+			$theMailer->setFrom( $this->config['email_out/default_from'] ) ;
+			$theResetUtils->dispatchEmailToUser( $theMailer ) ;
+		}
+		catch( AuthPasswordResetException $aprx )
+		{
+			$v->err_msg = $aprx->getDisplayText() ;
+			$this->debugLog($v->err_msg) ;
+			return $this->requestPasswordReset(null) ;
+		}
+		catch( MailUtilsException $mue )
+		{
+			$v->err_msg = $mue->getMessage() ;
+			$this->debugLog($v->err_msg) ;
+			return $this->requestPasswordReset(null) ;
+		}
+		
+		$theSuccessMsg = $this->getRes(
+				'account/msg_pw_reset_email_sent/' . $v->send_to_email ) ;
+		$v->addUserMsg( $theSuccessMsg ) ;
+		return $this->getHomePage() ;
+	}
+	
+	/**
+	 * Allows an end user to request a password change.
+	 * @param string $aAction an action indicator passed from the request form,
+	 *   if any; currently supports null or "proc"
+	 */
+	public function requestPasswordReset( $aAction=null )
+	{
+		$v =& $this->scene ;
+		if( $aAction == 'proc' && !empty( $v->send_to_email ) )
+			return $this->processPasswordResetRequest() ;
+		else
+		{ // Display the request form.
+			$v->action_url_requestpwreset =
+				$v->getSiteUrl( $this->config['auth/request_pwd_reset_url'] ) ;
+			$this->setCurrentMenuKey( 'account' ) ;
+		}
+	}
+	
+	/**
+	 * Catches a password reentry, verifies that it matches an existing token,
+	 * and redirects to password entry if successful.
+	 * @param string $aAuthID (from URL) the auth ID 
+	 * @param string $aAuthToken (from URL) the auth token
+	 */
+	public function passwordResetReentry( $aAuthID, $aAuthToken )
+	{
+		$v =& $this->scene ;
+		$utils = AuthPasswordReset::withModel($this->getProp('auth')) ;
+		
+		$isAuthenticated = false ;
+		try
+		{
+			$isAuthenticated =
+				$utils->authenticateForReentry( $aAuthID, $aAuthToken ) ;
+		}
+		catch( AuthPasswordResetException $aprx )
+		{ $this->debugLog( $aprx->getDisplayText() ) ; }
+		
+		if( $isAuthenticated )
+		{ // postcondition if true: user is now authenticated
+			$this->debugLog( 'Reentry authenticated for [' . $aAuthID . '].' ) ;
+			$utils->clobberPassword() ;
+			return $this->getSiteUrl('account/view/' . $utils->getAccountID()) ;
+		}
+		else
+		{
+			$theFailureMsg = $this->getRes( 'account/err_pw_request_failed' ) ;
+			$v->addUserMsg( $theFailureMsg, Scene::USER_MSG_ERROR ) ;
+			return $this->getHomePage() ;
 		}
 	}
 	

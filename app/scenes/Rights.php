@@ -16,11 +16,11 @@
  */
 
 namespace BitsTheater\scenes;
-use BitsTheater\Scene;
+use BitsTheater\Scene as MyScene;
 use com\blackmoonit\Widgets;
 {//namespace begin
 
-class Rights extends Scene {
+class Rights extends MyScene {
 
 	protected function setupDefaults() {
 		parent::setupDefaults();

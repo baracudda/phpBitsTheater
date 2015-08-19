@@ -25,16 +25,35 @@ use \DateTime;
  * Purpose: convenience class for creating html widgets
  * @author: Ryan Fischbach
  */
-class Widgets {
+class Widgets
+{
+	const ALIGN_LEFT = 'left' ;
+	const ALIGN_RIGHT = 'right' ;
+	const ALIGN_CENTER = 'center' ;
 	
 	private function __construct() {} //do not instantiate
+	
+	static public function sanitizeElementID( $aElementID )
+	{
+		if( !isset($aElementID) ) return '' ;
+		return preg_replace( '/[^A-Za-z0-9_\-]/', '', $aElementID ) ;
+	}
 
-	static public function createHtmlForm($aFormName, $aFormAction, $aDisplayHtml, $redirectLink='', $isPopup=false) {
-		$theWidget = "\n";
+	static public function createHtmlForm( $aFormName, $aFormAction,
+			$aDisplayHtml, $redirectLink='', $isPopup=false )
+	{
+		$theWidget = "\n" ;
 		if ($isPopup)
-			$theWidget .= '<div class="popup">';
-		$theWidget .= '<form'.(!empty($aFormName)?' id="'.$aFormName.'"':'').' method="post" '.(($isPopup)?'class="popup-back" ':'').'action="'.$aFormAction.'">'."\n";
-		if (!empty($redirectLink))
+			$theWidget .= '<div class="popup">' ;
+		$theWidget .= '<form'
+			. ( !empty($aFormName) ?
+					' id="' . self::sanitizeElementID($aFormName) . '"' : '' )
+			. ' method="post" '
+			. ( $isPopup ? 'class="popup-back" ' : '' )
+			. 'action="' . $aFormAction . '">'
+			. PHP_EOL
+			;
+		if( !empty($redirectLink) )
 			$theWidget .= "\t\t".'<input type="hidden" name="redirect" value="'.$redirectLink.'" />'."\n";
 		$theWidget .= $aDisplayHtml."\n";
 		$theWidget .= '</form>';
@@ -49,21 +68,142 @@ class Widgets {
 		return Widgets::createHtmlForm($aFormName, $aFormAction, $aDisplayHtml, $redirectLink, $isPopup);
 	}
 	
-	static public function createDropDown($aWidgetName, $aItemList, $aKeySelected=null) {
-		$theWidget = '';
-		if (!empty($aItemList) && is_array($aItemList)) {
-			$theWidget = '<select name="'.$aWidgetName.'" id="'.$aWidgetName.'" class="field">'."\n";
-			//$theWidget .= '<!-- '.$aKeySelected.' -->'."\n";
-			foreach ($aItemList as $key => $value) {
-				if (!isset($aKeySelected) || $aKeySelected!=$key)
-					$theWidget .= "\t".'<option value="'.$key.'">'.$value.'</option>';
-				else
-					$theWidget .= "\t".'<option value="'.$key.'" selected>'.$value.'</option>';
-				$theWidget .= "\n";
+	static public function createDropDown( $aWidgetName, $aItemList,
+			$aValueSelected=null, $aIndent=0 )
+	{
+		$theWidget = '' ;
+		if( !empty($aItemList) && is_array($aItemList) )
+		{
+			$theWidget = Strings::spaces($aIndent) 
+				. '<select name="' . $aWidgetName
+				. '" id="' . self::sanitizeElementID($aWidgetName)
+				. '" class="field">'
+				. PHP_EOL
+				;
+			foreach( $aItemList as $aValue => $aCaption )
+			{
+				$theWidget .= Strings::spaces($aIndent+1)
+					. '<option value="' . $aValue . '"'
+					. ( !empty($aValueSelected) && $aValueSelected == $aValue ?
+							' selected>' : '>' )
+					. $aCaption . '</option>'
+					. PHP_EOL
+					;
 			}
-			$theWidget .= '</select>'."\n";
+			$theWidget .= Strings::spaces($aIndent) . '</select>' . PHP_EOL ;
 		}
 		return $theWidget;
+	}
+	
+	/** Used by createMultiSelect() */
+	const MULTI_SELECTOR_RENDERING_ERROR =
+		'<!-- ERROR - Can\'t construct multi-selector widget. -->' ;
+	/**
+	 * Creates an HTML <select> element and its <option> elements, with
+	 * attributes defined to make it a multi-selector control.
+	 * @param string $aWidgetName the name of the widget, and its ID; a name
+	 *  ending in '[]' is expected but will be sanitized before being used as
+	 *  the ID
+	 * @param array $aItemList an array of options; this should be an array in
+	 *  which the key is the <option> element's actual value, and the value is
+	 *  the caption to be rendered; 
+	 * @param number $aSize the number of rows to render in the selection box
+	 * @param array $aValuesSelected an array of values which should be
+	 *  selected by default
+	 * @param string $aStyleClass the CSS class to which the element belongs
+	 * @param number $aIndent an indent to be applied in the HTML code
+	 * @return string HTML code for a <select> element and its list of <option>s
+	 */
+	static public function createMultiSelect( $aWidgetName, $aItemList,
+		$aIndent=0, $aSize=4, $aValuesSelected=null, $aStyleClass='field' )
+	{
+		if( !isset($aItemList) || !isset($aWidgetName) )
+			return self::MULTI_SELECTOR_RENDERING_ERROR ;
+		$theSelector = Strings::spaces($aIndent)
+			. '<select id="' . self::sanitizeElementID($aWidgetName)
+			. '" name="' . $aWidgetName
+			. '" class="' . $aStyleClass
+			. '" size="' . $aSize
+			. '" multiple="multiple">'
+			. PHP_EOL
+			;
+		$theValuesSelected =
+			( is_array($aValuesSelected) ? $aValuesSelected : null ) ;
+		if( is_array($aItemList) )
+		{
+			foreach( $aItemList as $theValue => $theCaption )
+			{
+				$theSelector .= Strings::spaces($aIndent+1) 
+					. '<option '
+					. 'value="' . $theValue
+					. '"'
+					;
+				if( !empty($theValuesSelected)
+					&& in_array( $theValue, $theValuesSelected ) )
+				{
+					$theSelector .= ' selected' ;
+				}
+				$theSelector .= '>' . $theCaption . '</option>' . PHP_EOL ;
+			}
+		}
+		else if( isset($aItemList) )
+		{ // Some weirdo passed a simple value into this function.
+			$theSelector .= Strings::spaces($aIndent+1) 
+				. '<option value="' . $aItemList . '">'
+				. $aItemList . '</option>' . PHP_EOL
+				;
+		}
+		$theSelector .= Strings::spaces($aIndent) . '</select>' . PHP_EOL ;
+		return $theSelector ;
+	}
+	
+	/**
+	 * Prepares an array of data items for use in createDropDown() or
+	 * createMultiSelect().
+	 * @param array $aArrayOfOptions an array of data items that define the
+	 *  options to be set.
+	 * @param string $aValueField the name of a field within each member of
+	 *  $aArrayOfOptions; the value of this field will be used as the "value"
+	 *  of the option element
+	 * @param string $aCaptionField the name of a field within each member of
+	 *  $aArrayOfOptions; the value of this field will be used as the "caption"
+	 *  of the option element
+	 * @return array an array in which the key of each member is the option's
+	 *  value, and the value of the member is the option's caption
+	 */
+	static public function prepareArrayForSelect( $aArrayOfOptions,
+		$aValueField=null, $aCaptionField=null )
+	{
+		if( ! is_array($aArrayOfOptions) ) return null ;
+		
+		$theOptions = array() ;
+		foreach( $aArrayOfOptions as $aKey => $aOption )
+		{ // Create an option element in our array with standard fields.
+			$theCaption = null ;
+			$theValue = null ;
+			if( is_array($aOption) )
+			{ // Find the caption and value within the input.
+				if( !empty($aValueField)
+					&& array_key_exists( $aValueField, $aOption ) )
+				{ // Extract the value.
+					$theValue = $aOption[$aValueField] ;
+				}
+				if( !empty($aCaptionField)
+					&& array_key_exists( $aCaptionField, $aOption ) )
+				{ // Use the caption.
+					$theCaption = $aOption[$aCaptionField] ;
+				} 
+				else // the value is the caption.
+					$theCaption = $theValue ;
+			}
+			else
+			{ // Use the simple value to create the option.
+				$theValue = $aKey ;
+				$theCaption = $aOption ;
+			}
+			$theOptions[$theValue] = $theCaption ;
+		}
+		return $theOptions ;
 	}
 
 	static public function createTooltipLink($aHref, $aTooltipMsg, $aDisplayHtml) {
@@ -71,6 +211,70 @@ class Widgets {
 		$theWidget .= " onMouseover=\"ddrivetip('$aTooltipMsg');\" onMouseout=\"hideddrivetip()\">";
 		$theWidget .= $aDisplayHtml.'</a>';
 		return $theWidget;
+	}
+	
+	/** Used by createFileUploadControl() */
+	const FILE_WIDGET_RENDERING_ERROR =
+		'<!-- ERROR - Can\'t construct file upload widget. -->' ;
+	/**
+	 * Renders a file upload &lt;input&gt; control.
+	 * @param string $aWidgetName the name of the widget within its HTML form
+	 * @param array $aAttrs additional attributes for the &lt;input&gt; tag not
+	 *  covered by other arguments; defaults to null
+	 * @param array $aAcceptArray an array of file types to accept; must be
+	 *  valid for a "file-accept" attribute spec
+	 * @param number $aMinSize minimum file size in bytes; default 0; must be
+	 *  valid for a "file-minsize" attribute spec
+	 * @param number $aMaxSize maximum file size in bytes; defaults to the max
+	 *  size allowed by PHP on this server; must be valid for a "file-maxsize"
+	 *  attribute spec
+	 * @param string $isRequired indicates whether the input control's value is
+	 *  required by the form 
+	 * @param number $aLimit maximum number of files allowed; default 1; must be
+	 *  numeric and valid for "file-limit" attribute spec
+	 * @return string a fully-formed &lt;input&gt; tag or FILE_WIDGET_RENDERING_ERROR
+	 *  enclosed in an HTML comment tag
+	 */
+	static public function createFileUploadControl( $aWidgetName, $aAttrs=null,
+		$aAcceptArray, $aMinSize=0, $aMaxSize=-1, $isRequired=false, $aLimit=1 )
+	{
+		if( !isset($aWidgetName) ) return self::FILE_WIDGET_RENDERING_ERROR ;
+		$theTag = '<input type="file" name="' . $aWidgetName . '" id="'
+				. self::sanitizeElementID($aWidgetName) . '" ' ;
+		if( $isRequired )
+			$theTag .= 'required ' ;
+		if( isset($aAcceptArray) && is_array($aAcceptArray) )
+		{
+			$theTypes = null ;
+			$isFirst = true ;
+			foreach( $aAcceptArray as $theType )
+			{
+				if( ! $isFirst ) $theTypes .= ', ' ;
+				$theTypes .= $theType ;
+				$isFirst = false ;
+			}
+			$theTag .= 'file-accept="' . $theTypes . '" ' ;
+		}
+		$theMinSize = Strings::semanticSizeToBytes( $aMinSize ) ;
+		if( $theMinSize >= 0 )
+			$theTag .= 'file-minsize="' . $theMinSize . '" ' ;
+		$theMaxSize = Strings::semanticSizeToBytes( $aMaxSize ) ;
+		if( $theMaxSize < 0 )
+		{ // Can't use that size; try the PHP server maximum instead.
+			$theMaxSize = Strings::semanticSizeToBytes(
+				min(ini_get('post_max_size'),ini_get('upload_max_filesize'))) ;
+		}
+		if( $theMaxSize > 0 )
+			$theTag .= 'file-maxsize="' . $theMaxSize . '" ' ;
+		if( is_numeric($aLimit) && $aLimit > 0 )
+			$theTag .= 'file-limit="' . $aLimit . '" ' ;
+		if( isset($aAttrs) && is_array($aAttrs) )
+		{
+			foreach( $aAttrs as $theAttr => $theValue )
+				$theTag .= $theAttr . '="' . $theValue . '" ' ;
+		}
+		$theTag .= ' />' ;
+		return $theTag ;
 	}
 	
 	static public function createInputBox($aWidgetName, $aType='text', $aValue='', $isRequired=false, $aSize=60, $aMaxLen=255, $aJsEvents='') {
@@ -113,24 +317,97 @@ class Widgets {
 		return Strings::format('<input type="hidden" name="%1$s" id="%1$s" value="%2$s" />',$aWidgetName,$aValue);
 	}
 	
-	static public function createRadioSet($aWidgetName, $aItemList, $aKeySelected=null, $showLabels='left', $separator='') {
-		$theWidget = '<div class="radioset">'."\n";
-		if (!empty($aItemList) && is_array($aItemList)) {
-			foreach ($aItemList as $key => $value) {
-				if ($showLabels=='left')
-					$theWidget .= '<label for="'.$aWidgetName.'" class="radiolabel">'.$value.'</label>';
-				$theWidget .= "\t".'<input type="radio" name="'.$aWidgetName.'" id="'.$aWidgetName.'" class="radiobutton"';
-				$theWidget .= ' value="'.$key.'"';
-				if (isset($aKeySelected))
-					$theWidget .= (($aKeySelected==$key)?' checked':'');
-				$theWidget .= ' />';
-				if ($showLabels=='right')
-					$theWidget .= '<label for="'.$aWidgetName.'" class="radiolabel">'.$value.'</label>';
-				$theWidget .= $separator."\n";
+	/**
+	 * Renders a set of matched radio buttons.
+	 * @param string $aWidgetName the name/ID of the radio button group
+	 * @param array $aItemList an array of value-to-caption pairs
+	 * @param string $aKeySelected which value should be pre-selected, if any
+	 * @param string $showLabels indicates where to show labels (left or right)
+	 * @param string $separator a separator to insert between buttons
+	 * @return string a fully-formed set of radio button elements in HTML
+	 */
+	static public function createRadioSet( $aWidgetName, $aItemList,
+			$aKeySelected=null, $showLabels=self::ALIGN_LEFT, $separator='' )
+	{
+		$theWidget = '<div class="radioset">' . PHP_EOL ;
+		if( !empty($aItemList) && is_array($aItemList) )
+		{
+			foreach( $aItemList as $aValue => $aLabel )
+			{
+				$theWidget .= self::createOneRadioButton(
+							$aWidgetName, $aValue, $aLabel,
+							( isset($aKeySelected) && $aValue==$aKeySelected ),
+							$showLabels ) ;
+				$theWidget .= $separator . PHP_EOL ;
 			}
-			$theWidget .= "</div>\n";
+			$theWidget .= '</div>' . PHP_EOL ;
 		}
 		return $theWidget;
+	}
+	
+	/**
+	 * Renders a single radio button and its label. This is consumed by the
+	 * createRadioSet() function but may also be called separately to create
+	 * radio buttons that are not immediately next to each other.
+	 * @param string $aWidgetName the name of the radio button group
+	 * @param string $aValue the value assigned to this particular button
+	 * @param string $aLabel the label to be shown for this button
+	 * @param string $isSelected whether this button should be pre-selected
+	 * @param string $showLabel indicates where to show the label (left/right)
+	 * @param string $aJavaScript any JS that should be included
+	 * @return string a fully-formed HTML radio button with its label
+	 */
+	static public function createOneRadioButton( $aWidgetName, $aValue,
+			$aLabel=null, $isSelected=false, $showLabel=self::ALIGN_LEFT,
+			$aJavaScript=null )
+	{
+		$theHTML = '' ;
+		$theLabel = ( empty($aLabel) ? $aValue : $aLabel ) ;
+		if( $showLabel == self::ALIGN_LEFT )
+			$theHTML .=
+				self::createRadioButtonLabel($aWidgetName,$aValue,$theLabel) ;
+		$theHTML .= self::createRadioButtonTag( $aWidgetName, $aValue,
+						$isSelected, $aJavaScript ) ;
+		if( $showLabel == self::ALIGN_RIGHT )
+			$theHTML .=
+				self::createRadioButtonLabel($aWidgetName,$aValue,$theLabel) ;
+		return $theHTML ;
+	}
+	
+	/**
+	 * Used by createOneRadioButton() to render the button's label
+	 * @param string $aWidgetName the name/ID of the button group
+	 * @param string $aLabel the label to be rendered
+	 * @return string an HTML label element
+	 */
+	static private function createRadioButtonLabel( $aWidgetName, $aValue,
+			$aLabel=null )
+	{
+		return '<label for="' . $aWidgetName . '_' . $aValue
+				. '" class="radiolabel">'
+				. ( isset($aLabel) ? $aLabel : $aValue )
+				. '</label>'
+				;
+	}
+	
+	/**
+	 * Used by createOneRadioButton() to render the radio button itself.
+	 * @param string $aWidgetName the name/ID of the button group
+	 * @param string $aValue the actual value assigned to this button
+	 * @param string $isSelected indicates whether the button is pre-selected
+	 * @param string $aJavaScript any JS that should be included
+	 * @return string an HTML radio button input element
+	 */
+	static private function createRadioButtonTag( $aWidgetName, $aValue,
+			$isSelected=false, $aJavaScript=null )
+	{
+		return '<input type="radio" name="' . $aWidgetName
+			. '" id="' . self::sanitizeElementID($aWidgetName) . '_' . $aValue
+			. '" class="radiobutton" value="' . $aValue . '" '
+			. ( $isSelected ? 'checked ' : '' )
+			. ( !empty($aJavaScript) ? $aJavaScript : '' )
+			. '/>'
+			;	
 	}
 
 	static public function createCheckBox($aWidgetName, $isChecked=false, $aClass='') {
@@ -142,6 +419,23 @@ class Widgets {
 			$aText = 'Submit';
 		return Strings::format('<input type="submit" name="%1$s" id="%1$s" class="%3$s" value="%2$s"/>',
 				$aWidgetName,$aText,$aClass);
+	}
+	
+	static public function createResetButton( $aWidgetName='bits_button_reset',
+		$aText='Reset', $aClass='btn-primary', $aAttrs=null )
+	{
+		$theButton = '<button type="reset" id="' . $aWidgetName
+			. '" name="' . $aWidgetName . '" class="' . $aClass . '" '
+			;
+		if( is_array($aAttrs) )
+		{
+			foreach( $aAttrs as $theAttr => $theValue )
+				$theButton .= $theAttr . '="' . $theValue . '" ' ;
+		}
+		else if( isset($aAttrs) )
+			$theButton .= $aAttrs . ' ' ;
+		$theButton .= '>' . $aText . '</button>' ;
+		return $theButton ;
 	}
 	
 	static public function createImageTag($aIconFilename, $altText='', $aIconStyle='', $bAltText_asTooltip=false) {

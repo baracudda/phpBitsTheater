@@ -23,13 +23,18 @@ use BitsTheater\models\Auth;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
-use \PDO;
-use \PDOStatement;
+use PDO;
+use PDOStatement;
+use PDOException;
 {//namespace begin
 
 class AuthPermissions extends BaseModel {
 	const VALUE_Allow = '+';
 	const VALUE_Deny = 'x';
+	const FORM_VALUE_Allow = 'allow';
+	const FORM_VALUE_Deny = 'deny';
+	const FORM_VALUE_Disallow = 'disallow';
+	const FORM_VALUE_DoNotShow = 'deny-disable';
 
 	public $tnPermissions; const TABLE_Permissions = 'permissions';
 
@@ -80,7 +85,7 @@ class AuthPermissions extends BaseModel {
 			try {
 				$theSql = $this->getTableDefSql(self::TABLE_Permissions);
 				$this->execDML($theSql);
-				$this->debugLog('Create table (if not exist) "'.$this->tnPermissions.'" succeeded.');
+				$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnPermissions));
 			} catch (PDOException $pdoe){
 				throw new DbException($pdoe,$theSql);
 			}
@@ -129,11 +134,11 @@ class AuthPermissions extends BaseModel {
 
 		//if any group allows the permission, then we allow it.
 		foreach ($this->_permCache[$acctInfo->account_id] as $theGroupId => $theAssignedRights) {
-			$theResult = 'disallow';
+			$theResult = self::FORM_VALUE_Disallow;
 			if (!empty($theAssignedRights[$aNamespace]) && !empty($theAssignedRights[$aNamespace][$aPermission]))
 				$theResult = $theAssignedRights[$aNamespace][$aPermission];
 			//if any group the user is a member of allows the permission, then return true
-			if ($theResult=='allow') {
+			if ($theResult==self::FORM_VALUE_Allow) {
 				return true;
 			}
 		}
@@ -147,7 +152,7 @@ class AuthPermissions extends BaseModel {
 	 * @return PDOStatement Returns the executed query statement.
 	 */
 	protected function getGroupRightsCursor($aGroupId) {
-		$theSql = SqlBuilder::withModel($this)->setDataSet(array(
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 				'group_id' => $aGroupId,
 		));
 		$theSql->startWith('SELECT * FROM')->add($this->tnPermissions);
@@ -165,9 +170,11 @@ class AuthPermissions extends BaseModel {
 		$rs = $this->getGroupRightsCursor($aGroupId);
 		if (!empty($rs)) {
 			while (($theRow = $rs->fetch())!==false) {
-				$thePermissionValue = ($theRow['value']==self::VALUE_Allow) ? 'allow' : (($bIsFirstSet) ? 'deny' : 'deny-disable');
+				$thePermissionValue = ($theRow['value']==self::VALUE_Allow)
+						? self::FORM_VALUE_Allow
+						: (($bIsFirstSet) ? self::FORM_VALUE_Deny : self::FORM_VALUE_DoNotShow);
 				$theCurrValue =& $aRightsToMerge[$theRow['namespace']][$theRow['permission']];
-				if (empty($theCurrValue) || $theCurrValue=='allow')
+				if (empty($theCurrValue) || $theCurrValue==self::FORM_VALUE_Allow)
 					$theCurrValue = $thePermissionValue;
 			}//while
 		}//if
@@ -207,7 +214,7 @@ class AuthPermissions extends BaseModel {
 	 */
 	public function modifyGroupRights($aScene) {
 		//remove existing permissions
-		$theSql = SqlBuilder::withModel($this)->setDataSet($aScene);
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aScene);
 		$theSql->startWith('DELETE FROM')->add($this->tnPermissions);
 		$theSql->startWhereClause()->mustAddParam('group_id')->endWhereClause();
 		$theSql->execDML();
@@ -220,15 +227,15 @@ class AuthPermissions extends BaseModel {
 				$varName = $ns.'__'.$theRight;
 				$theAssignment = $aScene->$varName;
 				//Strings::debugLog($varName.'='.$theAssignment);
-				if ($theAssignment=='allow') {
+				if ($theAssignment==self::FORM_VALUE_Allow) {
 					array_push($theRightsList, array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$aScene->group_id, 'value'=>self::VALUE_Allow) );
-				} elseif ($theAssignment=='deny') {
+				} else if ($theAssignment==self::FORM_VALUE_Deny) {
 					array_push($theRightsList, array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$aScene->group_id, 'value'=>self::VALUE_Deny) );
 				}
 			}//end foreach
 		}//end foreach
 		if (!empty($theRightsList)) {
-			$theSql = SqlBuilder::withModel($this)->setDataSet($aScene);
+			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aScene);
 			$theSql->startWith('INSERT INTO')->add($this->tnPermissions);
 			$theSql->add('(namespace, permission, group_id, value) VALUES (:ns, :perm, :group_id, :value)');
 			$theSql->execMultiDML($theRightsList);

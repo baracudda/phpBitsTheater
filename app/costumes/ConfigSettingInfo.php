@@ -34,6 +34,7 @@ class ConfigSettingInfo extends BaseCostume {
 	const INPUT_STRING = 'string';
 	const INPUT_BOOLEAN = 'boolean';
 	const INPUT_DROPDOWN = 'dropdown';
+	const INPUT_PASSWORD = 'string-pw';
 	
 	public $config_namespace_info;
 	public $config_key;
@@ -144,6 +145,8 @@ class ConfigSettingInfo extends BaseCostume {
 						$theItemList[$key] = $valueRow->label;
 				}
 				return Widgets::createDropDown($theWidgetName, $theItemList, $theValue);
+			case self::INPUT_PASSWORD:
+				return Widgets::createPassBox($theWidgetName, $theValue);
 			default:
 				return Widgets::createTextBox($theWidgetName, $theValue);
 		}
@@ -159,6 +162,7 @@ class ConfigSettingInfo extends BaseCostume {
 		$theWidgetName = $this->getWidgetName();
 		switch ($this->mSettingInfo->input_type) {
 			case self::INPUT_STRING:
+			case self::INPUT_PASSWORD:
 				return $aScene->$theWidgetName;
 			case self::INPUT_BOOLEAN:
 				return (!empty($aScene->$theWidgetName)) ? '1' : '0';

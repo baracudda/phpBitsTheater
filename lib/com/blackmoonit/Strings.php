@@ -544,6 +544,109 @@ class Strings {
 		return (($bUsingHttps) ? 'https' : 'http') . '://';
 	}
 	
+	/**
+	 * Returns the requested number of PHP_EOL constants, or only one if a value
+	 * less than or equal to 1 is passed. Use this to append newlines to any
+	 * long multi-line string that will be displayed in the output stream.
+	 * @param number $aCount the number of newline constants to be returned
+	 * @return string the requested number of newline constants
+	 */
+	static public function eol( $aCount=1 )
+	{ return Strings::repeat( PHP_EOL, $aCount ) ; }
+	
+	/**
+	 * Returns the requested number of spaces, or one if no number is specified.
+	 * Use this to auto-indent lines of text.
+	 * @param number $aCount the number of spaces to be returned
+	 * @return string a string with the requested number of spaces
+	 */
+	static public function spaces( $aCount=1 )
+	{ return Strings::repeat( ' ', $aCount ) ; }
+	
+	/**
+	 * Returns the requested string repeated some number of times.
+	 * @param string $aToken a string token to be repeated
+	 * @param number $aCount a number of times to repeat it
+	 * @return string the token, repeated the specified number of times
+	 */
+	static public function repeat( $aToken, $aCount=1 )
+	{
+		if( strlen($aToken) == 0 ) return '' ;
+		else if( $aCount == 1 ) return $aToken ;
+		else if( $aCount > 0 )
+		{
+			$theString = '' ;
+			for( $i = 0 ; $i < $aCount ; $i++ )
+				$theString .= $aToken ;
+			return $theString ;
+		}
+		else return '' ;
+	}
+	
+	/**
+	 * Translates some semantic size indicator to bytes.
+	 * See http://stackoverflow.com/a/22500394/2736531
+	 * @param string $aSize Some semantic specification of size. If strictly
+	 *  numeric, then bytes are assumed, and the same number is returned.
+	 *  If empty or null, then zero is returned. If not parseable, -1 is
+	 *  returned.
+	 */
+	static public function semanticSizeToBytes( $aSize )
+	{
+		if( ! isset($aSize) ) return 0 ;        // null/unset translates to zero
+		if( is_numeric($aSize) ) return $aSize ;     // numeric is already bytes
+		
+		$theSuffix = strtoupper(substr( $aSize, -1 )) ;
+		if( ! strpos( 'PTGMK', $theSuffix ) ) return -1 ;      // invalid suffix
+		
+		$theMantissa = substr( $aSize, 0, -1 ) ;
+		if( ! is_numeric($theMantissa) ) return -1 ;    // can't parse to number 
+		
+		$theValue = $theMantissa ;
+		
+		switch( $theSuffix )
+		{ // intentionally fall through orders of magnitude to multiply again
+			case 'P' : $theValue *= 1024 ; // petabytes
+			case 'T' : $theValue *= 1024 ; // terabytes
+			case 'G' : $theValue *= 1024 ; // gigabytes
+			case 'M' : $theValue *= 1024 ; // megabytes
+			case 'K' : $theValue *= 1024 ; // kilobytes
+				break ;
+			default : ; // Can't happen...?
+		}
+		
+		return $theValue ;
+	}
+	
+	/**
+	 * Deep array check for encoding to utf8.
+	 * @param string|array $aInput - string or array input
+	 * @return string Return the thing encoded as utf8 string.
+	 */
+	static public function deep_utf8_encode($aInput) {
+		if (is_array($aInput)) {
+			return array_map('com\blackmoonit\Strings::deep_utf8_encode', $aInput);
+		} else if (is_string($aInput)) {
+			return utf8_encode($aInput);
+		} else
+			return $aInput;
+	}
+	
+	/**
+	 * Deep array check for mb_convert_encoding (utf8).
+	 * @param string|array $aInput - string or array input
+	 * @return string Return the input "fixed" for utf8.
+	 */
+	static public function deep_mb_convert_encoding($aInput) {
+		if (is_array($aInput)) {
+			return array_map('com\blackmoonit\Strings::deep_mb_convert_encoding', $aInput);
+		} else if (is_string($aInput)) {
+			return @mb_convert_encoding($aInput,'UTF-8','auto');
+		} else
+			return $aInput;
+	}
+	
+	
 }//end class
 
 }//end namespace

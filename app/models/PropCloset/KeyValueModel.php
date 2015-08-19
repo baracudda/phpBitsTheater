@@ -93,7 +93,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 				") CHARACTER SET utf8 COLLATE utf8_general_ci";
 		}
 		$this->execDML($theSql);
-		$this->debugLog('Create table (if not exist) "'.$this->getTableName().'" succeeded.');
+		$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->getTableName()));
 	}
 	
 	protected function getDefaultData($aScene) {

@@ -28,10 +28,11 @@ use com\blackmoonit\exceptions\FourOhFourExit;
 use com\blackmoonit\exceptions\SystemExit;
 {//begin namespace
 
-/*
+/**
  * Base class for all Actors in the app.
  */
-class Actor extends BaseActor {
+class Actor extends BaseActor
+{
 	/**
 	 * Normal website operation mode.
 	 * @var string

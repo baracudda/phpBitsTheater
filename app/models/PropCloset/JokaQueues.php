@@ -54,6 +54,7 @@ class JokaQueues extends BaseModel {
 					", KEY idx_transmit_ts (transmit_ts)".
 					") DEFAULT CHARSET=ascii COLLATE=ascii_bin";
 			$this->execDML($theSql);
+			$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnInboundPayloads));
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnOutboundPayloads} ".
 					"( payload_id NCHAR(36) NOT NULL".
 					", payload LONGTEXT CHARACTER SET utf8 NOT NULL".
@@ -70,6 +71,7 @@ class JokaQueues extends BaseModel {
 					", KEY idx_transmit_ts (transmit_ts)".
 					") DEFAULT CHARSET=ascii COLLATE=ascii_bin";
 			$this->execDML($theSql);
+			$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnOutboundPayloads));
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnPayloadLog} ".
 					"( log_id int(11) NOT NULL AUTO_INCREMENT".
 					", payload_id char(36) NOT NULL".
@@ -89,6 +91,7 @@ class JokaQueues extends BaseModel {
 					", KEY idx_transmit_ts (transmit_ts)".
 					") DEFAULT CHARSET=ascii COLLATE=ascii_bin";
 			$this->execDML($theSql);
+			$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnPayloadLog));
 			break;
 		}//switch
 	}

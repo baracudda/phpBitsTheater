@@ -38,7 +38,10 @@ class DbUtils {
 	const DB_TYPE_SQLITE	= 'sqlite';		//SQLite 3 and SQLite 2
 	const DB_TYPE_SQLSRV	= 'sqlsrv';		//Microsoft SQL Server / SQL Azure
 	const DB_TYPE_4D		= '4d';			//4D
-			
+	
+	const DATETIME_FORMAT_DEF_STD = 'Y-m-d H:i:s' ;        // standard date-time
+	const DATETIME_FORMAT_DEF_USEC = 'Y-m-d H:i:s.u' ;      // with microseconds
+	
 	private function __construct() {} //do not instantiate
 
 	/**

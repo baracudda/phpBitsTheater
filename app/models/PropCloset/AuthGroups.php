@@ -106,13 +106,13 @@ class AuthGroups extends BaseModel implements IFeatureVersioning {
 		try {
 			$theSql = $this->getTableDefSql(self::TABLE_Groups);
 			$this->execDML($theSql);
-			$this->debugLog('Create table (if not exist) "'.$this->tnGroups.'" succeeded.');
+			$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnGroups));
 			$theSql = $this->getTableDefSql(self::TABLE_GroupMap);
 			$this->execDML($theSql);
-			$this->debugLog('Create table (if not exist) "'.$this->tnGroupMap.'" succeeded.');
+			$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnGroupMap));
 			$theSql = $this->getTableDefSql(self::TABLE_GroupRegCodes);
 			$this->execDML($theSql);
-			$this->debugLog('Create table (if not exist) "'.$this->tnGroupRegCodes.'" succeeded.');
+			$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnGroupRegCodes));
 		} catch (PDOException $pdoe) {
 			throw new DbException($pdoe,$theSql);
 		}

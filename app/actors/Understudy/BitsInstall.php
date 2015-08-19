@@ -330,13 +330,26 @@ class BitsInstall extends BaseActor {
 	 * URL: %site%/install/resetup_db
 	 */
 	public function resetupDb() {
-		if (!$this->director->isInstalled()) return $this->scene->getSiteURL();
-		if (!$this->isAllowed('config','modify')) return $this->scene->getSiteURL();
-		//lets re-create our database
-		$theSetupDb = $this->getProp('SetupDb');
-		$theSetupDb->setupModels($this->scene);
-		$this->returnProp($theSetupDb);
-		return $this->scene->getSiteURL('install/allFinished');
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		if (!$this->director->isInstalled())
+			return $v->getSiteURL();
+		$dbAccounts = $this->getProp('Accounts');
+		if ( !$dbAccounts->isExists($dbAccounts->tnAccounts) || $dbAccounts->isEmpty() || $this->isAllowed('config','modify')) {
+			$this->debugLog("Recreating DB");
+			//lets re-create our database
+			$theSetupDb = $this->getProp('SetupDb');
+			$theSetupDb->setupModels($v);
+			$this->returnProp($theSetupDb);
+			$v->addUserMsg("Database has been created (or recreated)!");
+			if (!empty($v->redirect))
+				return $v->redirect;
+			else
+				return $v->getSiteURL('install/allFinished');
+		} else {
+			$this->debugLog("Skipping Recreating DB");
+			return $v->getSiteURL();
+		}
 	}
 	
 	public function siteid() {
@@ -350,8 +363,8 @@ class BitsInstall extends BaseActor {
 		$this->scene->landing_page = $this->getRes('install/landing_page');
 		$theVarNames = array('app_id', 'landing_page');
 		return $this->installTemplate('Settings', BITS_CFG_PATH.'Settings.php', $theVarNames)
-				//&& $this->installTemplate('MenuInfo', BITS_RES_PATH.'MenuInfo.php', $theVarNames)
-				;
+		//&& $this->installTemplate('MenuInfo', BITS_RES_PATH.'MenuInfo.php', $theVarNames)
+		;
 	}
 
 	public function allFinished() {
