@@ -584,11 +584,14 @@ class Scene extends BaseScene {
 	 * @return string|NULL Return the JS code wrapped appropriately for
 	 * inclusion in HTML or NULL if $aJsCode is nothing but whitespace.
 	 */
-	public function createJsTagBlock($aJsCode, $aId=null) {
-		if (!empty(trim($aJsCode))) {
+	public function createJsTagBlock($aJsCode, $aId=null)
+	{
+		$theTrimmedCode = trim($aJsCode) ;
+		if( !empty($theTrimmedCode) )
+		{
 			$theIdAttr = (empty($aId)) ? '' : 'id="'.$aId.'"';
 			return "<script type=\"text/javascript\" {$theIdAttr}>" . PHP_EOL
-					. $aJsCode . PHP_EOL
+					. $theTrimmedCode . PHP_EOL
 					. '</script>' . PHP_EOL
 			;
 		}
