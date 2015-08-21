@@ -108,8 +108,11 @@ if (file_exists($theCustomDefinesFile)) {
  * load required modules
  **********************************/
 //lib autoloader first
-require_once(BITS_LIB_PATH.'autoloader.php');
+require_once(BITS_LIB_PATH .'autoloader.php');
 //master autoloader
-require_once(BITS_PATH.'autoloader.php');
+require_once(BITS_PATH .'autoloader.php');
+//phpmailer autoloader
+require_once( BITS_LIB_PATH . 'phpmailer' . DIRECTORY_SEPARATOR
+		. 'PHPMailer' . DIRECTORY_SEPARATOR . 'PHPMailerAutoload.php' ) ;
 
 }//end namespace
