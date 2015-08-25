@@ -1,0 +1,84 @@
+
+                      phpBitsTheater Website Framework
+                    ====================================
+
+Copyright 2012 Blackmoon Info Tech Services
+
+Blackmoon Info Tech Serivces licenses these files to you under the Apache License,
+version 2.0 (the "License"); you may not use these files except in compliance
+with the License. You may obtain a copy of the License at:
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations
+under the License.
+
+Also, please refer to each LICENSE.txt file, which is located as indicated 
+in the following list relative to the directory of this distribution file,
+for the license terms of the components that this framework depends on.
+
+-------------------------------------------------------------------------------
+Many dependencies are optional in that while the default framework may
+utilize the following libraries, they may be substituted or overridden by
+something else as desired.
+
+This framework depends on 'jquery', a fast, small, and feature-rich 
+JavaScript library, which can be obtained at:
+	* LICENSE:
+		* lib/jquery/LICENSE.txt (Apache v2.0-like)
+	* HOMEPAGE:
+		* https://jquery.com/
+	* SOURCE
+		* https://github.com/jquery/jquery
+		
+This framework optionally depends on 'jquery-ui', a curated set of user interface
+interactions, effects, widgets, and themes built on top of the jQuery JavaScript 
+Library, which can be obtained at:
+	* LICENSE:
+		* lib/jquery-ui/MIT-LICENSE.txt (MIT)
+	* HOMEPAGE:
+		* https://jqueryui.com/
+	* SOURCE
+		* https://github.com/jquery/jquery-ui
+		
+This framework optionally depends on 'apycom menus', a JavaScript & CSS
+library converting HTML Ordered Lists into a pretty and responsive menu,
+which can be obtained at:
+	* LICENSE:
+		* Free, but please put a link to this page where you want:
+		  <a href="http://apycom.com/">jQuery Menu by Apycom</a>
+	* HOMEPAGE:
+		* http://apycom.com/
+		
+This framework optionally depends on 'bootstrap', an HTML, JavaScript, and CSS
+framework for developing responsive, mobile first projects on the web,
+which can be obtained at:
+	* LICENSE:
+		* lib/bootstrap/LICENSE.txt (MIT)
+	* HOMEPAGE:
+		* http://getbootstrap.com/
+	* SOURCE
+		* https://github.com/twbs/bootstrap
+		
+This framework optionally depends on 'bootbox', a small JavaScript library which 
+allows you to create programmatic dialog boxes, which can be obtained at:
+	* LICENSE:
+		* lib/bootbox/LICENSE.txt (MIT)
+	* HOMEPAGE:
+		* http://bootboxjs.com/
+	* SOURCE
+		* https://github.com/makeusabrew/bootbox
+		
+This framework optionally depends on 'PHPMailer', a full-featured email 
+creation and transfer class for PHP, which can be obtained at:
+	* LICENSE:
+		* lib/phpmailer/PHPMailer/LICENSE.txt (GNU LGPL 2.1)
+	* SOURCE
+		* https://github.com/PHPMailer/PHPMailer
+
+
+
+
