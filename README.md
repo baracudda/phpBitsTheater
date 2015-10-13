@@ -3,7 +3,7 @@ phpBitsTheater
 
 Highly customizable PHP mini-framework extending the MVC site model. Terms used borrow heavily from theater.
 
-This project is open source, will provide the license once I decide on which one (leaning towards Apache).
+Minimum PHP version required is 5.4 (due to using the (new ClassName())->blah() feature of 5.4 in some places).
 
 This mini-framework extends the Model-View-Controller site model:
 
