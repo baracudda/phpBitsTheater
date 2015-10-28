@@ -700,7 +700,10 @@ class Scene extends BaseScene {
 		if (!isset($aDieMsg))
 			$aDieMsg = $this->getRes('auth/msg_basic_auth_fail');
 		header('WWW-Authenticate: Basic realm="'.$this->getRes('website/header_meta_title').'"');
-		header('HTTP/1.0 401 Unauthorized');
+		if( function_exists('http_response_code') )
+			http_response_code(401) ;
+		else
+			header('HTTP/1.0 401 Unauthorized') ;
 		die($aDieMsg);
 	}
 	

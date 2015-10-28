@@ -59,11 +59,23 @@ class HttpAuthHeader extends BaseCostume {
 	 */
 	public $circumstances = null;
 	/**
+	 * Circumstances may be defined with a unique separator.
+	 * Defaults to ", ".
+	 * @var string
+	 */
+	public $csep = ', ';
+	/**
 	 * Broadway http auth token.
 	 * @var string
 	 */
 	public $auth_token = null;
-	
+	/**
+	 * Auto-destroy the PHP session after URL request is handled.
+	 * Used to ensure the Broadway auth always performs its
+	 * circumstance checks to see if token is still valid.
+	 * @var boolean
+	 */
+	public $no_session = false;
 	
 	public function __construct($aHttpAuthHeader) {
 		if (!empty($aHttpAuthHeader)) {
@@ -98,7 +110,7 @@ class HttpAuthHeader extends BaseCostume {
 				//  however, we do not wish to parse it, just use "as is"
 				
 				//circumstances is itself an array of strings
-				$this->circumstances = explode(', ', Strings::stripEnclosure($this->circumstances,'[',']'));
+				$this->circumstances = explode($this->csep, Strings::stripEnclosure($this->circumstances,'[',']'));
 				//Strings::debugLog(__METHOD__.' self='.Strings::debugStr($this));
 				break;
 		}
@@ -112,6 +124,16 @@ class HttpAuthHeader extends BaseCostume {
 	public function getLatLong() {
 		if (!empty($this->circumstances))
 			return array($this->circumstances[1], $this->circumstances[2]);
+	}
+	
+	public function getLatitude() {
+		if (!empty($this->circumstances))
+			return $this->circumstances[1];
+	}
+	
+	public function getLongitude() {
+		if (!empty($this->circumstances))
+			return $this->circumstances[2];
 	}
 	
 	public function getTimestamp() {

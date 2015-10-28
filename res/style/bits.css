@@ -373,5 +373,6 @@ img.overlay {
     box-shadow: 0.5em 0.5em 0.7em #333;
     border-radius: 1em;
     display:none;
+    z-index: 1;
     /* change display to show it */
 } 

@@ -41,7 +41,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 * @var string
 	 */
 	const FEATURE_ID = 'BitsTheater/AuthBasic';
-	const FEATURE_VERSION_SEQ = 3; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 4; //always ++ when making db schema changes
 
 	const TYPE = 'basic';
 	const ALLOW_REGISTRATION = true;
@@ -109,10 +109,12 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-						"( auth_id CHAR(36) NOT NULL".
+						"( `id` int NOT NULL AUTO_INCREMENT". //strictly for phpMyAdmin ease of use
+						", auth_id CHAR(36) NOT NULL".
 						", account_id INT NOT NULL".
 						", token CHAR(128) NOT NULL".
 						", _changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP".
+						", PRIMARY KEY (`id`)".
 						", INDEX IdxAuthIdToken (auth_id, token)".
 						", INDEX IdxAcctIdToken (account_id, token)".
 						", INDEX IdxAuthToken (token, _changed)".
@@ -203,6 +205,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 					return 1;
 				} else if (!$this->exists($this->tnAuthMobile)) {
 					return 2;
+				} else if (!$this->isFieldExists('id', $this->tnAuthTokens)) {
+					return 3;
 				}
 				break;
 		}//switch
@@ -236,37 +240,49 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		$theSeq = $aFeatureMetaData['version_seq'];
 		switch (true) {
 		//cases should always be lo->hi, never use break; so all changes are done in order.
-		case ($theSeq<2):
-			//update the cookie table first since its easier and we should empty it
-			$tnAuthCookies = $this->tbl_.'auth_cookie'; //v1 table, renamed auth_tokens
-			$this->execDML("DROP TABLE IF EXISTS {$tnAuthCookies}");
-			$this->execDML("DROP TABLE IF EXISTS {$this->tnAuthTokens}");
-			$this->execDML($this->getTableDefSql(self::TABLE_AuthTokens));
-
-			//now update the Auth table... it is a bit trickier.
-			//change the default to _changed field (defaulted to 0 rather than current ts)
-			$theColDef = "_changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP";
-			$this->execDML("ALTER TABLE {$this->tnAuth} MODIFY {$theColDef}");
-			//remove the primary key
-			$this->execDML('ALTER TABLE '.$this->tnAuth.' DROP PRIMARY KEY');
-			//add auth_id
-			$theColDef = "auth_id CHAR(36) CHARACTER SET ascii NOT NULL DEFAULT 'I_NEED_A_UUID' COLLATE ascii_bin";
-			$this->execDML("ALTER TABLE {$this->tnAuth} ADD {$theColDef} FIRST");
-			//update all existing records to change default to a UUID()
-			$this->execDML("UPDATE {$this->tnAuth} SET auth_id=UUID() WHERE auth_id='I_NEED_A_UUID'");
-			//remove default for auth_id
-			$theColDef = "auth_id CHAR(36) CHARACTER SET ascii NOT NULL COLLATE ascii_bin";
-			$this->execDML("ALTER TABLE {$this->tnAuth} MODIFY {$theColDef}");
-			//re-apply primary key
-			$this->execDML('ALTER TABLE '.$this->tnAuth.' ADD PRIMARY KEY (auth_id)');
-			//put unique key constraint back on email
-			$this->execDML('ALTER TABLE '.$this->tnAuth.' ADD UNIQUE KEY (email)');
-		case ($theSeq<3):
-			//add new table
-			$theSql = $this->getTableDefSql(self::TABLE_AuthMobile);
-			$this->execDML($theSql);
-			$this->debugLog('Create table (if not exist) "'.$this->tnAuthMobile.'" succeeded.');
-		}
+			case ($theSeq<2):
+				//update the cookie table first since its easier and we should empty it
+				$tnAuthCookies = $this->tbl_.'auth_cookie'; //v1 table, renamed auth_tokens
+				$this->execDML("DROP TABLE IF EXISTS {$tnAuthCookies}");
+				$this->execDML("DROP TABLE IF EXISTS {$this->tnAuthTokens}");
+				$this->execDML($this->getTableDefSql(self::TABLE_AuthTokens));
+	
+				//now update the Auth table... it is a bit trickier.
+				//change the default to _changed field (defaulted to 0 rather than current ts)
+				$theColDef = "_changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP";
+				$this->execDML("ALTER TABLE {$this->tnAuth} MODIFY {$theColDef}");
+				//remove the primary key
+				$this->execDML('ALTER TABLE '.$this->tnAuth.' DROP PRIMARY KEY');
+				//add auth_id
+				$theColDef = "auth_id CHAR(36) CHARACTER SET ascii NOT NULL DEFAULT 'I_NEED_A_UUID' COLLATE ascii_bin";
+				$this->execDML("ALTER TABLE {$this->tnAuth} ADD {$theColDef} FIRST");
+				//update all existing records to change default to a UUID()
+				$this->execDML("UPDATE {$this->tnAuth} SET auth_id=UUID() WHERE auth_id='I_NEED_A_UUID'");
+				//remove default for auth_id
+				$theColDef = "auth_id CHAR(36) CHARACTER SET ascii NOT NULL COLLATE ascii_bin";
+				$this->execDML("ALTER TABLE {$this->tnAuth} MODIFY {$theColDef}");
+				//re-apply primary key
+				$this->execDML('ALTER TABLE '.$this->tnAuth.' ADD PRIMARY KEY (auth_id)');
+				//put unique key constraint back on email
+				$this->execDML('ALTER TABLE '.$this->tnAuth.' ADD UNIQUE KEY (email)');
+			case ($theSeq<3):
+				//add new table
+				$theSql = $this->getTableDefSql(self::TABLE_AuthMobile);
+				$this->execDML($theSql);
+				$this->debugLog('v3: '.$this->getRes('install/msg_create_table_x_success/'.$this->tnAuthMobile));
+			case ( $theSeq < 4 ):
+				//previous versions may have added the field already, so double check before adding it.
+				if (!$this->isFieldExists('id', $this->tnAuthTokens)) {
+					$theSql = SqlBuilder::withModel($this);
+					$theSql->startWith('ALTER TABLE '.$this->tnAuthTokens);
+					$theSql->add('  ADD COLUMN')->add("`id` int NOT NULL AUTO_INCREMENT")->add("FIRST");
+					$theSql->add(', ADD')->add("PRIMARY KEY (`id`)");
+					$theSql->execDML();
+					$this->debugLog('v4: added id to '.$this->tnAuthTokens);
+				} else {
+					$this->debugLog('v4: id already exists in '.$this->tnAuthTokens);
+				}
+		}//switch
 	}
 	
 	protected function exists($aTableName=null) {
@@ -427,14 +443,16 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		//64chars of unique gibberish
 		$theAuthToken = self::generatePrefixedAuthToken( $aTweak ) ;
 		//save in token table
-		$theSql = SqlBuilder::withModel($this)->setDataSet(array(
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 				'auth_id' => $aAuthId,
 				'account_id' => $aAcctId,
 				'token' => $theAuthToken,
 		));
+		$nowAsUTC = $this->utc_now();
 		$theSql->startWith('INSERT INTO')->add($this->tnAuthTokens);
-		$theSql->add('SET')->mustAddParam('auth_id');
-		$theSql->setParamPrefix(', ')->mustAddParam('account_id');
+		$theSql->add('SET')->mustAddParam('_changed', $nowAsUTC)->setParamPrefix(', ');
+		$theSql->mustAddParam('auth_id');
+		$theSql->mustAddParam('account_id');
 		$theSql->mustAddParam('token');
 		$theSql->execDML();
 		return $theAuthToken;
@@ -729,8 +747,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 				if (!empty($this->director->account_info)) {
 					//data retrieval succeeded, save the account id in session cache
 					$this->director[self::KEY_userinfo] = $theAccountId;
-					//bake (create) a new cookie for next time
-					$this->updateCookie($theAuthId, $theAccountId);
+					if (!$this->director->isNoSession()) {
+						//bake (create) a new cookie for next time
+						$this->updateCookie($theAuthId, $theAccountId);
+					}
 				}
 				unset($theAuthTokenRow);
 			}
@@ -755,9 +775,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 					'mobile_id' => $aMobileRow['mobile_id'],
 					'device_name' => $theDeviceName,
+					'latitude' => $aAuthHeader->getLatitude(),
+					'longitude' => $aAuthHeader->getLongitude(),
 			));
-			$theSql->startWith('UPDATE '.$this->tnAuthMobile);
-			$theSql->setParamPrefix(' SET ')->mustAddParam('device_name');
+			$theSql->startWith('UPDATE')->add($this->tnAuthMobile);
+			$theSql->add('SET')->mustAddParam('updated_ts', $this->utc_now())->setParamPrefix(', ');
+			$theSql->mustAddParam('device_name');
+			$theSql->addParam('latitude')->addParam('longitude');
 			$theSql->startWhereClause()->mustAddParam('mobile_id')->endWhereClause();
 			$theSql->execDML();
 		}
@@ -792,6 +816,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 				//$this->debugLog(__METHOD__.' chkhdr='.$this->debugStr($theAuthHeader));
 				if (!empty($theAuthHeader->auth_id) && !empty($theAuthHeader->auth_token)) {
 					$this->removeStaleMobileAuthTokens();
+					if ($theAuthHeader->no_session) {
+						$this->director->destroySessionOnCleanup();
+					}
 					$theAuthTokenRow = $this->getAuthTokenRow($theAuthHeader->auth_id, $theAuthHeader->auth_token);
 					//$this->debugLog(__METHOD__.' arow='.$this->debugStr($theAuthTokenRow));
 					if (!empty($theAuthTokenRow)) {
@@ -895,14 +922,24 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		if ($this->isEmpty()) {
 			$aDefaultGroup = 1;
 		}
-		$theSql = SqlBuilder::withModel($this)->setDataSet(array(
+		$nowAsUTC = $this->utc_now();
+		$theVerifiedTS = ($aUserData['verified_timestamp']==='now')
+				? $nowAsUTC 
+				: $aUserData['verified_timestamp']
+		;
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+				'auth_id' => Strings::createUUID(),
 				'email' => $aUserData['email'],
 				'account_id' => $aUserData['account_id'],
 				'pwhash' => Strings::hasher($aUserData[self::KEY_pwinput]),
-				'verified' => $aUserData['verified_timestamp'],
+				'verified' => $theVerifiedTS,
+				'_created' => $nowAsUTC,
+				'_changed' => $nowAsUTC,
 		));
-		$theSql->startWith('INSERT INTO '.$this->tnAuth);
-		$theSql->add('SET _created=NOW(), auth_id=UUID()')->setParamPrefix(', ');
+		$theSql->startWith('INSERT INTO')->add($this->tnAuth);
+		$theSql->add('SET')->mustAddParam('_created')->setParamPrefix(', ');
+		$theSql->mustAddParam('_changed');
+		$theSql->mustAddParam('auth_id');
 		$theSql->mustAddParam('email');
 		$theSql->mustAddParam('account_id', 0, PDO::PARAM_STR);
 		$theSql->mustAddParam('pwhash');
@@ -978,9 +1015,15 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 */
 	public function registerMobileFingerprints($aAuthRow, $aFingerprints, $aCircumstances) {
 		if (!empty($aAuthRow) && !empty($aFingerprints)) {
+			$nowAsUTC = $this->utc_now();
+			unset($aCircumstances->created_ts); //do not want outside influence on created_ts value.
+			unset($aCircumstances->updated_ts); //do not want outside influence on updated_ts value.
+			unset($aCircumstances->mobile_id); //do not want outside influence on mobile_id value.
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aCircumstances);
-			$theSql->startWith('INSERT INTO '.$this->tnAuthMobile);
-			$theSql->add('SET created_ts=NOW(), mobile_id=UUID()')->setParamPrefix(', ');
+			$theSql->startWith('INSERT INTO')->add($this->tnAuthMobile);
+			$theSql->add('SET')->mustAddParam('created_ts', $nowAsUTC)->setParamPrefix(', ');
+			$theSql->mustAddParam('updated_ts', $nowAsUTC);
+			$theSql->mustAddParam('mobile_id', Strings::createUUID());
 			$theSql->mustAddParam('auth_id', $aAuthRow['auth_id']);
 			$theSql->mustAddParam('account_id', $aAuthRow['account_id'], PDO::PARAM_INT);
 			$theUserToken = Strings::urlSafeRandomChars(64-36-1).':'.Strings::createUUID(); //unique 64char gibberish
@@ -1025,8 +1068,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		//generate a token with "mA" so we can tell them apart from cookie tokens
 		$theAuthToken = $this->generateAuthToken($aAuthId, $aAcctId, 'mA');
 		$theStaleTime = time()+($this->getCookieDurationInDays('duration_1_day')*(60*60*24));
-		setcookie(self::KEY_userinfo, $this->director->app_id.'-'.$aAuthId, $theStaleTime, BITS_URL);
-		setcookie(self::KEY_token, $theAuthToken, $theStaleTime, BITS_URL);
+		if (!$this->director->isNoSession()) {
+			setcookie(self::KEY_userinfo, $this->director->app_id.'-'.$aAuthId, $theStaleTime, BITS_URL);
+			setcookie(self::KEY_token, $theAuthToken, $theStaleTime, BITS_URL);
+		}
 		return $theAuthToken;
 	}
 	

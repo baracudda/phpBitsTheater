@@ -32,14 +32,14 @@ class BitsConfig extends BaseActor {
 			return $this->getHomePage();
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
-		
+
 		$dbConfig = $this->getProp('config');
 		$v->config_areas = $dbConfig->getConfigAreas();
 		foreach ($v->config_areas as $theNamespaceInfo) {
 			$theNamespaceInfo->settings_list = $dbConfig->getConfigSettings($theNamespaceInfo);
 			//$this->debugPrint(__METHOD__.' nsi='.$this->debugStr($theNamespaceInfo,null));
 		}
-		
+
 		$v->redirect = $this->getMyUrl('edit');
 		$v->next_action = $this->getMyUrl('modify');
 		$theText = $this->getRes('generic/save_button_text');
@@ -47,13 +47,13 @@ class BitsConfig extends BaseActor {
 		//indicate what top menu we are currently in
 		$this->setCurrentMenuKey('admin');
 	}
-	
+
 	public function modify() {
 		if (!$this->isAllowed('config','modify'))
 			return $this->getHomePage();
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
-		
+
 		$bSaved = false;
 		$dbConfig = $this->getProp('config');
 		$v->config_areas = $dbConfig->getConfigAreas();
@@ -72,10 +72,10 @@ class BitsConfig extends BaseActor {
 		}
 		if ($bSaved)
 			$v->addUserMsg($this->getRes('config/msg_save_applied'), $v::USER_MSG_NOTICE);
-		
+
 		return $v->redirect;
 	}
-	
+
 }//end class
 
 }//end namespace

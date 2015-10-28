@@ -350,6 +350,9 @@ class AuthBasicAccount extends BaseActor {
 		$this->renderThisView = 'results_as_json';
 		if (empty($aPing)) {
 			$dbAuth = $this->getProp('Auth');
+			if ($v->no_session) {
+				$this->director->destroySessionOnCleanup();
+			}
 			if (!$this->isGuest()) {
 				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
 						$this->director->account_info, $v->fingerprints, $v->circumstances);

@@ -154,6 +154,8 @@ class Strings {
 		return $salt;
 	}
 	
+	static public $crypto_strength = '08';
+	
 	/**
 	 * Blowfish pw encryption mechanism: 76 chars long (60 char encryption + 16 char random salt)
 	 * <pre>
@@ -175,7 +177,17 @@ class Strings {
 		} else {
 			$thePwInput = urlencode(substr($aPwInput,0,64).min(array(999,strlen($aPwInput))));
 		}
-		$theCryptoInfo = '$2a$08$'; //2a = Blowfish, 08 = crypto strength, append actual 22 char salt to end of this
+		/* Security advisory from PHP.net:
+		 * Developers targeting PHP 5.3.7+ should use "$2y$" in preference to "$2a$".
+		 * Full details: http://php.net/security/crypt_blowfish.php
+		 */
+		if (version_compare(PHP_VERSION, '5.3.7') >= 0) {
+			//2y = Updated Blowfish, 11 = crypto strength (04-31), append actual 22 char salt to end of this
+			$theCryptoInfo = '$2y$'.self::$crypto_strength.'$';
+		} else {
+			//2a = Blowfish, 08 = crypto strength, append actual 22 char salt to end of this
+			$theCryptoInfo = '$2a$'.self::$crypto_strength.'$';
+		}
 		//if encrypted data is passed, check it against input ($info)
 		if ($aEncryptedData) {
 			$saltCrypto = substr($aEncryptedData,0,-16);
@@ -648,5 +660,13 @@ class Strings {
 	
 	
 }//end class
+
+/* increase default crypto strength (04-31) based on PHP version
+ * NOTE: cryto strength is exponentially longer, 8 takes a while, 15 takes a LOT longer;
+ *       base the strength on the power/speed of the server you are using.
+ */
+if (version_compare(PHP_VERSION, '5.3.7') >= 0) {
+	Strings::$crypto_strength = '11';
+}
 
 }//end namespace

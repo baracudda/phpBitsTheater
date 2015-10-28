@@ -199,7 +199,7 @@ class SqlBuilder extends BaseCostume {
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
 	public function reset($bClearDataFunctionsToo=false) {
-		$this->myParamPrefix = '';
+		$this->myParamPrefix = ' ';
 		$this->myParamOperator = '=';
 		$this->mySql = '';
 		$this->myParams = array();
@@ -608,18 +608,7 @@ class SqlBuilder extends BaseCostume {
 	 * @return boolean Returns the result of the SQLSTATE check.
 	 */
 	public function execDMLandCheckCode($aSqlState5digitCode=self::SQLSTATE_NO_DATA) {
-		
-		$this->debugLog(__METHOD__.' sql='.$this->mySql.' params='.$this->debugStr($this->myParams));
-		// @var $ps PDOStatement
-		$ps = $this->execDML();
-		$this->debugLog(__METHOD__.' ec='.$ps->errorCode().' check='.$aSqlState5digitCode);
-		if ($aSqlState5digitCode==self::SQLSTATE_NO_DATA) {
-			return ($ps->errorCode()==$aSqlState5digitCode || $ps->rowCount()===0);
-		} else {
-			return ($ps->errorCode()==$aSqlState5digitCode);
-		}
-		
-		//return ($this->execDML()->errorCode()==$aSqlState5digitCode);
+		return ($this->execDML()->errorCode()==$aSqlState5digitCode);
 	}
 	
 	/**

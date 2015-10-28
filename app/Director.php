@@ -89,6 +89,11 @@ class Director extends BaseDirector implements ArrayAccess {
 	 * @var Auth
 	 */
 	protected $dbAuth = null;
+	/**
+	 * If TRUE, destroy the session on class cleanup.
+	 * @var boolean
+	 */
+	protected $no_session = false;
 
 	/**
 	 * Initialization method called during class construction.
@@ -125,7 +130,11 @@ class Director extends BaseDirector implements ArrayAccess {
 
 	public function cleanup() {
 		if (session_id()!='') {
-			session_write_close();
+			if ($this->isNoSession()) {
+				session_destroy();
+			} else {
+				session_write_close();
+			}
 		}
 		unset($this->account_info);
 		$this->returnProp($this->dbAuth);
@@ -188,6 +197,23 @@ class Director extends BaseDirector implements ArrayAccess {
 		session_write_close();
 		setcookie(session_name(),'',0,'/');
 		session_regenerate_id(true);
+	}
+	
+	/**
+	 * Returns TRUE if we are not going to save the session.
+	 * @return boolean Returns TRUE if not saving session.
+	 */
+	public function isNoSession() {
+		return $this->no_session;
+	}
+	
+	/**
+	 * Mobile API may not wish cookies or session lasting longer than
+	 * the current API call.
+	 */
+	public function destroySessionOnCleanup() {
+		$this->no_session = true;
+		ini_set('session.use_cookies', '0');  //do not return cookie data to the client
 	}
 	
 	public function isInstalled() {
@@ -619,6 +645,28 @@ class Director extends BaseDirector implements ArrayAccess {
 			@mkdir(dirname($theFilename), 0777, true);
 			if (@file_put_contents($theFilename, $aMessage, FILE_APPEND | LOCK_EX)!==strlen($aMessage)) {
 				error_log(VIRTUAL_HOST_NAME . ": Failed to open file '{$theFilename}' for appending.");
+			}
+		}
+	}
+	
+	/**
+	 * Deletes a log file. Will error_log() if specified file exists
+	 * but was unsuccessful in deletion attempt.
+	 * @param unknown $aCategory Filename of log file desired.
+	 */
+	public function deleteLogFile($aCategory) {
+		$theCacheKey = VIRTUAL_HOST_NAME . '|' . $aCategory;
+		if (empty($this->_logFilenameCache[$theCacheKey])) {
+			$this->_logFilenameCache[$theCacheKey] = $this->getLogFileOf($aCategory);
+		}
+		$theFilename = $this->_logFilenameCache[$theCacheKey];
+		
+		if ($theFilename != null) {
+			if (@file_exists($theFilename)) {
+				$result = @unlink($theFilename);
+				if ($result == false) {
+					error_log(VIRTUAL_HOST_NAME . ": Failed to delete file '{$theFilename}', unlink unsuccessful.");
+				}
 			}
 		}
 	}

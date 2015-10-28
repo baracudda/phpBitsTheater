@@ -274,7 +274,13 @@ class AuthGroups extends BaseModel implements IFeatureVersioning {
 	}
 	
 	public function createGroup($aGroupName, $aGroupParentId, $aGroupRegCode) {
-		$theSql = "INSERT INTO {$this->tnGroups} (group_name,parent_group_id) VALUES ('$aGroupName',$aGroupParentId)";
+		
+		if (!empty($aGroupParentId)) {
+			$theSql = "INSERT INTO {$this->tnGroups} (group_name,parent_group_id) VALUES ('$aGroupName',$aGroupParentId)";
+		} else {
+			$theSql = "INSERT INTO {$this->tnGroups} (group_name) VALUES ('$aGroupName')";
+		}
+		
 		$theNewGroupId = $this->addAndGetId($theSql);
 		if (!empty($aGroupRegCode)) {
 			$theRegCode = substr($aGroupRegCode,0,64);

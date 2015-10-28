@@ -32,6 +32,7 @@ var theWarningDialog = {
 					$("#overlay_please_stand_by").hide();
 					//console.log('posted');
 				}).fail(function(aData, textStatus, errorThrown) {
+					$("#overlay_please_stand_by").hide();
 					location.reload(true);
 					//console.log('failed');
 				});
@@ -45,10 +46,13 @@ $('button.btn-update-feature').click(function(e) {
 });
 
 $('#btn_resetup_db').click(function(e) {
+	$("#overlay_please_stand_by").show();
 	$.post('{$v->getMyUrl('ajaxResetupDb')}',{}).done(function(aData) {
+		$("#overlay_please_stand_by").hide();
 		alert('Missing tables created.');
 		//console.log('resetup done');
 	}).fail(function(aData, textStatus, errorThrown) {
+		$("#overlay_please_stand_by").hide();
 		//console.log('resetup failed');
 	});
 });

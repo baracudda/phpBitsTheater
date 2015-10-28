@@ -22,6 +22,7 @@ use BitsTheater\costumes\ConfigResEntry;
 use BitsTheater\Director;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
+use com\blackmoonit\widgetbuilder\TextAreaWidget ;
 use com\blackmoonit\Arrays;
 use BitsTheater\models\Config;
 {//namespace begin
@@ -30,26 +31,28 @@ use BitsTheater\models\Config;
  * Configuration setting information in class form
  * instead of associative array form.
  */
-class ConfigSettingInfo extends BaseCostume {
-	const INPUT_STRING = 'string';
-	const INPUT_BOOLEAN = 'boolean';
-	const INPUT_DROPDOWN = 'dropdown';
-	const INPUT_PASSWORD = 'string-pw';
-	
+class ConfigSettingInfo extends BaseCostume
+{
+	const INPUT_STRING = 'string' ;
+	const INPUT_TEXT = 'text' ;
+	const INPUT_BOOLEAN = 'boolean' ;
+	const INPUT_DROPDOWN = 'dropdown' ;
+	const INPUT_PASSWORD = 'string-pw' ;
+
 	public $config_namespace_info;
 	public $config_key;
-	
+
 	//from config table
 	public $ns;
 	public $key;
 	public $value;
-	
+
 	/**
-	 * The Config resource entry. 
+	 * The Config resource entry.
 	 * @var ConfigResEntry
 	 */
 	public $mSettingInfo = null;
-	
+
 	/**
 	 * Magic PHP method to limit what var_dump() shows.
 	 */
@@ -60,7 +63,7 @@ class ConfigSettingInfo extends BaseCostume {
 		unset($vars['key']);
 		return $vars;
 	}
-	
+
 	/**
 	 * Given namespace data and setting data, convert to this class.
 	 * @param ConfigNamespaceInfo $aNamespaceInfo - instance of namespace info.
@@ -77,7 +80,7 @@ class ConfigSettingInfo extends BaseCostume {
 				$o->mSettingInfo = new ConfigResEntry($aNamespaceInfo->namespace, $aSettingName);
 				$o->mSettingInfo->setDataFrom($aSettingInfo);
 			}
-			
+
 			$o->config_namespace_info = $aNamespaceInfo;
 			$o->ns = $aNamespaceInfo->namespace;
 			$o->key = $aSettingName;
@@ -85,15 +88,15 @@ class ConfigSettingInfo extends BaseCostume {
 			return $o;
 		}
 	}
-	
+
 	public function getLabel() {
 		return $this->mSettingInfo->label;
 	}
-	
+
 	public function getDescription() {
 		return $this->mSettingInfo->desc;
 	}
-	
+
 	public function getCurrentValue() {
 		if ($this->getDirector()->isInstalled()) {
 			/* @var $dbConfig Config */
@@ -107,7 +110,7 @@ class ConfigSettingInfo extends BaseCostume {
 		}
 		return (isset($this->value)) ? $this->value : $this->mSettingInfo->default_value;
 	}
-	
+
 	/**
 	 * See if this setting is restricted.
 	 * @return boolean
@@ -115,7 +118,7 @@ class ConfigSettingInfo extends BaseCostume {
 	public function isAllowed() {
 		return $this->mSettingInfo->config_is_allowed();
 	}
-	
+
 	/**
 	 * Get this setting's widget name such that it would be unique.
 	 * @return string Returns this setting's widget name.
@@ -123,22 +126,32 @@ class ConfigSettingInfo extends BaseCostume {
 	public function getWidgetName() {
 		return $this->ns.'__'.$this->key;
 	}
-	
+
 	/**
 	 * Get the HTML string to use as a widget for this setting.
 	 * @return string Returns the HTML to use as a setting widget.
 	 */
-	public function getInputWidget() {
-		$theWidgetName = $this->getWidgetName();
-		$theValue = $this->getCurrentValue();
-		switch ($this->mSettingInfo->input_type) {
+	public function getInputWidget()
+	{
+		$theWidgetName = $this->getWidgetName() ;
+		$theValue = $this->getCurrentValue() ;
+		switch( $this->mSettingInfo->input_type )
+		{
 			case self::INPUT_STRING:
-				return Widgets::createTextBox($theWidgetName,$theValue);
+				return Widgets::createTextBox($theWidgetName,$theValue) ;
+			case self::INPUT_TEXT:
+				return (new TextAreaWidget($theWidgetName))
+					->append( $theValue )
+					->setRows(4)->setCols(60)
+					->setAttr( 'maxlength', 250 )
+					->renderInline()
+					;
 			case self::INPUT_BOOLEAN:
 				return Widgets::createCheckBox($theWidgetName,!empty($theValue));
 			case self::INPUT_DROPDOWN:
 				$theItemList = array();
-				foreach($this->mSettingInfo->input_enums as $key => $valueRow) {
+				foreach( $this->mSettingInfo->input_enums as $key => $valueRow )
+				{
 					if (is_array($valueRow))
 						$theItemList[$key] = $valueRow['label'];
 					else
@@ -151,16 +164,19 @@ class ConfigSettingInfo extends BaseCostume {
 				return Widgets::createTextBox($theWidgetName, $theValue);
 		}
 	}
-	
+
 	/**
 	 * Given the Scene variable, get the widget values converted back to what needs
 	 * to be saved as a config value.
 	 * @param Scene $aScene - the scene containing the values.
 	 * @return mixed Returns the value to be saved.
 	 */
-	public function getInputValue($aScene) {
+	public function getInputValue($aScene)
+	{
 		$theWidgetName = $this->getWidgetName();
-		switch ($this->mSettingInfo->input_type) {
+		switch( $this->mSettingInfo->input_type )
+		{
+			case self::INPUT_TEXT:
 			case self::INPUT_STRING:
 			case self::INPUT_PASSWORD:
 				return $aScene->$theWidgetName;
@@ -178,7 +194,7 @@ class ConfigSettingInfo extends BaseCostume {
 				return $aScene->$theWidgetName;
 		}
 	}
-	
+
 }//end class
-	
+
 }//end namespace

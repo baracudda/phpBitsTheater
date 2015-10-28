@@ -43,7 +43,12 @@ class BaseWidget
 	protected $isSingleton = false ;
 	/** Is the element a "block" element? */
 	protected $isBlock = false ;
-	
+
+	public function __construct( $aID=null )
+	{
+		$this->setID($aID) ;
+	}
+
 	/**
 	 * Sets the element's type. Silently ignores blank values.
 	 * @param string $aType an HTML element type
@@ -54,11 +59,11 @@ class BaseWidget
 		if( !empty($aType) ) $this->myElementType = (string)$aType ;
 		return $this ;
 	}
-	
+
 	/** Gets the HTML element type. */
 	public function getType()
 	{ return $this->myElementType ; }
-	
+
 	/**
 	 * Sets the element's ID. This is santitized with
 	 * Widgets::sanitizeElementID().
@@ -71,7 +76,7 @@ class BaseWidget
 	/** Returns the widget's HTML element ID. */
 	public function getID()
 	{ return $this->myID ; }
-	
+
 	/**
 	 * Adds an HTML class to the widget's list of classes.
 	 * @param string $aClass an HTML class spec
@@ -80,15 +85,15 @@ class BaseWidget
 	public function addClass( $aClass )
 	{
 		if( empty($aClass) ) return $this ;
-		
+
 		if( empty( $this->myHTMLClass ) )
 			$this->myHTMLClass = $aClass ;
 		else
 			$this->myHTMLClass .= ' ' . $aClass ;
-		
+
 		return $this ;
 	}
-	
+
 	/**
 	 * Adds an array of HTML classes to the widget's list of classes.
 	 * @param array $aClasses an array of HTML class specs
@@ -100,7 +105,7 @@ class BaseWidget
 			$this->addClass($theClass) ;
 		return $this ;
 	}
-	
+
 	/**
 	 * Removes an HTML class from the widget's list of classes.
 	 * @param string $aClass an HTML class spec
@@ -112,10 +117,10 @@ class BaseWidget
 			$this->myHTMLClass = null ;
 		else
 			$this->myHTMLClass = str_replace( $aClass, '', $this->myHTMLClass );
-		
+
 		return $this ;
 	}
-	
+
 	/**
 	 * Removes an array of HTML classes from the widget's list of classes.
 	 * @param array $aClasses a list of HTML class specs
@@ -149,7 +154,7 @@ class BaseWidget
 		}
 		return $this ;
 	}
-	
+
 	/**
 	 * Sets an array of HTML attributes into the widget.
 	 * @param array $aAttrs attributes ( name => value )
@@ -259,20 +264,20 @@ class BaseWidget
 		if( $this->isBlock )
 		{
 			$theHTML .= $this->renderOpen() . PHP_EOL
-			. $this->indent( $this->myIndentLevel + 1 )
-			. $this->myContent . PHP_EOL
-			. $this->indent()
-			. $this->renderClose() . PHP_EOL
-			;
+				. $this->indent( $this->myIndentLevel + 1 )
+				. $this->myContent . PHP_EOL
+				. $this->indent()
+				. $this->renderClose() . PHP_EOL
+				;
 		}
 		else if( $this->isSingleton )
 			$theHTML .= $this->renderOpen() ;
 		else
 		{
 			$theHTML .= $this->renderOpen()
-			. $this->myContent
-			. $this->renderClose()
-			;
+				. $this->myContent
+				. $this->renderClose()
+				;
 		}
 		return $theHTML ;
 	}
@@ -296,7 +301,7 @@ class BaseWidget
 	public function renderOpen()
 	{
 		$myElementID = $this->getID() ;        // Sometimes this can be special.
-		
+
 		$theHTML = '<'
 				. $this->myElementType
 				. ( !empty($myElementID) ?
@@ -335,7 +340,7 @@ class BaseWidget
 		else
 			return Strings::repeat( $this->myIndentString, $this->myIndentLevel );
 	}
-	
+
 	/**
 	 * In case you try to print a widget to the output stream because you forgot
 	 * to invoke render() or renderInline() instead...

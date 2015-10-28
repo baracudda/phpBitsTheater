@@ -327,9 +327,11 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 	public function insertFeature($aDataObject) {
 		$theResultSet = null;
 		if ($this->isConnected()) try {
-			$theSql = SqlBuilder::withModel($this)->setDataSet($aDataObject);
-			$theSql->startWith('INSERT INTO '.$this->tnSiteVersions);
-			$theSql->add('SET created_ts=NOW()')->setParamPrefix(', ');
+			$nowAsUTC = $this->utc_now();
+			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
+			$theSql->startWith('INSERT INTO')->add($this->tnSiteVersions);
+			$theSql->add('SET')->mustAddParam('created_ts', $nowAsUTC)->setParamPrefix(', ');
+			$theSql->mustAddParam('updated_ts', $nowAsUTC);
 			$theSql->mustAddParam('feature_id');
 			$theSql->mustAddParam('model_class');
 			$theSql->mustAddParam('version_seq', 1, PDO::PARAM_INT);
@@ -353,13 +355,15 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 	public function updateFeature($aDataObject) {
 		$theResultSet = null;
 		if ($this->isConnected()) try {
-			$theSql = SqlBuilder::withModel($this)->setDataSet($aDataObject);
-			$theSql->startWith('UPDATE '.$this->tnSiteVersions);
-			$theSql->setParamPrefix(' SET ')->mustAddParam('version_seq');
-			$theSql->setParamPrefix(', ')->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
+			$nowAsUTC = $this->utc_now();
+			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
+			$theSql->startWith('UPDATE')->add($this->tnSiteVersions);
+			$theSql->add('SET')->mustAddParam('updated_ts', $nowAsUTC)->setParamPrefix(', ');
+			$theSql->mustAddParam('version_seq');
+			$theSql->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
 			$theSql->addParam('model_class');
 			$theSql->addFieldAndParam('feature_id', 'new_feature_id');
-			$theSql->setParamPrefix(' WHERE ')->mustAddParam('feature_id');
+			$theSql->startWhereClause()->mustAddParam('feature_id')->endWhereClause();
 			if ($theSql->execDML()) {
 				$theResultSet = $theSql->myParams;
 			}
