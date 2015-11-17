@@ -179,8 +179,8 @@ class Widgets
 		$theOptions = array() ;
 		foreach( $aArrayOfOptions as $aKey => $aOption )
 		{ // Create an option element in our array with standard fields.
-			$theCaption = null ;
-			$theValue = null ;
+			$theCaption = $aOption ;
+			$theValue = $aKey ;
 			if( is_array($aOption) )
 			{ // Find the caption and value within the input.
 				if( !empty($aValueField)

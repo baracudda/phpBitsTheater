@@ -64,7 +64,10 @@ class BlockWidget extends BaseWidget
 	 * Applies the internal indent.
 	 */
 	protected function indentForAppend()
-	{ return Strings::repeat( $this->myIndentString, $this->myAppendIndents ); }
+	{
+		$theFullIndent = $this->myIndentLevel + $this->myAppendIndents ;
+		return Strings::repeat( $this->myIndentString, $theFullIndent ) ;
+	}
 	
 	/**
 	 * Increases the internal indent counter.
@@ -93,7 +96,8 @@ class BlockWidget extends BaseWidget
 		$theHTML = ( $bIndentFirst ? $this->indent() : '' )
 			. $this->renderOpen() . PHP_EOL
 			. $this->indent( $this->myIndentLevel + 1 )
-			. $this->myContent . PHP_EOL
+			. $this->myContent
+			. ( $this->myLastAppendEndedALine ? '' : PHP_EOL )
 			. $this->indent()
 			. $this->renderClose() . PHP_EOL
 			;

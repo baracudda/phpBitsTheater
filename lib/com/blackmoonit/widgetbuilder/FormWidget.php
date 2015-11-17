@@ -106,7 +106,8 @@ class FormWidget extends BlockWidget
 			. $this->renderOpen() . PHP_EOL
 			. $this->renderRedirect()       // This is unique to the FormWidget.
 			. $this->indent( $this->myIndentLevel + 1 )
-			. $this->myContent . PHP_EOL
+			. $this->myContent
+			. ( $this->myLastAppendEndedALine ? '' : PHP_EOL )
 			. $this->indent()
 			. $this->renderClose() . PHP_EOL
 			;

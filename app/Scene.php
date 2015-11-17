@@ -375,7 +375,9 @@ class Scene extends BaseScene {
 	}
 	
 	public function getViewPath($aFilePath) {
-		if ($this->is_mobile && file_exists($aFilePath.'.m.php'))
+		if (file_exists($aFilePath))
+			return $aFilePath;
+		else if ($this->is_mobile && file_exists($aFilePath.'.m.php'))
 			return $aFilePath.'.m.php';
 		else
 			return $aFilePath.'.php';

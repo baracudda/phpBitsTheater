@@ -32,7 +32,7 @@ class TextAreaWidget extends BlockWidget
 	 * defining a text area widget.
 	 */
 	protected $myAttrs = array(
-		'required' => 'false',
+		//'required' => 'required', //REQUIRED is a boolean attribute which is either present or not, setting it to true/false does not matter.
 		'rows' => 3,
 		'cols' => 40,
 		'wrap' => self::WRAP_SOFT,

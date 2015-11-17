@@ -21,7 +21,10 @@ trait WornByActor
 	public static function withActor( Actor &$aActor )
 	{
 		$theClassName = get_called_class() ;
-		return (new $theClassName($aActor->director))->setActor($aActor) ;
+		return (new $theClassName($aActor->director))
+			->setDirector($aActor->director)
+			->setActor($aActor)
+			;
 	}
 
 	/** Accessor. */
@@ -34,7 +37,11 @@ trait WornByActor
 	 * @return \BitsTheater\costumes\ABitsCostume the updated costume
 	 */
 	public function setActor( Actor &$aActor )
-	{ $this->actor = $aActor ; return $this ; }
+	{
+		$this->actor = $aActor ;
+		$this->setDirector($aActor->director) ;
+		return $this ;
+	}
 
 } // end trait WornByActor
 
