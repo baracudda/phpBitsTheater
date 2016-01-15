@@ -189,8 +189,10 @@ class BitsWebsite extends BaseResources {
 				return '3.0.0';
 			case ($aSeqNum<6):
 				return '3.1.'.($aSeqNum-3);
-			default:
+			case ($aSeqNum<7):
 				return '3.2.'.($aSeqNum-6);
+			default:
+				return '3.3.'.($aSeqNum-7);
 		}//switch
 	}
 	

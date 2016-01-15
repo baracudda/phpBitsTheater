@@ -30,7 +30,7 @@ use \Exception;
 
 class SetupDb extends BaseModel implements IFeatureVersioning {
 	const FEATURE_ID = 'BitsTheater/framework';
-	const FEATURE_VERSION_SEQ = 6; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 7; //always ++ when making db schema changes
 		
 	public $tnSiteVersions; const TABLE_SiteVersions = 'zz_versions';
 	
