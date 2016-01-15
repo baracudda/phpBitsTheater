@@ -51,10 +51,11 @@ class ConfigNamespaceInfo extends BaseCostume {
 		return $o;
 	}
 	
-	public function isAllowed() {
+	public function isNamespaceAllowed() {
 		//TODO better auth mechanism needed
-		return ( !isset($this->group_id) || !$this->_director->isInstalled() ||
-				(!empty($this->_director->account_info) && in_array($this->group_id,$this->_director->account_info->groups)) );
+		$theDirector = $this->getDirector();
+		return ( !isset($this->group_id) || !$theDirector->isInstalled() ||
+				(!empty($theDirector->account_info) && in_array($this->group_id, $theDirector->account_info->groups)) );
 	}
 	
 }//end class

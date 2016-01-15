@@ -34,6 +34,8 @@ class BitsGeneric extends BaseResources {
 	public $errmsg_database_not_connected = 'database connection missing';
 	public $errmsg_arg_is_empty = 'parameter %s must not be empty';
 	public $errmsg_var_is_empty = '%s must not be empty';
+	public $errmsg_file_not_found = 'File not found';
+
 	public $errmsg_mailer_missing_config =
 		'Mailer was not given the required setting [%1$s].' ;
 	public $errmsg_mailer_failed = 'Mailer failed. [%1$s]' ;

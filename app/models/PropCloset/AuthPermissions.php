@@ -108,7 +108,7 @@ class AuthPermissions extends BaseModel {
 	 * @param array $acctInfo - account information (optional, defaults current user).
 	 * @return boolean Returns TRUE if allowed, else FALSE.
 	 */
-	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
+	public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null) {
 		if (empty($acctInfo)) {
 			$acctInfo =& $this->director->account_info;
 		}
@@ -130,7 +130,8 @@ class AuthPermissions extends BaseModel {
 				//use default empty arrays which will mean all permissions will be not allowed
 			}
 		}
-		//Strings::debugLog('perms:'.Strings::debugStr($this->_permCache));
+		//$this->debugLog('perms:'.$this->debugStr($this->_permCache));
+        //$this->debugLog(__METHOD__.' '.memory_get_usage(true));
 
 		//if any group allows the permission, then we allow it.
 		foreach ($this->_permCache[$acctInfo->account_id] as $theGroupId => $theAssignedRights) {
@@ -192,6 +193,7 @@ class AuthPermissions extends BaseModel {
 		/* @var $dbAuth Auth */
 		$dbAuth = $this->getProp('Auth');
 		$theGroupList = Arrays::array_column_as_key($dbAuth->getGroupList(),'group_id');
+		//$this->debugLog('grouplist='.$this->debugStr($theGroupList));
 		while ($theGroupId>=0 && !empty($theGroupList[$theGroupId]) && !empty($theGroupList[$theGroupId]['parent_group_id'])) {
 			$theGroupId = $theGroupList[$theGroupId]['parent_group_id'];
 			//to prevent infinite loops
@@ -199,12 +201,14 @@ class AuthPermissions extends BaseModel {
 				$theMergeList[$theGroupId] = 1;
 			else
 				$theGroupId = null;
+			//$this->debugLog('merge='.$this->debugStr($theMergeList));
 		}//while
 
 		$theAssignedRights = array();
 		foreach ($theMergeList as $theMergeGroupId => $bIsFirstIfNegative) {
 			$this->loadAndMergeRights($theMergeGroupId, $theAssignedRights, $bIsFirstIfNegative<0);
 		}//foreach
+		//$this->debugLog('rights='.$this->debugStr($theAssignedRights));
 		return $theAssignedRights;
 	}
 	

@@ -22,7 +22,7 @@ use com\blackmoonit\Strings;
  * 		Class or Interface name automatically passed to this function by the PHP Interpreter.
  */
 function BitsTheater_autoloader($aClassName) {
-	//debugLog('al1: '.$aClassName);
+	//Strings::debugLog('al1: '.$aClassName);
 	if (Strings::beginsWith($aClassName,BITS_NAMESPACE_CFGS)) {
 		//cfg_path incorporates $_SERVER['SERVER_NAME'] so that live config and localhost sandbox can coexist and avoids
 		//  getting overwritten accidentally if checked into a source code control mechanism
@@ -51,7 +51,7 @@ function BitsTheater_autoloader($aClassName) {
 		$theClassNamePath = $aClassName;
 	}
 	
-	//debugLog('al: '.$theClassNamePath);
+	//Strings::debugLog('al: '.$theClassNamePath);
 	if (is_file($theClassNamePath)) {
 		return include_once($theClassNamePath);
 	}

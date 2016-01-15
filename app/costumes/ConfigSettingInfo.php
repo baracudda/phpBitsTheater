@@ -115,7 +115,7 @@ class ConfigSettingInfo extends BaseCostume
 	 * See if this setting is restricted.
 	 * @return boolean
 	 */
-	public function isAllowed() {
+	public function isConfigAllowed() {
 		return $this->mSettingInfo->config_is_allowed();
 	}
 

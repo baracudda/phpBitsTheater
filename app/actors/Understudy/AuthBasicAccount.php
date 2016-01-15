@@ -297,14 +297,14 @@ class AuthBasicAccount extends BaseActor {
 		
 		if( $isAuthenticated )
 		{ // postcondition if true: user is now authenticated
-			$this->debugLog( 'Reentry authenticated for [' . $aAuthID . '].' ) ;
+//			$this->debugLog( 'Reentry authenticated for [' . $aAuthID . '].' ) ;
 			$utils->clobberPassword() ;
 			return $this->getSiteUrl('account/view/' . $utils->getAccountID()) ;
 		}
 		else
 		{
 			$theFailureMsg = $this->getRes( 'account/err_pw_request_failed' ) ;
-			$v->addUserMsg( $theFailureMsg, Scene::USER_MSG_ERROR ) ;
+			$v->addUserMsg( $theFailureMsg, MyScene::USER_MSG_ERROR ) ;
 			return $this->getHomePage() ;
 		}
 	}

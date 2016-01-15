@@ -267,6 +267,7 @@ class Resources extends BaseResources {
 				unset($this->{$iprop});
 		}//if
 		//$this->debugLog(__METHOD__.'('.$theProp.'): '.$this->debugStr($this->{$theProp}));
+		//$this->debugLog(__METHOD__.' '.memory_get_usage(true));
 	}
 	
 }//end class

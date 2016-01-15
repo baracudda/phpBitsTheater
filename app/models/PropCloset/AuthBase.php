@@ -24,11 +24,11 @@ abstract class AuthBase extends BaseModel {
 	const ALLOW_REGISTRATION = false; //only 1 type allows it, so far
 	const KEY_userinfo = 'ticketholder'; //var name in checkTicket($aScene) for username
 	const KEY_pwinput = 'pwinput'; //var name in checkTicket($aScene) for pw
-	protected $permissions = null;
+	protected $dbPermissions = null;
 	
 	public function cleanup() {
 		if (isset($this->director))
-			$this->director->returnProp($this->permissions);
+			$this->director->returnProp($this->dbPermissions);
 		parent::cleanup();
 	}
 	
@@ -65,14 +65,27 @@ abstract class AuthBase extends BaseModel {
 		return $anActor->renderFragment('auth_'.static::TYPE.'_options');
 	}
 	
-	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
-		if (empty($this->permissions))
-			$this->permissions = $this->director->getProp('Permissions'); //cleanup will close this model
-		return $this->permissions->isAllowed($aNamespace, $aPermission, $acctInfo);
-	}
+	/**
+	 * Check your authority mechanism to determine if a permission is allowed.
+	 * @param string $aNamespace - namespace of the permission.
+	 * @param string $aPermission - name of the permission.
+	 * @param string $acctInfo - (optional) check this account instead of current user.
+	 * @return boolean Return TRUE if the permission is granted, FALSE otherwise.
+	 */
+	abstract public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null);
 	
+	/**
+	 * Return the defined permission groups.
+	 */
 	abstract public function getGroupList();
 	
+	/**
+	 * Checks the given account information for membership.
+	 * @param AccountInfoCache $aAccountInfo - the account info to check.
+	 * @return boolean Returns FALSE if the account info matches a member account.
+	 */
+	abstract public function isGuestAccount($aAccountInfo);
+
 }//end class
 
 }//end namespace

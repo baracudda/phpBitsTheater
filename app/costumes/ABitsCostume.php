@@ -17,13 +17,17 @@
 
 namespace BitsTheater\costumes;
 use com\blackmoonit\AdamEve as BaseCostume;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\Director;
-use \stdClass as StandardClass;
+use BitsTheater\Model;
+use stdClass as StandardClass;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Strings;
 {//namespace begin
 
-abstract class ABitsCostume extends BaseCostume {
+abstract class ABitsCostume extends BaseCostume
+implements IDirected
+{
 	const _SetupArgCount = 1; //number of args required to call the setup() method.
 	/**
 	 * @var Director
@@ -54,19 +58,83 @@ abstract class ABitsCostume extends BaseCostume {
 	}
 	
 	/**
+	 * Set the director variable.
+	 * @param Director $aDirector - site director object
+	 */
+	public function setDirector(Director $aDirector) {
+		$this->_director = $aDirector;
+	}
+	
+	/**
 	 * Return the director object.
-	 * @return Director Returns the director object.
+	 * @return Director Returns the site director object.
 	 */
 	public function getDirector() {
 		return $this->_director;
 	}
 
 	/**
-	 * Set the director variable.
-	 * @param Director $aDirector - site director object
+	 * Determine if the current logged in user has a permission.
+	 * @param string $aNamespace - namespace of the permission to check.
+	 * @param string $aPermission - permission name to check.
+	 * @param array|NULL $acctInfo - (optional) check specified account instead of
+	 * currently logged in user.
 	 */
-	public function setDirector(Director $aDirector) {
-		$this->_director = $aDirector;
+	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
+		return $this->getDirector()->isAllowed($aNamespace,$aPermission,$acctInfo);
+	}
+
+	/**
+	 * Determine if there is even a user logged into the system or not.
+	 * @return boolean Returns TRUE if no user is logged in.
+	 */
+	public function isGuest() {
+		return $this->getDirector()->isGuest();
+	}
+	
+	/**
+	 * Return a Model object, creating it if necessary.
+	 * @param string $aName - name of the model object.
+	 * @return Model Returns the model object.
+	 */
+	public function getProp($aName) {
+		return $this->getDirector()->getProp($aName);
+	}
+	
+	/**
+	 * Let the system know you do not need a Model anymore so it
+	 * can close the database connection as soon as possible.
+	 * @param Model $aProp - the Model object to be returned to the prop closet.
+	 */
+	public function returnProp($aProp) {
+		$this->getDirector()->returnProp($aProp);
+	}
+
+	/**
+	 * Get a resource based on its combined 'namespace/resource_name'.
+	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
+	 */
+	public function getRes($aName) {
+		return $this->getDirector()->getRes($aName);
+	}
+	
+	/**
+	 * Returns the URL for this site appended with relative path info.
+	 * @param mixed $aRelativeUrl - array of path segments OR a bunch of string parameters
+	 * equating to path segments.
+	 * @return string - returns the site domain + relative path URL.
+	 */
+	public function getSiteUrl($aRelativeURL='', $_=null) {
+		return call_user_func_array(array($this->getDirector(), 'getSiteUrl'), func_get_args());
+	}
+	
+	/**
+	 * Get the setting from the configuration model.
+	 * @param string $aSetting - setting in form of "namespace/setting"
+	 * @throws \Exception
+	 */
+	public function getConfigSetting($aSetting) {
+		return $this->getDirector()->getConfigSetting($aSetting);
 	}
 	
 	/**

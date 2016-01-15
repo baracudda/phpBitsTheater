@@ -23,14 +23,33 @@ class AuthNone extends BaseModel {
 	const TYPE = 'None';  //skip all authentication methods
 	const ALLOW_REGISTRATION = false;
 
-	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
+	/**
+	 * Check your authority mechanism to determine if a permission is allowed.
+	 * @param string $aNamespace - namespace of the permission.
+	 * @param string $aPermission - name of the permission.
+	 * @param string $acctInfo - (optional) check this account instead of current user.
+	 * @return boolean Return TRUE if the permission is granted, FALSE otherwise.
+	 */
+	public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null) {
 		return true;
 	}
 	
+	/**
+	 * Return the defined permission groups.
+	 */
 	public function getGroupList() {
 		return array();
 	}
 
+	/**
+	 * Checks the given account information for membership.
+	 * @param AccountInfoCache $aAccountInfo - the account info to check.
+	 * @return boolean Returns FALSE if the account info matches a member account.
+	 */
+	public function isGuestAccount($aAccountInfo) {
+		return true;
+	}
+	
 }//end class
 
 }//end namespace

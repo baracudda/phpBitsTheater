@@ -983,8 +983,20 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
+	 * Check your authority mechanism to determine if a permission is allowed.
+	 * @param string $aNamespace - namespace of the permission.
+	 * @param string $aPermission - name of the permission.
+	 * @param string $acctInfo - (optional) check this account instead of current user.
+	 * @return boolean Return TRUE if the permission is granted, FALSE otherwise.
+	 */
+	public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null) {
+		if (empty($this->dbPermissions))
+			$this->dbPermissions = $this->director->getProp('Permissions'); //cleanup will close this model
+		return $this->dbPermissions->isPermissionAllowed($aNamespace, $aPermission, $acctInfo);
+	}
+	
+	/**
 	 * Return the defined permission groups.
-	 * @see \BitsTheater\models\PropCloset\AuthBase::getGroupList()
 	 */
 	public function getGroupList() {
 		$dbAuthGroups = $this->getProp('AuthGroups');
@@ -993,6 +1005,19 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		$theResult = $r->fetchAll();
 		$this->returnProp($dbAuthGroups);
 		return $theResult;
+	}
+	
+	/**
+	 * Checks the given account information for membership.
+	 * @param AccountInfoCache $aAccountInfo - the account info to check.
+	 * @return boolean Returns FALSE if the account info matches a member account.
+	 */
+	public function isGuestAccount($aAccountInfo) {
+		if (!empty($aAccountInfo) && !empty($aAccountInfo->account_id) && !empty($aAccountInfo->groups)) {
+			return ( array_search(0, $aAccountInfo->groups, true) !== false );
+		} else {
+			return true;
+		}
 	}
 	
 	/**
@@ -1230,6 +1255,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		
 		return true ; // and $aResetUtils got updated with more info
 	}	
+
 }//end class
 
 }//end namespace

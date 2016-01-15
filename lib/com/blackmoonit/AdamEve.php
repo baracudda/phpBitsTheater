@@ -33,6 +33,13 @@ class AdamEve extends BaseClass {
 	public $myClassName;
 	public $mySimpleClassName;
 	public $myNamespaceName;
+	/**
+	 * Debugging out of memory errors are very difficult to trace.
+	 * Use of this static var during onShutdown handler to help track down last class loaded.
+	 */
+	static public $lastClassLoaded1 = null;
+	static public $lastClassLoaded2 = null;
+	static public $lastClassLoaded3 = null;
 
 	/**
 	 * Constructor that will call __construct%numargs%(...) if any are passed in.
@@ -46,6 +53,9 @@ class AdamEve extends BaseClass {
 		$this->mySimpleClassName = $rc->getShortName();
 		$this->myNamespaceName = $rc->getNamespaceName();
 		$rc = null;
+		self::$lastClassLoaded3 = self::$lastClassLoaded2;
+		self::$lastClassLoaded2 = self::$lastClassLoaded1;
+		self::$lastClassLoaded1 = $this;
 		$theArgs = func_get_args();
 		$numArgs = func_num_args();
 		if ($numArgs==static::_SetupArgCount) {

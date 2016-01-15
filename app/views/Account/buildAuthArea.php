@@ -7,7 +7,7 @@ use com\blackmoonit\Strings ;
 
 $w = '' ;
 
-if( $recite->getDirector()->isGuest() )
+if( $recite->isGuest() )
 { // Draw the login/register/reset form.
 	$theSeparator = '&nbsp;&nbsp;|&nbsp;&nbsp;' ;
 	$w .= Widgets::createTextBox( $v->getUsernameKey(),

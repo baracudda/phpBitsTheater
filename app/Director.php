@@ -16,6 +16,7 @@
  */
 
 namespace BitsTheater;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\Model;
 use BitsTheater\DbConnInfo;
 use BitsTheater\costumes\AccountInfoCache;
@@ -26,14 +27,16 @@ use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\FileUtils;
-use \ArrayAccess;
-use \ReflectionClass;
-use \ReflectionMethod;
-use \ReflectionException;
-use \Exception;
+use ArrayAccess;
+use ReflectionClass;
+use ReflectionMethod;
+use ReflectionException;
+use Exception;
 {//begin namespace
 
-class Director extends BaseDirector implements ArrayAccess {
+class Director extends BaseDirector
+implements ArrayAccess, IDirected
+{
 	/**
 	 * Normal website operation mode.
 	 * @var string
@@ -94,11 +97,17 @@ class Director extends BaseDirector implements ArrayAccess {
 	 * @var boolean
 	 */
 	protected $no_session = false;
+	/**
+	 * Cache of the config model in use.
+	 * @var Config
+	 */
+	protected $dbConfig = null;
 
 	/**
 	 * Initialization method called during class construction.
 	 */
 	public function setup() {
+		register_shutdown_function(array($this, 'onShutdown'));
 		try {
 			if (!$this->check_session_start()) {
 				session_id( uniqid() );
@@ -148,6 +157,22 @@ class Director extends BaseDirector implements ArrayAccess {
 		$this->freeRes();
 		//call parent
 		parent::cleanup();
+	}
+	
+	/**
+	 * PHP crashed, try to report why.
+	 */
+	public function onShutdown() {
+		$err = error_get_last();
+		if (!empty($err)) {
+			Strings::debugLog('OOM?: last 3 known new AdamEve-based classes:'
+					.(static::$lastClassLoaded1 ? ' '. static::$lastClassLoaded1->myClassName : '')
+					.(static::$lastClassLoaded2 ? ', '.static::$lastClassLoaded2->myClassName : '')
+					.(static::$lastClassLoaded3 ? ', '.static::$lastClassLoaded3->myClassName : '')
+			);
+			Strings::debugLog(Strings::debugStr(static::$lastClassLoaded1));
+		}
+		exit();
 	}
 	
 	//----- methods required for various IMPLEMENTS interfaces
@@ -230,6 +255,14 @@ class Director extends BaseDirector implements ArrayAccess {
 	
 	public function canGetRes() {
 		return class_exists(BITS_NAMESPACE_CFGS.'I18N');
+	}
+	
+	/**
+	 * Return the director object.
+	 * @return Director Returns the site director object.
+	 */
+	public function getDirector() {
+		return $this;
 	}
 	
 	
@@ -367,11 +400,20 @@ class Director extends BaseDirector implements ArrayAccess {
 		}
 	}
 	
-	//alias for getModel
+	/**
+	 * Return a Model object, creating it if necessary.
+	 * @param string $aName - name of the model object.
+	 * @return Model Returns the model object.
+	 */
 	public function getProp($aModelClass) {
 		return $this->getModel($aModelClass);
 	}
 	
+	/**
+	 * Let the system know you do not need a Model anymore so it
+	 * can close the database connection as soon as possible.
+	 * @param Model $aProp - the Model object to be returned to the prop closet.
+	 */
 	public function returnProp($aModel) {
 		$this->unsetModel($aModel);
 	}
@@ -412,6 +454,10 @@ class Director extends BaseDirector implements ArrayAccess {
 		return $this->_resManager;
 	}
 	
+	/**
+	 * Get a resource based on its combined 'namespace/resource_name'.
+	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
+	 */
 	public function getRes($aResName) {
 		if (empty($this->_resManager)) {
 			if ($this->canGetRes()) {
@@ -497,33 +543,40 @@ class Director extends BaseDirector implements ArrayAccess {
 			if (!empty($this->dbAuth)) {
 				return $this->dbAuth->checkTicket($aScene);
 			} else { 
-				return True; 
+				return true;
 			}
 		}
 		return false;
 	}
 	
+	/**
+	 * Determine if the current logged in user has a permission.
+	 * @param string $aNamespace - namespace of the permission to check.
+	 * @param string $aPermission - permission name to check.
+	 * @param array|NULL $acctInfo - (optional) check specified account instead of
+	 * currently logged in user.
+	 */
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
 		if (isset($this->dbAuth))
-			return $this->dbAuth->isAllowed($aNamespace, $aPermission, $acctInfo);
+			return $this->dbAuth->isPermissionAllowed($aNamespace, $aPermission, $acctInfo);
 		else
 			return false;
 	}
 	
+	/**
+	 * Determine if there is even a user logged into the system or not.
+	 * @return boolean Returns TRUE if no user is logged in.
+	 */
 	public function isGuest() {
 		$theAcctInfo =& $this->account_info;
 		if (empty($theAcctInfo)) {
 			$theAcctInfo = new AccountInfoCache();
 		}
 		//$this->debugPrint($this->debugStr($theAcctInfo));
-		if (isset($this->dbAuth) && $this->dbAuth->isCallable('isGuest')) {
-			return $this->dbAuth->isGuest($theAcctInfo);
+		if (isset($this->dbAuth)) {
+			return $this->dbAuth->isGuestAccount($theAcctInfo);
 		} else {
-			if (!empty($theAcctInfo) && !empty($theAcctInfo->account_id) && !empty($theAcctInfo->groups)) {
-				return ( array_search(0, $theAcctInfo->groups, true) !== false );
-			} else {
-				return true;
-			}
+			return true;
 		}
 	}
 	
@@ -541,7 +594,7 @@ class Director extends BaseDirector implements ArrayAccess {
 	 * equating to path segments.
 	 * @return string - returns the site relative path URL.
 	 */
-	public function getSiteURL($aRelativeURL='', $_=null) {
+	public function getSiteUrl($aRelativeURL='', $_=null) {
 		$theResult = BITS_URL;
 		if (!empty($aRelativeURL)) {
 			$theArgs = (is_array($aRelativeURL)) ? $aRelativeURL : func_get_args();
@@ -557,7 +610,7 @@ class Director extends BaseDirector implements ArrayAccess {
 	 * @param string $aRelativeURL - site path relative to site root.
 	 * @return string - returns the http scheme + site domain + relative path URL.
 	 */
-	public function getFullURL($aRelativeURL='') {
+	public function getFullUrl($aRelativeURL='') {
 		$theResult = SERVER_URL.'/';
 		if (strlen(VIRTUAL_HOST_NAME)>0)
 			$theResult .= VIRTUAL_HOST_NAME.'/';
@@ -585,9 +638,10 @@ class Director extends BaseDirector implements ArrayAccess {
 	 * @throws \Exception
 	 */
 	public function getConfigSetting($aSetting) {
-		$dbConfig = $this->getProp('Config');
-		if (!empty($dbConfig)) {
-			return $dbConfig[$aSetting];
+		if (empty($this->dbConfig))
+			$this->dbConfig = $this->getProp('Config');
+		if (!empty($this->dbConfig)) {
+			return $this->dbConfig[$aSetting];
 		}
 	}
 

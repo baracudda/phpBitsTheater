@@ -243,7 +243,7 @@ class Config extends BaseModel implements IFeatureVersioning {
 		$theNamespaces = $this->getRes('config/namespace');
 		foreach ($theNamespaces as $ns=>$nsInfo) {
 			$theNsObj = ConfigNamespaceInfo::fromConfigArea($this->director, $ns, $nsInfo);
-			if ($theNsObj->isAllowed()) {
+			if ($theNsObj->isNamespaceAllowed()) {
 				$theAreas[$ns] = $theNsObj;
 			}
 		}
@@ -262,7 +262,7 @@ class Config extends BaseModel implements IFeatureVersioning {
 			$theSettingList = $this->getRes('config/'.$aNamespaceInfo->namespace);
 			foreach ($theSettingList as $theSettingName => $theSettingInfo) {
 				$o = ConfigSettingInfo::fromConfigRes($aNamespaceInfo, $theSettingName, $theSettingInfo);
-				if ($o->isAllowed()) {
+				if ($o->isConfigAllowed()) {
 					$theSettings[$theSettingName] = $o;
 				}
 			}

@@ -17,21 +17,24 @@
 
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseActor;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\Scene as MyScene;
 use BitsTheater\Director;
 use BitsTheater\models\Config;
 use com\blackmoonit\Strings;
-use \ReflectionClass;
-use \BadMethodCallException;
-use \Exception;
+use ReflectionClass;
+use BadMethodCallException;
+use Exception;
 use com\blackmoonit\exceptions\FourOhFourExit;
 use com\blackmoonit\exceptions\SystemExit;
+use BitsTheater\BrokenLeg;
 {//begin namespace
 
 /**
  * Base class for all Actors in the app.
  */
 class Actor extends BaseActor
+implements IDirected
 {
 	/**
 	 * Normal website operation mode.
@@ -105,17 +108,29 @@ class Actor extends BaseActor
 		$myClass = get_called_class();
 		$theActor = new $myClass($aDirector,$anAction);
 		$aDirector->admitAudience($theActor->scene); //even guests may get to see some pages, ignore function result
-		$theResult = call_user_func_array(array($theActor,$anAction),$aQuery);
-		if (!empty($theResult))
-			header('Location: '.$theResult);
-		else
+		try {
+			$theResult = call_user_func_array(array($theActor,$anAction),$aQuery);
+		} catch (BrokenLeg $e) {
+			if ($theActor->renderThisView=='results_as_json') {
+				//API calls need to eat the exception and give a sane HTTP Response
+				$e->setErrorResponse($theActor->scene);
+			} else {
+				//non-API calls need to bubble up the exception
+				throw $e;
+			}
+		}
+		if (empty($theResult))
 			$theActor->renderView($theActor->renderThisView);
+		else
+			header('Location: '.$theResult);
 		$theActor = null;
 	}
 	
 	public function renderView($anAction=null) {
-		if ($anAction=='_blank') return;
-		if (!$this->bHasBeenSetup) throw new BadMethodCallException(__CLASS__.'::setup() must be called first.');
+		if ($anAction=='_blank')
+			return;
+		if (!$this->bHasBeenSetup)
+			throw new BadMethodCallException(__CLASS__.'::setup() must be called first.');
 		if (empty($anAction))
 			$anAction = $this->action;
 		$recite =& $this->scene; $v =& $recite; //$this->scene, $recite, $v are all the same
@@ -182,42 +197,77 @@ class Actor extends BaseActor
 	}
 	
 	/**
-	 * @return Director Returns the director object.
+	 * Return the director object.
+	 * @return Director Returns the site director object.
 	 */
 	public function getDirector() {
 		return $this->director;
 	}
 	
+	/**
+	 * Determine if the current logged in user has a permission.
+	 * @param string $aNamespace - namespace of the permission to check.
+	 * @param string $aPermission - permission name to check.
+	 * @param array|NULL $acctInfo - (optional) check specified account instead of
+	 * currently logged in user.
+	 */
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
-		return $this->director->isAllowed($aNamespace,$aPermission,$acctInfo);
+		return $this->getDirector()->isAllowed($aNamespace,$aPermission,$acctInfo);
 	}
 
+	/**
+	 * Determine if there is even a user logged into the system or not.
+	 * @return boolean Returns TRUE if no user is logged in.
+	 */
 	public function isGuest() {
-		return $this->director->isGuest();
+		return $this->getDirector()->isGuest();
 	}
 	
+	/**
+	 * Return a Model object, creating it if necessary.
+	 * @param string $aName - name of the model object.
+	 * @return Model Returns the model object.
+	 */
 	public function getProp($aName) {
-		return $this->director->getProp($aName);
+		return $this->getDirector()->getProp($aName);
 	}
 	
+	/**
+	 * Let the system know you do not need a Model anymore so it
+	 * can close the database connection as soon as possible.
+	 * @param Model $aProp - the Model object to be returned to the prop closet.
+	 */
 	public function returnProp($aProp) {
-		$this->director->returnProp($aProp);
+		$this->getDirector()->returnProp($aProp);
 	}
 
+	/**
+	 * Get a resource based on its combined 'namespace/resource_name'.
+	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
+	 */
 	public function getRes($aName) {
-		return $this->director->getRes($aName);
+		return $this->getDirector()->getRes($aName);
 	}
 	
 	/**
 	 * Returns the URL for this site appended with relative path info.
-	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
+	 * @param mixed $aRelativeUrl - array of path segments OR a bunch of string parameters
 	 * equating to path segments.
 	 * @return string - returns the site domain + relative path URL.
 	 */
-	public function getSiteURL($aRelativeURL='', $_=null) {
-		return call_user_func_array(array($this->director, 'getSiteURL'), func_get_args());
+	public function getSiteUrl($aRelativeURL='', $_=null) {
+		return call_user_func_array(array($this->getDirector(), 'getSiteUrl'), func_get_args());
 	}
 	
+	/**
+	 * Get the setting from the configuration model.
+	 * @param string $aSetting - setting in form of "namespace/setting"
+	 * @throws \Exception
+	 */
+	public function getConfigSetting($aSetting) {
+		return $this->getDirector()->getConfigSetting($aSetting);
+	}
+
 	/**
 	 *
 	 * @param string $aUrl - string/array of relative site path segment(s), if
@@ -262,11 +312,6 @@ class Actor extends BaseActor
 	 */
 	public function setCurrentMenuKey($aMenuKey) {
 		$this->director['current_menu_key'] = $aMenuKey;
-	}
-	
-	public function getConfigSetting($aConfigName) {
-		if ($this->config)
-			return $this->config[$aConfigName];
 	}
 	
 	/**

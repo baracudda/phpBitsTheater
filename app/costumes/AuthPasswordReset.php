@@ -272,9 +272,8 @@ class AuthPasswordReset extends BaseCostume
 		{ ; }
 		if( ! $isSuccess )
 		{
-			$this->debugLog( 'Failed to delete old pasword reset tokens for ['
-					. $this->myAccountID
-					. ']. Administrator may need to purge expired tokens '
+			$this->debugLog( 'Failed to delete old pasword reset tokens for '
+					. 'user. Administrator may need to purge expired tokens '
 					. 'manually.'
 				) ;
 		}
@@ -401,7 +400,7 @@ class AuthPasswordReset extends BaseCostume
 			->mustAddParam( $theAuthFilter['col'], $theAuthFilter['val'] )
 			->endWhereClause()
 			;
-		$this->debugLog( $theSql->mySql ) ;
+//		$this->debugLog( $theSql->mySql ) ;
 		try { $theSql->execDML() ; }
 		catch( PDOEsception $pdox )
 		{
