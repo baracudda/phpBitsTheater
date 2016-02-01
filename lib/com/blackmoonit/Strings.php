@@ -398,7 +398,8 @@ class Strings {
 	 * @param string $s - string to send to the debug log.
 	 */
 	static public function debugLog($s) {
-		//syslog(LOG_DEBUG,$s);
+		if (!is_string($s))
+			$s = self::debugStr($s);
 		syslog(LOG_ERR,self::debugPrefix().$s);
 	}
 

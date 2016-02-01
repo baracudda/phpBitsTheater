@@ -137,6 +137,10 @@ implements ArrayAccess, IDirected
 		$this->bHasBeenSetup = true;
 	}
 
+	/**
+	 * When this class gets destroyed, this method lets us clean up held resources.
+	 * @see \com\blackmoonit\AdamEve::cleanup()
+	 */
 	public function cleanup() {
 		if (session_id()!='') {
 			if ($this->isNoSession()) {
@@ -147,7 +151,7 @@ implements ArrayAccess, IDirected
 		}
 		unset($this->account_info);
 		$this->returnProp($this->dbAuth);
-		//destroy all cashed models
+		//destroy all cached models
 		array_walk($this->_propMaster, function(&$n) {$n['model'] = null;} );
 		unset($this->_propMaster);
 		//disconnect dbs
@@ -160,11 +164,13 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * PHP crashed, try to report why.
+	 * After PHP script is finished running, check to see if PHP crashed and
+	 * then try to report why.
 	 */
 	public function onShutdown() {
 		$err = error_get_last();
 		if (!empty($err)) {
+			Strings::debugLog(__METHOD__.' '.Strings::debugStr($err));
 			Strings::debugLog('OOM?: last 3 known new AdamEve-based classes:'
 					.(static::$lastClassLoaded1 ? ' '. static::$lastClassLoaded1->myClassName : '')
 					.(static::$lastClassLoaded2 ? ', '.static::$lastClassLoaded2->myClassName : '')
@@ -201,6 +207,7 @@ implements ArrayAccess, IDirected
 	 * @return boolean return TRUE if a session was successfully started
 	 */
 	protected function check_session_start() {
+		ini_set('session.cookie_httponly', 1); //helps prevents cookie modification (browser dependent)
 		$theName = session_name();
 		if (!empty($_COOKIE[$theName])) {
 			$theId = $_COOKIE[$theName];
@@ -220,7 +227,7 @@ implements ArrayAccess, IDirected
 		session_unset();
 		session_destroy();
 		session_write_close();
-		setcookie(session_name(),'',0,'/');
+		setcookie(session_name());
 		session_regenerate_id(true);
 	}
 	

@@ -17,19 +17,17 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\actors\Understudy\ABitsAccount as BaseActor;
-use BitsTheater\scenes\Account as MyScene;
-	/* @var $v MyScene */
-use BitsTheater\models\Accounts;
-	/* @var $dbAccounts Accounts */
-use BitsTheater\models\Auth;
-	/* @var $dbAuth Auth */
-use BitsTheater\models\AuthGroups;
-	/* @var $dbAuthGroups AuthGroups */
+use BitsTheater\scenes\Account as MyScene; /* @var $v MyScene */
+use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
+use BitsTheater\models\Auth; /* @var $dbAuth Auth */
+use BitsTheater\models\AuthGroups; /* @var $dbAuthGroups AuthGroups */
 use BitsTheater\costumes\AuthPasswordReset ;
 use BitsTheater\costumes\AuthPasswordResetException ;
 use com\blackmoonit\MailUtils ;
 use com\blackmoonit\MailUtilsException ;
 use com\blackmoonit\Strings ;
+use BitsTheater\BrokenLeg;
+use BitsTheater\costumes\APIResponse;
 {//namespace begin
 
 class AuthBasicAccount extends BaseActor {
@@ -377,6 +375,21 @@ class AuthBasicAccount extends BaseActor {
 			);
 		}
 		*/
+	}
+
+	/**
+	 * If you are currently logged in, return the cached info about myself.
+	 * JavaScript code may need current login info, too.
+	 * @return APIResponse Returns the standard API response object with User info.
+	 */
+	public function ajajGetAccountInfo() {
+		$v =& $this->scene;
+		if (!$this->isGuest()) {
+			$theData = $this->director->account_info;
+			$v->results = APIResponse::resultsWithData($theData);
+		} else {
+			throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED');
+		}
 	}
 	
 }//end class

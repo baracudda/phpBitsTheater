@@ -65,6 +65,9 @@ class BitsAccount extends BaseResources
 	// Similarly, initialize email body text separately.
 	public $email_body_pwd_reset_instr = '' ;
 	
+	public $err_pw_failed_account_locked =
+		'The login attempt failed too often. Contact the system administrator.' ;
+	
 	public function setup($aDirector)
 	{
 		parent::setup($aDirector) ;

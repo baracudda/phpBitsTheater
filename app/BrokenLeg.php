@@ -37,6 +37,7 @@ class BrokenLeg extends \Exception
 	const ERR_DB_EXCEPTION = 500 ;
 	const ERR_NOT_DONE_YET = 501 ;
 	const ERR_DB_CONNECTION_FAILED = 503 ;
+	const ERR_NOT_AUTHENTICATED = 401 ;
 	
 	// General-purpose messages should be defined in the BitsGeneric resource.
 	const MSG_MISSING_ARGUMENT = 'generic/errmsg_arg_is_empty' ;
@@ -47,6 +48,7 @@ class BrokenLeg extends \Exception
 	const MSG_DB_EXCEPTION = 'generic/errmsg_db_exception' ;
 	const MSG_NOT_DONE_YET = 'generic/errmsg_not_done_yet' ;
 	const MSG_DB_CONNECTION_FAILED = 'generic/errmsg_database_not_connected' ;
+	const MSG_NOT_AUTHENTICATED = self::MSG_FORBIDDEN ;
 
 	/**
 	 * Provides an instance of the exception.

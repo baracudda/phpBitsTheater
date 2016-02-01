@@ -17,6 +17,7 @@
 
 namespace BitsTheater\models\PropCloset; 
 use BitsTheater\Model as BaseModel;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 abstract class AuthBase extends BaseModel {
@@ -50,6 +51,7 @@ abstract class AuthBase extends BaseModel {
 	
 	public function ripTicket() {
 		unset($this->director->account_info);
+		$this->clearCsrfTokenCookie();
 		$this->director->resetSession();
 	}
 	
@@ -85,6 +87,89 @@ abstract class AuthBase extends BaseModel {
 	 * @return boolean Returns FALSE if the account info matches a member account.
 	 */
 	abstract public function isGuestAccount($aAccountInfo);
+	
+	/**
+	 * Send an HTTPOnly cookie preset with out site information.
+	 * @param string $aName - The name of the cookie.
+	 * @param string $aValue - (optional) The value of the cookie.
+	 *   This value is stored on the client's device; do not store sensitive information.
+	 *   Assuming $aName is 'cookiename', this value is retrieved as $_COOKIE['cookiename'].
+	 * @param int $aExpireTS - (optional) The Unix timestamp for when the cookie expires.
+	 *   e.g.: time()+60*60*24*30 will set the cookie to expire in 30 days.
+	 *   If set to 0, or omitted, the cookie will expire at the end of the session
+	 *   (when the browser closes).
+	 * @return boolean Returns FALSE if output exists prior to calling this function.
+	 *   Returns TRUE if successfull, but does not mean the user accepted the cookie.
+	 */
+	public function setMySiteCookie($aName, $aValue=null, $aExpireTS=0) {
+		//RFC 6265: the only proper way to create a "host-only" cookie is to NOT
+		//  set the domain attribute. Otherwise, what you end up with is ".domain"
+		//  which allows subdomains access.
+		$theDomain = null; //$_SERVER['SERVER_NAME'];
+		return setcookie($aName, $aValue, $aExpireTS,
+				BITS_URL, $theDomain, null, true
+		);
+	}
+
+	/**
+	 * Set the Cross-Site Request Forgery protection cookie.
+	 * @param string $aToken - (optional) set the cookie with this token. If not
+	 *   supplied, a random UUID will be created and used.
+	 * @return boolean Returns FALSE if output exists prior to calling this function.
+	 *   Returns TRUE if successfull, but does not mean the user accepted the cookie.
+	 *   Also returns FALSE if there is no cookie name set in Settings.
+	 */
+	public function setCsrfTokenCookie($aToken=null) {
+		$theCsrfCookieName = $this->getConfigSetting('site/csrfCookieName');
+		$theCsrfHeaderName = $this->getConfigSetting('site/csrfHeaderName');
+		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
+			$theCsrfToken = (!empty($aToken)) ? $aToken : Strings::createUUID();
+			$theCachedToken = $this->getDirector()[$theCsrfHeaderName];
+			if (empty($theCachedToken)) {
+				if ($this->setMySiteCookie($theCsrfCookieName, $theCsrfToken))
+					$this->getDirector()[$theCsrfHeaderName] = $theCsrfToken;
+			}
+			return true;
+		}
+	}
+	
+	/**
+	 * Checks the Cross-Site Request Forgery protection token against the
+	 * csrfHeader token sent to us.
+	 * @return boolean Return FALSE only if the csrf settings are defined
+	 *   and the header token sent to us does not match the one we generated
+	 *   for the cookie.
+	 */
+	public function checkCsrfTokenHeader() {
+		$theCsrfCookieName = $this->getConfigSetting('site/csrfCookieName');
+		$theCsrfHeaderName = $this->getConfigSetting('site/csrfHeaderName');
+		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
+			$theCachedToken = $this->getDirector()[$theCsrfHeaderName];
+			if (!empty($theCachedToken)) {
+				$theVarIndex = 'HTTP_'.strtoupper($theCsrfHeaderName);
+				$theHeaderToken = isset($_SERVER[$theVarIndex])
+					? $_SERVER[$theVarIndex] : null;
+				//$this->debugLog(__METHOD__.' ct='.$theCachedToken.' ht='.$theHeaderToken.
+				//		' ?='.(($theCachedToken === $theHeaderToken)?'true':'false'));
+				//$this->debugLog($_SERVER);
+				return ($theCachedToken === $theHeaderToken);
+			}
+		}
+		return true;
+	}
+	
+	/**
+	 * Clear out the CSRF protection token cookie and its cached value.
+	 * Useful for when a user logs out.
+	 */
+	public function clearCsrfTokenCookie() {
+		$theCsrfCookieName = $this->getConfigSetting('site/csrfCookieName');
+		$theCsrfHeaderName = $this->getConfigSetting('site/csrfHeaderName');
+		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
+			$this->getDirector()[$theCsrfHeaderName] = null;
+			$this->setMySiteCookie($theCsrfCookieName);
+		}
+	}
 
 }//end class
 

@@ -107,9 +107,11 @@ implements IDirected
 	static public function perform(Director $aDirector, $anAction, array $aQuery=array()) {
 		$myClass = get_called_class();
 		$theActor = new $myClass($aDirector,$anAction);
-		$aDirector->admitAudience($theActor->scene); //even guests may get to see some pages, ignore function result
 		try {
-			$theResult = call_user_func_array(array($theActor,$anAction),$aQuery);
+			$theActor->usherGreetAudience($anAction);
+			$aDirector->admitAudience($theActor->scene); //even guests may get to see some pages, ignore function result
+			if ($theActor->usherAudienceToSeat($anAction))
+				$theResult = call_user_func_array(array($theActor,$anAction),$aQuery);
 		} catch (BrokenLeg $e) {
 			if ($theActor->renderThisView=='results_as_json') {
 				//API calls need to eat the exception and give a sane HTTP Response
@@ -183,16 +185,74 @@ implements IDirected
 	/**
 	 * Return TRUE if the specified action can be activated via a browsers URL. Useful to
 	 * restrict actions based on AJAX calls vs. regular URL browsing.
-	 * @param string $aAction
-	 * @return boolean
+	 * @param string $aAction - method name to be called.
+	 * @return boolean Returns TRUE if method call is allowed.
 	 */
 	static public function isActionUrlAllowed($aAction) {
 		if (static::ALLOW_URL_ACTIONS) {
-			$bIsAjaxCall = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-			//allow if url is an ajax call, else reject if method has "ajax" prefixed to it.
-			return ( $bIsAjaxCall  || !Strings::beginsWith($aAction,'ajax') );
+			if (Strings::beginsWith($aAction, 'ajax')) {
+				//if method has "ajax" prefixed to it, allow if header indicates it is an AJAX call
+				//  NOTE: AngularJS does not set this header by default like jQuery and Symphony do for POSTs.
+				return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+			}
+			/* CSRF token checks must be handled after admitAudience() has been called;
+			 *   see usherAudienceToSeat() method instead.
+			else if (Strings::beginsWith($aAction, 'ajaj')) {
+				$dbAuth = $this->getProp('Auth');
+				if (!empty($dbAuth)) {
+					return $dbAuth->checkCsrfTokenHeader();
+				}
+			}
+			*/
+			else {
+				return true;
+			}
 		} else {
 			return false;
+		}
+	}
+
+	/**
+	 * Some methods may restrict us on how we can authorize.
+	 * @param string $aAction - method name to be called.
+	 */
+	public function usherGreetAudience($aAction) {
+		if (Strings::beginsWith($aAction, 'ajaj')) {
+			//auto-set view to json response since AJAJ expects it
+			//  also, our auto-response-exception to standard error
+			//  object needs to have this view before checking for the
+			//  CSRF protection token in the headers.
+			$this->viewToRender('results_as_json');
+		}
+		if (Strings::beginsWith($aAction, 'api')) {
+			//auto-set view to json response
+			$this->viewToRender('results_as_json');
+			//we need to have a prefix that does the opposite of AJAJ
+			//  and allow CORS, at the expense of always providing
+			//  any auth if needed.
+			$this->scene->bCheckOnlyHeadersForAuth = true;
+		}
+	}
+	
+	/**
+	 * Return TRUE if the specified action is allowed to be called.
+	 * Also, set any default settings here, if desired.
+	 * @param string $aAction - method name to be called.
+	 * @return boolean Returns TRUE if method call is allowed.
+	 */
+	public function usherAudienceToSeat($aAction) {
+		if (Strings::beginsWith($aAction, 'ajaj')) {
+			$dbAuth = $this->getProp('Auth');
+			if (!empty($dbAuth)) {
+				$theResult = $dbAuth->checkCsrfTokenHeader();
+				$this->returnProp($dbAuth);
+				if ($theResult) {
+					return true;
+				} else
+					throw BrokenLeg::toss($this, 'FORBIDDEN');
+			}
+		} else {
+			return true;
 		}
 	}
 	

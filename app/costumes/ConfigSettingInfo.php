@@ -38,6 +38,7 @@ class ConfigSettingInfo extends BaseCostume
 	const INPUT_BOOLEAN = 'boolean' ;
 	const INPUT_DROPDOWN = 'dropdown' ;
 	const INPUT_PASSWORD = 'string-pw' ;
+	const INPUT_INTEGER = 'integer' ;
 
 	public $config_namespace_info;
 	public $config_key;
@@ -160,6 +161,8 @@ class ConfigSettingInfo extends BaseCostume
 				return Widgets::createDropDown($theWidgetName, $theItemList, $theValue);
 			case self::INPUT_PASSWORD:
 				return Widgets::createPassBox($theWidgetName, $theValue);
+			case self::INPUT_INTEGER:
+				return Widgets::createNumericBox($theWidgetName,$theValue);
 			default:
 				return Widgets::createTextBox($theWidgetName, $theValue);
 		}
@@ -190,6 +193,7 @@ class ConfigSettingInfo extends BaseCostume
 				} else {
 					return $this->getCurrentValue();
 				}
+			case self::INPUT_INTEGER:
 			default:
 				return $aScene->$theWidgetName;
 		}

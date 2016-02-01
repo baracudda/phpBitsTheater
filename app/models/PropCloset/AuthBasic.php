@@ -19,6 +19,7 @@ namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\AuthBase as BaseModel;
 use BitsTheater\models\SetupDb as MetaModel;
 use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
+use BitsTheater\Scene;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\AuthPasswordReset ;
 use BitsTheater\costumes\AuthPasswordResetException ;
@@ -66,6 +67,22 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 * @var Config
 	 */
 	protected $dbConfig = null;
+		
+	/**
+	 * A Cookie's token prefix.
+	 * @var string
+	 */
+	const TOKEN_PREFIX_COOKIE = 'cA';
+	/**
+	 * A Mobile Auth's token prefix.
+	 * @var string
+	 */
+	const TOKEN_PREFIX_MOBILE = 'mA';
+	/**
+	 * A Login Lockout's token prefix.
+	 * @var string
+	 */
+	const TOKEN_PREFIX_LOCKOUT = 'lO';
 		
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
@@ -539,10 +556,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 */
 	public function updateCookie($aAuthId, $aAcctId) {
 		try {
-			$theAuthToken = $this->generateAuthToken($aAuthId, $aAcctId, 'cA');
+			$theUserToken = $this->director->app_id.'-'.$aAuthId;
+			$theAuthToken = $this->generateAuthToken($aAuthId, $aAcctId, self::TOKEN_PREFIX_COOKIE);
 			$theStaleTime = $this->getCookieStaleTimestamp();
-			setcookie(self::KEY_userinfo, $this->director->app_id.'-'.$aAuthId, $theStaleTime, BITS_URL);
-			setcookie(self::KEY_token, $theAuthToken, $theStaleTime, BITS_URL);
+			$this->setMySiteCookie(self::KEY_userinfo, $theUserToken, $theStaleTime);
+			$this->setMySiteCookie(self::KEY_token, $theAuthToken, $theStaleTime);
 		} catch (DbException $e) {
 			//do not care if setting cookies fails, log it so admin knows about it, though
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
@@ -556,8 +574,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		try {
 			$delta = $this->getCookieDurationInDays();
 			if (!empty($delta)) {
+				$thePrefix = self::TOKEN_PREFIX_COOKIE;
 				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
-				$theSql .= " WHERE token LIKE 'cA%' AND _changed < (NOW() - INTERVAL {$delta} DAY)";
+				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} DAY)";
 				$this->execDML($theSql);
 			}
 		} catch (DbException $e) {
@@ -573,12 +592,31 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		try {
 			$delta = 1;
 			if (!empty($delta)) {
+				$thePrefix = self::TOKEN_PREFIX_MOBILE;
 				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
-				$theSql .= " WHERE token LIKE 'mA%' AND _changed < (NOW() - INTERVAL {$delta} DAY)";
+				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} DAY)";
 				$this->execDML($theSql);
 			}
 		} catch (DbException $e) {
-			//do not care if removing stale cookies fails, log it so admin knows about it, though
+			//do not care if removing stale tokens fails, log it so admin knows about it, though
+			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+		}
+	}
+	
+	/**
+	 * Delete stale auth lockout tokens.
+	 */
+	protected function removeStaleAuthLockoutTokens() {
+		try {
+			$delta = 1;
+			if (!empty($delta)) {
+				$thePrefix = self::TOKEN_PREFIX_LOCKOUT;
+				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
+				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} HOUR)";
+				$this->execDML($theSql);
+			}
+		} catch (DbException $e) {
+			//do not care if removing stale tokens fails, log it so admin knows about it, though
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
 	}
@@ -652,7 +690,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	
 	/**
 	 * Check PHP session data for account information.
-	 * @param Accounts $dbAcct - the accounts model.
+	 * @param Accounts $dbAccounts - the accounts model.
 	 * @param object $aScene - var container object for user/pw info; 
 	 * if account name is non-empty, skip session data check.
 	 * @return boolean Returns TRUE if account was found and successfully loaded.
@@ -673,7 +711,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	
 	/**
 	 * Check submitted webform data for account information.
-	 * @param Accounts $dbAcct - the accounts model.
+	 * @param Accounts $dbAccounts - the accounts model.
 	 * @param object $aScene - var container object for user/pw info.
 	 * @return boolean Returns TRUE if account was found and successfully loaded.
 	 */
@@ -681,32 +719,40 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		if (!empty($aScene->{self::KEY_userinfo}) && !empty($aScene->{self::KEY_pwinput})) {
 			$theUserInput = $aScene->{self::KEY_userinfo};
 			$theAuthInput = $aScene->{self::KEY_pwinput};
-			$theAuthRow = null;
-			if ($theAccountRow = $dbAccounts->getByName($theUserInput)) {
-				$theAuthRow = $this->getAuthByAccountId($theAccountRow['account_id']);
-			} else {
-				$theAuthRow = $this->getAuthByEmail($theUserInput);
-			}
-			if (!empty($theAuthRow)) {
-				//check pwinput against crypted one
-				$pwhash = $theAuthRow['pwhash'];
-				if (Strings::hasher($theAuthInput,$pwhash)) {
-					//authorized, load account data
-					$this->director->account_info = $this->getAccountInfoCache($dbAccounts, $theAuthRow['account_id']);
-					if (!empty($this->director->account_info)) {
-						//data retrieval succeeded, save the account id in session cache
-						$this->director[self::KEY_userinfo] = $theAuthRow['account_id'];
-						//if user asked to remember, save a cookie
-						if (isset($_POST[self::KEY_cookie])) {
-							$this->updateCookie($theAuthRow['auth_id'], $theAuthRow['account_id']);
-						}
-					}
+			if (!empty($theUserInput) && !empty($theAuthInput)) {
+				$theAuthRow = null;
+				if ($theAccountRow = $dbAccounts->getByName($theUserInput)) {
+					$theAuthRow = $this->getAuthByAccountId($theAccountRow['account_id']);
 				} else {
-					//auth fail!
-					$this->director->account_info = null;
+					$theAuthRow = $this->getAuthByEmail($theUserInput);
 				}
-				unset($theAuthRow);
-				unset($pwhash);
+				if (!empty($theAuthRow)) {
+					//check pwinput against crypted one
+					$pwhash = $theAuthRow['pwhash'];
+					if (Strings::hasher($theAuthInput,$pwhash)) {
+						//authorized, load account data
+						$this->director->account_info = $this->getAccountInfoCache($dbAccounts, $theAuthRow['account_id']);
+						if (!empty($this->director->account_info)) {
+							//data retrieval succeeded, save the account id in session cache
+							$this->director[self::KEY_userinfo] = $theAuthRow['account_id'];
+							//if user asked to remember, save a cookie
+							if (isset($_POST[self::KEY_cookie])) {
+								$this->updateCookie($theAuthRow['auth_id'], $theAuthRow['account_id']);
+							}
+						}
+					} else {
+						//auth fail!
+						$this->director->account_info = null;
+						//if login failed, move closer to lockout
+						$this->updateFailureLockout($dbAccounts, $aScene);
+					}
+					unset($theAuthRow);
+					unset($pwhash);
+				} else {
+					//user/email not found, consider it a failure
+					$this->director->account_info = null;
+					$this->updateFailureLockout($dbAccounts, $aScene);
+				}
 			}
 			unset($theUserInput);
 			unset($theAuthInput);
@@ -722,7 +768,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	/**
 	 * Cookies might remember our user if the session forgot and they have 
 	 * not tried to login.
-	 * @param Accounts $dbAcct - the accounts model.
+	 * @param Accounts $dbAccounts - the accounts model.
 	 * @param object $aCookieMonster - an object representing cookie keys and data.
 	 * @return boolean Returns TRUE if cookies successfully logged the user in.
 	 */
@@ -792,7 +838,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	/**
 	 * HTTP Headers may contain authorization information, check for that information and populate whatever we find
 	 * for subsequent auth mechanisms to find and evaluate.
-	 * @param Accounts $dbAcct - the accounts model.
+	 * @param Accounts $dbAccounts - the accounts model.
 	 * @param object $aScene - var container object for user/pw info.
 	 * @return boolean Returns TRUE if account was found and successfully loaded.
 	 */
@@ -851,21 +897,129 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
+	 * If a manual auth was attempted, return the information needed for a lockout token.
+	 * @param Accounts $dbAccounts - the accounts model.
+	 * @param object $aScene - var container object for user/pw info.
+	 * @return array Returns the information needed for lockout tokens.
+	 */
+	protected function obtainLockoutTokenInfo(Accounts $dbAccounts, Scene $aScene) {
+		//$this->debugLog(__METHOD__.' v='.$this->debugStr($aScene));
+		$theResult = array();
+		//was there a login attempt, or are we just a guest browsing the site?
+		$theUserInput = trim($aScene->{self::KEY_userinfo});
+		$theAuthInput = trim($aScene->{self::KEY_pwinput});
+		if (!empty($theUserInput) && !empty($theAuthInput)) {
+			//we do indeed have a login attempt that failed
+			$theResult['auth_id'] = $theUserInput;
+			$theResult['account_id'] = 0;
+			$theAuthRow = null;
+			if ($theAccountRow = $dbAccounts->getByName($theUserInput)) {
+				$theAuthRow = $this->getAuthByAccountId($theAccountRow['account_id']);
+			} else {
+				$theAuthRow = $this->getAuthByEmail($theUserInput);
+			}
+			if (!empty($theAuthRow)) {
+				$theResult['auth_id'] = $theAuthRow['auth_id'];
+				$theResult['account_id'] = $theAuthRow['account_id'];
+			}
+		}
+		return $theResult;
+	}
+	
+	/**
+	 * If a manual auth was attempted, and a lockout status was determined,
+	 * this method gets executed.
+	 * @param Accounts $dbAccounts - the accounts model.
+	 * @param object $aScene - var container object for user/pw info.
+	 */
+	protected function onAccountLocked(Accounts $dbAccounts, Scene $aScene) {
+		$aScene->addUserMsg($this->getRes('account/err_pw_failed_account_locked'), $aScene::USER_MSG_ERROR);
+	}
+	
+	/**
+	 * Check to see if manual auth failed so often its locked out.
+	 * @param Accounts $dbAccounts - the accounts model.
+	 * @param object $aScene - var container object for user/pw info.
+	 * @return boolean Returns TRUE if too many failures locked out the account.
+	 */
+	protected function checkLockoutForTicket(Accounts $dbAccounts, Scene $aScene) {
+		$bLockedOut = false;
+		$theMaxAttempts = intval($this->getConfigSetting('auth/login_fail_attempts'),10);
+		if ($theMaxAttempts>0) {
+			$theLockoutTokenInfo = $this->obtainLockoutTokenInfo($dbAccounts, $aScene);
+			if (!empty($theLockoutTokenInfo)) {
+				//once the number of lockout auth tokens >= max attempts, account is locked
+				//  account will unlock after tokens expire (currently 1 hour)
+				//  note that tokens expire individually, so > 1 hour for all tokens to expire
+				$theLockoutTokens = $this->getAuthTokens(
+						$theLockoutTokenInfo['auth_id'],
+						$theLockoutTokenInfo['account_id'],
+						self::TOKEN_PREFIX_LOCKOUT.'%', true
+				);
+				$bLockedOut = (!empty($theLockoutTokens)) && (count($theLockoutTokens)>=$theMaxAttempts);
+				if ($bLockedOut) {
+					$this->onAccountLocked($dbAccounts, $aScene);
+				}
+			}
+		}
+		return $bLockedOut;
+	}
+	
+	/**
+	 * HTTP Headers may contain authorization information, check for that information and populate whatever we find
+	 * for subsequent auth mechanisms to find and evaluate.
+	 * @param Accounts $dbAccounts - the accounts model.
+	 * @param object $aScene - var container object for user/pw info.
+	 * @return boolean Returns TRUE if account was found and successfully loaded.
+	 */
+	protected function updateFailureLockout(Accounts $dbAccounts, Scene $aScene) {
+		//NOTE: code executing here means user is NOT LOGGED IN, but need to see if tried to do so.
+		$theMaxAttempts = intval($this->getConfigSetting('auth/login_fail_attempts'),10);
+		if ($theMaxAttempts>0) {
+			//$this->debugLog(__METHOD__.' '.strval($theMaxAttempts));
+			//was there a login attempt, or are we just a guest browsing the site?
+			$theLockoutTokenInfo = $this->obtainLockoutTokenInfo($dbAccounts, $aScene);
+			//$this->debugLog(__METHOD__.' '.$this->debugStr($theLockoutTokenInfo));
+			if (!empty($theLockoutTokenInfo)) {
+				//add lockout token
+				$theAuthToken = $this->generateAuthToken(
+						$theLockoutTokenInfo['auth_id'],
+						$theLockoutTokenInfo['account_id'],
+						self::TOKEN_PREFIX_LOCKOUT
+				);
+				//once the number of lockout auth tokens >= max attempts, account is locked
+				//  account will unlock after tokens expire (currently 1 hour)
+				//  note that tokens expire individually, so > 1 hour for all tokens to expire
+			}
+		}
+	}
+
+	/**
 	 * Check various mechanisms for authentication.
 	 * @see \BitsTheater\models\PropCloset\AuthBase::checkTicket()
 	 */
 	public function checkTicket($aScene) {
 		if ($this->director->canConnectDb()) {
+			$this->removeStaleAuthLockoutTokens();
 			$dbAccounts = $this->getProp('Accounts');
 
-			if ($this->checkHeadersForTicket($dbAccounts, $aScene)) return;
-			if ($this->checkSessionForTicket($dbAccounts, $aScene)) return;
-			if ($this->checkWebFormForTicket($dbAccounts, $aScene)) return;
-			if ($this->checkCookiesForTicket($dbAccounts, $_COOKIE)) return;
+			$bAuthorized = $this->checkHeadersForTicket($dbAccounts, $aScene);
+			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
+				$bAuthorized = $this->checkSessionForTicket($dbAccounts, $aScene);
+			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
+				$this->checkWebFormForTicket($dbAccounts, $aScene);
+			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
+				$this->checkCookiesForTicket($dbAccounts, $_COOKIE);
+			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
+				parent::checkTicket($aScene);
+			if ($bAuthorized)
+			{
+				$theCsrfToken = $this->director->app_id.'-'.Strings::createUUID();
+				$this->setCsrfTokenCookie($theCsrfToken);
+				return;
+			}
 			
 			$this->returnProp($dbAccounts);
-			//all checks failed to authenticate, call parent to try more (if any)
-			parent::checkTicket($aScene);
 		}
 	}
 	
@@ -875,18 +1029,19 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 */
 	public function ripTicket() {
 		try {
-			setcookie(self::KEY_userinfo);
-			setcookie(self::KEY_token);
+			$this->setMySiteCookie(self::KEY_userinfo);
+			$this->setMySiteCookie(self::KEY_token);
 			
 			$this->removeStaleCookies();
 			
 			//remove all cookie records for current login (logout means from everywhere but mobile)
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 					'account_id' => $this->director->account_info->account_id,
+					'token' => self::TOKEN_PREFIX_COOKIE . '%',
 			));
 			$theSql->startWith('DELETE FROM')->add($this->tnAuthTokens);
 			$theSql->startWhereClause()->mustAddParam('account_id', 0, PDO::PARAM_INT);
-			$theSql->setParamPrefix(" AND token LIKE 'cA%'");
+			$theSql->setParamPrefix(' AND ')->setParamOperator(' LIKE ')->mustAddParam('token');
 			$theSql->endWhereClause();
 			$theSql->execDML();
 		} catch (DbException $e) {
@@ -1091,11 +1246,12 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 */
 	protected function generateAuthTokenForMobile($aAcctId, $aAuthId) {
 		//generate a token with "mA" so we can tell them apart from cookie tokens
-		$theAuthToken = $this->generateAuthToken($aAuthId, $aAcctId, 'mA');
+		$theUserToken = $this->director->app_id.'-'.$aAuthId;
+		$theAuthToken = $this->generateAuthToken($aAuthId, $aAcctId, self::TOKEN_PREFIX_MOBILE);
 		$theStaleTime = time()+($this->getCookieDurationInDays('duration_1_day')*(60*60*24));
 		if (!$this->director->isNoSession()) {
-			setcookie(self::KEY_userinfo, $this->director->app_id.'-'.$aAuthId, $theStaleTime, BITS_URL);
-			setcookie(self::KEY_token, $theAuthToken, $theStaleTime, BITS_URL);
+			$this->setMySiteCookie(self::KEY_userinfo, $theUserToken, $theStaleTime);
+			$this->setMySiteCookie(self::KEY_token, $theAuthToken, $theStaleTime);
 		}
 		return $theAuthToken;
 	}

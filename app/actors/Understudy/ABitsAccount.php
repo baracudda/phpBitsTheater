@@ -46,6 +46,18 @@ abstract class ABitsAccount extends BaseActor {
 		$this->setCurrentMenuKey('account');
 	}
 	
+	protected function setupLoginInfo(MyScene $v) {
+		$v->action_url_register = $v->getSiteURL(
+				$this->getConfigSetting('auth/register_url')
+		);
+		$v->action_url_requestpwreset = $v->getSiteUrl(
+				$this->getConfigSetting('auth/request_pwd_reset_url')
+		);
+		$v->action_url_login = $v->getSiteURL(
+				$this->getConfigSetting('auth/login_url')
+		);		
+	}
+	
 	public function login() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -58,12 +70,7 @@ abstract class ABitsAccount extends BaseActor {
 		}
 		else
 		{
-			$v->action_url_register =
-				$v->getSiteURL( $this->config['auth/register_url'] ) ;
-			$v->action_url_requestpwreset =
-				$v->getSiteUrl( $this->config['auth/request_pwd_reset_url'] ) ;
-			$v->action_url_login =
-				$v->getSiteURL( $this->config['auth/login_url'] ) ;
+			$this->setupLoginInfo($v);
 			$v->redirect = $this->getHomePage() ;
 		}
 		//indicate what top menu we are currently in
@@ -86,14 +93,10 @@ abstract class ABitsAccount extends BaseActor {
 	{
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
-		$v->action_url_register =
-			$v->getSiteURL( $this->config['auth/register_url'] ) ;
-		$v->action_url_requestpwreset =
-			$v->getSiteUrl( $this->config['auth/request_pwd_reset_url'] ) ;
-		$v->action_url_login =
-			$v->getSiteURL( $this->config['auth/login_url'] ) ;
-		$v->action_url_logout =
-			$v->getSiteURL( $this->config['auth/logout_url'] ) ;
+		$this->setupLoginInfo($v);
+		$v->action_url_logout = $v->getSiteURL(
+				$this->config['auth/logout_url']
+		);
 	}
 	
 }//end class

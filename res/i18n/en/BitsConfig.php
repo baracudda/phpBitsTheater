@@ -42,11 +42,15 @@ class BitsConfig extends BaseResources {
 	
 	public $label_site = array(
 			'mode' => 'Operating Mode',
+			'csrfCookieName' => 'CSRF Cookie Name',
+			'csrfHeaderName' => 'CSRF Header Name',
 			'mmr' => 'Managed Media Root',
 			'maxfilesize' => 'Max File Upload Size',
 	);
 	public $desc_site = array(
 			'mode' => 'Normal is the standard operation mode; Maintenance will refuse connections; Demo/Kiosk mode will favor local resources.',
+			'csrfCookieName' => 'Cookie name containing the token used to prevent Cross-Site Request Forgeries.',
+			'csrfHeaderName' => 'HTTP header name expected to be populated with the CSRF token.',
 			'mmr' => 'Managed media files will be located under the specified server file path (usually located outside www root)',
 			'maxfilesize' => 'Maximum allowed size for file uploads; may be different from, but must not be greater than, the server configuration.',
 	);
@@ -61,13 +65,23 @@ class BitsConfig extends BaseResources {
 							'demo' => 'Demo/Kiosk',
 					),
 			),
+			'csrfCookieName' => array(
+					'type' => ConfigSettingInfo::INPUT_STRING,
+					'is_editable' => true,
+					'default' => 'Usher13',
+			),
+			'csrfHeaderName' =>  array(
+					'type' => ConfigSettingInfo::INPUT_STRING,
+					'is_editable' => true,
+					'default' => 'Usher13',
+			),
 			'mmr' => array(
 					'type' => ConfigSettingInfo::INPUT_STRING,
 					'is_editable' => false,
 					'default' => '',
 			),
 			'maxfilesize' => array(
-					'type' => ConfigSettingInfo::INPUT_STRING,
+					'type' => ConfigSettingInfo::INPUT_INTEGER,
 					'is_editable' => false,
 					'default' => '0',  // Initialized below.
 			),
@@ -78,16 +92,17 @@ class BitsConfig extends BaseResources {
 			'request_pwd_reset_url' => 'Password Reset Request URL',
 			'login_url' => 'Login URL',
 			'logout_url' => 'Logout URL',
-			'cookie_freshness_duration' => 'Cookie Freshness Duration'
+			'cookie_freshness_duration' => 'Cookie Freshness Duration',
+			'login_fail_attempts' => 'Login Attempts',
 	);
 	public $desc_auth = array(
 			'register_url' => 'URL for the registration page.',
 			'request_pwd_reset_url' =>
-				'URL for the page where a user requests a password reset.',
+					'URL for the page where a user requests a password reset.',
 			'login_url' => 'URL for the login page.',
 			'logout_url' => 'URL for the logout page.',
-			'cookie_freshness_duration' =>
-				'Login cookies stay valid only so long.'
+			'cookie_freshness_duration' => 'Login cookies stay valid only so long.',
+			'login_fail_attempts' => 'User account locks itself after so many failures in one hour.',
 	);
 	public $input_auth = array(
 			'register_url' => array(
@@ -123,6 +138,11 @@ class BitsConfig extends BaseResources {
 							'duration_forever' => 'Never go stale (not recommended)',
 					),
 			),
+			'login_fail_attempts' => array(
+					'type' => ConfigSettingInfo::INPUT_INTEGER,
+					'default' => 7,
+					'is_editable' => true,
+			),
 	);
 
 	public $label_email_out = array(
@@ -150,7 +170,7 @@ class BitsConfig extends BaseResources {
 					'is_editable' => true
 			),
 			'port' => array(
-					'type' => ConfigSettingInfo::INPUT_STRING,
+					'type' => ConfigSettingInfo::INPUT_INTEGER,
 					'default' => '25',
 					'is_editable' => true
 			),

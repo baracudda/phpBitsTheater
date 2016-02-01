@@ -32,6 +32,8 @@ class BitsConfig extends BaseResources {
 			
 	public $enum_site = array(
 			'mode',
+			'csrfCookieName',
+			'csrfHeaderName',
 			'mmr', //managed media root
 			'maxfilesize',
 	);
@@ -51,6 +53,7 @@ class BitsConfig extends BaseResources {
 			'login_url',
 			'logout_url',
 			'cookie_freshness_duration',
+			'login_fail_attempts',
 	);
 	
 	/**

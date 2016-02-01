@@ -1,9 +1,9 @@
 <?php
 namespace BitsTheater\actors;
 use BitsTheater\actors\Understudy\AuthBasicAccount as BaseActor;
-use BitsTheater\scenes\Account as MyScene;
-	/* @var $v MyScene */
+use BitsTheater\scenes\Account as MyScene; /* @var $v MyScene */
 use com\blackmoonit\Strings;
+
 {//namespace begin
 
 class Account extends BaseActor {
