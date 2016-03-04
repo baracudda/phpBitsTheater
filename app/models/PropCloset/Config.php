@@ -146,7 +146,7 @@ class Config extends BaseModel implements IFeatureVersioning {
 	 * @return boolean Returns TRUE if the data should be inserted into the table.
 	 */
 	protected function shouldInsertMapData($aMapData) {
-		return @(parent::shouldInsertMapData($aMapData) || $aMapData['should_insert']);
+		return @(parent::shouldInsertMapData($aMapData) || !empty($aMapData['should_insert']) );
 	}
 	
 	/**

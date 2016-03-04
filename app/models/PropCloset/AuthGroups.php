@@ -114,6 +114,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning {
 			$this->execDML($theSql);
 			$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnGroupRegCodes));
 		} catch (PDOException $pdoe) {
+			$this->debugLog(__METHOD__.' failed: '.$pdoe->getMessage().' sql='.$theSql);
 			throw new DbException($pdoe,$theSql);
 		}
 	}

@@ -98,16 +98,31 @@ abstract class AuthBase extends BaseModel {
 	 *   e.g.: time()+60*60*24*30 will set the cookie to expire in 30 days.
 	 *   If set to 0, or omitted, the cookie will expire at the end of the session
 	 *   (when the browser closes).
+	 * @param boolean $bDoNotLetJsReadIt - (optional) HTTPOnly flag, defaults TRUE.
 	 * @return boolean Returns FALSE if output exists prior to calling this function.
 	 *   Returns TRUE if successfull, but does not mean the user accepted the cookie.
 	 */
-	public function setMySiteCookie($aName, $aValue=null, $aExpireTS=0) {
+	public function setMySiteCookie($aName, $aValue=null, $aExpireTS=0, $bDoNotLetJsReadIt=true) {
 		//RFC 6265: the only proper way to create a "host-only" cookie is to NOT
 		//  set the domain attribute. Otherwise, what you end up with is ".domain"
 		//  which allows subdomains access.
 		$theDomain = null; //$_SERVER['SERVER_NAME'];
 		return setcookie($aName, $aValue, $aExpireTS,
-				BITS_URL, $theDomain, null, true
+				BITS_URL, $theDomain, null, $bDoNotLetJsReadIt
+		);
+	}
+
+	/**
+	 * Get the cookie and header names from setup, if possible.
+	 * @return array Returns array( $cookieName, $headerName ), if defined and
+	 *   array( null, null ) if not.
+	 */
+	public function getCsrfCookieHeaderNames() {
+		if (!$this->getDirector()->isInstalled())
+			return array(null, null);
+		return array(
+				$this->getConfigSetting('site/csrfCookieName'),
+				$this->getConfigSetting('site/csrfHeaderName'),
 		);
 	}
 
@@ -120,17 +135,19 @@ abstract class AuthBase extends BaseModel {
 	 *   Also returns FALSE if there is no cookie name set in Settings.
 	 */
 	public function setCsrfTokenCookie($aToken=null) {
-		$theCsrfCookieName = $this->getConfigSetting('site/csrfCookieName');
-		$theCsrfHeaderName = $this->getConfigSetting('site/csrfHeaderName');
+		list( $theCsrfCookieName, $theCsrfHeaderName) = $this->getCsrfCookieHeaderNames();
 		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
 			$theCsrfToken = (!empty($aToken)) ? $aToken : Strings::createUUID();
 			$theCachedToken = $this->getDirector()[$theCsrfHeaderName];
 			if (empty($theCachedToken)) {
-				if ($this->setMySiteCookie($theCsrfCookieName, $theCsrfToken))
+				if ($this->setMySiteCookie($theCsrfCookieName, $theCsrfToken, 0, false))
 					$this->getDirector()[$theCsrfHeaderName] = $theCsrfToken;
+				else
+					return false;
 			}
 			return true;
-		}
+		} else
+			return false;
 	}
 	
 	/**
@@ -141,21 +158,21 @@ abstract class AuthBase extends BaseModel {
 	 *   for the cookie.
 	 */
 	public function checkCsrfTokenHeader() {
-		$theCsrfCookieName = $this->getConfigSetting('site/csrfCookieName');
-		$theCsrfHeaderName = $this->getConfigSetting('site/csrfHeaderName');
+		list( $theCsrfCookieName, $theCsrfHeaderName) = $this->getCsrfCookieHeaderNames();
 		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
 			$theCachedToken = $this->getDirector()[$theCsrfHeaderName];
 			if (!empty($theCachedToken)) {
-				$theVarIndex = 'HTTP_'.strtoupper($theCsrfHeaderName);
+				$theVarIndex = Strings::httpHeaderNameToServerKey($theCsrfHeaderName);
 				$theHeaderToken = isset($_SERVER[$theVarIndex])
 					? $_SERVER[$theVarIndex] : null;
-				//$this->debugLog(__METHOD__.' ct='.$theCachedToken.' ht='.$theHeaderToken.
+				//$this->debugLog(__METHOD__.' ct='.$theCachedToken.' sk='.$theVarIndex.' ht='.$theHeaderToken.
 				//		' ?='.(($theCachedToken === $theHeaderToken)?'true':'false'));
 				//$this->debugLog($_SERVER);
 				return ($theCachedToken === $theHeaderToken);
-			}
-		}
-		return true;
+			} else
+				return false;
+		} else
+			return true;
 	}
 	
 	/**
@@ -163,14 +180,28 @@ abstract class AuthBase extends BaseModel {
 	 * Useful for when a user logs out.
 	 */
 	public function clearCsrfTokenCookie() {
-		$theCsrfCookieName = $this->getConfigSetting('site/csrfCookieName');
-		$theCsrfHeaderName = $this->getConfigSetting('site/csrfHeaderName');
+		list( $theCsrfCookieName, $theCsrfHeaderName) = $this->getCsrfCookieHeaderNames();
 		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
 			$this->getDirector()[$theCsrfHeaderName] = null;
 			$this->setMySiteCookie($theCsrfCookieName);
 		}
 	}
 
+	/**
+	 * Checks to see if the Cross-Site Request Forgery protection token
+	 * has been sent to us via the header.
+	 * @return boolean Return FALSE only if the csrf settings are defined
+	 *   and the header token was not sent.
+	 */
+	public function isCsrfTokenHeaderPresent() {
+		list( $theCsrfCookieName, $theCsrfHeaderName) = $this->getCsrfCookieHeaderNames();
+		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
+			$theVarIndex = Strings::httpHeaderNameToServerKey($theCsrfHeaderName);
+			return isset($_SERVER[$theVarIndex]);
+		} else
+			return true;
+	}
+	
 }//end class
 
 }//end namespace

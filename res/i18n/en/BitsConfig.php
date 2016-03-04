@@ -28,6 +28,8 @@ class BitsConfig extends BaseResources {
 	public $menu_settings_subtext = '';
 	
 	public $msg_save_applied = 'Settings saved!';
+	public $msg_save_aborted = 'Error encountered, settings not saved.';
+	public $errmsg_nothing_to_update = 'No changes detected, nothing updated.';
 
 	public $label_namespace = array(
 			'site' => 'Site Settings',
@@ -94,6 +96,7 @@ class BitsConfig extends BaseResources {
 			'logout_url' => 'Logout URL',
 			'cookie_freshness_duration' => 'Cookie Freshness Duration',
 			'login_fail_attempts' => 'Login Attempts',
+			'max_registrations' => 'Maximum Registrations Allowed',
 	);
 	public $desc_auth = array(
 			'register_url' => 'URL for the registration page.',
@@ -103,6 +106,7 @@ class BitsConfig extends BaseResources {
 			'logout_url' => 'URL for the logout page.',
 			'cookie_freshness_duration' => 'Login cookies stay valid only so long.',
 			'login_fail_attempts' => 'User account locks itself after so many failures in one hour.',
+			'max_registrations' => 'In any given span of one hour, limit the number of registrations.',
 	);
 	public $input_auth = array(
 			'register_url' => array(
@@ -141,6 +145,11 @@ class BitsConfig extends BaseResources {
 			'login_fail_attempts' => array(
 					'type' => ConfigSettingInfo::INPUT_INTEGER,
 					'default' => 7,
+					'is_editable' => true,
+			),
+			'max_registrations' => array(
+					'type' => ConfigSettingInfo::INPUT_INTEGER,
+					'default' => 25,
 					'is_editable' => true,
 			),
 	);
@@ -208,17 +217,21 @@ class BitsConfig extends BaseResources {
 	 */
 	public function setup($aDirector)
 	{
+		//define the site/mmr/default before it gets merged by parent::setup()
+		$theParentMmrPath = DIRECTORY_SEPARATOR.'var';
 		$theVHN = VIRTUAL_HOST_NAME;
 		if( !empty($theVHN) )
 		{
-			//define the site/mmr/default before it gets merged by parent::setup()
-			$theParentPath = dirname(strstr(BITS_PATH, DIRECTORY_SEPARATOR.$theVHN, true));
-			$this->input_site['mmr']['default'] = ( (!empty($theParentPath)) ? $theParentPath : 'var' )
-					.DIRECTORY_SEPARATOR.'mmr'.DIRECTORY_SEPARATOR.$theVHN.DIRECTORY_SEPARATOR;
-			//.../www/myhost/ -> .../mmr/myhost/
+			$theParentMmrPath = dirname(dirname(BITS_PATH));
+			if (empty($theParentMmrPath) || $theParentMmrPath===DIRECTORY_SEPARATOR) {
+				$theParentMmrPath = DIRECTORY_SEPARATOR.'var';
+			}
 		}
-		$this->input_site['maxfilesize']['default'] =
-			self::getDefaultMaxFileSize() ;
+		$this->input_site['mmr']['default'] = $theParentMmrPath
+				.DIRECTORY_SEPARATOR.'mmr'.DIRECTORY_SEPARATOR.$theVHN.DIRECTORY_SEPARATOR;
+		//.../www/myhost/ -> .../mmr/myhost/
+		
+		$this->input_site['maxfilesize']['default'] = self::getDefaultMaxFileSize() ;
 		parent::setup($aDirector) ;         // must go after all initializations
 	}
 	

@@ -195,15 +195,8 @@ implements IDirected
 				//  NOTE: AngularJS does not set this header by default like jQuery and Symphony do for POSTs.
 				return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 			}
-			/* CSRF token checks must be handled after admitAudience() has been called;
-			 *   see usherAudienceToSeat() method instead.
-			else if (Strings::beginsWith($aAction, 'ajaj')) {
-				$dbAuth = $this->getProp('Auth');
-				if (!empty($dbAuth)) {
-					return $dbAuth->checkCsrfTokenHeader();
-				}
-			}
-			*/
+			// CSRF token checks must be handled after admitAudience() has been called;
+			//   see usherAudienceToSeat() method instead.
 			else {
 				return true;
 			}
@@ -223,14 +216,36 @@ implements IDirected
 			//  object needs to have this view before checking for the
 			//  CSRF protection token in the headers.
 			$this->viewToRender('results_as_json');
+
+			//if we try to call an ajaj* method without CSRF token header,
+			//  then treat as if api* method was called and check for
+			//  headers with auth credentials instead.
+			if ($this->getDirector()->isInstalled()) {
+				$dbAuth = $this->getProp('Auth');
+				if (!empty($dbAuth)) {
+					$this->scene->bCheckOnlyHeadersForAuth = (!$dbAuth->isCsrfTokenHeaderPresent());
+				}
+			}
 		}
-		if (Strings::beginsWith($aAction, 'api')) {
+		else if (Strings::beginsWith($aAction, 'api')) {
 			//auto-set view to json response
 			$this->viewToRender('results_as_json');
 			//we need to have a prefix that does the opposite of AJAJ
 			//  and allow CORS, at the expense of always providing
 			//  any auth if needed.
 			$this->scene->bCheckOnlyHeadersForAuth = true;
+		}
+		else if (Strings::beginsWith($aAction, 'ajax')) {
+			//auto-set view to json response, yes, the X in AJAX means XML, but
+			//  framework does not have a "default XML" view, yet.
+			$this->viewToRender('results_as_json');
+		}
+		else {
+			//we are probably a page that needs rendering, remember it in case
+			//  login needs to be forced and then lets us get back to our
+			//  intended page.
+			$this->getDirector()['lastpagevisited'] = $this->getDirector()['currpagevisited'];
+			$this->getDirector()['currpagevisited'] = REQUEST_URL;
 		}
 	}
 	
@@ -241,19 +256,22 @@ implements IDirected
 	 * @return boolean Returns TRUE if method call is allowed.
 	 */
 	public function usherAudienceToSeat($aAction) {
+		$theResult = true;
 		if (Strings::beginsWith($aAction, 'ajaj')) {
+			//ajaj methods either require CSRF token header OR valid
+			//  auth credentials; default our result to checking to
+			//  see if auth credentials were supplied.
+			$theResult = (!$this->isGuest());
+			//now check to see if CSRF token header was defined/present
 			$dbAuth = $this->getProp('Auth');
-			if (!empty($dbAuth)) {
+			if (!empty($dbAuth) && $dbAuth->isCsrfTokenHeaderPresent()) {
 				$theResult = $dbAuth->checkCsrfTokenHeader();
-				$this->returnProp($dbAuth);
-				if ($theResult) {
-					return true;
-				} else
-					throw BrokenLeg::toss($this, 'FORBIDDEN');
 			}
-		} else {
-			return true;
+			$this->returnProp($dbAuth);
+			if (!$theResult)
+				throw BrokenLeg::toss($this, 'FORBIDDEN');
 		}
+		return $theResult;
 	}
 	
 	/**

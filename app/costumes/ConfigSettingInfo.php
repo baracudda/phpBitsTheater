@@ -25,6 +25,7 @@ use com\blackmoonit\Widgets;
 use com\blackmoonit\widgetbuilder\TextAreaWidget ;
 use com\blackmoonit\Arrays;
 use BitsTheater\models\Config;
+use stdClass as StandardClass;
 {//namespace begin
 
 /**
@@ -66,6 +67,21 @@ class ConfigSettingInfo extends BaseCostume
 	}
 
 	/**
+	 * Copies values into matching property names
+	 * based on the array keys or object property names.
+	 * @param array|object $aThing - array or object to copy from.
+	 */
+	protected function copyFrom(&$aThing) {
+		parent::copyFrom($aThing);
+		$this->config_key = $this->ns.'/'.$this->key;
+		if ( !empty($this->mSettingInfo) && (!$this->mSettingInfo instanceof ConfigResEntry) ) {
+			$theSettingInfo = $this->mSettingInfo;
+			$this->mSettingInfo = new ConfigResEntry($this->ns, $this->key);
+			$this->mSettingInfo->setDataFrom($theSettingInfo);
+		}
+	}
+	
+	/**
 	 * Given namespace data and setting data, convert to this class.
 	 * @param ConfigNamespaceInfo $aNamespaceInfo - instance of namespace info.
 	 * @param string $aSettingName - the setting name (machine name, not human label).
@@ -90,6 +106,31 @@ class ConfigSettingInfo extends BaseCostume
 		}
 	}
 
+	/**
+	 * Return this payload data as a simple class, minus any metadata this class might have.
+	 * @return string Return self encoded as a standard class.
+	 */
+	public function exportData() {
+		$o = new StandardClass();
+		$o->ns = $this->ns;
+		$o->key = $this->key;
+		switch( $this->mSettingInfo->input_type )
+		{
+			case self::INPUT_BOOLEAN:
+			case self::INPUT_INTEGER:
+				$o->value = intval($this->getCurrentValue());
+				break;
+			case self::INPUT_DROPDOWN:
+			case self::INPUT_TEXT:
+			case self::INPUT_STRING:
+			case self::INPUT_PASSWORD:
+			default:
+				$o->value = $this->getCurrentValue();
+		}//switch
+		$o->mSettingInfo = $this->mSettingInfo->exportData();
+		return $o;
+	}
+	
 	public function getLabel() {
 		return $this->mSettingInfo->label;
 	}
@@ -101,7 +142,7 @@ class ConfigSettingInfo extends BaseCostume
 	public function getCurrentValue() {
 		if ($this->getDirector()->isInstalled()) {
 			/* @var $dbConfig Config */
-			$dbConfig = $this->getDirector()->getProp('config');
+			$dbConfig = $this->getDirector()->getProp('Config');
 			$this->value = $dbConfig->getMapValue($this->config_key);
 			if (!isset($this->mSettingInfo->default_value)) {
 				//preserve whatever default is now in the config table (admin set it, so honor it)
@@ -154,7 +195,7 @@ class ConfigSettingInfo extends BaseCostume
 				foreach( $this->mSettingInfo->input_enums as $key => $valueRow )
 				{
 					if (is_array($valueRow))
-						$theItemList[$key] = $valueRow['label'];
+						$theItemList[$key] = isset($valueRow['label']) ? $valueRow['label'] : null;
 					else
 						$theItemList[$key] = $valueRow->label;
 				}

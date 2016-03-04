@@ -42,6 +42,15 @@ class Fragments extends BaseActor {
 		return $this->scene->getHomePage();
 	}
 	
+	/**
+	 * Instead of merely returning data from an API post the results to this
+	 * endpoint and have your custom HTML wrap the API results in your PHP template.
+	 * @param string $aFragmentFilename - fragment filename without the extension.
+	 */
+	public function ajajGet($aFragmentFilename) {
+		$this->renderThisView = (!empty($aFragmentFilename)) ? $aFragmentFilename : '_blank';
+	}
+	
 }//end class
 
 }//end namespace

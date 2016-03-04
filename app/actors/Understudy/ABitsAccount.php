@@ -21,6 +21,8 @@ use BitsTheater\scenes\Account as MyScene; /* @var $v MyScene */
 use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use BitsTheater\costumes\AccountInfoCache;
 use com\blackmoonit\Strings;
+use BitsTheater\BrokenLeg;
+use BitsTheater\costumes\APIResponse;
 {//namespace begin
 
 abstract class ABitsAccount extends BaseActor {
@@ -30,18 +32,23 @@ abstract class ABitsAccount extends BaseActor {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		
-		if ($this->isGuest()) {
+		if ($this->isGuest() || empty($aAcctId)) {
 			return $v->getSiteURL($this->config['auth/register_url']);
 		}
-		$v->ticket_info = $this->director->account_info;
 		$dbAccounts = $this->getProp('Accounts');
 		$v->dbAccounts = $dbAccounts;
-		if (!empty($aAcctId) && $this->isAllowed('account','modify')) {
+		$bAuthorizied = (
+				//everyone is allowed to modify email/pw of their own account
+				$aAcctId==$this->director->account_info->account_id ||
+				//admins may be allowed to modify someone else's account
+				$this->isAllowed('account','modify')
+		);
+		if ($bAuthorizied) {
 			/* @var $v->ticket_info AccountInfoCache */
 			$v->ticket_info = AccountInfoCache::fromArray($dbAccounts->getAccount($aAcctId));
 		}
 		$v->action_modify = $this->getMyUrl('/account/modify');
-		$v->redirect = $this->getMyUrl('/account/view');
+		$v->redirect = $this->getMyUrl('/account/view/'.$aAcctId);
 		//indicate what top menu we are currently in
 		$this->setCurrentMenuKey('account');
 	}
@@ -61,7 +68,7 @@ abstract class ABitsAccount extends BaseActor {
 	public function login() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
-		if( !$this->director->isGuest() )
+		if( !$this->isGuest() )
 		{
 			if ($v->redirect)
 				return $v->redirect;
@@ -97,6 +104,33 @@ abstract class ABitsAccount extends BaseActor {
 		$v->action_url_logout = $v->getSiteURL(
 				$this->config['auth/logout_url']
 		);
+	}
+	
+	/**
+	 * API version of the login() URL.
+	 * @return \BitsTheater\actors\Understudy\APIResponse Returns the same
+	 *   object as ajajGetAccountInfo().
+	 * @see ABitsAccount::ajajGetAccountInfo()
+	 */
+	public function loginAs() {
+		$this->viewToRender('results_as_json');
+		return $this->ajajGetAccountInfo();
+	}
+	
+	/**
+	 * If you are currently logged in, return the cached info about myself.
+	 * JavaScript code may need current login info, too.
+	 * @return APIResponse Returns the standard API response object with User info.
+	 */
+	public function ajajGetAccountInfo() {
+		$v =& $this->scene;
+		if (!$this->isGuest()) {
+			$theData = $this->director->account_info;
+			$theData->account_id += 0; //ensure what is returned is not a string
+			$v->results = APIResponse::resultsWithData($theData);
+		} else {
+			throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED');
+		}
 	}
 	
 }//end class

@@ -13,6 +13,8 @@ print "<script>function checkPassword(p1,p2) { if (p1.value!=p2.value) {p2.setCu
 $w .= '<h2>Account</h2>';
 if (isset($v->err_msg)) {
 	$w .= '<span class="msg-error">'.$v->err_msg.'</span>';
+} else {
+	$w .= $v->renderMyUserMsgsAsString();
 }
 $w .= '<table class="db-entry">';
 
@@ -42,8 +44,10 @@ $w .= '<tr><td class="db-field-label"></td><td class="db-field">'.
 		
 $w .= "</table>\n";
 
-$w .= Widgets::createHiddenPost('ticket_num',$v->ticket_info->account_id);
+$w .= Widgets::createHiddenPost('ticket_name',$v->ticket_info->account_name);
 $w .= Widgets::createHiddenPost('ticket_email',$v->ticket_info->email);
+$w .= Widgets::createHiddenPost('post_key', $v->post_key);
+
 $form_html = Widgets::createHtmlForm($recite->form_name,$recite->action_modify,$w,$v->redirect,false);
 print($form_html);
 print(str_repeat('<br />',3));

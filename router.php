@@ -60,8 +60,6 @@ function unregisterGlobals() {
  * Route the URL requested to the approprate actor.
  */
 function route_request(Director $aDirector, $aUrl) {
-	$aDirector['lastpagevisited'] = $aDirector['currpagevisited'];
-	$aDirector['currpagevisited'] = $aUrl;
 	//passing in the ?url= (which .htaccess gives us) rather than $_SERVER['REQUEST_URI']
 	//if ($aDirector->isDebugging()) Strings::debugLog('aUrl='.$aUrl);
 	//if ($aDirector->isDebugging() && $aUrl=='phpinfo') { print(phpinfo()); return; }

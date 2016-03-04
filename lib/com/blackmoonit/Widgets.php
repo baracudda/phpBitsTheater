@@ -84,8 +84,7 @@ class Widgets
 			{
 				$theWidget .= Strings::spaces($aIndent+1)
 					. '<option value="' . $aValue . '"'
-					. ( !empty($aValueSelected) && $aValueSelected == $aValue ?
-							' selected>' : '>' )
+					. ( $aValueSelected === $aValue ? ' selected>' : '>' )
 					. $aCaption . '</option>'
 					. PHP_EOL
 					;

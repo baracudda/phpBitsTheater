@@ -88,11 +88,19 @@ abstract class ASimpleCostume extends BaseCostume {
 	}
 	
 	/**
-	 * Hide metadata before converting self to JSON, return string.
+	 * Return this payload data as a simple class, minus any metadata this class might have.
+	 * @return string Return self encoded as a standard class.
+	 */
+	public function exportData() {
+		return $this;
+	}
+	
+	/**
+	 * JSON string for this payload data, minus any metadata the class might have.
 	 * @return string Return self encoded to JSON.
 	 */
-	public function toJson() {
-		return json_encode($this);
+	public function toJson($aJsonEncodeOptions=null) {
+		return json_encode($this->exportData(), $aJsonEncodeOptions);
 	}
 	
 	/**

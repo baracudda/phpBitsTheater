@@ -23,11 +23,11 @@ use BitsTheater\costumes\ASimpleCostume as BaseCostume;
  * Helper class for session caching current non-sensitive login account info.
  */
 class AccountInfoCache extends BaseCostume {
-	/** @var string */
+	/** @var integer */
 	public $account_id = null;
 	/** @var string */
 	public $account_name = null;
-	/** @var string */
+	/** @var integer */
 	public $external_id = null;
 	/** @var string */
 	public $email = null;

@@ -659,6 +659,13 @@ class Strings {
 			return $aInput;
 	}
 	
+	/**
+	 * Convert an HTTP header name to its key in the $_SERVER PHP global var.
+	 * @param string $aHeaderName - the name of the HTTP header.
+	 */
+	static public function httpHeaderNameToServerKey($aHeaderName) {
+		return 'HTTP_'.strtoupper(preg_replace('/\W+/m', '_', $aHeaderName));
+	}
 	
 }//end class
 

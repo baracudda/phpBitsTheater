@@ -17,8 +17,10 @@
 
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
+use BitsTheater\costumes\ConfigSettingInfo;
 use BitsTheater\Director;
 use com\blackmoonit\Strings;
+use stdClass as StandardClass;
 {//namespace begin
 
 /**
@@ -33,8 +35,33 @@ class ConfigNamespaceInfo extends BaseCostume {
 	//restricted to only this group id
 	public $group_id;
 	
-	//useful for displaying settings based on namespace
+	/**
+	 * @var array[ConfigSettingInfo->key => ConfigSettingInfo]
+	 */
 	public $settings_list;
+	
+	/**
+	 * Copies values into matching property names
+	 * based on the array keys or object property names.
+	 * @param array|object $aThing - array or object to copy from.
+	 */
+	protected function copyFrom(&$aThing) {
+		parent::copyFrom($aThing);
+		$this->group_id = ($this->namespace=='auth') ? 1 : null;
+		if (!empty($this->settings_list)) {
+			$theSettings = $this->settings_list;
+			$this->settings_list = array();
+			foreach ($theSettings as $theKey => $theSettingInfo) {
+				if ($theSettingInfo instanceof ConfigSettingInfo)
+					$this->settings_list[$theKey] = $theSettingInfo;
+				else {
+					$this->settings_list[$theKey] = ConfigSettingInfo::fromArray(
+							$this->getDirector(), $theSettingInfo
+					);
+				}
+			}
+		}
+	}
 	
 	/**
 	 * Given a namespace and namespace data, convert to this class.
@@ -56,6 +83,23 @@ class ConfigNamespaceInfo extends BaseCostume {
 		$theDirector = $this->getDirector();
 		return ( !isset($this->group_id) || !$theDirector->isInstalled() ||
 				(!empty($theDirector->account_info) && in_array($this->group_id, $theDirector->account_info->groups)) );
+	}
+	
+	/**
+	 * Return this payload data as a simple class, minus any metadata this class might have.
+	 * @return string Return self encoded as a standard class.
+	 */
+	public function exportData() {
+		$o = new StandardClass();
+		$o->namespace = $this->namespace;
+		$o->label = $this->label;
+		$o->desc = $this->desc;
+		//NOTE: group_id is manufactured from namespace at this time, no export needed.
+		$o->settings_list = array();
+		foreach ($this->settings_list as $key => $theSettingInfo) {
+			$o->settings_list[] = $theSettingInfo->exportData();
+		}
+		return $o;
 	}
 	
 }//end class

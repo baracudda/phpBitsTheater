@@ -214,9 +214,9 @@ implements ArrayAccess, IDirected
 		} else if (!empty($_GET[$theName])) {
 			$theId = $_GET[$theName];
 		} else {
-			return session_start();
+			$theId = session_id();
 		}
-		if (preg_match('/^[a-zA-Z0-9,\-]{22,40}$/',$theId)) {
+		if (preg_match('/^[a-zA-Z0-9,\-]{1,128}$/',$theId)) {
 			return session_start();
 		}
 		return false;
@@ -227,7 +227,6 @@ implements ArrayAccess, IDirected
 		session_unset();
 		session_destroy();
 		session_write_close();
-		setcookie(session_name());
 		session_regenerate_id(true);
 	}
 	
@@ -355,9 +354,10 @@ implements ArrayAccess, IDirected
 	 */
 	static public function getModelClass($aModelName) {
 		if (is_string($aModelName)) {
-			$theModelClass = BITS_NAMESPACE_MODELS.$aModelName;
+			$theModelName = Strings::getClassName($aModelName);
+			$theModelClass = BITS_NAMESPACE_MODELS.$theModelName;
 			if (!class_exists($theModelClass)) {
-				$theModelClass = WEBAPP_NAMESPACE.'models\\'.$aModelName;
+				$theModelClass = WEBAPP_NAMESPACE.'models\\'.$theModelName;
 			}
 		} elseif ($aModelName instanceof ReflectionClass) {
 			$theModelClass = $aModelName->getName();

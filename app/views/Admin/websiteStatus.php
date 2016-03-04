@@ -5,7 +5,8 @@ use BitsTheater\scenes\Install as MyScene;
 use BitsTheater\models\SetupDb as MetaModel;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
-$recite->includeMyHeader();
+$h = $v->cueActor('Fragments', 'get', 'csrf_header_jquery');
+$recite->includeMyHeader($h);
 $w = '<br />';
 $jsCode = <<<EOD
 var theWarningDialog = {
@@ -27,7 +28,7 @@ var theWarningDialog = {
 			,
 			callback: function(e) {
 				$("#overlay_please_stand_by").show();
-				$.post('{$v->getMyUrl('ajaxUpdateFeature')}',{feature_id:theWarningDialog.feature_id}).done(function(aData) {
+				$.post('{$v->getMyUrl('ajajUpdateFeature')}',{feature_id:theWarningDialog.feature_id}).done(function(aData) {
 					location.reload(true);
 					$("#overlay_please_stand_by").hide();
 					//console.log('posted');
@@ -47,7 +48,7 @@ $('button.btn-update-feature').click(function(e) {
 
 $('#btn_resetup_db').click(function(e) {
 	$("#overlay_please_stand_by").show();
-	$.post('{$v->getMyUrl('ajaxResetupDb')}',{}).done(function(aData) {
+	$.post('{$v->getMyUrl('ajajResetupDb')}',{}).done(function(aData) {
 		$("#overlay_please_stand_by").hide();
 		alert('Missing tables created.');
 		//console.log('resetup done');

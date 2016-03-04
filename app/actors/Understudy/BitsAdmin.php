@@ -18,24 +18,19 @@
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
 use BitsTheater\Scene as MyScene; /* @var $v MyScene */
-use com\blackmoonit\exceptions\DbException;
-use com\blackmoonit\database\DbUtils;
 use BitsTheater\models\SetupDb; /* @var $dbMeta SetupDb */
 use com\blackmoonit\Strings;
-use \PDOException;
+use BitsTheater\BrokenLeg;
+use BitsTheater\costumes\APIResponse;
+use Exception;
 {//namespace begin
 
 class BitsAdmin extends BaseActor {
 	const DEFAULT_ACTION = 'websiteStatus';
 
 	/**
-	 * URL: %site%/admin/ajaxUpdateDb
+	 * Webpage endpoint.
 	 */
-	private function updateEntireDb() {
-		$theSetupDb = $this->getProp('SetupDb');
-		$theSetupDb->setupModels($this->scene);
-	}
-	
 	public function websiteStatus() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -49,26 +44,52 @@ class BitsAdmin extends BaseActor {
 		$v->feature_version_list = $dbMeta->getFeatureVersionList();
 	}
 	
-	public function ajaxUpdateFeature() {
-		//shortcut variable $v also in scope in our view php file.
+	/**
+	 * Update a specific feature.
+	 */
+	public function ajajUpdateFeature() {
 		$v =& $this->scene;
-		$this->viewToRender('_blank');
-		//auth
 		if ($this->isAllowed('config', 'modify')) {
 			$dbMeta = $this->getProp('SetupDb');
-			$dbMeta->upgradeFeature($v);
-		}
+			try {
+				$v->results = APIResponse::resultsWithData($dbMeta->upgradeFeature($v));
+			} catch (Exception $e) {
+				throw BrokenLeg::tossException($this, $e);
+			}
+		} else
+			throw BrokenLeg::toss($this, 'FORBIDDEN');
 	}
 	
-	public function ajaxResetupDb() {
-		//shortcut variable $v also in scope in our view php file.
+	/**
+	 * Create any missing tables.
+	 */
+	public function ajajResetupDb() {
 		$v =& $this->scene;
-		$this->viewToRender('_blank');
-		//auth
 		if ($this->isAllowed('config', 'modify')) {
 			$dbMeta = $this->getProp('SetupDb');
-			$dbMeta->setupModels($v);
-		}
+			try {
+				$v->results = APIResponse::resultsWithData($dbMeta->setupModels($v));
+			} catch (Exception $e) {
+				throw BrokenLeg::tossException($this, $e);
+			}
+		} else
+			throw BrokenLeg::toss($this, 'FORBIDDEN');
+	}
+	
+	/**
+	 * API for getting the feature version list.
+	 */
+	public function ajajGetFeatureVersionList() {
+		$v =& $this->scene;
+		if ($this->isAllowed('config', 'modify')) {
+			$dbMeta = $this->getProp('SetupDb');
+			try {
+				$v->results = APIResponse::resultsWithData($dbMeta->getFeatureVersionList());
+			} catch (Exception $e) {
+				throw BrokenLeg::tossException($this, $e);
+			}
+		} else
+			throw BrokenLeg::toss($this, 'FORBIDDEN');
 	}
 	
 }//end class

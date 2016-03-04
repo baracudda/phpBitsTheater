@@ -30,7 +30,7 @@ use \Exception;
 
 class SetupDb extends BaseModel implements IFeatureVersioning {
 	const FEATURE_ID = 'BitsTheater/framework';
-	const FEATURE_VERSION_SEQ = 8; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 9; //always ++ when making db schema changes
 		
 	public $tnSiteVersions; const TABLE_SiteVersions = 'zz_versions';
 	
@@ -55,6 +55,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning {
 				$this->execDML($theSql);
 				$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnSiteVersions));
 			} catch (PDOException $pdoe) {
+				$this->debugLog(__METHOD__.' failed: '.$pdoe->getMessage().' sql='.$theSql);
 				throw new DbException($pdoe,$theSql);
 			}
 			break;

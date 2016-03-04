@@ -17,6 +17,7 @@
 
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\EnumResEntry as BaseCostume;
+use stdClass as StandardClass;
 {//namespace begin
 
 /**
@@ -95,6 +96,21 @@ class ConfigResEntry extends BaseCostume {
 		return $this; //for chaining
 	}
 
+	/**
+	 * Return this payload data as a simple class, minus any metadata this class might have.
+	 * @return string Return self encoded as a standard class.
+	 */
+	public function exportData() {
+		$o = new StandardClass();
+		$o->label = $this->label;
+		$o->desc = $this->desc;
+		$o->is_editable = $this->config_is_allowed();
+		$o->default_value = $this->default_value;
+		$o->input_type = $this->input_type;
+		$o->input_enums = $this->input_enums;
+		return $o;
+	}
+	
 }//end class
 
 }//end namespace

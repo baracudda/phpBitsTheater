@@ -21,59 +21,129 @@ use BitsTheater\Scene as MyScene; /* @var $v MyScene */
 use BitsTheater\models\Config as ConfigModel; /* @var $dbConfig ConfigModel */
 use BitsTheater\costumes\ConfigNamespaceInfo; /* @var $theNamespaceInfo ConfigNamespaceInfo */
 use BitsTheater\costumes\ConfigSettingInfo; /* @var $theSettingInfo ConfigSettingInfo */
-use com\blackmoonit\Widgets;
+use BitsTheater\BrokenLeg;
+use BitsTheater\costumes\APIResponse;
+use Exception;
 {//namespace begin
 
 class BitsConfig extends BaseActor {
 	const DEFAULT_ACTION = 'edit';
 
+	/**
+	 * Website endpoint allowing the view/editing of website settings.
+	 * @return string Return the URL to redirect to, if any.
+	 */
 	public function edit() {
 		if (!$this->isAllowed('config','modify'))
 			return $this->getHomePage();
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
-
-		$dbConfig = $this->getProp('config');
-		$v->config_areas = $dbConfig->getConfigAreas();
-		foreach ($v->config_areas as $theNamespaceInfo) {
-			$theNamespaceInfo->settings_list = $dbConfig->getConfigSettings($theNamespaceInfo);
-			//$this->debugPrint(__METHOD__.' nsi='.$this->debugStr($theNamespaceInfo,null));
-		}
-
-		$v->redirect = $this->getMyUrl('edit');
-		$v->next_action = $this->getMyUrl('modify');
-		$theText = $this->getRes('generic/save_button_text');
-		$v->save_button = '<br/>'.Widgets::createSubmitButton('submit_save',$theText)."\n";
 		//indicate what top menu we are currently in
 		$this->setCurrentMenuKey('admin');
+
+		//in order to protect this endpoint from malicious JavaScript being executed from
+		//  another domain trying to read sensitive settings (user/pw settings), the
+		//  code that retrieved the data has been moved to a ajajGetSettings() and will
+		//  be called from the "edit" view and displayed when the data is returned.
+
+		$v->redirect = $this->getMyUrl('edit');
+		$v->next_action = $this->getMyUrl('ajajModifyThenRedirect');
+		$v->save_button_text = $this->getRes('generic/save_button_text');
 	}
 
-	public function modify() {
+	/**
+	 * Save the settings and then redirect to some other website endpoint.
+	 * @return string Return the URL to redirect to, if any.
+	 */
+	public function ajajModifyThenRedirect() {
 		if (!$this->isAllowed('config','modify'))
 			return $this->getHomePage();
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
-
-		$bSaved = false;
-		$dbConfig = $this->getProp('config');
-		$v->config_areas = $dbConfig->getConfigAreas();
-		foreach ($v->config_areas as $theNamespaceInfo) {
-			$theNamespaceInfo->settings_list = $dbConfig->getConfigSettings($theNamespaceInfo);
-			foreach ($theNamespaceInfo->settings_list as $theSettingName => $theSettingInfo) {
-				$theNewValue = $theSettingInfo->getInputValue($v);
-				$theOldValue = $theSettingInfo->getCurrentValue();
-				//$this->debugLog(__METHOD__.' ov='.$theOldValue.' nv='.$this->debugStr($theNewValue));
-				if ($theNewValue !== $theOldValue) {
-					$dbConfig->setConfigValue($theSettingInfo->ns, $theSettingInfo->key, $theNewValue);
-					$bSaved = true;
-					//$this->debugLog(__METHOD__.' saved.');
-				}
-			}
-		}
-		if ($bSaved)
+		try {
+			$theResponse = $this->ajajModify();
 			$v->addUserMsg($this->getRes('config/msg_save_applied'), $v::USER_MSG_NOTICE);
-
+		} catch (Exception $e) {
+			$this->debugLog(__METHOD__.' '.$this->debugStr($e));
+			$v->addUserMsg($this->getRes('config/msg_save_aborted'), $v::USER_MSG_ERROR);
+		}
 		return $v->redirect;
+	}
+
+	/**
+	 * Return the standard API Response to indicate success/failure of saving settings.
+	 * @return APIResponse Returns the standard API response object.
+	 */
+	public function ajajGetSettings() {
+		$v =& $this->scene;
+		if ($this->isAllowed('config','modify')) {
+			try {
+				$dbConfig = $this->getProp('Config');
+				$theConfigAreas = $dbConfig->getConfigAreas();
+				foreach ($theConfigAreas as &$theNamespaceInfo) {
+					$theNamespaceInfo->settings_list = $dbConfig->getConfigSettings($theNamespaceInfo);
+				}
+				$theResults = array();
+				foreach ($theConfigAreas as &$theNamespaceInfo) {
+					$theResults[] = $theNamespaceInfo->exportData();
+				}
+				$v->results = APIResponse::resultsWithData($theResults);
+			} catch (Exception $e) {
+				throw BrokenLeg::tossException($this, $e);
+			}
+		} else
+			throw BrokenLeg::toss($this, 'FORBIDDEN');
+	}
+
+	/**
+	 * Return the standard API Response to indicate success/failure of saving settings.
+	 * @return APIResponse Returns the standard API response object.
+	 */
+	public function ajajModify() {
+		$v =& $this->scene;
+		if ($this->isAllowed('config','modify')) {
+			$bSaved = false;
+			try {
+				//CSRF token might get updated, remove the current one in use
+				$theCsrfToken = null;
+				$dbAuth = $this->getProp('Auth');
+				list( $theCsrfCookieName, $theCsrfHeaderName) = $dbAuth->getCsrfCookieHeaderNames();
+				if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
+					$theCsrfToken = $this->getDirector()[$theCsrfHeaderName];
+					$dbAuth->clearCsrfTokenCookie();
+				}
+				
+				$dbConfig = $this->getProp('Config');
+				$theConfigAreas = $dbConfig->getConfigAreas();
+				foreach ($theConfigAreas as &$theNamespaceInfo) {
+					$theNamespaceInfo->settings_list = $dbConfig->getConfigSettings($theNamespaceInfo);
+					foreach ($theNamespaceInfo->settings_list as $theSettingName => $theSettingInfo) {
+						$theWidgetName = $theSettingInfo->getWidgetName();
+						if (isset($v->$theWidgetName)) {
+							$theNewValue = $theSettingInfo->getInputValue($v);
+							$theOldValue = $theSettingInfo->getCurrentValue();
+							//if ($theSettingInfo->key==='security')
+							//$this->debugLog(__METHOD__.' ov='.$theOldValue.' nv='.$this->debugStr($theNewValue));
+							if ($theNewValue !== $theOldValue) {
+								$dbConfig->setConfigValue($theSettingInfo->ns, $theSettingInfo->key, $theNewValue);
+								$bSaved = true;
+							}
+						}
+					}
+				}
+
+				//update the CSRF token that is in use and may now be redefined
+				$dbAuth->setCsrfTokenCookie($theCsrfToken);
+			} catch (Exception $e) {
+				throw BrokenLeg::tossException($this, $e);
+			}
+			if ($bSaved) {
+				$v->results = APIResponse::resultsWithData(null);
+			} else {
+				throw BrokenLeg::pratfallRes($this, 'NO_UPDATES', 400, 'config/errmsg_nothing_to_update');
+			}
+		} else
+			throw BrokenLeg::toss($this, 'FORBIDDEN');
 	}
 
 }//end class

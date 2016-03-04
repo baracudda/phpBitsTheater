@@ -1,6 +1,7 @@
 <?php
 namespace BitsTheater ;
 use BitsTheater\costumes\IDirected;
+use com\blackmoonit\exceptions\IDebuggableException;
 use BitsTheater\costumes\APIResponse;
 use com\blackmoonit\exceptions\DbException;
 {
@@ -38,6 +39,8 @@ class BrokenLeg extends \Exception
 	const ERR_NOT_DONE_YET = 501 ;
 	const ERR_DB_CONNECTION_FAILED = 503 ;
 	const ERR_NOT_AUTHENTICATED = 401 ;
+	const ERR_SERVICE_UNAVAILABLE = 503;
+	const ERR_TOO_MANY_REQUESTS = 429;
 	
 	// General-purpose messages should be defined in the BitsGeneric resource.
 	const MSG_MISSING_ARGUMENT = 'generic/errmsg_arg_is_empty' ;
@@ -49,6 +52,8 @@ class BrokenLeg extends \Exception
 	const MSG_NOT_DONE_YET = 'generic/errmsg_not_done_yet' ;
 	const MSG_DB_CONNECTION_FAILED = 'generic/errmsg_database_not_connected' ;
 	const MSG_NOT_AUTHENTICATED = self::MSG_FORBIDDEN ;
+	const MSG_SERVICE_UNAVAILABLE = 'generic/errmsg_service_unavailable';
+	const MSG_TOO_MANY_REQUESTS = 'generic/errmsg_too_many_requests';
 
 	/**
 	 * Provides an instance of the exception.
@@ -93,8 +98,16 @@ class BrokenLeg extends \Exception
 	 */
 	static public function tossException( IDirected &$aContext, $aException )
 	{
+		if (ini_get('log_errors') && $aException instanceof IDebuggableException) {
+			$aContext->getDirector()->debugLog('[1/2] msg: '.
+					$aException->getMessage().' context:'.$aException->getContextMsg()
+			);
+			$aContext->getDirector()->debugLog('[2/2] c_stk: '.
+					$aException->getTraceAsString()
+			);
+		}
 		if ($aException instanceof DbException) {
-			throw static::toss($aContext, 'DB_EXCEPTION');
+			throw static::toss($aContext, 'DB_EXCEPTION', $aException->getErrorMsg());
 		} else {
 			throw static::toss($aContext, 'DEFAULT');
 		}		
@@ -107,7 +120,10 @@ class BrokenLeg extends \Exception
 	public function getCondition()
 	{ return $this->myCondition ; }
 	
-	/** Mutator; accessible to toss() */
+	/**
+	 * Mutator; accessible to toss()
+	 * @return BrokenLeg Returns $this for chaining.
+	 */
 	protected function setCondition( $aCondition )
 	{ $this->myCondition = $aCondition ; return $this ; }
 	

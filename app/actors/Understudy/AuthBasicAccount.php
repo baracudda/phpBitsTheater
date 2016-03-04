@@ -28,6 +28,8 @@ use com\blackmoonit\MailUtilsException ;
 use com\blackmoonit\Strings ;
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
+use BitsTheater\costumes\SqlBuilder;
+use Exception;
 {//namespace begin
 
 class AuthBasicAccount extends BaseActor {
@@ -39,10 +41,21 @@ class AuthBasicAccount extends BaseActor {
 		
 		$theImmediateRedirect = parent::view($aAcctId);
 		if (empty($theImmediateRedirect)) {
-			if (!empty($aAcctId) && $this->isAllowed('account','modify') && !empty($v->ticket_info)) {
+			$bAuthorizied = !empty($aAcctId) && !empty($v->ticket_info) && (
+					//everyone is allowed to modify email/pw of their own account
+					$aAcctId==$this->director->account_info->account_id ||
+					//admins may be allowed to modify someone else's account
+					$this->isAllowed('account','modify')
+			);
+			if ($bAuthorizied) {
 				$dbAuth = $this->getProp('Auth');
 				$theAuthRow = $dbAuth->getAuthByAccountId($aAcctId);
 				$v->ticket_info->email = $theAuthRow['email'];
+				
+				//post_key needed to actually register (prevent mass bot-fueled registries)
+				$this->director['post_key'] = Strings::createUUID();
+				$this->director['post_key_ts'] = time()+2; //you can only update your account 2 seconds after the page loads
+				$v->post_key = $this->director['post_key'];
 			}
 		}
 		return $theImmediateRedirect;
@@ -59,6 +72,15 @@ class AuthBasicAccount extends BaseActor {
 		return $theResult;
 	}
 	
+	/**
+	 * Register a new user account.
+	 * @param string $aAcctName - name of the account (username).
+	 * @param string $aAcctPw - password to use.
+	 * @param string $aAcctEmail - email to use for the account.
+	 * @param string $aRegCode - registration code to match default group.
+	 * @param boolean $bAllowGroup0toAutoRegister - only register if default group_id > 0.
+	 * @return string Return one of the REGISTRATION_REG_CODE_* constants.
+	 */
 	protected function registerNewAccount($aAcctName, $aAcctPw, $aAcctEmail, $aRegCode, $bAllowGroup0toAutoRegister=true) {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -97,6 +119,10 @@ class AuthBasicAccount extends BaseActor {
 		}
 	}
 	
+	/**
+	 * Process the registration form data and honor the post_key so we protect against bot spam.
+	 * @return string Return the URL to redirect to, if any.
+	 */
 	protected function processRegistrationForm() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -106,17 +132,18 @@ class AuthBasicAccount extends BaseActor {
 		$bPwOk = ($v->$pwKey===$v->password_confirm);
 		$bRegCodeOk = (!empty($v->reg_code));
 		$bPostKeyOk = ($this->director['post_key']===$v->post_key);
-		$bPostKeyOldEnough = ($this->director['post_key_ts'] < time());
+		//valid time >10sec, <30min
+		$bPostKeyOldEnough = ($this->director['post_key_ts'] < time()) && ($this->director['post_key_ts']+(60*30) > time());
 		if ($bPostKeyOk && $bPwOk && $bRegCodeOk && $bPostKeyOldEnough) {
 			$dbAuth = $this->getProp('Auth');
 			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey, $v->email, $v->reg_code);
-			$this->debugLog('new account registered for '.$v->$userKey.' code='.$theRegResult. ' redirect='.$v->redirect);
+			$this->debugLog(__METHOD__.' '.$v->$userKey.' code='.$theRegResult.' redirect='.$v->redirect);
 			if (isset($theRegResult)) {
 				if ($theRegResult===$dbAuth::REGISTRATION_EMAIL_TAKEN) {
 					$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email')),$v::USER_MSG_ERROR);
 				} else if ($theRegResult===$dbAuth::REGISTRATION_NAME_TAKEN) {
 					$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_name')),$v::USER_MSG_ERROR);
-				} else {
+				} else if ($theRegResult===$dbAuth::REGISTRATION_SUCCESS) {
 					if (!empty($v->redirect)) {
 						//registration succeeded, save the account id in session cache
 						$theAuthRow = $dbAuth->getAuthByEmail($v->email);
@@ -129,7 +156,7 @@ class AuthBasicAccount extends BaseActor {
 				}
 			}
 		} else {
-			$this->debugLog('registration failed for '.$v->$userKey.' regok='.($bRegCodeOk?'yes':'no'). ' postkeyok='.($bPostKeyOk?'yes':'no'));
+			//$this->debugLog('registration failed for '.$v->$userKey.' regok='.($bRegCodeOk?'yes':'no'). ' postkeyok='.($bPostKeyOk?'yes':'no'));
 			if ($bPostKeyOk && !$bPostKeyOldEnough) {
 				$v->addUserMsg($this->getRes('account/msg_reg_too_fast'));
 			}
@@ -168,12 +195,80 @@ class AuthBasicAccount extends BaseActor {
 		}
 	}
 	
+	/**
+	 * API for registration returning JSON rather than render a page.
+	 * @return APIResponse Returns the standard API response object with User info.
+	 */
+	public function registerUsingRegCode() {
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		$this->viewToRender('results_as_json');
+		
+		//make sure user/pw reg fields will not interfere with any login user/pw field in header
+		$userKey = $v->getUsernameKey().'_reg';
+		$pwKey = $v->getPwInputKey().'_reg';
+		$bPwOk = ($v->$pwKey===$v->password_confirm);
+		$bRegCodeOk = (!empty($v->reg_code));
+		if ($bPwOk && $bRegCodeOk) {
+			$dbAuth = $this->getProp('Auth');
+			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey, $v->email,
+					$v->reg_code, filter_var($v->bAllowGroup0toAutoRegister, FILTER_VALIDATE_BOOLEAN));
+			//$this->debugLog(__METHOD__.' '.$v->$userKey.' code='.$theRegResult);
+			switch ($theRegResult) {
+				case $dbAuth::REGISTRATION_SUCCESS :
+					//registration succeeded, save the account id in session cache
+					$theAuthRow = $dbAuth->getAuthByEmail($v->email);
+					//cache the account_id in session data
+					$this->getDirector()[$v->getUsernameKey()] = $theAuthRow['account_id'];
+					//get account info so we can return it via APIResponse data
+					$dbAccounts = $this->getProp('Accounts');
+					$this->getDirector()->account_info = $dbAuth->getAccountInfoCache($dbAccounts, $theAuthRow['account_id']);
+					$this->ajajGetAccountInfo();
+					break;
+				case $dbAuth::REGISTRATION_REG_CODE_FAIL :
+					throw BrokenLeg::toss($this, 'FORBIDDEN');
+				case $dbAuth::REGISTRATION_EMAIL_TAKEN :
+					throw BrokenLeg::pratfallRes($this, 'EMAIL_EXISTS', 400,
+							'account/msg_acctexists/'.$this->getRes('account/label_email')
+					);
+				case $dbAuth::REGISTRATION_NAME_TAKEN :
+					throw BrokenLeg::pratfallRes($this, 'USERNAME_EXISTS', 400,
+							'account/msg_acctexists/'.$this->getRes('account/label_name')
+					);
+				case $dbAuth::REGISTRATION_CAP_EXCEEDED :
+					throw BrokenLeg::toss($this, 'TOO_MANY_REQUESTS');
+				default :
+					throw BrokenLeg::toss($this, 'DEFAULT');
+			}//switch
+		} else {
+			throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED');
+		}
+	}
+
+	/**
+	 * Process account form input; post_key check required.
+	 * @return string Returns the redirect URL, if defined.
+	 */
 	public function modify() {
+		$v =& $this->scene;
 		$dbAccounts = $this->getProp('Accounts');
-		$theAcctId = $this->scene->ticket_num;
+		$theAcctName = $this->scene->ticket_name;
+		$theAcctInfo = $dbAccounts->getByName($theAcctName);
+		if (!empty($theAcctInfo))
+			$theAcctId = $theAcctInfo['account_id'];
+		else {
+			$v->addUserMsg($this->getRes('generic/msg_permission_denied'), $v::USER_MSG_ERROR);
+			return $this->getMyUrl('view');
+		}
 		$dbAuth = $this->getProp('Auth');
 		$pwKeyOld = $this->scene->getPwInputKey().'_old';
-		if ($dbAuth->isCallable('cudo') && $dbAuth->cudo($theAcctId,$this->scene->$pwKeyOld)) {
+		$bPostKeyOk = ($this->director['post_key']===$v->post_key);
+		//valid time >10sec, <30min
+		$theMinTime = $this->director['post_key_ts'];
+		$theNowTime = time();
+		$theMaxTime = $theMinTime+(60*30);
+		$bPostKeyOldEnough = ($theMinTime < $theNowTime) && ($theNowTime < $theMaxTime);
+		if ($dbAuth->isCallable('cudo') && $dbAuth->cudo($theAcctId, $this->scene->$pwKeyOld) && $bPostKeyOk && $bPostKeyOldEnough) {
 			//if current pw checked out ok, see if its our own acct or have rights to modify other's accounts.
 			if ($theAcctId==$this->director->account_info->account_id || $this->isAllowed('account','modify')) {
 				$theOldEmail = trim($this->scene->ticket_email);
@@ -189,8 +284,8 @@ class AuthBasicAccount extends BaseActor {
 				if (strcmp($theOldEmail,$theNewEmail)!=0) {
 					//Strings::debugLog('email is not 0:'.strcmp($theOldEmail,$theNewEmail));
 					if ($dbAuth->getAuthByEmail($theNewEmail)) {
-						return $this->getMyUrl('view',
-								array('err_msg'=>$this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email'))));
+						$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email')), $v::USER_MSG_ERROR);
+						return $this->getMyUrl('view/'.$theAcctId);
 					} else {
 						$theSql = 'UPDATE '.$dbAuth->tnAuth.' SET email = :email WHERE account_id=:acct_id';
 						$dbAuth->execDML($theSql,array('acct_id'=>$theAcctId, 'email'=>$theNewEmail));
@@ -202,15 +297,101 @@ class AuthBasicAccount extends BaseActor {
 					$theSql = 'UPDATE '.$dbAuth->tnAuth.' SET pwhash = :pwhash WHERE account_id=:acct_id';
 					$dbAuth->execDML($theSql,array('acct_id'=>$theAcctId, 'pwhash'=>$thePwHash));
 				}
-				return $this->getMyUrl('view',
-						array('err_msg'=>$this->getRes('account/msg_update_success')));
+				$v->addUserMsg($this->getRes('account/msg_update_success'), $v::USER_MSG_NOTICE);
+				return $this->getMyUrl('view/'.$theAcctId);
 			}
 		} else {
-			return $this->getMyUrl('view',
-					array('err_msg'=>$this->getRes('generic/msg_permission_denied')));
+			$v->addUserMsg($this->getRes('generic/msg_permission_denied'), $v::USER_MSG_ERROR);
+			return $this->getMyUrl('view/'.$theAcctId);
 		}
 	}
 	
+	/**
+	 * API for changing account information returning JSON rather than render a page.
+	 * @return APIResponse Returns the standard API response object with User info.
+	 */
+	public function ajajModify() {
+		//do not use the form vars being used for the modify() endpoint, treat like login().
+		$v =& $this->scene;
+		if ($this->isGuest())
+			throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED');
+		
+		$dbAccounts = $this->getProp('Accounts');
+		$dbAuth = $this->getProp('Auth');
+		//get username and convert to account_id, if possible
+		$theAcctName = $v->account_name;
+		$theAcctInfo = $dbAccounts->getByName($theAcctName);
+		if (!empty($theAcctInfo))
+			$theAcctId = $theAcctInfo['account_id'];
+		else
+			throw BrokenLeg::toss($this, 'FORBIDDEN');
+		
+		//check pw
+		$pwKeyOld = $v->getPwInputKey().'_old';
+		$bCurrentPwMatch = (
+				$dbAuth->isCallable('cudo') &&
+				$dbAuth->cudo($theAcctId, $v->$pwKeyOld)
+		);
+		//check permissions
+		$bAuthorizied = (
+				//everyone is allowed to modify email/pw of their own account
+				$theAcctId==$this->director->account_info->account_id ||
+				//admins may be allowed to modify someone else's account
+				$this->isAllowed('account','modify')
+		);
+		
+		if ($bCurrentPwMatch && $bAuthorizied) {
+			try {
+				//update EMAIL
+				$theOldEmail = trim($v->email_old);
+				$theNewEmail = trim($v->email_new);
+				if (strcmp($theOldEmail,$theNewEmail)!=0) {
+					//Strings::debugLog('email is not 0:'.strcmp($theOldEmail,$theNewEmail));
+					if ($dbAuth->getAuthByEmail($theNewEmail)) {
+						throw BrokenLeg::pratfallRes($this, 'EMAIL_EXISTS', 400,
+								'account/msg_acctexists/'.$this->getRes('account/label_email')
+						);
+					} else {
+						$theSql = SqlBuilder::withModel($dbAuth)->obtainParamsFrom(array(
+								'email' => $theNewEmail,
+								'account_id' => $theAcctId,
+						));
+						$theSql->startWith('UPDATE')->add($dbAuth->tnAuth);
+						$theSql->add('SET')->mustAddParam('email');
+						$theSql->startWhereClause()->mustAddParam('account_id')->endWhereClause();
+						$theSql->execDML();
+					}
+				}
+				
+				//update PASSWORD
+				$pwKeyNew = $v->getPwInputKey().'_new';
+				$pwKeyConfirm = $v->getPwInputKey().'_confirm';
+				if (!empty($v->$pwKeyNew) && ($v->$pwKeyNew===$v->$pwKeyConfirm)) {
+					$theSql = SqlBuilder::withModel($dbAuth)->obtainParamsFrom(array(
+							'pwhash' => Strings::hasher($v->$pwKeyNew),
+							'account_id' => $theAcctId,
+					));
+					$theSql->startWith('UPDATE')->add($dbAuth->tnAuth);
+					$theSql->add('SET')->mustAddParam('pwhash');
+					$theSql->startWhereClause()->mustAddParam('account_id')->endWhereClause();
+					$theSql->execDML();
+				}
+
+				//all modifications went ok, get the account info and return it
+				$theChangedAccountInfo = $dbAuth->getAccountInfoCache($dbAccounts, $theAcctId);
+				if ($theAcctId==$this->getDirector()->account_info->account_id) {
+					//if changing my own account, update my account cache
+					$this->getDirector()->account_info = $theChangedAccountInfo;
+				}
+				$theChangedAccountInfo->account_id += 0; //ensure what is returned is not a string
+				$v->results = APIResponse::resultsWithData($theChangedAccountInfo);
+			} catch (Exception $e) {
+				BrokenLeg::tossException($this, $e);
+			}
+		} else
+			throw BrokenLeg::toss($this, 'FORBIDDEN');
+	}
+
 	/**
 	 * Called by requestPasswordReset() when the action is "proc" (process a
 	 * request).
@@ -377,21 +558,6 @@ class AuthBasicAccount extends BaseActor {
 		*/
 	}
 
-	/**
-	 * If you are currently logged in, return the cached info about myself.
-	 * JavaScript code may need current login info, too.
-	 * @return APIResponse Returns the standard API response object with User info.
-	 */
-	public function ajajGetAccountInfo() {
-		$v =& $this->scene;
-		if (!$this->isGuest()) {
-			$theData = $this->director->account_info;
-			$v->results = APIResponse::resultsWithData($theData);
-		} else {
-			throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED');
-		}
-	}
-	
 }//end class
 
 }//end namespace

@@ -54,6 +54,7 @@ class BitsConfig extends BaseResources {
 			'logout_url',
 			'cookie_freshness_duration',
 			'login_fail_attempts',
+			'max_registrations',
 	);
 	
 	/**

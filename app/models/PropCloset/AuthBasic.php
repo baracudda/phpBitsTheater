@@ -51,6 +51,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	const REGISTRATION_EMAIL_TAKEN = 2;
 	const REGISTRATION_REG_CODE_FAIL = 3;
 	const REGISTRATION_UNKNOWN_ERROR = 4;
+	const REGISTRATION_CAP_EXCEEDED = 5;
 	
 	const REGISTRATION_ASK_EMAIL = true;
 	const REGISTRATION_ASK_PW = true;
@@ -83,6 +84,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 * @var string
 	 */
 	const TOKEN_PREFIX_LOCKOUT = 'lO';
+	/**
+	 * A Registration Cap's token prefix.
+	 * @var string
+	 */
+	const TOKEN_PREFIX_REGCAP = 'rC';
 		
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
@@ -190,6 +196,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 				$this->execDML($theSql);
 				$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnAuthMobile));
 			} catch (PDOException $pdoe){
+				$this->debugLog(__METHOD__.' failed: '.$pdoe->getMessage().' sql='.$theSql);
 				throw new DbException($pdoe,$theSql);
 			}
 			break;
@@ -609,8 +616,26 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	protected function removeStaleAuthLockoutTokens() {
 		try {
 			$delta = 1;
-			if (!empty($delta)) {
+			if ($this->director->isInstalled() && !empty($delta)) {
 				$thePrefix = self::TOKEN_PREFIX_LOCKOUT;
+				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
+				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} HOUR)";
+				$this->execDML($theSql);
+			}
+		} catch (DbException $e) {
+			//do not care if removing stale tokens fails, log it so admin knows about it, though
+			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+		}
+	}
+	
+	/**
+	 * Delete stale auth lockout tokens.
+	 */
+	protected function removeStaleRegistrationCapTokens() {
+		try {
+			$delta = 1;
+			if (!empty($delta)) {
+				$thePrefix = self::TOKEN_PREFIX_REGCAP;
 				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
 				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} HOUR)";
 				$this->execDML($theSql);
@@ -652,7 +677,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 * @param integer $aAccountId - the account id.
 	 * @return AccountInfoCache|NULL Returns the data if found, else NULL.
 	 */
-	protected function getAccountInfoCache(Accounts $dbAccounts, $aAccountId) {
+	public function getAccountInfoCache(Accounts $dbAccounts, $aAccountId) {
 		$theResult = AccountInfoCache::fromArray($dbAccounts->getAccount($aAccountId));
 		if (!empty($theResult) && !empty($theResult->account_name)) {
 			$theAuthRow = $this->getAuthByAccountId($aAccountId);
@@ -944,7 +969,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 */
 	protected function checkLockoutForTicket(Accounts $dbAccounts, Scene $aScene) {
 		$bLockedOut = false;
-		$theMaxAttempts = intval($this->getConfigSetting('auth/login_fail_attempts'),10);
+		$theMaxAttempts = ($this->director->isInstalled())
+				? intval($this->getConfigSetting('auth/login_fail_attempts'), 10)
+				: 0
+		;
 		if ($theMaxAttempts>0) {
 			$theLockoutTokenInfo = $this->obtainLockoutTokenInfo($dbAccounts, $aScene);
 			if (!empty($theLockoutTokenInfo)) {
@@ -966,15 +994,16 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
-	 * HTTP Headers may contain authorization information, check for that information and populate whatever we find
-	 * for subsequent auth mechanisms to find and evaluate.
+	 * When a login attempt fails, update our count in case we need to lockout that account.
 	 * @param Accounts $dbAccounts - the accounts model.
 	 * @param object $aScene - var container object for user/pw info.
-	 * @return boolean Returns TRUE if account was found and successfully loaded.
 	 */
 	protected function updateFailureLockout(Accounts $dbAccounts, Scene $aScene) {
 		//NOTE: code executing here means user is NOT LOGGED IN, but need to see if tried to do so.
-		$theMaxAttempts = intval($this->getConfigSetting('auth/login_fail_attempts'),10);
+		$theMaxAttempts = ($this->director->isInstalled())
+				? intval($this->getConfigSetting('auth/login_fail_attempts'), 10)
+				: 0
+		;
 		if ($theMaxAttempts>0) {
 			//$this->debugLog(__METHOD__.' '.strval($theMaxAttempts));
 			//was there a login attempt, or are we just a guest browsing the site?
@@ -1012,14 +1041,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 				$this->checkCookiesForTicket($dbAccounts, $_COOKIE);
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 				parent::checkTicket($aScene);
+
+			$this->returnProp($dbAccounts);
 			if ($bAuthorized)
 			{
 				$theCsrfToken = $this->director->app_id.'-'.Strings::createUUID();
 				$this->setCsrfTokenCookie($theCsrfToken);
-				return;
 			}
-			
-			$this->returnProp($dbAccounts);
 		}
 	}
 	
@@ -1056,6 +1084,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 * @see \BitsTheater\models\PropCloset\AuthBase::canRegister()
 	 */
 	public function canRegister($aAcctName, $aEmailAddy) {
+		$this->removeStaleRegistrationCapTokens();
+		if ($this->checkRegistrationCap()) {
+			return self::REGISTRATION_CAP_EXCEEDED;
+		}
+		
 		$dbAccounts = $this->getProp('Accounts');
 		$theResult = self::REGISTRATION_SUCCESS;
 		if ($dbAccounts->getByName($aAcctName)) {
@@ -1103,6 +1136,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			$dbGroupMap = $this->getProp('AuthGroups');
 			$dbGroupMap->addAcctMap($aDefaultGroup,$aUserData['account_id']);
 			$this->returnProp($dbGroupMap);
+			$this->updateRegistrationCap();
 			return true;
 		} else {
 			return false;
@@ -1411,6 +1445,60 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 		
 		return true ; // and $aResetUtils got updated with more info
 	}	
+	
+	/**
+	 * Once the registration cap is reached, subsequent registrations will run
+	 * this method.
+	 */
+	public function onRegistrationCapReached() {
+		//nothing to do, yet
+	}
+
+	/**
+	 * Check to see if manual auth failed so often its locked out.
+	 * @param Accounts $dbAccounts - the accounts model.
+	 * @param object $aScene - var container object for user/pw info.
+	 * @return boolean Returns TRUE if too many failures locked out the account.
+	 */
+	protected function checkRegistrationCap() {
+		$bLockedOut = false;
+		$theMaxAttempts = intval($this->getConfigSetting('auth/max_registrations'), 25);
+		if ($theMaxAttempts>0) {
+			//once the number of tokens >= max attempts, session is locked
+			//  session will unlock after tokens expire (currently 1 hour)
+			//  note that tokens expire individually, so > 1 hour for all tokens to expire
+			$theLockoutTokens = $this->getAuthTokens(
+					$this->getDirector()->app_id,
+					0,
+					self::TOKEN_PREFIX_REGCAP.'%', true
+			);
+			$bLockedOut = (!empty($theLockoutTokens)) && (count($theLockoutTokens)>=$theMaxAttempts);
+			if ($bLockedOut) {
+				$this->onRegistrationCapReached();
+			}
+		}
+		return $bLockedOut;
+	}
+	
+	/**
+	 * Registration has a cap; whenever we register, update our count in case we need
+	 * to lockout this session for going over its cap.
+	 */
+	protected function updateRegistrationCap() {
+		$theMaxAttempts = intval($this->getConfigSetting('auth/max_registrations'), 25);
+		if ($theMaxAttempts>0) {
+			//$this->debugLog(__METHOD__.' '.strval($theMaxAttempts));
+			//add token
+			$theAuthToken = $this->generateAuthToken(
+					$this->getDirector()->app_id,
+					0,
+					self::TOKEN_PREFIX_REGCAP
+			);
+			//once the number of tokens >= max attempts, session is locked
+			//  session will unlock after tokens expire (currently 1 hour)
+			//  note that tokens expire individually, so > 1 hour for all tokens to expire
+		}
+	}
 
 }//end class
 
