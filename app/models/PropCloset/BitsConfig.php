@@ -29,7 +29,7 @@ use \PDO;
 use \PDOException;
 {//namespace begin
 
-class Config extends BaseModel implements IFeatureVersioning {
+class BitsConfig extends BaseModel implements IFeatureVersioning {
 	/**
 	 * Used by meta data mechanism to keep the database up-to-date with the code.
 	 * A non-NULL string value here means alter-db-schema needs to be managed.
@@ -270,6 +270,14 @@ class Config extends BaseModel implements IFeatureVersioning {
 		return $theSettings;
 	}
 	
+	/**
+	 * Get the setting from the configuration model.
+	 * @param string $aSetting - setting in form of "namespace/setting"
+	 * @throws \Exception
+	 */
+	public function getConfigSetting($aSetting) {
+		return $this[$aSetting];
+	}
 	
 }//end class
 

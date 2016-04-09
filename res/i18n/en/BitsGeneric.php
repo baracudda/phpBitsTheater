@@ -41,6 +41,8 @@ class BitsGeneric extends BaseResources {
 	public $errmsg_mailer_failed = 'Mailer failed. [%1$s]' ;
 	public $errmsg_db_exception =
 		'An error occurred while accessing the DB. [%1$s]' ;
+	public $errmsg_entity_not_found =
+		'Entity with ID [%1$s] not found.' ;
 	public $errmsg_service_unavailable = 'The server is currently unavailable.';
 	public $errmsg_too_many_requests = 'Too many requests at this time.';
 

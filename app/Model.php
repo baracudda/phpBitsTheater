@@ -347,12 +347,16 @@ implements IDirected
 			$theRetries = 0;
 			do {
 				try {
-					$this->db->beginTransaction();
+					$bWasInTrans = $this->db->inTransaction() ;
+					if( ! $bWasInTrans )
+					{$this->db->beginTransaction();}
 					if ($this->execDML($aSql,$aParamValues,$aParamTypes)) {
 						$theResult = $this->db->lastInsertId();
-						$this->db->commit();
+						if( ! $bWasInTrans )
+							$this->db->commit();
 					} else {
-						$this->db->rollBack();
+						if( ! $bWasInTrans )
+							$this->db->rollBack();
 					}
 					return $theResult; //break out of retry loop if all went well
 				} catch (PDOException $pdoe) {
@@ -403,7 +407,9 @@ implements IDirected
 		$theModels = array();
 		foreach (glob($theModelClassPattern) as $theModelFile) {
 			$theModelName = str_replace('.php','',basename($theModelFile));
+			//Strings::debugLog(__METHOD__.' name to reflect: '.$theModelName);
 			$theModelClass = Director::getModelClass($theModelName);
+			//Strings::debugLog(__METHOD__.' reflecting: '.$theModelClass);
 			$classInfo = new ReflectionClass($theModelClass);
 			if ($bIncludeAbstracts || !$classInfo->isAbstract()) {
 			    $theModels[] = $classInfo;

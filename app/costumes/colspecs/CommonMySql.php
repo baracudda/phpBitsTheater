@@ -116,6 +116,56 @@ namespace BitsTheater\costumes\colspecs;
 					self::VERSION_REPLACED_BY_SPEC;
 		}
 
+		/**
+		 * Helper method to parse through deep PHP array object, finding and updating all timestamp fields
+		 * to an ISO 8601 format.
+		 * @param array $objectArray PHP array object with keys and values. Can be a "deep array".
+		 * @return array The modified $objectArray object. In case passed in $objectArray is not an array at all,
+		 * simply returns back $objectArray.
+		 */
+		static function convertTimestampsToISO($objectArray) {
+			// Check to ensure passed-in array object is indeed an array.
+			if ( (array) $objectArray !== $objectArray ) {
+				// If not, simply return the object as is.
+				return $objectArray;
+			}
+
+			// Iterate through array object.
+			foreach($objectArray as $thisKey => $thisValue)
+			{
+				// If $thisValue is not an array.
+				if ( (array) $thisValue !== $thisValue ) {
+
+					// Detect if this key is a timestamp.
+					if (preg_match('/_ts$/', $thisKey) == 1) {
+
+						// If so, convert timestamp value to ISO 8601 format.
+						$thisValue = CommonMySql::convertSQLTimestampToISOFormat($thisValue);
+						$objectArray[$thisKey] = $thisValue;
+					}
+				} else {
+					// If $thisValue is an array itself, also check this array, in a "deep" fashion.
+					$thisValue = CommonMySql::convertTimestampsToISO($thisValue);
+					$objectArray[$thisKey] = $thisValue;
+				}
+			}
+			return $objectArray;
+		}
+
+		/**
+		 * Takes a MySQL timestamp and converts it to a ISO 8601 compliant format.
+		 * @param string $sqlTimestamp The timestamp from MySQL.
+		 * @return string the timestamp in ISO 8601 compliant format.
+		 * 
+		 * Example in:  "2015-09-09 17:55:51"
+		 * Example out: "2015-11-12T20:57:10+00:00"
+		 */
+		static function convertSQLTimestampToISOFormat($sqlTimestamp) {
+			/* Let's use PHP 5 'c' format for ISO 8601 conversion.
+			 * More information: http://php.net/manual/en/function.date.php
+			 */
+			return date('c', strtotime( $sqlTimestamp ) );
+		}
 
 	}//end class
 

@@ -1,7 +1,7 @@
 <?php
 
 namespace BitsTheater\models;
-use BitsTheater\models\PropCloset\Accounts as BaseModel;
+use BitsTheater\models\PropCloset\BitsAccounts as BaseModel;
 {//begin namespace
 
 class Accounts extends BaseModel {

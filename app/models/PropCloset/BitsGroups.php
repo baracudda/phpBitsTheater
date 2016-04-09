@@ -23,16 +23,19 @@ use BitsTheater\models\SetupDb as MetaModel;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\Strings;
-use \PDO;
-use \PDOException;
+use PDO;
+use PDOException;
+use BitsTheater\BrokenLeg ;
+use BitsTheater\Scene;
+use BitsTheater\outtakes\RightsException ;
 {//begin namespace
 
 /**
- * Groups were made its own model so that you could have a 
- * auth setup where groups and group memebership were 
+ * Groups were made its own model so that you could have a
+ * auth setup where groups and group memebership were
  * defined by another entity (BBS auth or WordPress or whatever).
  */
-class AuthGroups extends BaseModel implements IFeatureVersioning {
+class BitsGroups extends BaseModel implements IFeatureVersioning {
 	/**
 	 * Used by meta data mechanism to keep the database up-to-date with the code.
 	 * A non-NULL string value here means alter-db-schema needs to be managed.
@@ -44,6 +47,11 @@ class AuthGroups extends BaseModel implements IFeatureVersioning {
 	public $tnGroups;			const TABLE_Groups = 'groups';
 	public $tnGroupMap;			const TABLE_GroupMap = 'groups_map';
 	public $tnGroupRegCodes;	const TABLE_GroupRegCodes = 'groups_reg_codes';
+
+	/** The constant, assumed ID of the "unregistered user" group. */
+	const UNREG_GROUP_ID = 0 ;
+	/** The constant, assumed ID of the "titan" superuser group. */
+	const TITAN_GROUP_ID = 1 ;
 
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
@@ -274,53 +282,196 @@ class AuthGroups extends BaseModel implements IFeatureVersioning {
 		return $theResult;
 	}
 	
-	public function createGroup($aGroupName, $aGroupParentId, $aGroupRegCode) {
+	/**
+	 * Creates a new user group.
+	 * @param string $aGroupName the new group's name
+	 * @param integer $aGroupParentId the ID of the group from which permission
+	 *  settings should be inherited (default null) (deprecated in Pulse 3.0)
+	 * @param string $aGroupRegCode the group's registration code (default
+	 *  blank)
+	 * @param integer $aGroupCopyID the ID of a group from which permissions
+	 *  should be *copied* into the new group.
+	 * @throws DbException if something goes wrong in the DB
+	 */
+	public function createGroup( $aGroupName, $aGroupParentId=null, $aGroupRegCode=null, $aGroupCopyID=null )
+	{
+		if( empty( $this->db ) || ! $this->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		
-		if (!empty($aGroupParentId)) {
-			$theSql = "INSERT INTO {$this->tnGroups} (group_name,parent_group_id) VALUES ('$aGroupName',$aGroupParentId)";
-		} else {
-			$theSql = "INSERT INTO {$this->tnGroups} (group_name) VALUES ('$aGroupName')";
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'INSERT INTO ' . $this->tnGroups )
+			;
+		if( ! empty($aGroupParentId) )
+		{
+			$theSql->add( ' (group_name,parent_group_id) ' )
+				->add( ' VALUES (\'' . $aGroupName . '\',' )
+				->add( $aGroupParentId . ')' )
+				;
+		}
+		else
+		{
+			$theSql->add( ' (group_name) VALUES (\'' . $aGroupName . '\')' ) ;
+		}
+		$theGroupID = -1 ;
+		try { $theGroupID = $theSql->addAndGetId() ; }
+		catch( PDOException $pdox )
+		{
+			throw new DbException( $pdox, __METHOD__
+					. ' failed when inserting a new user group.' ) ;
 		}
 		
-		$theNewGroupId = $this->addAndGetId($theSql);
-		if (!empty($aGroupRegCode)) {
-			$theRegCode = substr($aGroupRegCode,0,64);
-			$theSql = "INSERT INTO {$this->tnGroupRegCodes} (group_id,reg_code) VALUES ($theNewGroupId,'$theRegCode')";
-			$theNewGroupId = $this->addAndGetId($theSql);
-		}
-	}
+		if( isset( $aGroupRegCode ) && ! empty( $aGroupRegCode ) )
+			$this->insertGroupRegCode( $theGroupID, $aGroupRegCode ) ;
 
-	public function modifyGroup($aScene) {
-		$v = &$aScene;
-		if (!empty($this->db) && isset($v->group_id) && $v->group_id>=0 && $v->group_id!=1) {
-			try {
-				$theParams = array();
-				$theParamTypes = array();
-				$theSql = 'UPDATE '.$this->tnGroups;
-				$theSql .= ' SET group_name=:group_name, parent_group_id=:parent_group_id';
-				$theSql .= ' WHERE group_id=:group_id';
-				$theParams['group_id'] = $v->group_id;
-				$theParamTypes['group_id'] = PDO::PARAM_INT;
-				$theParams['group_name'] = $v->group_name;
-				$theParamTypes['group_name'] = PDO::PARAM_STR;
-				$theParams['parent_group_id'] = $v->group_parent;
-				$theParamTypes['parent_group_id'] = PDO::PARAM_INT;
-				$this->execDML($theSql, $theParams, $theParamTypes);
+		$theResults = array(
+				'group_id' => $theGroupID,
+				'group_name' => $aGroupName,
+				'parent_group_id' => $aGroupParentId,
+				'reg_code' => $aGroupRegCode
+			);
 
-				$theSql = "DELETE FROM {$this->tnGroupRegCodes} WHERE group_id=:group_id";
-				$this->execDML($theSql, array('group_id'=>$v->group_id), array('group_id'=>PDO::PARAM_INT));
-								
-				if (!empty($v->group_reg_code)) {
-					$theRegCode = substr($v->group_reg_code,0,64);
-					$theSql = "INSERT INTO {$this->tnGroupRegCodes} (group_id,reg_code) VALUES ({$v->group_id},'{$theRegCode}')";
-					$theNewGroupId = $this->addAndGetId($theSql);
-				}
-			} catch (PDOException $pdoe) {
-				throw new DbException($pdoe, 'modifyGroup() failed.');
+		if( isset( $aGroupCopyID ) && ! empty( $aGroupCopyID ) )
+		{
+			$dbPerms = $this->getProp('Permissions') ;
+			try
+			{
+				$theCopyResult =
+					$dbPerms->copyPermissions( $aGroupCopyID, $theGroupID ) ;
+				$theResults['copied_group'] = $aGroupCopyID ;
+				$theResults['copied_perms'] = $theCopyResult['count'] ;
+			}
+			catch( RightsException $rx )
+			{
+				$this->debugLog( __METHOD__
+						. ' failed to copy permissions for group ['
+						. $aGroupCopyID . '] because of a RightsException: '
+						. $rx->getMessage()
+						);
+				$theResults['copied_group'] = -1 ;
+				$theResults['group_copy_error'] = $rx->getMessage() ;
+			}
+			catch( BrokenLeg $blx )
+			{
+				$this->debugLog( __METHOD__
+						. ' failed to copy permissions for group ['
+						. $aGroupCopyID . '] because of a BrokenLeg: '
+						. $blx->getMessage()
+					);
+				$theResults['copied_group'] = -1 ;
+				$theResults['group_copy_error'] = $blx->getMessage() ;
+			}
+			catch( DbException $dbx )
+			{
+				$this->debugLog( __METHOD__
+						. ' failed to copy permissions for group ['
+						. $aGroupCopyID . '] because of a DbException: '
+						. $dbx->getMessage()
+						);
+				$theResults['copied_group'] = -1 ;
+				$theResults['group_copy_error'] = $dbx->getMessage() ;
+			}
+			catch( Exception $x )
+			{
+				$this->debugLog( __METHOD__
+						. ' failed to copy permissions for group ['
+						. $aGroupCopyID . ']: '
+						. $x->getMessage()
+						);
+				$theResults['copied_group'] = -1 ;
+				$theResults['group_copy_error'] = $x->getMessage() ;
 			}
 		}
+
+		return $theResults ;
+	}
+
+	/**
+	 * Updates an existing group.
+	 * @param Scene $aScene a scene containing usergroup data
+	 * @throws DbException if something goes wrong in the DB
+	 */
+	public function modifyGroup( Scene $v )
+	{
+		if( empty( $this->db ) || ! $this->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+
+		$this->mungeOldUIFormData( $v ) ;
+								
+		$theSql = SqlBuilder::withModel($this)->setDataSet($v)
+			->startWith( 'UPDATE ' . $this->tnGroups )
+			->add( 'SET ' )
+			->mustAddParam( 'group_name' )
+			->setParamPrefix( ', ' )
+			->mustAddParam( 'parent_group_id', null )
+			->startWhereClause()->setParamPrefix( ' WHERE ' )
+			->mustAddParam( 'group_id' )
+			->endWhereClause()
+			;
+		try { $theSql->execDML() ; }
+		catch( PDOException $pdox )
+		{
+			throw new DbException( $pdox, __METHOD__
+				. ' failed when updating the group data.' ) ;
+		}
+
+		$theSql = SqlBuilder::withModel($this)->setDataSet($v)
+			->startWith( 'DELETE FROM ' . $this->tnGroupRegCodes )
+			->startWhereClause()
+			->mustAddParam( 'group_id' )
+			->endWhereClause()
+			;
+		try { $theSql->execDML() ; }
+		catch( PDOException $pdox )
+		{
+			throw new DbException( $pdox, __METHOD__
+				. ' failed when deleting the old registration code.' ) ;
+		}
+
+		if( isset( $v->reg_code ) && ! empty( $v->reg_code ) )
+			$this->insertGroupRegCode( $v->group_id, $v->reg_code ) ;
+
+		return array(
+				'group_id' => $v->group_id,
+				'group_name' => $v->group_name,
+				'parent_group_id' => $v->parent_group_id,
+				'reg_code' => $v->reg_code
+			);
+	}
+
+	/**
+	 * Some components of the Joka 2.x UI (like the group editor form) would
+	 * present data points with funky names. This defunkifies those names to
+	 * look like the DB's names.
+	 * @param object $aObj a data object (like the scene where the form was)
+	 * @return object the same object
+	 */
+	protected function mungeOldUIFormData( &$aObj )
+	{
+		if( isset( $aObj->group_parent ) )
+			$aObj->parent_group_id = $aObj->group_parent ;
+		if( isset( $aObj->group_reg_code ) )
+			$aObj->reg_code = $aObj->group_reg_code ;
+		return $aObj ;
 	}
 	
+	/**
+	 * Consumed by createGroup() and modifyGroup() to insert a new registration
+	 * code for an existing group ID.
+	 * @param integer $aGroupID the group ID
+	 * @param string $aRegCode the new registration code
+	 */
+	protected function insertGroupRegCode( $aGroupID, $aRegCode )
+	{
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'INSERT INTO ' . $this->tnGroupRegCodes )
+			->add( ' VALUES (' . $aGroupID )
+			->add( ',\'' . trim($aRegCode) . '\')' )
+			;
+		try { $theSql->execDML() ; }
+		catch( PDOException $pdox )
+		{ throw new DbException( $pdox, __METHOD__ . ' failed.' ) ; }
+	}
+
 	public function getGroupRegCodes() {
 		$theSql = "SELECT * FROM {$this->tnGroupRegCodes} ORDER BY group_id";
 		$ps = $this->query($theSql);
@@ -340,6 +491,64 @@ class AuthGroups extends BaseModel implements IFeatureVersioning {
 		} else {
 			return ($aRegCode==$aAppId) ? 3 : 0;
 		}
+	}
+
+	/**
+	 * Returns a dictionary of all permission group data.
+	 * @param $bIncludeSystemGroups boolean indicates whether to include the
+	 *  "unregistered" and "titan" groups that are defined by default when the
+	 *  system is installed
+	 * @throws BrokenLeg if a DB connection can't be established
+	 * @throws DbException if an error happens in the query itself
+	 */
+	public function getAllGroups( $bIncludeSystemGroups=false )
+	{
+		if( empty( $this->db ) || ! $this->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT G.group_id, G.group_name, ' )
+			->add( ' G.parent_group_id, GRC.reg_code ' )
+			->add( ' FROM ' . $this->tnGroups . ' AS G ' )
+			->add( ' LEFT JOIN ' . $this->tnGroupRegCodes )
+			->add(   ' AS GRC USING (group_id) ' )
+			;
+		if( ! $bIncludeSystemGroups )
+		{
+			$theSql->startWhereClause()
+				->setParamOperator( '<>' )
+			 	->addFieldAndParam( 'group_id', 'unreg_group_id',
+			 			self::UNREG_GROUP_ID )
+			 	->setParamPrefix( ' AND ' )
+				->addFieldAndParam( 'group_id', 'titan_group_id',
+						self::TITAN_GROUP_ID )
+				->endWhereClause()
+				;
+		}
+		$theSql->add( ' ORDER BY G.group_id' ) ;
+
+		try { return $theSql->query()->fetchAll() ; }
+		catch( PDOException $pdox )
+		{ throw new DbException( $pdox, __METHOD__ . ' failed.' ) ; }
+	}
+
+	/**
+	 * Indicates whether a group with the specified ID is defined.
+	 * @param integer $aGroupID the sought group ID
+	 * @return boolean true if the group is found, false otherwise
+	 */
+	public function groupExists( $aGroupID=null )
+	{
+		if( ! isset( $aGroupID ) ) return false ;
+
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT group_id FROM ' . $this->tnGroups )
+			->startWhereClause()
+			->mustAddParam( 'group_id', $aGroupID )
+			->endWhereClause()
+			;
+		$theResult = $theSql->getTheRow() ;
+		return ( empty( $theResult ) ? false : true ) ;
 	}
 
 }//end class

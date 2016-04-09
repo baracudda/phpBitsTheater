@@ -36,6 +36,7 @@ class BrokenLeg extends \Exception
 	const ERR_FORBIDDEN = 403 ;
 	const ERR_DEFAULT = 500 ;
 	const ERR_DB_EXCEPTION = 500 ;
+	const ERR_ENTITY_NOT_FOUND = 404 ;
 	const ERR_NOT_DONE_YET = 501 ;
 	const ERR_DB_CONNECTION_FAILED = 503 ;
 	const ERR_NOT_AUTHENTICATED = 401 ;
@@ -49,6 +50,7 @@ class BrokenLeg extends \Exception
 	const MSG_FORBIDDEN = 'generic/msg_permission_denied' ;
 	const MSG_DEFAULT = 'generic/errmsg_default' ;
 	const MSG_DB_EXCEPTION = 'generic/errmsg_db_exception' ;
+	const MSG_ENTITY_NOT_FOUND = 'generic/errmsg_entity_not_found' ;
 	const MSG_NOT_DONE_YET = 'generic/errmsg_not_done_yet' ;
 	const MSG_DB_CONNECTION_FAILED = 'generic/errmsg_database_not_connected' ;
 	const MSG_NOT_AUTHENTICATED = self::MSG_FORBIDDEN ;
@@ -90,7 +92,9 @@ class BrokenLeg extends \Exception
 	}
 	
 	/**
-	 * Provides an instance of the exception based on an already thrown exception.
+	 * Provides an instance of the exception based on an already thrown
+	 * exception. If the exception is already an instance of BrokenLeg, it is
+	 * immediately thrown back.
 	 * @param IDirected $aContext some BitsTheater object that can provide context
 	 *  for the website, so that text resources can be retrieved; this can be an
 	 *  actor, model, or scene, or anything implementing IDirected
@@ -98,7 +102,8 @@ class BrokenLeg extends \Exception
 	 */
 	static public function tossException( IDirected &$aContext, $aException )
 	{
-		if (ini_get('log_errors') && $aException instanceof IDebuggableException) {
+		if (ini_get('log_errors') && $aException instanceof IDebuggableException)
+		{
 			$aContext->getDirector()->debugLog('[1/2] msg: '.
 					$aException->getMessage().' context:'.$aException->getContextMsg()
 			);
@@ -106,10 +111,24 @@ class BrokenLeg extends \Exception
 					$aException->getTraceAsString()
 			);
 		}
-		if ($aException instanceof DbException) {
+
+		if( $aException instanceof BrokenLeg )
+			return $aException ;
+		else if ($aException instanceof DbException)
+		{
 			throw static::toss($aContext, 'DB_EXCEPTION', $aException->getErrorMsg());
-		} else {
-			throw static::toss($aContext, 'DEFAULT');
+		}
+		else if(isset($aException->code) && isset($aException->message))
+		{
+			throw static::pratfall("DEFAULT", $aException->code, $aException->message);
+		}
+		else
+		{
+			$o = static::toss( $aContext, 'DEFAULT' ) ;
+			$theErrMsg = $aException->getMessage();
+			if (!empty($theErrMsg))
+				$o->message = $theErrMsg;
+			return $o;
 		}		
 	}
 	
@@ -158,31 +177,34 @@ class BrokenLeg extends \Exception
 	
 	/**
 	 * Returns the standard error container well as sets the http_response_code.
-	 * @param Scene $v - (optional) Scene in which to set the results.
+	 * @param object $aContext (optional) context in which to set the results
 	 * @return array Returns the standard error response for API calls.
 	 */
-	public function setErrorResponse($v=null)
+	public function setErrorResponse( &$aContext=null )
 	{
-		//create the response to be JSON encoded
-		$theResults = array(
-				'cause' => $this->myCondition,
-				'message' => $this->message,
-		);
-		//set our HTTP response code
-		http_response_code($this->code);
-		//set our results property if an object was passed in
-		if (!empty($v) && is_object($v)) {
-			if (empty($v->results)) {
-				$v->results = new APIResponse();
-			}
-			if ($v->results instanceof APIResponse) {
-				$v->results->setError($theResults);
-			} else {
-				//do not do anything
+		$theResults = $this->toJson() ;
+
+		http_response_code( $this->code ) ;
+
+		if( !empty($aContext) && is_object($aContext) )
+		{
+			if( $aContext instanceof APIResponse )
+				$aContext->setError( $this ) ;
+			else if( $aContext instanceof Scene )
+			{
+				if( empty( $aContext->results ) )
+					$aContext->results = new APIResponse() ;
+
+				if( $aContext->results instanceof APIResponse )
+					$aContext->results->setError( $this ) ;
+				else if( is_object( $aContext->results ) )
+					$aContext->results->error = $theResults ;
+				else if( is_array( $aContext->results ) )
+					$aContext->results['error'] = $theResults ;
 			}
 		}
-		//return what we created in case no obj was passed in
-		return $theResults;
+
+		return $theResults ;
 	}
 	
 	/**
@@ -230,6 +252,18 @@ class BrokenLeg extends \Exception
 		);
 	}
 	
+	/**
+	 * Forms the JSON representing this exception, for return in a response.
+	 * @return \stdClass an object with "cause" and "message" fields
+	 */
+	public function toJson()
+	{
+		$theError = new \stdClass() ;
+		$theError->cause = $this->myCondition ;
+		$theError->message = $this->message ;
+		return $theError ;
+	}
+
 } // end BrokenLeg class
 	
 } // end namespace BitsTheater

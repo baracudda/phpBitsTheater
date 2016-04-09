@@ -27,7 +27,11 @@ use BitsTheater\models\SetupDb; /* @var $dbSetupDb SetupDb */
 use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use com\blackmoonit\Strings;
 use com\blackmoonit\FileUtils;
-use \PDOException;
+use PDOException;
+use Exception;
+use BitsTheater\BrokenLeg;
+use BitsTheater\costumes\APIResponse;
+use Elasticsearch\Endpoints\Indices\ValidateQuery;
 {//namespace begin
 
 class BitsInstall extends BaseActor {
@@ -163,15 +167,10 @@ class BitsInstall extends BaseActor {
 		$v->db_conns = $this->getDbConns();
 	}
 
-	public function db2() {
-		//shortcut variable $v also in scope in our view php file.
+	protected function installDbConns() {
 		$v =& $this->scene;
-		if (!$v->checkInstallPw()) {
-			return $v->getSiteURL();
-		}
-		
 		$v->db_conns = $this->getDbConns();
-		foreach($v->db_conns as $theDbConnInfo) {
+		foreach ($v->db_conns as $theDbConnInfo) {
 			$theFormIdPrefix = $theDbConnInfo->myDbConnName;
 			
 			$theWidgetName = $theFormIdPrefix.'_table_prefix';
@@ -184,6 +183,14 @@ class BitsInstall extends BaseActor {
 			$theDnsScheme = $v->$theWidgetName;
 			switch ($theDnsScheme) {
 				case DbConnOptions::DB_CONN_SCHEME_INI:
+					//supply default for optional settings
+					$theWidgetName = $theFormIdPrefix.'_table_prefix';
+					if (empty($v->$theWidgetName))
+						$v->$theWidgetName = $theDbConnInfo->dbConnOptions->table_prefix;
+					$theWidgetName = $theFormIdPrefix.'_dbtype';
+					if (empty($v->$theWidgetName))
+						$v->$theWidgetName = $theDbConnInfo->dbConnSettings->driver;
+					//remove var that make no sense for this scheme
 					$theWidgetName = $theFormIdPrefix.'_dns_alias';
 					unset($v->$theWidgetName);
 					$theWidgetName = $theFormIdPrefix.'_dns_uri';
@@ -192,6 +199,7 @@ class BitsInstall extends BaseActor {
 					unset($v->$theWidgetName);
 					break;
 				case DbConnOptions::DB_CONN_SCHEME_ALIAS:
+					//remove var that make no sense for this scheme
 					$theWidgetName = $theFormIdPrefix.'_dns_alias';
 					$v->strip_spaces($theWidgetName);
 					$theWidgetName = $theFormIdPrefix.'_dns_uri';
@@ -203,6 +211,7 @@ class BitsInstall extends BaseActor {
 					unset($v->$theWidgetName);
 					break;
 				case DbConnOptions::DB_CONN_SCHEME_URI:
+					//remove var that make no sense for this scheme
 					$theWidgetName = $theFormIdPrefix.'_dns_alias';
 					unset($v->$theWidgetName);
 					$theWidgetName = $theFormIdPrefix.'_dns_uri';
@@ -214,6 +223,7 @@ class BitsInstall extends BaseActor {
 					unset($v->$theWidgetName);
 					break;
 				default:
+					//remove var that make no sense for this scheme
 					$theWidgetName = $theFormIdPrefix.'_dns_alias';
 					unset($v->$theWidgetName);
 					$theWidgetName = $theFormIdPrefix.'_dns_uri';
@@ -244,20 +254,19 @@ class BitsInstall extends BaseActor {
 				$theDbConnFilePath = 'dbconn-webapp.ini';
 			}
 			$theDbConnFilePath = BITS_CFG_PATH.$theDbConnFilePath;
+			if (file_exists($theDbConnFilePath))
+				continue; //skip to the next dbconn to be setup
 			if ($dst = $this->installTemplate('dbconn-webapp', $theDbConnFilePath, $theVarList)) {
 				//copy completed, now try to connect to the db and prove it works
 				try {
 					$theDbConnInfo->loadDbConnInfoFromIniFile($theDbConnFilePath);
-					$v->connected = $theDbConnInfo->getPDOConnection();
-					$v->next_action = $v->getSiteURL('install/auth1');
+					$thePdoConn = $theDbConnInfo->getPDOConnection();
+					$v->connected = !empty($thePdoConn);
+					$thePdoConn = null;
 				} catch (PDOException $e) {
-					$ex = new DbException($e,$theDbConnFilePath.' caused: ');
-					$ex->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
-					$v->next_action = $v->getSiteURL('install/db1');
-					$v->connected = false;
-					$v->_dbError = $ex->getDebugDisplay('Connection error');
+					throw new DbException($e, $theDbConnFilePath.' caused: ');
 				}
-				if (empty($v->connected)) {
+				if (!$v->connected) {
 					if (empty($v->do_not_delete_failed_config)) {
 						//if db connection failed, delete the file so it can be attempted again
 						$v->permission_denied = !unlink($dst);
@@ -268,6 +277,23 @@ class BitsInstall extends BaseActor {
 				$v->permission_denied = true;
 			}
 		}//foreach
+	}
+
+	public function db2() {
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		if (!$v->checkInstallPw()) {
+			return $v->getSiteURL();
+		}
+		try {
+			$this->installDbConns();
+			$v->next_action = $v->getSiteURL('install/auth1');
+		} catch (DbException $dbe) {
+			$dbe->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
+			$v->next_action = $v->getSiteURL('install/db1');
+			$v->connected = false;
+			$v->_dbError = $dbe->getDebugDisplay('Connection error');
+		}
 	}
 
 	protected function getAuthTypes() {
@@ -392,8 +418,237 @@ class BitsInstall extends BaseActor {
 		}
 	}
 	
-	public function resetDb($pw) {
-		//debug function, does nothing now
+	/**
+	 * Part of the setupWebsite endpoint, install the language setting class.
+	 * @param APIResponse $aApiResponse - the result object.
+	 */
+	protected function setupWebsite_language(APIResponse $aApiResponse) {
+		$v =& $this->scene;
+		$theDestFilePath = BITS_CFG_PATH.'I18N.php';
+		if (filter_var($v->install_language_settings, FILTER_VALIDATE_BOOLEAN) &&
+				!empty($v->lang_type))
+		{
+			if (!file_exists($theDestFilePath))
+			{
+				if (!$this->installLang($v->lang_type))
+				{
+					throw BrokenLeg::pratfall('FORBIDDEN_WRITE_ACCESS', 403,
+							str_replace(BITS_PATH, '[%site]', Strings::format(
+									$this->getRes('install/errmsg_forbidden_write_access'),
+									$theDestFilePath
+							))
+					);
+				}
+				array_push($aApiResponse->data['messages'],
+						$this->getRes('install/msg_install_segment_x_success/'.
+								$this->getRes('install/install_segment_language')
+						)
+				);
+			}
+			else
+				array_push($aApiResponse->data['messages'],
+						$this->getRes('install/msg_install_segment_x_already_done/'.
+								$this->getRes('install/install_segment_language')
+						)
+				);
+		}
+		
+	}
+
+	/**
+	 * Part of the setupWebsite endpoint, install the auth model class.
+	 * @param APIResponse $aApiResponse - the result object.
+	 */
+	protected function setupWebsite_auth_model(APIResponse $aApiResponse) {
+		$v =& $this->scene;
+		$theDestFilePath = BITS_APP_PATH.'models'.DIRECTORY_SEPARATOR.'Auth.php';
+		if (filter_var($v->install_auth_model, FILTER_VALIDATE_BOOLEAN) &&
+				isset($v->auth_type))
+		{
+			if (!file_exists($theDestFilePath))
+			{
+				if (!$this->installAuth($v->auth_type))
+				{
+					throw BrokenLeg::pratfall('FORBIDDEN_WRITE_ACCESS', 403,
+							str_replace(BITS_PATH, '[%site]', Strings::format(
+									$this->getRes('install/errmsg_forbidden_write_access'),
+									$theDestFilePath
+							))
+					);
+				}
+				array_push($aApiResponse->data['messages'],
+						$this->getRes('install/msg_install_segment_x_success/'.
+								$this->getRes('install/install_segment_auth')
+						)
+				);
+			}
+			else
+				array_push($aApiResponse->data['messages'],
+						$this->getRes('install/msg_install_segment_x_already_done/'.
+								$this->getRes('install/install_segment_auth')
+						)
+				);
+		}
+	}
+	
+	/**
+	 * Part of the setupWebsite endpoint, install the database connection file(s).
+	 * @param APIResponse $aApiResponse - the result object.
+	 */
+	protected function setupWebsite_db_conn_files(APIResponse $aApiResponse) {
+		$v =& $this->scene;
+		if (filter_var($v->install_db_conn_files, FILTER_VALIDATE_BOOLEAN))
+		try {
+			if (!$this->getDirector()->canConnectDb())
+			{
+				$this->installDbConns();
+				array_push($aApiResponse->data['messages'],
+						$this->getRes('install/msg_install_segment_x_success/'.
+								$this->getRes('install/install_segment_dbconn')
+						)
+				);
+			}
+			else
+				array_push($aApiResponse->data['messages'],
+						$this->getRes('install/msg_install_segment_x_already_done/'.
+								$this->getRes('install/install_segment_dbconn')
+						)
+				);
+		} catch (DbException $dbe) {
+			throw BrokenLeg::toss($this, 'DB_EXCEPTION', $dbe->getErrorMsg());
+		}
+	}
+	
+	/**
+	 * Part of the setupWebsite endpoint, install the database.
+	 * @param APIResponse $aApiResponse - the result object.
+	 */
+	protected function setupWebsite_database(APIResponse $aApiResponse) {
+		$v =& $this->scene;
+		if (filter_var($v->install_database, FILTER_VALIDATE_BOOLEAN))
+		{
+			if (!$this->getDirector()->canConnectDb())
+				throw BrokenLeg::toss($this, 'DB_CONNECTION_FAILED');
+			
+			$theSetupDb = $this->getProp('SetupDb');
+			$theSetupDb->setupModels($v);
+			array_push($aApiResponse->data['messages'],
+					$this->getRes('install/msg_install_segment_x_success/'.
+							$this->getRes('install/install_segment_create_db')
+					)
+			);
+		}
+	}
+	
+	/**
+	 * Part of the setupWebsite endpoint, install the settings class file.
+	 * The presence of this particular class is how the framework determines
+	 * if a website is successfully installed or not.
+	 * @param APIResponse $aApiResponse - the result object.
+	 */
+	protected function setupWebsite_settings_class(APIResponse $aApiResponse) {
+		$v =& $this->scene;
+		$theDestFilePath = BITS_CFG_PATH.'Settings.php';
+		if (filter_var($v->install_settings_class, FILTER_VALIDATE_BOOLEAN))
+		{
+			if (!file_exists($theDestFilePath))
+			{
+				$theSiteId = (!empty($v->site_id)) ? $v->site_id : Strings::createUUID();
+				if (!$this->installSettings($theSiteId))
+				{
+					throw BrokenLeg::pratfall('FORBIDDEN_WRITE_ACCESS', 403,
+							str_replace(BITS_PATH, '[%site]', Strings::format(
+									$this->getRes('install/errmsg_forbidden_write_access'),
+									$theDestFilePath
+							))
+					);
+				}
+				$aApiResponse->data['site_id'] = $theSiteId;
+				array_push($aApiResponse->data['messages'],
+						$this->getRes('install/msg_install_segment_x_success/'.
+								$this->getRes('install/install_segment_settings_class')
+						)
+				);
+			}
+			else
+			{
+				$aApiResponse->data['site_id'] = $this->getDirector()->app_id;
+				array_push($aApiResponse->data['messages'],
+						$this->getRes('install/msg_install_segment_x_already_done/'.
+								$this->getRes('install/install_segment_settings_class')
+						)
+				);
+			}
+		}
+	}
+	
+	/**
+	 * Part of the setupWebsite endpoint, allows config settings to be updated automatically.
+	 * @param APIResponse $aApiResponse - the result object.
+	 */
+	protected function setupWebsite_config_settings(APIResponse $aApiResponse) {
+		$v =& $this->scene;
+		if (filter_var($v->install_config_settings, FILTER_VALIDATE_BOOLEAN))
+		{
+			if (!$this->getDirector()->canConnectDb())
+				throw BrokenLeg::toss($this, 'DB_CONNECTION_FAILED');
+				
+			$dbConfig = $this->getProp('Config');
+			foreach ((array)$v->config_settings as $theConfigName => $theConfigValue) {
+				$theOldValue = $dbConfig[$theConfigName]; //so it also loads the default in case value="?"
+				$dbConfig[$theConfigName] = strval($theConfigValue);
+				array_push($aApiResponse->data['messages'],
+						Strings::format($this->getRes('install/msg_config_x_updated'), $theConfigName)
+				);
+			}
+		}
+	}
+	
+	/**
+	 * Part of the setupWebsite endpoint, install whatever else that needs to be done.
+	 * @param APIResponse $aApiResponse - the result object.
+	 */
+	protected function setupWebsite_others(APIResponse $aApiResponse) {
+		$v =& $this->scene;
+		//descendants put stuff here
+	}
+	
+	/**
+	 * API to use if a bot is installing the website rather than a human via the page wizard.
+	 */
+	public function setupWebsite() {
+		$v =& $this->scene;
+		$this->viewToRender('results_as_json');
+		try {
+			if ($v->checkInstallPw())
+			{
+				$v->installpw = ''; //clear out the cached installpw since this is the only step
+				$v->results = APIResponse::resultsWithData(array(
+						'site_id' => null,
+						'messages' => array(),
+				));
+				$this->setupWebsite_language($v->results);
+				$this->setupWebsite_auth_model($v->results);
+				$this->setupWebsite_db_conn_files($v->results);
+				$this->setupWebsite_database($v->results);
+				$this->setupWebsite_settings_class($v->results);
+				$this->setupWebsite_config_settings($v->results);
+				$this->setupWebsite_others($v->results);
+				if (empty($v->results->data['messages'])) {
+					throw BrokenLeg::pratfallRes($this, 'MISSING_VALUES', 400,
+							'install/msg_install_segment_nothing_to_do');
+				}
+			}
+			else {
+				throw BrokenLeg::toss($this, 'FORBIDDEN');
+			}
+		} catch (BrokenLeg $bl) {
+			//API calls need to eat the exception and give a sane HTTP Response
+			$bl->setErrorResponse($v);
+		} catch (Exception $e) {
+			$bl = BrokenLeg::tossException($this, $e);
+			$bl->setErrorResponse($v);
+		}
 	}
 	
 }//end class

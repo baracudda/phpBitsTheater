@@ -29,8 +29,13 @@ class BitsManagedMedia extends BaseActor {
 	 * @param unknown $aFileId
 	 * @param string $aMimeType
 	 */
-	protected function getFilePathOf($aMimeType=null) {
+	protected function getFilePathOf($aMimeType=null)
+	{
 		$thePath = $this->getConfigSetting('site/mmr');
+		if (!Strings::endsWith($thePath, DIRECTORY_SEPARATOR))
+		{
+			$thePath .= DIRECTORY_SEPARATOR;
+		}
 		$thePath .= (!empty($aMimeType)) ? strstr($aMimeType, '/', true).DIRECTORY_SEPARATOR : '';
 		return $thePath;
 	}

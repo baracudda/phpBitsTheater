@@ -170,13 +170,14 @@ implements ArrayAccess, IDirected
 	public function onShutdown() {
 		$err = error_get_last();
 		if (!empty($err)) {
-			Strings::debugLog(__METHOD__.' '.Strings::debugStr($err));
-			Strings::debugLog('OOM?: last 3 known new AdamEve-based classes:'
-					.(static::$lastClassLoaded1 ? ' '. static::$lastClassLoaded1->myClassName : '')
-					.(static::$lastClassLoaded2 ? ', '.static::$lastClassLoaded2->myClassName : '')
-					.(static::$lastClassLoaded3 ? ', '.static::$lastClassLoaded3->myClassName : '')
-			);
-			Strings::debugLog(Strings::debugStr(static::$lastClassLoaded1));
+			Strings::debugLog( __METHOD__ . ' ' . Strings::debugStr($err) ) ;
+// Uncomment the following 6 lines if you need more information.
+//			Strings::debugLog('OOM?: last 3 known new AdamEve-based classes:'
+//					.(static::$lastClassLoaded1 ? ' '. static::$lastClassLoaded1->myClassName : '')
+//					.(static::$lastClassLoaded2 ? ', '.static::$lastClassLoaded2->myClassName : '')
+//					.(static::$lastClassLoaded3 ? ', '.static::$lastClassLoaded3->myClassName : '')
+//			);
+//			Strings::debugLog(Strings::debugStr(static::$lastClassLoaded1));
 		}
 		exit();
 	}
@@ -276,9 +277,10 @@ implements ArrayAccess, IDirected
 	//=                     Actor methods                       =
 	//===========================================================
 	static public function getActorClass($anActorName) {
-		$theActorClass = BITS_NAMESPACE_ACTORS.$anActorName;
+		$theActorName = Strings::getClassName($anActorName);
+		$theActorClass = BITS_NAMESPACE_ACTORS.$theActorName;
 		if (!class_exists($theActorClass)) {
-			$theActorClass = WEBAPP_NAMESPACE.'actors\\'.$anActorName;
+			$theActorClass = WEBAPP_NAMESPACE.'actors\\'.$theActorName;
 		}
 		return $theActorClass;
 	}
@@ -288,16 +290,14 @@ implements ArrayAccess, IDirected
 		//Strings::debugLog('rC: class='.$theActorClass.', exist?='.class_exists($theActorClass));
 		if (class_exists($theActorClass)) {
 			$theAction = $theActorClass::getDefaultAction($anAction);
-			$methodExists = method_exists($theActorClass,$theAction) && is_callable(array($theActorClass,$theAction));
-			if ($methodExists && $theActorClass::isActionUrlAllowed($theAction)) {
-				//$this->debugLog(__METHOD__.$theActorClass.'::'.$theAction.'('.$this->debugStr($aQuery).')');
-				$theActorClass::perform($this,$theAction,$aQuery);
-				return true;
+			$theActor = new $theActorClass($this, $theAction);
+			if ($theActor->isActionUrlAllowed($theAction)) {
+				return $theActor->perform($theAction, $aQuery);
 			} else {
         	    return false;
 			}
 		} else {
-			Strings::debugLog(__METHOD__.' cannot find Actor class: '.$theActorClass.' url='.$_GET['url']);
+			//Strings::debugLog(__METHOD__.' cannot find Actor class: '.$theActorClass.' url='.$_GET['url']);
 			return false;
 		}
 	}

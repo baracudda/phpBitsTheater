@@ -58,6 +58,18 @@ class BitsInstall extends BaseResources {
 	
 	public $msg_create_table_x_success = 'Create table (if not exist) "%s" succeeded.';
 	
+	public $errmsg_forbidden_write_access = 'Write Permission Denied for "%s"';
+	
+	public $msg_config_x_updated = 'Config "%s" updated.';
+	public $msg_install_segment_nothing_to_do = 'Nothing to install; see API docs.';
+	public $msg_install_segment_x_already_done = '"%s" was already installed.';
+	public $msg_install_segment_x_success = 'Installation of "%s" succeeded.';
+	public $install_segment_language = 'Default Language';
+	public $install_segment_auth = 'Authorization Model';
+	public $install_segment_dbconn = 'Database Connection Configuration';
+	public $install_segment_create_db = 'Database Schema';
+	public $install_segment_settings_class = 'Settings Class';
+	
 }//end class
 
 }//end namespace

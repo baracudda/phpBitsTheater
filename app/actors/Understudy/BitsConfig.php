@@ -71,7 +71,7 @@ class BitsConfig extends BaseActor {
 	}
 
 	/**
-	 * Return the standard API Response to indicate success/failure of saving settings.
+	 * Return all the defined settings for the website.
 	 * @return APIResponse Returns the standard API response object.
 	 */
 	public function ajajGetSettings() {

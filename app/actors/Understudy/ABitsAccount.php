@@ -122,15 +122,31 @@ abstract class ABitsAccount extends BaseActor {
 	 * JavaScript code may need current login info, too.
 	 * @return APIResponse Returns the standard API response object with User info.
 	 */
-	public function ajajGetAccountInfo() {
+	public function ajajGetAccountInfo()
+	{
 		$v =& $this->scene;
-		if (!$this->isGuest()) {
-			$theData = $this->director->account_info;
-			$theData->account_id += 0; //ensure what is returned is not a string
-			$v->results = APIResponse::resultsWithData($theData);
-		} else {
-			throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED');
+		if( ! $this->isGuest() )
+		{
+			$theData = $this->director->account_info ;
+			$theData->account_id = intval( $theData->account_id ) ;
+
+			$theGroupID =
+				( empty( $theData->groups ) ? false : $theData->groups[0] ) ;
+			$theError = null ;
+			if( $theGroupID ) try
+			{
+				$dbPerms = $this->getProp( 'Permissions' ) ;
+				$theData->permissions = $dbPerms->getGrantedRights($theGroupID);
+			}
+			catch( Exception $x )
+			{ $theError = BrokenLeg::toss( $this, $x ) ; }
+
+			$v->results = APIResponse::resultsWithData($theData) ;
+			if( $theError != null )
+				$v->results->setError($theError) ;
 		}
+		else
+		{ throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED') ; }
 	}
 	
 }//end class

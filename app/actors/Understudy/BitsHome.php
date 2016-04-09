@@ -19,7 +19,7 @@ namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
 {//namespace begin
 
-class Home extends BaseActor {
+class BitsHome extends BaseActor {
 	const DEFAULT_ACTION = 'view';
 
 	public function view() {

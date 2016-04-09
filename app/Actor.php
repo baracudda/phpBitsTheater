@@ -23,6 +23,7 @@ use BitsTheater\Director;
 use BitsTheater\models\Config;
 use com\blackmoonit\Strings;
 use ReflectionClass;
+use ReflectionMethod;
 use BadMethodCallException;
 use Exception;
 use com\blackmoonit\exceptions\FourOhFourExit;
@@ -56,31 +57,47 @@ implements IDirected
 	const DEFAULT_ACTION = '';
 	const ALLOW_URL_ACTIONS = true;
 	/**
+	 * Session vars can be accessed like an array (ie. director[some_session_var]; )
 	 * @var Director
 	 */
-	public $director = NULL; //session vars can be accessed like property (ie. director->some_session_var; )
+	public $director = null;
 	/**
+	 * Config model used essentially like an array (ie. config[some_key]; )
 	 * @var Config
 	 */
-	public $config = NULL; //config model used essentially like property (ie. config[some_key]; )
+	public $config = null;
 	/**
+	 * Scene interface used like properties (ie. scene->some_var; (which can be functions))
 	 * @var MyScene
 	 */
-	public $scene = NULL; //scene ui interface used like properties (ie. scene->some_var; (which can be functions))
+	public $scene = null;
 	/**
+	 * The action being performed.
 	 * @var string
 	 */
-	protected $action = NULL;
+	protected $action = null;
 	/**
 	 * '_blank' will not render anything, NULL renders the view with the same name as the action
 	 * being performed, any other value tried to render that view file.
 	 * @var string
 	 */
-	protected $renderThisView = NULL;
+	protected $renderThisView = null;
+	/**
+	 * We need to disallow the public worker methods defined here; start with
+	 * the Actor methods.
+	 * @var @var array[string]boolean
+	 */
+	protected $myPublicMethodsAccessControl = array();
 	
+	/**
+	 * Once created, set up the Actor object for use.
+	 * @param Director $aDirector - the Director object.
+	 * @param string $anAction - the method attempting to be called via URL.
+	 */
 	public function setup(Director $aDirector, $anAction) {
 		$this->director = $aDirector;
 		$this->action = $anAction;
+		$this->setupMethodAccessControl();
 		$theSceneClass = Director::getSceneClass($this->mySimpleClassName);
 		if (!class_exists($theSceneClass)) {
 			Strings::debugLog(__METHOD__.': cannot find Scene class: '.$theSceneClass);
@@ -92,6 +109,10 @@ implements IDirected
 		$this->bHasBeenSetup = true;
 	}
 
+	/**
+	 * Object is being destroyed, free any resources.
+	 * @see \com\blackmoonit\AdamEve::cleanup()
+	 */
 	public function cleanup() {
 		$this->director->returnProp($this->config);
 		unset($this->director);
@@ -100,34 +121,83 @@ implements IDirected
 		parent::cleanup();
 	}
 	
+	/**
+	 * If a URL specifies an actor, but not an action, peform this action.
+	 * @param string $anAction - action specified by URL.
+	 * @return string Return what action should be performed.
+	 */
 	static public function getDefaultAction($anAction=null) {
 		return (!empty($anAction)) ? $anAction : static::DEFAULT_ACTION;
 	}
 	
-	static public function perform(Director $aDirector, $anAction, array $aQuery=array()) {
-		$myClass = get_called_class();
-		$theActor = new $myClass($aDirector,$anAction);
+	/**
+	 * Default behavior is to prevent all public methods inherent in Actor class
+	 * from being accessed via the URL. Descendants overriding this method
+	 * should call parent before adding to $this->myPublicMethodsAccessControl.
+	 * @see Actor::$myPublicMethodsAccessControl
+	 */
+	protected function setupMethodAccessControl() {
+		$rc = new ReflectionClass(__CLASS__);
+		$myMethods = $rc->getMethods(ReflectionMethod::IS_PUBLIC);
+		foreach ($myMethods as $theMethod) {
+			/* @var $theMethod ReflectionMethod */
+			$this->myPublicMethodsAccessControl[$theMethod->name] = false;
+		}
+	}
+
+	/**
+	 * Once it has been determined that we wish to and are allowed to perform
+	 * an action, this method actually does the work calling the method.
+	 * @param string $aAction - method to be called.
+	 * @param array $aQuery - params for the method to be called.
+	 * @return string|null (OPTIONAL) Return a URL to redirect to.
+	 */
+	protected function performAct($aAction, $aQuery) {
+		return call_user_func_array(array($this, $aAction), $aQuery);
+	}
+
+	/**
+	 * The Director will call this method on the Actor class it determined
+	 * from the URL to figure out what method should be executed and
+	 * execute it.
+	 * @param string $anAction - the method to execute.
+	 * @param array $aQuery - params for the method to be called.
+	 * @return boolean Return FALSE if a 404 should be thrown.
+	 * @throws BrokenLeg
+	 */
+	public function perform($anAction, array $aQuery=array()) {
 		try {
-			$theActor->usherGreetAudience($anAction);
-			$aDirector->admitAudience($theActor->scene); //even guests may get to see some pages, ignore function result
-			if ($theActor->usherAudienceToSeat($anAction))
-				$theResult = call_user_func_array(array($theActor,$anAction),$aQuery);
-		} catch (BrokenLeg $e) {
-			if ($theActor->renderThisView=='results_as_json') {
+			$this->usherGreetAudience($anAction);
+			if ($this->usherAudienceToSeat($anAction)) {
+				$theResult = $this->performAct($anAction, $aQuery);
+			}
+		}
+		catch (FourOhFourExit $e404) {
+			return false;
+		}
+		catch (BrokenLeg $e) {
+			if ($this->renderThisView==='results_as_json') {
 				//API calls need to eat the exception and give a sane HTTP Response
-				$e->setErrorResponse($theActor->scene);
+				$e->setErrorResponse($this->scene);
 			} else {
 				//non-API calls need to bubble up the exception
 				throw $e;
 			}
 		}
 		if (empty($theResult))
-			$theActor->renderView($theActor->renderThisView);
+			$this->renderView($this->renderThisView);
 		else
 			header('Location: '.$theResult);
-		$theActor = null;
+		return true;
 	}
 	
+	/**
+	 * Once an action has been performed, we may need to render a view which
+	 * might be a webpage or an API response object.
+	 * @param string $anAction - action performed.
+	 * @throws BadMethodCallException if the class was not instantiated correctly.
+	 * @throws FourOhFourExit if the view file is not found.
+	 */
 	public function renderView($anAction=null) {
 		if ($anAction=='_blank')
 			return;
@@ -206,70 +276,114 @@ implements IDirected
 	}
 
 	/**
+	 * Restrict authorization to anti-CSRF mechanism.
+	 * @param string $aAction - method name to be called.
+	 */
+	protected function usherGreetWithAntiCsrf($aAction) {
+		//auto-set view to json response since AJAJ expects it
+		//  also, our auto-response-exception to standard error
+		//  object needs to have this view before checking for the
+		//  CSRF protection token in the headers.
+		$this->viewToRender('results_as_json');
+
+		//if we try to call an ajaj* method without CSRF token header,
+		//  then treat as if api* method was called and check for
+		//  headers with auth credentials instead.
+		if ($this->getDirector()->isInstalled()) {
+			$dbAuth = $this->getProp('Auth');
+			if (!empty($dbAuth)) {
+				$this->scene->bCheckOnlyHeadersForAuth = (!$dbAuth->isCsrfTokenHeaderPresent());
+			}
+		}
+	}
+
+	/**
+	 * Restrict authorization to require an auth header.
+	 * @param string $aAction - method name to be called.
+	 */
+	protected function usherGreetWithNeedsAuth($aAction) {
+		//auto-set view to json response
+		$this->viewToRender('results_as_json');
+		//we need to have a prefix that does the opposite of AJAJ
+		//  and allow CORS, at the expense of always providing
+		//  any auth if needed.
+		$this->scene->bCheckOnlyHeadersForAuth = true;
+	}
+
+	/**
+	 * Set us up to render a web page.
+	 * @param string $aAction - method name to be called.
+	 */
+	protected function usherGreetWithPageRender($aAction) {
+		//we are probably a page that needs rendering, remember it in case
+		//  login needs to be forced and then lets us get back to our
+		//  intended page.
+		$theDirector = $this->getDirector();
+		$theDirector['lastpagevisited'] = $theDirector['currpagevisited'];
+		$theDirector['currpagevisited'] = REQUEST_URL;
+	}
+
+	/**
 	 * Some methods may restrict us on how we can authorize.
 	 * @param string $aAction - method name to be called.
 	 */
 	public function usherGreetAudience($aAction) {
-		if (Strings::beginsWith($aAction, 'ajaj')) {
-			//auto-set view to json response since AJAJ expects it
-			//  also, our auto-response-exception to standard error
-			//  object needs to have this view before checking for the
-			//  CSRF protection token in the headers.
-			$this->viewToRender('results_as_json');
-
-			//if we try to call an ajaj* method without CSRF token header,
-			//  then treat as if api* method was called and check for
-			//  headers with auth credentials instead.
-			if ($this->getDirector()->isInstalled()) {
-				$dbAuth = $this->getProp('Auth');
-				if (!empty($dbAuth)) {
-					$this->scene->bCheckOnlyHeadersForAuth = (!$dbAuth->isCsrfTokenHeaderPresent());
-				}
-			}
-		}
-		else if (Strings::beginsWith($aAction, 'api')) {
-			//auto-set view to json response
-			$this->viewToRender('results_as_json');
-			//we need to have a prefix that does the opposite of AJAJ
-			//  and allow CORS, at the expense of always providing
-			//  any auth if needed.
-			$this->scene->bCheckOnlyHeadersForAuth = true;
-		}
+		if (Strings::beginsWith($aAction, 'ajaj'))
+			$this->usherGreetWithAntiCsrf($aAction);
+		else if (Strings::beginsWith($aAction, 'api'))
+			$this->usherGreetWithNeedsAuth($aAction);
 		else if (Strings::beginsWith($aAction, 'ajax')) {
 			//auto-set view to json response, yes, the X in AJAX means XML, but
 			//  framework does not have a "default XML" view, yet.
 			$this->viewToRender('results_as_json');
 		}
 		else {
-			//we are probably a page that needs rendering, remember it in case
-			//  login needs to be forced and then lets us get back to our
-			//  intended page.
-			$this->getDirector()['lastpagevisited'] = $this->getDirector()['currpagevisited'];
-			$this->getDirector()['currpagevisited'] = REQUEST_URL;
+			$this->usherGreetWithPageRender($aAction);
 		}
 	}
 	
 	/**
 	 * Return TRUE if the specified action is allowed to be called.
-	 * Also, set any default settings here, if desired.
+	 * @param string $aAction - method name to be called.
+	 * @return boolean Returns TRUE if method call is allowed.
+	 */
+	protected function usherCheckCsrfProtection($aAction) {
+		//ajaj methods either require CSRF token header OR valid
+		//  auth credentials; default our result to checking to
+		//  see if auth credentials were supplied.
+		$theResult = (!$this->isGuest());
+		//now check to see if CSRF token header was defined/present
+		$dbAuth = $this->getProp('Auth');
+		if (!empty($dbAuth) && $dbAuth->isCsrfTokenHeaderPresent()) {
+			$theResult = $dbAuth->checkCsrfTokenHeader();
+		}
+		$this->returnProp($dbAuth);
+		if ($theResult)
+			return true;
+		else
+			throw BrokenLeg::toss($this, 'FORBIDDEN');
+	}
+	
+	/**
+	 * Return TRUE if the specified action is allowed to be called.
 	 * @param string $aAction - method name to be called.
 	 * @return boolean Returns TRUE if method call is allowed.
 	 */
 	public function usherAudienceToSeat($aAction) {
 		$theResult = true;
-		if (Strings::beginsWith($aAction, 'ajaj')) {
-			//ajaj methods either require CSRF token header OR valid
-			//  auth credentials; default our result to checking to
-			//  see if auth credentials were supplied.
-			$theResult = (!$this->isGuest());
-			//now check to see if CSRF token header was defined/present
-			$dbAuth = $this->getProp('Auth');
-			if (!empty($dbAuth) && $dbAuth->isCsrfTokenHeaderPresent()) {
-				$theResult = $dbAuth->checkCsrfTokenHeader();
-			}
-			$this->returnProp($dbAuth);
-			if (!$theResult)
-				throw BrokenLeg::toss($this, 'FORBIDDEN');
+		if (isset($this->myPublicMethodsAccessControl[$aAction]))
+		{
+			$theResult = $this->myPublicMethodsAccessControl[$aAction];
+			if (!$theResult) $this->debugLog(__METHOD__.' denied Action "'.$aAction.'"');
+		}
+		if ($theResult)
+		{
+			//even guests may get to see some pages, ignore function result
+			$this->getDirector()->admitAudience($this->scene);
+		}
+		if ($theResult && Strings::beginsWith($aAction, 'ajaj'))
+		{
+			$this->usherCheckCsrfProtection($aAction);
 		}
 		return $theResult;
 	}
@@ -365,21 +479,39 @@ implements IDirected
 		return $theUrl;
 	}
 
+	/**
+	 * Returns the APP_ID generated at website install time.
+	 * This should be unique for a given web server so that cookie
+	 * separation can occur between sites.
+	 */
 	public function getAppId() {
 		return $this->director->app_id;
 	}
 	
+	/**
+	 * Returns the defined Home/Landing page of the website.
+	 * @return string
+	 */
 	public function getHomePage() {
 		return BITS_URL.'/'.configs\Settings::getLandingPage();
 	}
 	
+	/**
+	 * Generic exception for permission denied (403).
+	 * @param string $aMsg - (OPTIONAL) message to return.
+	 * @throws SystemExit
+	 */
 	public function throwPermissionDenied($aMsg='') {
 		if ($aMsg==='') {
 			$aMsg = getRes('generic/msg_permission_denied');
 		}
-		throw new SystemExit($aMsg,500);
+		throw new SystemExit($aMsg, 403);
 	}
 	
+	/**
+	 * Return the logged in user's account_id.
+	 * @var integer
+	 */
 	public function getMyAccountID() {
 		return $this->director->account_info->account_id;
 	}

@@ -23,6 +23,10 @@ use BitsTheater\models\Auth; /* @var $dbAuth Auth */
 use BitsTheater\models\AuthGroups as AuthGroups; /* @var $dbAuthGroups AuthGroups */
 use com\blackmoonit\Arrays;
 use com\blackmoonit\Strings;
+use BitsTheater\costumes\APIResponse;
+use BitsTheater\BrokenLeg ;
+use BitsTheater\costumes\RightsMatrixProcessor;
+use BitsTheater\outtakes\RightsException ;
 {//namespace begin
 
 class BitsGroups extends BaseActor {
@@ -45,6 +49,12 @@ class BitsGroups extends BaseActor {
 		$v->group_reg_codes = $dbAuthGroups->getGroupRegCodes();
 	}
 	
+	/**
+	 * Page is rendered for editing the permissions assigned to a particular group.
+	 * For the API function that returns the permissions for a group, see
+	 * ajajGetPermissionsFor(int).
+	 * @param integer $aGroupId the ID of the group to be edited
+	 */
 	public function group($aGroupId) {
 		if (!$this->director->isAllowed('auth','modify'))
 			return $this->getHomePage();
@@ -98,6 +108,149 @@ class BitsGroups extends BaseActor {
 		}
 	}
 	
+	/**
+	 * CSRF protected variant of ajaxUpdateGroup(), which standardizes the response
+	 * that is returned to the consumer, and also ensures cross-site script
+	 * protection.
+	 * @param integer $aGroupID for "update" operations, the ID of the group to
+	 *  be updated
+	 */
+	public function ajajSaveGroup( $aGroupID=null )
+	{
+		$v =& $this->scene ;
+		$this->viewToRender('results_as_json') ;
+
+		try
+		{
+			$dbGroups = $this->getProp( 'AuthGroups' ) ;
+
+			// The model function expects the group ID to be part of the scene,
+			// but our Pulse 3.0 REST API spec states that entity IDs should be
+			// URL parameters. This short blurb checks the URL parameters and
+			// copies the group ID into the corresponding scene variable, so
+			// that we can continue to use the existing model code. The Pulse
+			// 2.x UI still passes the group ID as a POST variable, so it will
+			// pass through this statement but still be caught by the next one.
+			if( isset( $aGroupID ) )
+				$v->group_id = $aGroupID ;
+
+			if( isset( $v->group_id ) )
+			{ // Update an existing group.
+				if( ! $this->isAllowed( 'auth', 'modify' ) )
+					throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+				if( $v->group_id == AuthGroups::TITAN_GROUP_ID )
+					throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' );
+
+				$v->results = APIResponse::resultsWithData(
+					$dbGroups->modifyGroup( $v ) ) ;
+			}
+			else
+			{ // Create a new group.
+				if( ! $this->isAllowed( 'auth', 'create' ) )
+					throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+				if( $v->group_id == AuthGroups::TITAN_GROUP_ID )
+					throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' );
+
+				$v->results = APIResponse::resultsWithData(
+					$dbGroups->createGroup( $v->group_name, $v->parent_group_id,
+						$v->reg_code, $v->source_group_id ) ) ;
+			}
+		}
+		catch( Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+
+	/**
+	 * RESTful function to retrieve a "matrix" of user groups and their
+	 * permissions. The assembly of this matrix could get relatively expensive,
+	 * as there are several DB queries executed to merge the data together. This
+	 * method should not be used repeatedly to "refresh" the page.
+	 */
+	protected function getMatrix()
+	{
+		$v =& $this->scene ;
+
+		$bIncludeSystemGroups = false ;
+		if( isset( $v->include_system_groups ) && $v->include_system_groups == 'true' )
+			$bIncludeSystemGroups = true ;
+
+		$this->viewToRender('results_as_json') ;
+		if( ! $this->isAllowed( 'auth', 'modify' ) )
+			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+		try
+		{
+			$theProc = RightsMatrixProcessor::withActor($this) ;
+			$v->results = APIResponse::
+				resultsWithData( $theProc->process($bIncludeSystemGroups) ) ;
+		}
+		catch( Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+
+	/**
+	 * Alias for getMatrix() which will be granted to UI-backing functions.
+	 * @return \BitsTheater\costumes\APIResponse a matrix of user groups and
+	 *  their permissions
+	 */
+	public function ajajGetMatrix()
+	{ return $this->getMatrix() ; }
+
+	/**
+	 * Sets the value of a permission for a given group ID.
+	 * @param string $aGroupID the ID of the group whose permissions will be
+	 *  modified
+	 */
+	public function ajajSetPermission( $aGroupID=null )
+	{
+		$v =& $this->scene ;
+		$this->viewToRender('results_as_json') ;
+		if( ! $this->isAllowed( 'auth', 'modify' ) )
+			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+
+		try
+		{
+			$dbPerms = $this->getProp( 'Permissions' ) ;
+			$v->results = APIResponse::resultsWithData(
+					$dbPerms->setPermission( $aGroupID, $v->namespace,
+							$v->permission, $v->value ) ) ;
+		}
+		catch( Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+
+	/**
+	 * API function to get the permissions for a specified group.
+	 * For the actor function that supports the Joka 2.x UI page,
+	 * see group(int).
+	 * @param integer $aGroupID the group ID
+	 */
+	public function ajajGetPermissionsFor( $aGroupID=null )
+	{
+		$v =& $this->scene ;
+		$this->viewToRender('results_as_json') ;
+		if( ! $this->isAllowed( 'auth', 'modify' ) )
+			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+
+		if( empty( $aGroupID ) )
+			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'group_id' ) ;
+
+		try
+		{
+			$dbGroups = $this->getProp( 'AuthGroups' ) ;
+			if( ! $dbGroups->groupExists($aGroupID) )
+			{
+				throw RightsException::toss( $this,
+						'GROUP_NOT_FOUND', $aGroupID ) ;
+			}
+
+			$dbPerms = $this->getProp( 'Permissions' ) ;
+			$v->results = APIResponse::resultsWithData(
+				$dbPerms->getGrantedRights($aGroupID) ) ;
+		}
+		catch( Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+
 }//end class
 
 }//end namespace

@@ -1,6 +1,6 @@
 <?php
 namespace BitsTheater\actors;
-use BitsTheater\actors\Understudy\Home as BaseActor;
+use BitsTheater\actors\Understudy\BitsHome as BaseActor;
 use BitsTheater\Scene as MyScene; /* @var $v MyScene */
 use com\blackmoonit\Strings;
 {//namespace begin

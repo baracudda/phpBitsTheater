@@ -21,7 +21,7 @@ use BitsTheater\res\Resources as BaseResources;
 
 class BitsAuthGroups extends BaseResources {
 
-	//note, this could have been a static function that loaded it's array from a file and returned it
+	//note, this could have been a static function that loaded its array from a file and returned it
 	public $group_names = array(
 			0=>'unregistered visitor',
 			1=>'titan',  //super admin
@@ -29,6 +29,13 @@ class BitsAuthGroups extends BaseResources {
 			3=>'privileged',
 			4=>'restricted',
 	);
+
+	public $errmsg_cannot_modify_titan = 'That user group cannot be modified.' ;
+	public $errmsg_cannot_copy_from_titan =
+		'That user group\'s permissions cannot be copied to another group.' ;
+	public $errmsg_cannot_copy_to_titan =
+		'Permissions cannot be copied into that user group.' ;
+	public $errmsg_group_not_found = 'User group [%1$s] not found.' ;
 
 }//end class
 

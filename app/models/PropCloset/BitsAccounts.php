@@ -19,9 +19,10 @@ namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
+use PDOException;
 {//begin namespace
 
-class Accounts extends BaseModel {
+class BitsAccounts extends BaseModel {
 	public $tnAccounts; const TABLE_Accounts = 'accounts';
 
 	public function setupAfterDbConnected() {

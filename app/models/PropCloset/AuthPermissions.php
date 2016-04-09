@@ -20,12 +20,15 @@ use BitsTheater\Model as BaseModel;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\models\Auth;
+use BitsTheater\models\PropCloset\BitsGroups ;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
 use PDO;
 use PDOStatement;
 use PDOException;
+use BitsTheater\BrokenLeg ;
+use BitsTheater\outtakes\RightsException ;
 {//namespace begin
 
 class AuthPermissions extends BaseModel {
@@ -213,6 +216,143 @@ class AuthPermissions extends BaseModel {
 	}
 	
 	/**
+	 * Like getAssignedRights(int), but returns only the rights that are allowed
+	 * for the group, as a Boolean "true"; any right that is in 'disallow' or
+	 * 'deny' state is omitted from the result set.
+	 * And no, I have no idea why this ended up being so much more complicated
+	 * than getAssignedRights(int). Clearly I'm missing something. ><
+	 * @param integer $aGroupID a group ID
+	 */
+	public function getGrantedRights( $aGroupID=null )
+	{
+		if( ! $this->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+		if( empty( $aGroupID ) )
+			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'group_id' ) ;
+
+		$theGroupID = intval($aGroupID) ;
+
+		if( $theGroupID == BitsGroups::TITAN_GROUP_ID )
+			return $this->getTitanRights() ;
+
+		$dbGroups = $this->getProp( 'AuthGroups' ) ;
+		$theGroups = Arrays::array_column_as_key( $dbGroups->getAllGroups(true), 'group_id' ) ;
+		if( ! array_key_exists( $aGroupID, $theGroups ) )
+			throw RightsException::toss( $this, 'GROUP_NOT_FOUND', $aGroupID ) ;
+
+		$thePerms = array() ;
+		$theNextGroupID = $theGroupID ;
+		$theProcessed = array() ;
+
+		while( $theNextGroupID >= 0 && ! in_array( $theNextGroupID, $theProcessed ) )
+		{ // Build up a map of explicit true/false settings.
+			$this->debugLog( __METHOD__ . ' DEBUG processed: ' . $this->debugStr($theProcessed) ) ;
+			$theGroup = $theGroups[$theNextGroupID] ;
+			$thePerms = $this->loadAndMergeGrantedRights(
+					$thePerms, $theNextGroupID ) ;
+			$theProcessed[] = $theNextGroupID ;          // hedge against cycles
+			$theParentID = $theGroup['parent_group_id'] ;
+			if( $theParentID === null )
+				$theNextGroupID = -1 ;
+			else if( $theNextGroupID == $theParentID )
+				$theNextGroupID = -1 ;
+			else if( ! array_key_exists( $theParentID, $theGroups ) )
+				$theNextGroupID = -1 ;
+			else
+				$theNextGroupID = $theParentID ;
+		}
+
+		// Now go back and remove everything that's explicitly false.
+		foreach( $thePerms as $theSpace => &$theSpacePerms )
+		{
+			foreach( $theSpacePerms as $thePerm => &$theVal )
+			{
+				if( ! $theVal )
+					unset( $theSpacePerms[$thePerm] ) ;
+			}
+			if( count($theSpacePerms) == 0  )
+				unset( $thePerms[$theSpace] ) ;
+		}
+
+		return $thePerms ;
+	}
+
+	/**
+	 * Consumed by getGrantedRights(int) to build up all permissions granted to
+	 * a group, based on its own definitions and those of its ancestors.
+	 * @param array $aPerms an existing array of permissions, with which the
+	 *  permissions for the specified group will be merged
+	 * @param string $aGroupID a group ID to be merged into the result set
+	 * @param boolean $bIsFirst indicates whether this is the first group being
+	 *  processed in a loop that is ascending a chain of ancestors
+	 * @return a copy of the permissions table that was passed in; this function
+	 *  should be called such that the return value is assigned back into the
+	 *  referenced array if it is being called iteratively on a hierarchy
+	 */
+	protected function loadAndMergeGrantedRights( array &$aPerms, $aGroupID=null )
+	{
+		$thePerms = $aPerms ;
+		$thePermRows = null ;
+
+		try { $thePermRows = $this->getGroupRightsCursor($aGroupID) ; }
+		catch( PDOException $pdox )
+		{
+			throw DbException( $pdox, __METHOD__
+					. ' failed for group ID [' . $aGroupID . '].' ) ;
+		}
+
+		if( ! empty( $thePermRows ) )
+		{
+			$thePermRow = null ;
+			while( ( $thePermRow = $thePermRows->fetch() ) != false )
+			{
+				$theNS = $thePermRow['namespace'] ;
+				$thePerm = $thePermRow['permission'] ;
+				$bValue = false ;
+
+				if( isset( $thePerms[$theNS][$thePerm] ) && ! $thePerms[$theNS][$thePerm] )
+					continue ; // Don't grant a previously denied permission.
+
+				if( $thePermRow['value'] == self::VALUE_Allow )
+				{ // Grant a permission.
+					if( ! array_key_exists( $theNS, $thePerms ) )
+						$thePerms[$theNS] = array() ;
+
+					$thePerms[$theNS][$thePerm] = true ;
+				}
+				else if( $thePermRow['value'] == self::VALUE_Deny )
+				{ // Deny a permission.
+					if( ! array_key_exists( $theNS, $thePerms ) )
+						$thePerms[$theNS] = array() ;
+
+					$thePerms[$theNS][$thePerm] = false ;
+				}
+			}
+		}
+
+		return $thePerms ;
+	}
+
+	/**
+	 * Consumed by getGrantedRights() to build up a giant tree of all the site's
+	 * permissions, all marked as true.
+	 */
+	protected function getTitanRights()
+	{
+		$theTitanPerms = array() ;
+		$theSpaces = $this->getRes( 'Permissions/namespace' ) ;
+		foreach( $theSpaces as $theSpace => $theNSInfo )
+		{
+			if( $theSpace == 'monitor_surveys' ) continue ;      // don't bother
+			$theTitanPerms[$theSpace] = array() ;
+			$thePerms = $this->getRes( 'Permissions/' . $theSpace ) ;
+			foreach( $thePerms as $thePerm => $thePermInfo )
+				$theTitanPerms[$theSpace][$thePerm] = true ;
+		}
+		return $theTitanPerms ;
+	}
+
+	/**
 	 * Modify the saved permissions for a particular group.
 	 * @param Scene $aScene
 	 */
@@ -244,6 +384,244 @@ class AuthPermissions extends BaseModel {
 			$theSql->add('(namespace, permission, group_id, value) VALUES (:ns, :perm, :group_id, :value)');
 			$theSql->execMultiDML($theRightsList);
 		}
+	}
+
+	/**
+	 * Returns a raw SELECT * from the permission/group mapping table.
+	 * @param $bIncludeSystemGroups boolean indicates whether to include the
+	 *  "unregistered" and "titan" groups that are defined by default when the
+	 *  system is installed
+	 * @throws DbException if a problem occurs during DB query execution
+	 * @return array a table of rows from the DB
+	 */
+	public function getPermissionMap( $bIncludeSystemGroups=false )
+	{
+		if( ! $this->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT group_id, namespace AS ns, ' )
+			->add( ' permission, value FROM ' . $this->tnPermissions )
+			;
+		if( ! $bIncludeSystemGroups )
+		{
+			$theSql->startWhereClause()
+				->setParamOperator( '<>' )
+			 	->addFieldAndParam( 'group_id', 'unreg_group_id',
+			 			BitsGroups::UNREG_GROUP_ID )
+			 	->setParamPrefix( ' AND ' )
+				->addFieldAndParam( 'group_id', 'titan_group_id',
+						BitsGroups::TITAN_GROUP_ID )
+				->endWhereClause()
+				;
+		}
+		$theSql->add( ' ORDER BY group_id, namespace, permission' ) ;
+		try { return $theSql->query()->fetchAll() ; }
+		catch( PDOException $pdox )
+		{ throw new DbException( $pdox, __METHOD__ . ' failed.' ) ; }
+	}
+
+	/**
+	 * Copies permissions for one group to another group.
+	 * Consumed by the createGroup() function in the AuthGroups model.
+	 * @param integer $aSourceGroupID the source of the permissions
+	 * @param integer $aTargetGroupID the target for the permissions
+	 * @return array indication of the result
+	 * @throws DbException if a problem occurs during DB query execution
+	 * @throws RightsException if either source or target is not specified, or
+	 *  not found, or is the "titan" group
+	 */
+	public function copyPermissions( $aSourceGroupID=null, $aTargetGroupID=null )
+	{
+		if( ! $this->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+
+		if( ! isset( $aSourceGroupID ) )
+			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT',
+					'source_group_id' ) ;
+
+		if( $aSourceGroupID == BitsGroups::TITAN_GROUP_ID )
+			throw RightsException::toss( $this, 'CANNOT_COPY_FROM_TITAN' ) ;
+
+		$dbGroups = $this->getProp( 'AuthGroups' ) ;
+
+		if( ! $dbGroups->groupExists( $aSourceGroupID ) )
+			throw RightsException::toss( $this, 'GROUP_NOT_FOUND',
+					strval($aSourceGroupID) ) ;
+
+		if( ! isset( $aTargetGroupID ) )
+			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT',
+					'target_group_id' ) ;
+
+		if( $aTargetGroupID == BitsGroups::TITAN_GROUP_ID )
+			throw RightsException::toss( $this, 'CANNOT_COPY_TO_TITAN' ) ;
+
+		if( ! $dbGroups->groupExists( $aTargetGroupID ) )
+			throw RightsException::toss( $this, 'GROUP_NOT_FOUND',
+					strval($aTargetGroupID) ) ;
+
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'DELETE FROM ' . $this->tnPermissions )
+			->startWhereClause()
+			->mustAddParam( 'group_id', $aTargetGroupID )
+			->endWhereClause()
+			;
+		try { $theSql->execDML() ; }
+		catch( PDOException $pdox )
+		{
+			throw new DbException( $pdox, __METHOD__
+					. ' failed to delete old permissions for target group ['
+					. $aTargetGroupID . '].'
+					);
+		}
+
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT * FROM ' . $this->tnPermissions )
+			->startWhereClause()
+			->mustAddParam( 'group_id', $aSourceGroupID )
+			->endWhereClause()
+			;
+		$theSourcePerms = null ;
+		try { $theSourcePerms = $theSql->query()->fetchAll() ; }
+		catch( PDOException $pdox )
+		{
+			throw new DbException( $pdox, __METHOD__
+					. ' failed to fetch permissions for source group ['
+					. $aSourceGroupID . '].'
+					);
+		}
+
+		$theCount = 0 ;
+
+		if( ! empty( $theSourcePerms ) )
+		{
+			$theSql = SqlBuilder::withModel($this)
+				->startWith( 'INSERT INTO ' . $this->tnPermissions )
+				->add( ' VALUES ' )
+				;
+			foreach( $theSourcePerms as $thePerm )
+			{
+				if( $theCount > 0 )
+					$theSql->add( ', ' ) ;
+
+				$theSql->add( '(' )
+					->add( '\'' . $thePerm['namespace']  . '\', ' )
+					->add( '\'' . $thePerm['permission'] . '\', ' )
+					->add(        $aTargetGroupID        .   ', ' )
+					->add( '\'' . $thePerm['value']      . '\' )' )
+					;
+
+				$theCount += 1 ;
+			}
+			try { $theSql->execDML() ; }
+			catch( PDOException $pdox )
+			{
+				throw new DbException( $pdox, __METHOD__
+						. ' failed to insert [' . $theCount
+						. '] permissions into target group ['
+						. $aTargetGroupID . '].'
+						);
+			}
+		}
+
+		return array(
+				'source_group_id' => $aSourceGroupID,
+				'target_group_id' => $aTargetGroupID,
+				'count' => $theCount
+			);
+	}
+
+	/**
+	 * Sets one of the ternary flags for a given group/namespace/permission
+	 * triple. The values are '+' for "always allow", null for "inherit", and
+	 * '-' for "always deny".
+	 * @param integer $aGroupID the ID of the group whose permissions will be
+	 *  modified
+	 * @param string $aNamespace the namespace of the permission
+	 * @param string $aPerm the name of the permission
+	 * @param string $aValue the value: one of '+', '-', or null
+	 * @return array a dictionary of namespace, permission, group ID, and value
+	 *  for the updated permission, in the order that those columns appear in
+	 *  the database
+	 * @throws DbException if something goes wrong in the DB
+	 * @throws BrokenLeg if one of the parameters is missing
+	 * @throws RightsException if the group ID is that of the "titan" group
+	 */
+	public function setPermission( $aGroupID=null, $aNamespace=null, $aPerm=null, $aValue=null )
+	{
+		if( ! $this->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+		if( empty( $aGroupID ) )
+			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'group_id' ) ;
+		if( empty( $aNamespace ) )
+			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'namespace' ) ;
+		if( empty( $aPerm ) )
+			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'permission' ) ;
+
+		if( $aGroupID == BitsGroups::TITAN_GROUP_ID )
+			throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' ) ;
+		$dbGroups = $this->getProp( 'AuthGroups' ) ;
+		if( ! $dbGroups->groupExists( $aGroupID ) )
+			throw RightsException::toss( $this, 'GROUP_NOT_FOUND',
+					strval($aGroupID) ) ;
+
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'DELETE FROM ' . $this->tnPermissions )
+			->startWhereClause()
+			->mustAddParam( 'group_id', $aGroupID )
+			->setParamPrefix( ' AND ' )
+			->mustAddParam( 'namespace', $aNamespace )
+			->mustAddParam( 'permission', $aPerm )
+			->endWhereClause()
+			;
+		try { $theSql->execDML() ; }
+		catch( PDOException $pdox )
+		{
+			throw new DbException( $pdox, __METHOD__
+				. ' failed to delete old permission. ' ) ;
+		}
+
+		$theDBValue = null ;
+
+		if( ! empty( $aValue ) && $aValue != self::FORM_VALUE_Disallow )
+		{ // Store an explicit value in the database.
+			switch($aValue)
+			{
+				case self::VALUE_Allow:
+				case self::FORM_VALUE_Allow:
+					$theDBValue = self::VALUE_Allow ;
+					break ;
+				case self::VALUE_Deny:
+				case self::FORM_VALUE_Deny:
+					$theDBValue = self::VALUE_Deny ;
+					break ;
+				default: ;
+			}
+			if( ! empty( $theDBValue ) )
+			{ // We successfully figured out which value to store!
+				$theSql = SqlBuilder::withModel($this)
+					->startWith( 'INSERT INTO ' . $this->tnPermissions )
+					->add( ' VALUES ( ' )
+					->add( '\'' . $aNamespace . '\', ' )
+					->add( '\'' . $aPerm      . '\', ' )
+					->add(        $aGroupID   .   ', ' )
+					->add( '\'' . $theDBValue . '\' )' )
+					;
+				try { $theSql->execDML() ; }
+				catch( PDOException $pdox )
+				{
+					throw new DbException( $pdox, __METHOD__
+							. ' failed to insert new permission value.' ) ;
+				}
+			}
+		}
+
+		return array(
+				'namespace' => $aNamespace,
+				'permission' => $aPerm,
+				'group_id' => $aGroupID,
+				'value' => $theDBValue
+			);
 	}
 
 }//end class

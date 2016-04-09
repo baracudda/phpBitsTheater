@@ -386,7 +386,7 @@ class AuthBasicAccount extends BaseActor {
 				$theChangedAccountInfo->account_id += 0; //ensure what is returned is not a string
 				$v->results = APIResponse::resultsWithData($theChangedAccountInfo);
 			} catch (Exception $e) {
-				BrokenLeg::tossException($this, $e);
+				throw BrokenLeg::tossException($this, $e);
 			}
 		} else
 			throw BrokenLeg::toss($this, 'FORBIDDEN');

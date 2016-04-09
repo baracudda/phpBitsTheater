@@ -1,7 +1,7 @@
 <?php
 
 namespace BitsTheater\models;
-use BitsTheater\models\PropCloset\Config as BaseModel;
+use BitsTheater\models\PropCloset\BitsConfig as BaseModel;
 {//begin namespace
 
 class Config extends BaseModel {

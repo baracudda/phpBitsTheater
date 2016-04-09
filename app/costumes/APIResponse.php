@@ -52,11 +52,23 @@ class APIResponse extends BaseCostume {
 	 * and return the error information.
 	 * @param \BitsTheater\BrokenLeg $aError
 	 */
-	public function setError($aError) {
-		$this->status = self::STATUS_FAILURE;
-		$this->error = $aError;
+	public function setError( BrokenLeg &$aError )
+	{
+		$this->status = self::STATUS_FAILURE ;
+		$this->error = $aError->toJson() ;
+		http_response_code( $aError->getCode() ) ;
 	}
 	
+	/**
+	 * Constructs a canonical response for 204 NO CONTENT -- that is, null.
+	 * @return NULL
+	 */
+	static public function noContentResponse()
+	{
+		http_response_code(204) ;
+		return null ;
+	}
+
 }//end class
 	
 }//end namespace

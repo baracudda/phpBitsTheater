@@ -61,8 +61,10 @@ implements IDirected
 	 * Set the director variable.
 	 * @param Director $aDirector - site director object
 	 */
-	public function setDirector(Director $aDirector) {
-		$this->_director = $aDirector;
+	public function setDirector(Director $aDirector)
+	{
+		$this->_director = $aDirector ;
+		return $this ;
 	}
 	
 	/**

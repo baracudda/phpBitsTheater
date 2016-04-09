@@ -409,8 +409,10 @@ class Widgets
 			;	
 	}
 
-	static public function createCheckBox($aWidgetName, $isChecked=false, $aClass='') {
-		return '<input type="checkbox" name="'.$aWidgetName.'" class="'.$aClass.'"'.(($isChecked)?' checked':'').' />';
+	static public function createCheckBox($aWidgetName, $isChecked=false, $aClass=''){
+		$checkbox = '<input type="checkbox" name="'.$aWidgetName.'" class="'.$aClass.'"'.(($isChecked)?' checked':'').' />';
+		$hiddenInput = '<input type="hidden" name="'.$aWidgetName.'" class="'.$aClass.'" />';
+		return  $hiddenInput." ".$checkbox;
 	}
 	
 	static public function createSubmitButton($aWidgetName, $aText='Submit', $aClass='btn-primary') {
