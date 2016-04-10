@@ -402,6 +402,19 @@ class Strings {
 			$s = self::debugStr($s);
 		syslog(LOG_ERR,self::debugPrefix().$s);
 	}
+	
+	static protected function upperStrMatches($matches) {
+		$num_matches = count($matches);
+		if ($num_matches>1) {
+			$theResult = strtoupper($matches[1]);
+			for ($i=2; $i<$num_matches; $i++) {
+				$theResult .= strtoupper($matches[$i]);
+			}
+		} else {
+			$theResult = $matches[0];
+		}
+		return $theResult;
+	}
 
 	/**
 	 * Converts the name from under_score to CamelCase.
@@ -410,7 +423,7 @@ class Strings {
 	 * @return string Returns the name as a standard Class name.
 	 */
 	static public function getClassName($aName) {
-		return preg_replace('/(?:^|_)(.?)/e',"strtoupper('$1')",$aName);
+		return preg_replace_callback('+(?:^|_)(.?)+', array(__CLASS__, 'upperStrMatches'), $aName);
 	}
 
 	/**
@@ -420,7 +433,7 @@ class Strings {
 	 * @return string Returns the name as a standard method name.
 	 */
 	static public function getMethodName($aName) {
-		return preg_replace('/_(.?)/e',"strtoupper('$1')",$aName);
+		return preg_replace_callback('+_(.?)+', array(__CLASS__, 'upperStrMatches'), $aName);
 	}
 	
 	/**
@@ -496,12 +509,25 @@ class Strings {
 	/**
 	 * Break up really long words/lines along word boundaries, if possible.
 	 * @param string $aStr - string to wrap.
-	 * @param number $aWidth - max width to wrap around.
-	 * @param string $aWrapper - wrap lines using "\n" by default, or custom param.
+	 * @param number $aWidth - (optional) max width to wrap around.
+	 * @param string $aBreak - (optional) use this text as the break.
+	 * @param boolean $bCut - (optional)
 	 * @return string Returns the string with added $aWrappers inserted into $aStr.
+	 * @link http://php.net/manual/en/function.wordwrap.php#107570
 	 */
-	static public function wordWrap($aStr, $aWidth=75, $aWrapper="\n") {
-		return preg_replace('#(\S{'.$aWidth.',})#e', "chunk_split('$1', ".$aWidth.", '".$aWrapper."')", $aStr);
+	static public function wordWrap($aStr, $aWidth=75, $aBreak="\n", $bCut=false) {
+		if ($bCut) {
+			// Match anything 1 to $width chars long followed by whitespace or EOS,
+			// otherwise match anything $width chars long
+			$thePattern = '/(.{1,'.$aWidth.'})(?:\s|$)|(.{'.$aWidth.'})/uS';
+			$theReplacement = '$1$2'.$aBreak;
+		} else {
+			// Anchor the beginning of the pattern with a lookahead
+			// to avoid crazy backtracking when words are longer than $width
+			$thePattern = '/(?=\s)(.{1,'.$aWidth.'})(?:\s|$)/uS';
+			$theReplacement = '$1'.$aBreak;
+		}
+		return preg_replace($thePattern, $theReplacement, $aStr);
 	}
 
 	/**
@@ -544,8 +570,8 @@ class Strings {
 	static public function getUrlSchemeInUse() {
 		$bUsingHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']=='on')
 				/*
-				 * a de facto standard for identifying the originating protocol of an HTTP request, 
-				 * since a reverse proxy (load balancer) may communicate with a web server using HTTP 
+				 * a de facto standard for identifying the originating protocol of an HTTP request,
+				 * since a reverse proxy (load balancer) may communicate with a web server using HTTP
 				 * even if the request to the reverse proxy is HTTPS.
 				 */
 				|| (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) &&  $_SERVER['HTTP_X_FORWARDED_PROTO']=='https')
@@ -613,7 +639,7 @@ class Strings {
 		if( ! strpos( 'PTGMK', $theSuffix ) ) return -1 ;      // invalid suffix
 		
 		$theMantissa = substr( $aSize, 0, -1 ) ;
-		if( ! is_numeric($theMantissa) ) return -1 ;    // can't parse to number 
+		if( ! is_numeric($theMantissa) ) return -1 ;    // can't parse to number
 		
 		$theValue = $theMantissa ;
 		

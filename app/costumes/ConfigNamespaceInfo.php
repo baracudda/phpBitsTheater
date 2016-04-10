@@ -47,7 +47,8 @@ class ConfigNamespaceInfo extends BaseCostume {
 	 */
 	protected function copyFrom(&$aThing) {
 		parent::copyFrom($aThing);
-		$this->group_id = ($this->namespace=='auth') ? 1 : null;
+		//TODO see @isNamespaceAllowed(), better way includes override by descendants
+		//$this->group_id = ($this->namespace=='auth') ? 1 : null;
 		if (!empty($this->settings_list)) {
 			$theSettings = $this->settings_list;
 			$this->settings_list = array();
@@ -73,7 +74,8 @@ class ConfigNamespaceInfo extends BaseCostume {
 	static public function fromConfigArea(Director $aDirector, $aNamespace, $aNsData) {
 		$o = new ConfigNamespaceInfo($aDirector);
 		$o->namespace = $aNamespace;
-		$o->group_id = ($aNamespace=='auth') ? 1 : null;
+		//TODO see @isNamespaceAllowed(), better way includes override by descendants
+		//$o->group_id = ($aNamespace=='auth') ? 1 : null;
 		$o->setDataFrom($aNsData);
 		return $o;
 	}
