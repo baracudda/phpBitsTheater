@@ -4,7 +4,8 @@ use BitsTheater\scenes\Rights as MyScene;
 /* @var $v MyScene */
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
-$recite->includeMyHeader();
+$h = $v->cueActor('Fragments', 'get', 'csrf_header_jquery');
+$recite->includeMyHeader($h);
 $w = '';
 
 $theParentGroups = array();
@@ -15,7 +16,7 @@ foreach ($v->groups as $gid => $row) {
 $theParentGroupsJS = Strings::phpArray2jsArray($theParentGroups,'');
 $jsCode = <<<EOD
 $(document).ready(function(){
-	var rg = new BitsRightGroups('{$v->getSiteURL('rights/ajaxUpdateGroup')}',{$theParentGroupsJS}).setup();
+	var rg = new BitsRightGroups('{$v->getSiteURL('rights/ajajSaveGroup')}',{$theParentGroupsJS}).setup();
 });
 
 EOD;

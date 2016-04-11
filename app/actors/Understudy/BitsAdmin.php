@@ -65,7 +65,13 @@ class BitsAdmin extends BaseActor {
 	 */
 	public function ajajResetupDb() {
 		$v =& $this->scene;
-		if ($this->isAllowed('config', 'modify')) {
+		$dbAccounts = $this->getProp('Accounts');
+		if ( $this->getDirector()->isInstalled() && (
+				!$dbAccounts->isExists($dbAccounts->tnAccounts) ||
+				$dbAccounts->isEmpty($dbAccounts->tnAccounts) ||
+				$this->isAllowed('config','modify')
+			) )
+		{
 			$dbMeta = $this->getProp('SetupDb');
 			try {
 				$v->results = APIResponse::resultsWithData($dbMeta->setupModels($v));

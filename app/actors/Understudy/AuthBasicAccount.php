@@ -52,8 +52,8 @@ class AuthBasicAccount extends BaseActor {
 				$theAuthRow = $dbAuth->getAuthByAccountId($aAcctId);
 				$v->ticket_info->email = $theAuthRow['email'];
 				
-				//post_key needed to actually register (prevent mass bot-fueled registries)
-				$this->director['post_key'] = Strings::createUUID();
+				//CSRF protection via form data: we need to use a secret hidden form value
+				$this->director['post_key'] = Strings::createUUID().Strings::createUUID();
 				$this->director['post_key_ts'] = time()+2; //you can only update your account 2 seconds after the page loads
 				$v->post_key = $this->director['post_key'];
 			}
@@ -134,6 +134,7 @@ class AuthBasicAccount extends BaseActor {
 		$bPostKeyOk = ($this->director['post_key']===$v->post_key);
 		//valid time >10sec, <30min
 		$bPostKeyOldEnough = ($this->director['post_key_ts'] < time()) && ($this->director['post_key_ts']+(60*30) > time());
+		unset($this->director['post_key']); unset($this->director['post_key_ts']);
 		if ($bPostKeyOk && $bPwOk && $bRegCodeOk && $bPostKeyOldEnough) {
 			$dbAuth = $this->getProp('Auth');
 			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey, $v->email, $v->reg_code);
@@ -178,7 +179,7 @@ class AuthBasicAccount extends BaseActor {
 			$pwKey = $v->getPwInputKey().'_reg';
 			
 			//post_key needed to actually register (prevent mass bot-fueled registries)
-			$this->director['post_key'] = Strings::createUUID();
+			$this->director['post_key'] = Strings::createUUID().Strings::createUUID();
 			$this->director['post_key_ts'] = time()+10; //you can only register 10 seconds after the page loads
 			$v->post_key = $this->director['post_key'];
 			
@@ -247,6 +248,8 @@ class AuthBasicAccount extends BaseActor {
 
 	/**
 	 * Process account form input; post_key check required.
+	 * CSRF protection not necessary since password entry is required to change
+	 * anything.
 	 * @return string Returns the redirect URL, if defined.
 	 */
 	public function modify() {
@@ -268,6 +271,7 @@ class AuthBasicAccount extends BaseActor {
 		$theNowTime = time();
 		$theMaxTime = $theMinTime+(60*30);
 		$bPostKeyOldEnough = ($theMinTime < $theNowTime) && ($theNowTime < $theMaxTime);
+		unset($this->director['post_key']); unset($this->director['post_key_ts']);
 		if ($dbAuth->isCallable('cudo') && $dbAuth->cudo($theAcctId, $this->scene->$pwKeyOld) && $bPostKeyOk && $bPostKeyOldEnough) {
 			//if current pw checked out ok, see if its our own acct or have rights to modify other's accounts.
 			if ($theAcctId==$this->director->account_info->account_id || $this->isAllowed('account','modify')) {
@@ -489,6 +493,18 @@ class AuthBasicAccount extends BaseActor {
 	}
 	
 	/**
+	 * (non-PHPdoc)
+	 * @see \BitsTheater\Actor::usherGreetAudience()
+	 */
+	public function usherGreetAudience($aAction) {
+		//Mobile focused methods always required auth before api* existed.
+		if ($aAction==='registerViaMobile' || $aAction==='requestMobileAuth')
+			$this->usherGreetWithNeedsAuth($aAction);
+		else
+			parent::usherGreetAudience($aAction);
+	}
+	
+	/**
      * Register a user via mobile app rather than on web page.
 	 * POST vars expected: name, salt, email, code, fingerprints
      * @return Returns JSON encoded array[code, user_token, auth_token]
@@ -544,7 +560,7 @@ class AuthBasicAccount extends BaseActor {
 			}
 		}
 		
-		/* exmple of descendant code
+		/* example of descendant code
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		parent::requestMobileAuth($aPing);

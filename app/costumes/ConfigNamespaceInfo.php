@@ -107,5 +107,3 @@ class ConfigNamespaceInfo extends BaseCostume {
 }//end class
 	
 }//end namespace
-	
-	

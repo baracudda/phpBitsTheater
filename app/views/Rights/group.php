@@ -32,6 +32,8 @@ $w .= '<tr><td align="right"><b>x</b> = </td><td>'.$res['deny']->label.': '.$res
 $w .= "</table>\n";
 $w .= "<br/>\n";
 $w .= Widgets::createHiddenPost('group_id',$v->group['group_id']);
+$w .= Widgets::createHiddenPost('post_key', $v->post_key);
+$w .= $v->save_button;
 foreach ($v->right_groups as $ns => $nsInfo) {
 	$v->_rowClass = 1; //reset row counter back to 1 for each table created (resets the row formatting)
 	$thePermissionRows = '';

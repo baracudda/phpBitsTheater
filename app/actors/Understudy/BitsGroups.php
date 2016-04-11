@@ -78,38 +78,41 @@ class BitsGroups extends BaseActor {
 		//$v->addUserMsg($this->debugStr($v->assigned_rights)); //DEBUG-ONLY
 		$v->redirect = $this->getMyUrl('/rights');
 		$v->next_action = $this->getMyUrl('/rights/modify');
+		//CSRF protection via form data: we need to use a secret hidden form value
+		$this->director['post_key'] = Strings::createUUID().Strings::createUUID();
+		$this->director['post_key_ts'] = time()+1; //you can only update your account 1 second after the page loads
+		$v->post_key = $this->director['post_key'];
 	}
 	
+	/**
+	 * Since this method processes form submission, we need to use a secret
+	 * hidden form value. The group() endpoint creates a token to use,
+	 * typically tied to the user session, and in here, we validate that we
+	 * receive the same value back in the form post. The attacker can't simply
+	 * scrape our remote form as the target user through JavaScript, thanks to
+	 * "same-domain request limits" in the XmlHttpRequest function.
+	 */
 	public function modify() {
 		$v =& $this->scene;
-		if (!$this->isAllowed('auth','modify'))
+		$bPostKeyOk = ($this->director['post_key']===$v->post_key);
+		//valid time >10sec, <30min
+		$theMinTime = $this->director['post_key_ts'];
+		$theNowTime = time();
+		$theMaxTime = $theMinTime+(60*30);
+		$bPostKeyOldEnough = ($theMinTime < $theNowTime) && ($theNowTime < $theMaxTime);
+		unset($this->director['post_key']); unset($this->director['post_key_ts']);
+		if (!$this->isAllowed('auth','modify') || !$bPostKeyOk || !$bPostKeyOldEnough)
 			return $this->getHomePage();
 		if (is_null($v->group_id) || $v->group_id==1)
 			return $this->getMyUrl('/rights');
-		//do update of DB
-		//print('<pre>');var_dump($v);print('</pre>');
 		$dbRights = $this->getProp('Permissions');
 		$dbRights->modifyGroupRights($v);
 		$this->returnProp($dbRights);
 		return $v->redirect;
 	}
 	
-	public function ajaxUpdateGroup() {
-		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
-		//do not render anything
-		$this->renderThisView = '_blank';
-		if (isset($v->group_id) && $this->isAllowed('auth','modify') && $v->group_id>=0 && $v->group_id!=1) {
-			$dbAuthGroups = $this->getProp('AuthGroups');
-			$dbAuthGroups->modifyGroup($v);
-		} else if ( (!isset($v->group_id) || $v->group_id<0) && $this->isAllowed('auth','create')) {
-			$dbAuthGroups = $this->getProp('AuthGroups');
-			$dbAuthGroups->createGroup($v->group_name, $v->group_parent, $v->group_reg_code);
-		}
-	}
-	
 	/**
-	 * CSRF protected variant of ajaxUpdateGroup(), which standardizes the response
+	 * CSRF protected save/update endpoint which standardizes the response
 	 * that is returned to the consumer, and also ensures cross-site script
 	 * protection.
 	 * @param integer $aGroupID for "update" operations, the ID of the group to
