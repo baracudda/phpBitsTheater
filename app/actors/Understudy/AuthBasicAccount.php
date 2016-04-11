@@ -493,18 +493,6 @@ class AuthBasicAccount extends BaseActor {
 	}
 	
 	/**
-	 * (non-PHPdoc)
-	 * @see \BitsTheater\Actor::usherGreetAudience()
-	 */
-	public function usherGreetAudience($aAction) {
-		//Mobile focused methods always required auth before api* existed.
-		if ($aAction==='registerViaMobile' || $aAction==='requestMobileAuth')
-			$this->usherGreetWithNeedsAuth($aAction);
-		else
-			parent::usherGreetAudience($aAction);
-	}
-	
-	/**
      * Register a user via mobile app rather than on web page.
 	 * POST vars expected: name, salt, email, code, fingerprints
      * @return Returns JSON encoded array[code, user_token, auth_token]
