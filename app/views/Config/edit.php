@@ -11,21 +11,47 @@ $recite->includeMyHeader($h);
 
 $w = '';
 $jsCode = <<<EOD
-function func_save_settings() {
+function func_save_settings(r) {
 	$("#overlay_please_stand_by").show();
 	var fdata = $('form').serialize();
 	$.post('{$v->getMyUrl('ajajModifyThenRedirect')}',fdata).done(function(aData) {
 		$("#overlay_please_stand_by").hide();
-		location.reload(true);
+		if (r) location.reload(true);
 	}).fail(function(aData, textStatus, errorThrown) {
 		$("#overlay_please_stand_by").hide();
+	});
+}
+
+function exec_action(aAction) {
+	func_save_settings(false);
+	bootbox.prompt({
+	  title: "Re-enter your password to continue",
+	  inputType: "password",
+	  callback: function(result) {
+	  	if (result) {
+			$("#overlay_please_stand_by").show();
+			var me = '{$v->getDirector()->account_info->account_name}';
+			var pw = result;
+			$.ajax({
+				type: "GET",
+				url: aAction,
+				headers: {
+				    "Authorization": "Basic " + btoa(me+":"+pw)
+				},
+			}).done(function(aData) {
+				$("#overlay_please_stand_by").hide();
+			}).fail(function(aData, textStatus, errorThrown) {
+				$("#overlay_please_stand_by").hide();
+			});
+		}
+	  }
 	});
 }
 
 $(document).ready(function(){
 	$('form').on( "submit", function( event ) {
 		event.preventDefault();
-		func_save_settings();
+		func_save_settings(true);
 	});
 
 	$("#overlay_please_stand_by").show();
@@ -39,7 +65,7 @@ $(document).ready(function(){
 			$("#config_data").replaceWith(aData);
 
 			$('.btn-save-settings').click(function(e) {
-				func_save_settings();
+				func_save_settings(true);
 			});
 
 			$("#overlay_please_stand_by").hide();

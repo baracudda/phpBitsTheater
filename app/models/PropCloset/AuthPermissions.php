@@ -246,7 +246,7 @@ class AuthPermissions extends BaseModel {
 
 		while( $theNextGroupID >= 0 && ! in_array( $theNextGroupID, $theProcessed ) )
 		{ // Build up a map of explicit true/false settings.
-			$this->debugLog( __METHOD__ . ' DEBUG processed: ' . $this->debugStr($theProcessed) ) ;
+			//$this->debugLog( __METHOD__ . ' DEBUG processed: ' . $this->debugStr($theProcessed) ) ;
 			$theGroup = $theGroups[$theNextGroupID] ;
 			$thePerms = $this->loadAndMergeGrantedRights(
 					$thePerms, $theNextGroupID ) ;
@@ -353,15 +353,24 @@ class AuthPermissions extends BaseModel {
 	}
 
 	/**
+	 * Remove existing permissions for a particular group.
+	 * @param integer $aGroupId - the group ID.
+	 */
+	public function removeGroupPermissions($aGroupId)
+	{
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array('group_id' => $aGroupId));
+		$theSql->startWith('DELETE FROM')->add($this->tnPermissions);
+		$theSql->startWhereClause()->mustAddParam('group_id')->endWhereClause();
+		$theSql->execDML();
+	}
+
+	/**
 	 * Modify the saved permissions for a particular group.
 	 * @param Scene $aScene
 	 */
 	public function modifyGroupRights($aScene) {
 		//remove existing permissions
-		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aScene);
-		$theSql->startWith('DELETE FROM')->add($this->tnPermissions);
-		$theSql->startWhereClause()->mustAddParam('group_id')->endWhereClause();
-		$theSql->execDML();
+		$this->removeGroupPermissions($aScene->group_id);
 		
 		//add new permissions
 		$theRightsList = array();

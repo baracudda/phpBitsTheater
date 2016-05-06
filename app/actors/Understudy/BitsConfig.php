@@ -64,7 +64,8 @@ class BitsConfig extends BaseActor {
 			$theResponse = $this->ajajModify();
 			$v->addUserMsg($this->getRes('config/msg_save_applied'), $v::USER_MSG_NOTICE);
 		} catch (Exception $e) {
-			$this->debugLog(__METHOD__.' '.$this->debugStr($e));
+			if ( !($e instanceof BrokenLeg && $e->getCode()==400 && $e->getCondition()=='NO_UPDATES') )
+				$this->debugLog(__METHOD__.' '.$this->debugStr($e));
 			$v->addUserMsg($this->getRes('config/msg_save_aborted'), $v::USER_MSG_ERROR);
 		}
 		return $v->redirect;
@@ -102,6 +103,7 @@ class BitsConfig extends BaseActor {
 	public function ajajModify() {
 		$v =& $this->scene;
 		if ($this->isAllowed('config','modify')) {
+			$theResults = array();
 			$bSaved = false;
 			try {
 				//CSRF token might get updated, remove the current one in use
@@ -126,6 +128,7 @@ class BitsConfig extends BaseActor {
 							//$this->debugLog(__METHOD__.' ov='.$theOldValue.' nv='.$this->debugStr($theNewValue));
 							if ($theNewValue !== $theOldValue) {
 								$dbConfig->setConfigValue($theSettingInfo->ns, $theSettingInfo->key, $theNewValue);
+								$theResults[$theSettingInfo->ns][$theSettingInfo->key] = $theSettingInfo->getValueAsInputType();
 								$bSaved = true;
 							}
 						}
@@ -138,7 +141,7 @@ class BitsConfig extends BaseActor {
 				throw BrokenLeg::tossException($this, $e);
 			}
 			if ($bSaved) {
-				$v->results = APIResponse::resultsWithData(null);
+				$v->results = APIResponse::resultsWithData($theResults);
 			} else {
 				throw BrokenLeg::pratfallRes($this, 'NO_UPDATES', 400, 'config/errmsg_nothing_to_update');
 			}

@@ -185,8 +185,7 @@ class MenuItemResEntry extends BaseCostume {
 				case '&method':
 					$args = explode('/',$sa[1]);
 					$theMethodName = array_shift($args);
-					call_user_func_array(array($this->_scene,$theMethodName), $args);
-					//return $this->_scene->$sa[1]();
+					return call_user_func_array(array($this->_scene,$theMethodName), $args);
 				case '&view':
 					$meth = explode('/',$sa[1]);
 					return $this->_scene->cueActor($meth[0],$meth[1]);

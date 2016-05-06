@@ -88,6 +88,20 @@ abstract class ASimpleCostume extends BaseCostume {
 	}
 	
 	/**
+	 * Create a new instance of whatever class this method
+	 * is called from (MyClass::fromThing() makes a MyClass
+	 * instance) and sets its properties to the values of the
+	 * object or array param.
+	 * @param array|object $aThing - thing to copy data from.
+	 * @return ASimpleCostume Returns the new instance.
+	 */
+	static public function fromThing($aThing) {
+		$theClassName = get_called_class();
+		$o = new $theClassName();
+		return $o->setDataFrom($aThing);
+	}
+	
+	/**
 	 * Return this payload data as a simple class, minus any metadata this class might have.
 	 * @return string Return self encoded as a standard class.
 	 */

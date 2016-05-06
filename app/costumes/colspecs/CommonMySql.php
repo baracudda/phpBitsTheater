@@ -16,14 +16,14 @@
  */
 
 namespace BitsTheater\costumes\colspecs;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 	/**
 	 * Common column specifications using MySQL syntax.
 	 *
 	 *
-	 * 		 * We cannot construct a const from other consts, so cannot use concatonation here!!!
-	 *
+	 * !!! We cannot construct a const from other consts, so cannot use concatenation here !!!
 	 *
 	 */
 	class CommonMySql
@@ -97,7 +97,7 @@ namespace BitsTheater\costumes\colspecs;
 		 * Insert standard audit fields into a table definition.
 		 * @return string
 		 */
-		static function getAuditFieldsForTableDefSql() {
+		static public function getAuditFieldsForTableDefSql() {
 			return
 					self::CREATED_BY_SPEC.', '.
 					self::UPDATED_BY_SPEC.', '.
@@ -109,11 +109,27 @@ namespace BitsTheater\costumes\colspecs;
 		 * Insert standard versioning fileds into a table definition.
 		 * @return string
 		 */
-		static function getVersioningFieldsForTableDefSql()
+		static public function getVersioningFieldsForTableDefSql()
 		{
 			return
 					self::VERSION_NUM_SPEC.', '.
 					self::VERSION_REPLACED_BY_SPEC;
+		}
+
+		/**
+		 * The SQL, when executed, results in 'name' and 'size' columns.
+		 * @param string $aDb - the database name.
+		 * @param string $aTableName - the table name.
+		 * @param string $aFieldName - the field name.
+		 * @return string Returns the SQL necessary to get the currently defined field size.
+		 */
+		static public function getFieldSizeSql($aDb, $aTableName, $aFieldName)
+		{
+			return 'SELECT COLUMN_NAME AS name, (IfNull(CHARACTER_MAXIMUM_LENGTH,0)+IfNull(NUMERIC_PRECISION,0)) AS size'.
+					' FROM information_schema.COLUMNS'.
+					" WHERE TABLE_SCHEMA = '{$aDb}'".
+					" AND TABLE_NAME = '{$aTableName}'".
+					" AND COLUMN_NAME = '{$aFieldName}'";
 		}
 
 		/**
@@ -123,7 +139,7 @@ namespace BitsTheater\costumes\colspecs;
 		 * @return array The modified $objectArray object. In case passed in $objectArray is not an array at all,
 		 * simply returns back $objectArray.
 		 */
-		static function convertTimestampsToISO($objectArray) {
+		static public function convertTimestampsToISO($objectArray) {
 			// Check to ensure passed-in array object is indeed an array.
 			if ( (array) $objectArray !== $objectArray ) {
 				// If not, simply return the object as is.
@@ -156,15 +172,32 @@ namespace BitsTheater\costumes\colspecs;
 		 * Takes a MySQL timestamp and converts it to a ISO 8601 compliant format.
 		 * @param string $sqlTimestamp The timestamp from MySQL.
 		 * @return string the timestamp in ISO 8601 compliant format.
+		 * @see https://en.wikipedia.org/wiki/ISO_8601
 		 * 
 		 * Example in:  "2015-09-09 17:55:51"
 		 * Example out: "2015-11-12T20:57:10+00:00"
+		 * Example out: "2015-11-12T20:57:10Z"
+		 *
 		 */
-		static function convertSQLTimestampToISOFormat($sqlTimestamp) {
-			/* Let's use PHP 5 'c' format for ISO 8601 conversion.
-			 * More information: http://php.net/manual/en/function.date.php
-			 */
-			return date('c', strtotime( $sqlTimestamp ) );
+		static public function convertSQLTimestampToISOFormat($sqlTimestamp) {
+			//Let's use PHP 5 'c' format for ISO 8601 conversion.
+			//  More information: http://php.net/manual/en/function.date.php
+			//return date('c', strtotime( $sqlTimestamp ) );
+			//NOTE: the above uses the server's timezone to perform date conversion
+			//  we need to always convert assuming UTC and not be reliant upon
+			//  server timezone.
+			if (strlen($sqlTimestamp)>10)
+			{
+				$sqlTimestamp{10} = 'T';
+				//If the time is in UTC, add a Z directly after the time without a space.
+				//  Z is the zone designator for the zero UTC offset.
+				//  UTC time is also known as Zulu time, since Zulu is the NATO
+				//  phonetic alphabet word for Z.
+				if (!(strpos($sqlTimestamp, '+', 11)<0) && //if timezone info not there
+						!Strings::endsWith($sqlTimestamp, 'Z')) //and Zulu designation missing
+					$sqlTimestamp .= 'Z'; //assume UTC
+			}
+			return $sqlTimestamp;
 		}
 
 	}//end class

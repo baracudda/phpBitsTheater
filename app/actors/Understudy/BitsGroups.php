@@ -20,13 +20,14 @@ use BitsTheater\Actor as BaseActor;
 use BitsTheater\scenes\Rights as MyScene; /* @var $v MyScene */
 use BitsTheater\models\Permissions; /* @var $dbRights Permissions */
 use BitsTheater\models\Auth; /* @var $dbAuth Auth */
-use BitsTheater\models\AuthGroups as AuthGroups; /* @var $dbAuthGroups AuthGroups */
+use BitsTheater\models\AuthGroups; /* @var $dbAuthGroups AuthGroups */
 use com\blackmoonit\Arrays;
 use com\blackmoonit\Strings;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\BrokenLeg ;
 use BitsTheater\costumes\RightsMatrixProcessor;
 use BitsTheater\outtakes\RightsException ;
+use Exception;
 {//namespace begin
 
 class BitsGroups extends BaseActor {
@@ -63,9 +64,9 @@ class BitsGroups extends BaseActor {
 		//indicate what top menu we are currently in
 		$this->setCurrentMenuKey('admin');
 		
-		if (is_null($aGroupId) || $aGroupId==1)
+		if (is_null($aGroupId) || $aGroupId==AuthGroups::TITAN_GROUP_ID)
 			return $this->getMyUrl('/rights');
-		if ($aGroupId==0) {
+		if ($aGroupId==AuthGroups::UNREG_GROUP_ID) {
 			$v->group = null;
 		} else {
 			$dbAuth = $this->getProp('Auth');
@@ -103,7 +104,7 @@ class BitsGroups extends BaseActor {
 		unset($this->director['post_key']); unset($this->director['post_key_ts']);
 		if (!$this->isAllowed('auth','modify') || !$bPostKeyOk || !$bPostKeyOldEnough)
 			return $this->getHomePage();
-		if (is_null($v->group_id) || $v->group_id==1)
+		if (is_null($v->group_id) || $v->group_id==AuthGroups::TITAN_GROUP_ID)
 			return $this->getMyUrl('/rights');
 		$dbRights = $this->getProp('Permissions');
 		$dbRights->modifyGroupRights($v);
@@ -127,17 +128,11 @@ class BitsGroups extends BaseActor {
 		{
 			$dbGroups = $this->getProp( 'AuthGroups' ) ;
 
-			// The model function expects the group ID to be part of the scene,
-			// but our Pulse 3.0 REST API spec states that entity IDs should be
-			// URL parameters. This short blurb checks the URL parameters and
-			// copies the group ID into the corresponding scene variable, so
-			// that we can continue to use the existing model code. The Pulse
-			// 2.x UI still passes the group ID as a POST variable, so it will
-			// pass through this statement but still be caught by the next one.
+			//URL segment overrides POST/Form variable
 			if( isset( $aGroupID ) )
 				$v->group_id = $aGroupID ;
 
-			if( isset( $v->group_id ) )
+			if( isset( $v->group_id ) && $v->group_id > AuthGroups::UNREG_GROUP_ID )
 			{ // Update an existing group.
 				if( ! $this->isAllowed( 'auth', 'modify' ) )
 					throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
@@ -145,7 +140,8 @@ class BitsGroups extends BaseActor {
 					throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' );
 
 				$v->results = APIResponse::resultsWithData(
-					$dbGroups->modifyGroup( $v ) ) ;
+						$dbGroups->modifyGroup( $v )
+				) ;
 			}
 			else
 			{ // Create a new group.
@@ -155,8 +151,8 @@ class BitsGroups extends BaseActor {
 					throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' );
 
 				$v->results = APIResponse::resultsWithData(
-					$dbGroups->createGroup( $v->group_name, $v->parent_group_id,
-						$v->reg_code, $v->source_group_id ) ) ;
+					$dbGroups->createGroup( $v->group_name, $v->group_parent,
+						$v->group_reg_code, $v->source_group_id ) ) ;
 			}
 		}
 		catch( Exception $x )

@@ -108,7 +108,7 @@ abstract class ABitsAccount extends BaseActor {
 	
 	/**
 	 * API version of the login() URL.
-	 * @return \BitsTheater\actors\Understudy\APIResponse Returns the same
+	 * @return APIResponse Returns the same
 	 *   object as ajajGetAccountInfo().
 	 * @see ABitsAccount::ajajGetAccountInfo()
 	 */

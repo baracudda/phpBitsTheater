@@ -18,7 +18,7 @@ trait WornByModel
 	 * @param Model $aModel the model instance to bind
 	 * @return \BitsTheater\costumes\ABitsCostume an instance of the costume
 	 */
-	public static function withModel( Model &$aModel )
+	public static function withModel( Model $aModel )
 	{
 		$theClassName = get_called_class() ;
 		return (new $theClassName($aModel->director))->setModel($aModel) ;
@@ -33,7 +33,7 @@ trait WornByModel
 	 * @param Model $aModel the model to bind
 	 * @return \BitsTheater\costumes\ABitsCostume the updated costume
 	 */
-	public function setModel( Model &$aModel )
+	public function setModel( Model $aModel )
 	{ $this->model = $aModel ; return $this ; }
 	
 } // end trait WornByModel

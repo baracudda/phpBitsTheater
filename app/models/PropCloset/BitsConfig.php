@@ -71,13 +71,14 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 					if (isset($aScene->$theVarName)) {
 						$theDefaultValue = $aScene->$theVarName;
 					}
-					array_push($theResults, array(
-							'ns' => $theNamespaceInfo->namespace,
-							'key' => $theSettingName,
-							'value' => $theDefaultValue,
-							'default' => $theDefaultValue, 
-					));
-						
+					if ($theSettingInfo->isSaveAllowed()) {
+						array_push($theResults, array(
+								'ns' => $theNamespaceInfo->namespace,
+								'key' => $theSettingName,
+								'value' => $theDefaultValue,
+								'default' => $theDefaultValue,
+						));
+					}
 				}//end foreach setting
 			}
 		}//end foreach area
@@ -262,7 +263,7 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 			$theSettingList = $this->getRes('config/'.$aNamespaceInfo->namespace);
 			foreach ($theSettingList as $theSettingName => $theSettingInfo) {
 				$o = ConfigSettingInfo::fromConfigRes($aNamespaceInfo, $theSettingName, $theSettingInfo);
-				if ($o->isConfigAllowed()) {
+				if ($o->isViewAllowed()) {
 					$theSettings[$theSettingName] = $o;
 				}
 			}

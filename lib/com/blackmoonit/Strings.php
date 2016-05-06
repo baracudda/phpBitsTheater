@@ -693,6 +693,25 @@ class Strings {
 		return 'HTTP_'.strtoupper(preg_replace('/\W+/m', '_', $aHeaderName));
 	}
 	
+	/**
+	 * Recombine the array made by parse_url() into a string.
+	 * @param array $aParsedUrl
+	 * @return string Returns the url string.
+	 * @see parse_url()
+	 */
+	static public function recombineUrl($aParsedUrl) {
+		$scheme = isset($aParsedUrl['scheme']) ? "{$aParsedUrl['scheme']}://" : '';
+		$host = isset($aParsedUrl['host']) ? $aParsedUrl['host'] : '';
+		$port = isset($aParsedUrl['port']) ? ":{$aParsedUrl['port']}" : '';
+		$user = isset($aParsedUrl['user']) ? $aParsedUrl['user'] : '';
+		$pass = isset($aParsedUrl['pass']) ? ":{$aParsedUrl['pass']}"  : '';
+		$pass = ($user || $pass) ? "{$pass}@" : '';
+		$path = isset($aParsedUrl['path']) ? $aParsedUrl['path'] : '';
+		$query = isset($aParsedUrl['query']) ? "?{$aParsedUrl['query']}" : '';
+		$fragment = isset($aParsedUrl['fragment']) ? "#{$aParsedUrl['fragment']}" : '';
+		return $scheme.$user.$pass.$host.$port.$path.$query.$fragment;
+	}
+
 }//end class
 
 /* increase default crypto strength (04-31) based on PHP version

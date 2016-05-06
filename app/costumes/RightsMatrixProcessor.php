@@ -4,8 +4,8 @@ namespace BitsTheater\costumes ;
 use BitsTheater\Model ;
 use BitsTheater\costumes\WornByActor ;
 use BitsTheater\costumes\ABitsCostume as BaseCostume ;
-use BitsTheater\models\PropCloset\BitsGroups ;
-use BitsTheater\models\PropCloset\AuthPermissions ;
+use BitsTheater\models\AuthGroups ; /* @var $dbGroups AuthGroups */
+use BitsTheater\models\Permissions ; /* @var $dbPerms Permissions */
 {
 
 /**
@@ -58,7 +58,7 @@ extends BaseCostume
 		$this->myMatrix['namespaces'] = array() ;
 
 		$theNamespaces =
-			$this->getDirector()->getRes( 'Permissions/namespace' ) ;
+			$this->getDirector()->getRes( 'permissions/namespace' ) ;
 
 		foreach( $theNamespaces as $theNSName => $theNSInfo )
 		{
@@ -105,7 +105,16 @@ extends BaseCostume
 			$thePermObj = (object)($thePerm) ;
 			$theGroupID =
 				static::getStringifiedGroupID( $thePermObj->group_id ) ;
-			$bEnabled = ( $thePermObj->value == AuthPermissions::VALUE_Allow ? true : false ) ;
+
+			//if there are orphaned records in Permission Map table, skip them
+			if ( !array_key_exists($theGroupID, $this->myGroupPerms) )
+			{
+				//instead of merely skipping the orphan, lets go ahead and delete it
+				$dbPerms->removeGroupPermissions($thePermObj->group_id);
+				continue;
+			}
+			
+			$bEnabled = ( $thePermObj->value == Permissions::VALUE_Allow ? true : false ) ;
 
 			if( ! array_key_exists( $thePermObj->ns, $this->myGroupPerms[$theGroupID] ) )
 				$this->myGroupPerms[$theGroupID][$thePermObj->ns] = array() ;
@@ -178,26 +187,33 @@ extends BaseCostume
 	 * @param string $aNSName a permission namespace name
 	 * @param string $aPermName a permission name
 	 * @param object $aGroup a group ID
+	 * @param array $aParentList - (optional) a parent group ID list to prevent
+	 *   infinite loops.
 	 * @return boolean indicates whether the permission is allowed (true) or
 	 *  denied (false)
 	 */
-	protected function getValueForGroupPermission( $aNSName, $aPermName, $aGroup )
+	protected function getValueForGroupPermission( $aNSName, $aPermName, $aGroup,
+			$aParentList=array() )
 	{
 		if( $aGroup === NULL ) return false ;
 
 		$bSetting = false ;
 		$theGroupID = self::getStringifiedGroupID($aGroup->group_id) ;
 
-		if( $aGroup->group_id == BitsGroups::UNREG_GROUP_ID )
+		if( $aGroup->group_id == AuthGroups::UNREG_GROUP_ID )
 			$bSetting = false ;
-		else if( $aGroup->group_id == BitsGroups::TITAN_GROUP_ID )
+		else if( $aGroup->group_id == AuthGroups::TITAN_GROUP_ID )
 			$bSetting = true ;
 		else if( $this->hasExplicitSettingFor($aNSName,$aPermName,$theGroupID) )
 			$bSetting = $this->myGroupPerms[$theGroupID][$aNSName][$aPermName] ;
-		else if( isset( $aGroup->parent_group_id ) && ! empty( $aGroup->parent_group_id ) )
+		else if( isset( $aGroup->parent_group_id ) && ! empty( $aGroup->parent_group_id ) &&
+				! array_key_exists($aGroup->parent_group_id, $aParentList) )
 		{
+			$aParentList[$aGroup->parent_group_id] = true;
 			$bSetting = $this->getValueForGroupPermission( $aNSName, $aPermName,
-					$this->getGroupByID( $aGroup->parent_group_id ) ) ;
+					$this->getGroupByID( $aGroup->parent_group_id ),
+					$aParentList
+			) ;
 		}
 
 		return $bSetting ;

@@ -50,8 +50,8 @@ abstract class AuthBase extends BaseModel {
 	}
 	
 	public function ripTicket() {
-		unset($this->director->account_info);
 		$this->clearCsrfTokenCookie();
+		unset($this->director->account_info);
 		$this->director->resetSession();
 	}
 	
@@ -113,6 +113,36 @@ abstract class AuthBase extends BaseModel {
 	}
 
 	/**
+	 * Retrieve the current CSRF token.
+	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.
+	 * @return string Returns the token.
+	 */
+	protected function getMyCsrfToken($aCsrfTokenName) {
+		return $this->getDirector()[$aCsrfTokenName];
+	}
+	
+	/**
+	 * Set the CSRF token to use.
+	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.
+	 * @param string $aCsrfToken - (optional) the token to use,
+	 *   one will be generated if necessary.
+	 * @return string Returns the token to use.
+	 */
+	protected function setMyCsrfToken($aCsrfTokenName, $aCsrfToken=null) {
+		$theCsrfToken = (!empty($aCsrfToken)) ? $aCsrfToken : Strings::createUUID();
+		$this->getDirector()[$aCsrfTokenName] = $theCsrfToken;
+		return $theCsrfToken;
+	}
+	
+	/**
+	 * Removes the current CSRF token in use.
+	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.
+	 */
+	protected function clearMyCsrfToken($aCsrfTokenName) {
+		unset($this->getDirector()[$aCsrfTokenName]);
+	}
+	
+	/**
 	 * Get the cookie and header names from setup, if possible.
 	 * @return array Returns array( $cookieName, $headerName ), if defined and
 	 *   array( null, null ) if not.
@@ -137,13 +167,10 @@ abstract class AuthBase extends BaseModel {
 	public function setCsrfTokenCookie($aToken=null) {
 		list( $theCsrfCookieName, $theCsrfHeaderName) = $this->getCsrfCookieHeaderNames();
 		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
-			$theCsrfToken = (!empty($aToken)) ? $aToken : Strings::createUUID();
-			$theCachedToken = $this->getDirector()[$theCsrfHeaderName];
+			$theCachedToken = $this->getMyCsrfToken($theCsrfHeaderName);
 			if (empty($theCachedToken)) {
-				if ($this->setMySiteCookie($theCsrfCookieName, $theCsrfToken, 0, false))
-					$this->getDirector()[$theCsrfHeaderName] = $theCsrfToken;
-				else
-					return false;
+				$theNewToken = $this->setMyCsrfToken($theCsrfHeaderName, $aToken);
+				return $this->setMySiteCookie($theCsrfCookieName, $theNewToken, 0, false);
 			}
 			return true;
 		} else
@@ -160,7 +187,7 @@ abstract class AuthBase extends BaseModel {
 	public function checkCsrfTokenHeader() {
 		list( $theCsrfCookieName, $theCsrfHeaderName) = $this->getCsrfCookieHeaderNames();
 		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
-			$theCachedToken = $this->getDirector()[$theCsrfHeaderName];
+			$theCachedToken = $this->getMyCsrfToken($theCsrfHeaderName);
 			if (!empty($theCachedToken)) {
 				$theVarIndex = Strings::httpHeaderNameToServerKey($theCsrfHeaderName);
 				$theHeaderToken = isset($_SERVER[$theVarIndex])
@@ -182,7 +209,7 @@ abstract class AuthBase extends BaseModel {
 	public function clearCsrfTokenCookie() {
 		list( $theCsrfCookieName, $theCsrfHeaderName) = $this->getCsrfCookieHeaderNames();
 		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
-			$this->getDirector()[$theCsrfHeaderName] = null;
+			$this->clearMyCsrfToken($theCsrfHeaderName);
 			$this->setMySiteCookie($theCsrfCookieName);
 		}
 	}

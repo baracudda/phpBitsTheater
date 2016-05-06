@@ -25,13 +25,23 @@ if (!empty($v->results)) {
 		$w .= "  <tbody>\n";
 		/* @var $theSettingInfo ConfigSettingInfo */
 		foreach ($theNamespaceInfo->settings_list as $theSettingInfo) {
-			//DEBUG if ($theSettingInfo->key==='security') {print($v->debugStr($theSettingInfo)); print('<br><br>');} //DEBUG
 			$theWidgetName = $theSettingInfo->getWidgetName();
-			$cellLabel = '<td class="db-field-label"><label for="'.$theWidgetName.'" >'.$theSettingInfo->getLabel().'</label></td>';
-			$cellInput = '<td class="db-field">';
-			$cellInput .= $theSettingInfo->getInputWidget();
-			$cellInput .= '</td>';
+			if ($theSettingInfo->mSettingInfo->input_type!==ConfigSettingInfo::INPUT_ACTION) {
+				//DEBUG if ($theSettingInfo->key==='security') {print($v->debugStr($theSettingInfo)); print('<br><br>');} //DEBUG
+				$cellLabel = '<td class="db-field-label"><label for="'.$theWidgetName.'" >'.$theSettingInfo->getLabel().'</label></td>';
+				$cellInput = '<td class="db-field">';
+				$cellInput .= $theSettingInfo->getInputWidget();
+				$cellInput .= '</td>';
+			} else {
+				$cellLabel = '<td class="db-field-label"><label for="'.$theWidgetName.'" ></label></td>';
+				$cellInput = '<td class="db-field">';
+				$theButtonHtml = '<button type="button" id="%s" onclick="%s">'.$theSettingInfo->getLabel().'</button>';
+				$theOnClick = "exec_action('{$theSettingInfo->mSettingInfo->default_value}')";
+				$cellInput .= Strings::format($theButtonHtml, $theWidgetName, $theOnClick);
+			}
 			$cellDesc = '<td class="">'.$theSettingInfo->getDescription().'</td>';
+
+			
 
 			$w .= '  <tr class="'.$v->_rowClass.' '.$theNamespaceInfo->namespace.'-'.$theSettingInfo->key.'">'.$cellLabel.$cellInput.$cellDesc."</tr>\n";
 		}//end foreach

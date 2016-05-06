@@ -33,9 +33,13 @@ use com\blackmoonit\Arrays;
 use PDO;
 use PDOException;
 use Exception;
+use BitsTheater\costumes\WornForFeatureVersioning;
 {//namespace begin
 
-class AuthBasic extends BaseModel implements IFeatureVersioning {
+class AuthBasic extends BaseModel implements IFeatureVersioning
+{
+	use WornForFeatureVersioning;
+	
 	/**
 	 * Used by meta data mechanism to keep the database up-to-date with the code.
 	 * A non-NULL string value here means alter-db-schema needs to be managed.
@@ -89,6 +93,16 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 * @var string
 	 */
 	const TOKEN_PREFIX_REGCAP = 'rC';
+	/**
+	 * A CSRF protection token prefix.
+	 * @var string
+	 */
+	const TOKEN_PREFIX_ANTI_CSRF = 'aC';
+	/**
+	 * The currently logged in user's auth_id.
+	 * @var string
+	 */
+	protected $myAuthId = null;
 		
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
@@ -183,37 +197,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	 * @throws DbException
 	 */
 	public function setupModel() {
-		switch ($this->dbType()) {
-		case self::DB_TYPE_MYSQL: default:
-			try {
-				$theSql = $this->getTableDefSql(self::TABLE_Auth);
-				$this->execDML($theSql);
-				$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnAuth));
-				$theSql = $this->getTableDefSql(self::TABLE_AuthTokens);
-				$this->execDML($theSql);
-				$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnAuthTokens));
-				$theSql = $this->getTableDefSql(self::TABLE_AuthMobile);
-				$this->execDML($theSql);
-				$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnAuthMobile));
-			} catch (PDOException $pdoe){
-				$this->debugLog(__METHOD__.' failed: '.$pdoe->getMessage().' sql='.$theSql);
-				throw new DbException($pdoe,$theSql);
-			}
-			break;
-		}
-	}
-	
-	/**
-	 * Returns the current feature metadata for the given feature ID.
-	 * @param string $aFeatureId - the feature ID needing its current metadata.
-	 * @return array Current feature metadata.
-	 */
-	public function getCurrentFeatureVersion($aFeatureId=null) {
-		return array(
-				'feature_id' => self::FEATURE_ID,
-				'model_class' => $this->mySimpleClassName,
-				'version_seq' => self::FEATURE_VERSION_SEQ,
-		);
+        $this->setupTable( self::TABLE_Auth, $this->tnAuth ) ;
+        $this->setupTable( self::TABLE_AuthTokens, $this->tnAuthTokens ) ;
+        $this->setupTable( self::TABLE_AuthMobile, $this->tnAuthMobile ) ;
 	}
 	
 	/**
@@ -235,23 +221,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 				break;
 		}//switch
 		return self::FEATURE_VERSION_SEQ;
-	}
-	
-	/**
-	 * Meta data may be necessary to make upgrades-in-place easier. Check for
-	 * existing meta data and define if not present.
-	 * @param Scene $aScene - (optional) extra data may be supplied
-	 */
-	public function setupFeatureVersion($aScene) {
-		/* @var $dbMeta MetaModel */
-		$dbMeta = $this->getProp('SetupDb');
-		$theFeatureData = $dbMeta->getFeature(self::FEATURE_ID);
-		if (empty($theFeatureData)) {
-			$theFeatureData = $this->getCurrentFeatureVersion();
-			$theFeatureData['version_seq'] = $this->determineExistingFeatureVersion($aScene);
-			$dbMeta->insertFeature($theFeatureData);
-		}
-		$this->returnProp($dbMeta);
 	}
 	
 	/**
@@ -647,6 +616,48 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
+	 * Delete stale Anti CSRF tokens.
+	 */
+	protected function removeStaleAntiCsrfTokens() {
+		try {
+			$delta = $this->getCookieDurationInDays();
+			if (!empty($delta)) {
+				$thePrefix = self::TOKEN_PREFIX_ANTI_CSRF;
+				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
+				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} DAY)";
+				$this->execDML($theSql);
+			}
+		} catch (DbException $e) {
+			//do not care if removing stale tokens fails, log it so admin knows about it, though
+			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+		}
+	}
+	
+	/**
+	 * Delete a specific set of anti-CSRF tokens for a user.
+	 * @param string $aAuthId - the user's auth_id.
+	 * @param number $aAcctId - the user's account_id.
+	 */
+	protected function removeAntiCsrfToken($aAuthId, $aAcctId) {
+		try {
+			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+					'auth_id' => $aAuthId,
+					'account_id' => $aAcctId,
+					'token' => self::TOKEN_PREFIX_ANTI_CSRF.'%',
+			));
+			$theSql->startWith('DELETE FROM')->add($this->tnAuthTokens);
+			$theSql->startWhereClause()->mustAddParam('auth_id');
+			$theSql->setParamPrefix(' AND ')->mustAddParam('account_id');
+			$theSql->setParamOperator(' LIKE ')->mustAddParam('token');
+			$theSql->endWhereClause();
+			$theSql->execDML();
+		} catch (DbException $e) {
+			//do not care if removing token fails, log it so admin knows about it, though
+			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+		}
+	}
+	
+	/**
 	 * Returns the token row if it existed and removes it.
 	 * @param string $aAuthId
 	 * @param string $aAuthToken
@@ -654,6 +665,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	public function getAndEatCookie($aAuthId, $aAuthToken) {
 		//toss out stale cookies first
 		$this->removeStaleCookies();
+		//toss out stale anti-crsf tokens as well since they are linked
+		$this->removeStaleAntiCsrfTokens();
 		//now see if our cookie token still exists
 		$theAuthTokenRow = $this->getAuthTokenRow($aAuthId, $aAuthToken);
 		if (!empty($theAuthTokenRow)) {
@@ -714,6 +727,58 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 	}
 	
 	/**
+	 * Retrieve the current CSRF token.
+	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.
+	 * @return string Returns the token.
+	 */
+	protected function getMyCsrfToken($aCsrfTokenName) {
+		if (!empty($this->myAuthId))
+		{
+			$theTokens = $this->getAuthTokens($this->myAuthId,
+					$this->director->account_info->account_id,
+					self::TOKEN_PREFIX_ANTI_CSRF.'%', true
+			);
+			if (!empty($theTokens))
+			{
+				return $theTokens[0]['token'];
+			}
+		}
+		//if all else fails, call parent
+		return parent::getMyCsrfToken($aCsrfTokenName);
+	}
+	
+	/**
+	 * Set the CSRF token to use.
+	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.
+	 * @param string $aCsrfToken - (optional) the token to use,
+	 *   one will be generated if necessary.
+	 * @return string Returns the token to use.
+	 */
+	protected function setMyCsrfToken($aCsrfTokenName, $aCsrfToken=null) {
+		$delta = $this->getCookieDurationInDays();
+		if (!empty($this->myAuthId) && !empty($delta))
+			return $this->generateAuthToken($this->myAuthId,
+					$this->director->account_info->account_id,
+					self::TOKEN_PREFIX_ANTI_CSRF
+			);
+		else
+			return parent::setMyCsrfToken($aCsrfTokenName, $aCsrfToken);
+	}
+	
+	/**
+	 * Removes the current CSRF token in use.
+	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.
+	 */
+	protected function clearMyCsrfToken($aCsrfTokenName) {
+		if (!empty($this->myAuthId))
+			$this->removeAntiCsrfToken($this->myAuthId,
+					$this->director->account_info->account_id
+			);
+		else
+			parent::clearMyCsrfToken($aCsrfTokenName);
+	}
+	
+	/**
 	 * Check PHP session data for account information.
 	 * @param Accounts $dbAccounts - the accounts model.
 	 * @param object $aScene - var container object for user/pw info; 
@@ -761,7 +826,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 							//data retrieval succeeded, save the account id in session cache
 							$this->director[self::KEY_userinfo] = $theAuthRow['account_id'];
 							//if user asked to remember, save a cookie
-							if (isset($_POST[self::KEY_cookie])) {
+							if (!empty($aScene->{self::KEY_cookie})) {
 								$this->updateCookie($theAuthRow['auth_id'], $theAuthRow['account_id']);
 							}
 						}
@@ -1036,17 +1101,24 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 				$bAuthorized = $this->checkSessionForTicket($dbAccounts, $aScene);
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
-				$this->checkWebFormForTicket($dbAccounts, $aScene);
+				$bAuthorized = $this->checkWebFormForTicket($dbAccounts, $aScene);
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
-				$this->checkCookiesForTicket($dbAccounts, $_COOKIE);
+				$bAuthorized = $this->checkCookiesForTicket($dbAccounts, $_COOKIE);
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 				parent::checkTicket($aScene);
 
 			$this->returnProp($dbAccounts);
 			if ($bAuthorized)
 			{
-				$theCsrfToken = $this->director->app_id.'-'.Strings::createUUID();
-				$this->setCsrfTokenCookie($theCsrfToken);
+				if (!empty($this->director->account_info->account_id))
+				{
+					$theAuthRow = $this->getAuthByAccountId(
+							$this->director->account_info->account_id
+					);
+					if (!empty($theAuthRow))
+						$this->myAuthId = $theAuthRow['auth_id'];
+				}
+				$this->setCsrfTokenCookie();
 			}
 		}
 	}
@@ -1077,6 +1149,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning {
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
 		parent::ripTicket();
+		//clear this var after parent call so clearMyCsrfToken() works ok
+		$this->myAuthId = null;
 	}
 
 	/**

@@ -18,7 +18,7 @@ trait WornByActor
 	 * @param Actor $aActor the actor instance to bind
 	 * @return \BitsTheater\costumes\ABitsCostume an instance of the costume
 	 */
-	public static function withActor( Actor &$aActor )
+	public static function withActor( Actor $aActor )
 	{
 		$theClassName = get_called_class() ;
 		return (new $theClassName($aActor->director))
@@ -36,7 +36,7 @@ trait WornByActor
 	 * @param Actor $aActor the actor to bind
 	 * @return \BitsTheater\costumes\ABitsCostume the updated costume
 	 */
-	public function setActor( Actor &$aActor )
+	public function setActor( Actor $aActor )
 	{
 		$this->actor = $aActor ;
 		$this->setDirector($aActor->director) ;

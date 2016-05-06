@@ -31,7 +31,6 @@ use PDOException;
 use Exception;
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
-use Elasticsearch\Endpoints\Indices\ValidateQuery;
 {//namespace begin
 
 class BitsInstall extends BaseActor {

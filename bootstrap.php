@@ -44,15 +44,17 @@ define('BITS_APP_PATH',BITS_PATH.'app'.¦);
  * setup as a part of a Docker container which frequently changes its domain.
  * @var string
  */
-define('BITS_CFG_PATH', (!file_exists(BITS_APP_PATH.'configs'.¦.$_SERVER['SERVER_NAME']) && file_exists(BITS_APP_PATH.'configs'.¦.'anyhost'))
+define('BITS_SERVER_NAME', (!empty($_SERVER['SERVER_NAME'])) ? $_SERVER['SERVER_NAME'] : 'localhost');
+define('BITS_CFG_PATH', (!file_exists(BITS_APP_PATH.'configs'.¦.BITS_SERVER_NAME) && file_exists(BITS_APP_PATH.'configs'.¦.'anyhost'))
 	? BITS_APP_PATH.'configs'.¦.'anyhost'.¦
-	: BITS_APP_PATH.'configs'.¦.$_SERVER['SERVER_NAME'].¦
+	: BITS_APP_PATH.'configs'.¦.BITS_SERVER_NAME.¦
 );
 define('WEBAPP_PATH', BITS_APP_PATH);
 
 //domain url
-define('SERVER_URL',((array_key_exists('HTTPS',$_SERVER) && $_SERVER['HTTPS']=='on')?'https':'http').'://'.$_SERVER['SERVER_NAME'].
-		(($_SERVER['SERVER_PORT']=='80' || $_SERVER['SERVER_PORT']=='443')?'':':'.$_SERVER['SERVER_PORT']));
+define('BITS_SERVER_PORT', (!empty($_SERVER['SERVER_PORT'])) ? $_SERVER['SERVER_PORT'] : 80);
+define('SERVER_URL',((array_key_exists('HTTPS',$_SERVER) && $_SERVER['HTTPS']=='on')?'https':'http').'://'.BITS_SERVER_NAME.
+		((BITS_SERVER_PORT==80 || BITS_SERVER_PORT==443) ? '' : ':'.BITS_SERVER_PORT));
 //relative urls
 /**
  * Current, site-relative URL.
@@ -64,11 +66,13 @@ define('REQUEST_URL', array_key_exists('url',$_GET)?$_GET['url']:'');
  * Site URL that does not end in a /.
  * @var string
  */
+if (!defined('BITS_URL'))
 define('BITS_URL', (dirname($_SERVER['SCRIPT_NAME'])!=='.') ? str_replace(DIRECTORY_SEPARATOR,'/',dirname($_SERVER['SCRIPT_NAME'])) : '' );
 
 /**
  * Virtual Host folder name, if exists.
  */
+if (!defined('VIRTUAL_HOST_NAME'))
 define('VIRTUAL_HOST_NAME', (strlen(BITS_URL)>0 && count($urlsegs=explode('/', BITS_URL))>1) ? $urlsegs[1] : '');
 
 /**

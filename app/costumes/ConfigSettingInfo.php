@@ -40,6 +40,7 @@ class ConfigSettingInfo extends BaseCostume
 	const INPUT_DROPDOWN = 'dropdown' ;
 	const INPUT_PASSWORD = 'string-pw' ;
 	const INPUT_INTEGER = 'integer' ;
+	const INPUT_ACTION = 'action' ;
 
 	public $config_namespace_info;
 	public $config_key;
@@ -114,19 +115,7 @@ class ConfigSettingInfo extends BaseCostume
 		$o = new StandardClass();
 		$o->ns = $this->ns;
 		$o->key = $this->key;
-		switch( $this->mSettingInfo->input_type )
-		{
-			case self::INPUT_BOOLEAN:
-			case self::INPUT_INTEGER:
-				$o->value = intval($this->getCurrentValue());
-				break;
-			case self::INPUT_DROPDOWN:
-			case self::INPUT_TEXT:
-			case self::INPUT_STRING:
-			case self::INPUT_PASSWORD:
-			default:
-				$o->value = $this->getCurrentValue();
-		}//switch
+		$o->value = $this->getValueAsInputType();
 		$o->mSettingInfo = $this->mSettingInfo->exportData();
 		return $o;
 	}
@@ -154,11 +143,41 @@ class ConfigSettingInfo extends BaseCostume
 	}
 
 	/**
-	 * See if this setting is restricted.
+	 * @return mixed Return the current value typecast appropriately.
+	 */
+	public function getValueAsInputType() {
+		switch( $this->mSettingInfo->input_type )
+		{
+			case self::INPUT_BOOLEAN:
+				//need to keep using booleans as 0/1
+			case self::INPUT_INTEGER:
+				return intval($this->getCurrentValue());
+			case self::INPUT_ACTION:
+				//actions are not values, skip these types
+				return null;
+			case self::INPUT_DROPDOWN:
+			case self::INPUT_TEXT:
+			case self::INPUT_STRING:
+			case self::INPUT_PASSWORD:
+			default:
+				return $this->getCurrentValue();
+		}//switch
+	}
+	
+	/**
+	 * See if this setting is allowed to be viewed.
 	 * @return boolean
 	 */
-	public function isConfigAllowed() {
+	public function isViewAllowed() {
 		return $this->mSettingInfo->config_is_allowed();
+	}
+
+	/**
+	 * See if this setting is allowed to be saved.
+	 * @return boolean
+	 */
+	public function isSaveAllowed() {
+		return ($this->mSettingInfo->input_type!==self::INPUT_ACTION);
 	}
 
 	/**
@@ -204,6 +223,8 @@ class ConfigSettingInfo extends BaseCostume
 				return Widgets::createPassBox($theWidgetName, $theValue);
 			case self::INPUT_INTEGER:
 				return Widgets::createNumericBox($theWidgetName,$theValue);
+			case self::INPUT_ACTION:
+				return '<!-- CUSTOM BUILT BY UI -->';
 			default:
 				return Widgets::createTextBox($theWidgetName, $theValue);
 		}
@@ -234,6 +255,8 @@ class ConfigSettingInfo extends BaseCostume
 				} else {
 					return $this->getCurrentValue();
 				}
+			case self::INPUT_ACTION:
+				return null; //actions have no "value" to get.
 			case self::INPUT_INTEGER:
 			default:
 				return $aScene->$theWidgetName;

@@ -551,6 +551,45 @@ implements IDirected
 		return $this->getDirector()->getConfigSetting($aSetting);
 	}
 	
+	/**
+	 * (Override) Returns the SQL code to create a table.
+	 * @param string $aTableConst the name of a table
+	 * @param string $aTableNameOverride a custom name for the table
+	 * @return string the SQL code to create the table, or null if no definition
+	 *  exists for the specified name
+	 */
+	protected function getTableDefSql( $aTableConst, $aTableNameOverride=null )
+	{
+		//switch( $aTableConst )
+		//{
+		//    Descendants define what to do.
+		//}
+	}
+
+	/**
+	 * Sets up one table in the model.
+	 * Consumed by setupModel().
+	 * @param string $aTableConst the table name constant
+	 * @param string $aTableName the table name value
+	 */
+	protected function setupTable( $aTableConst, $aTableName )
+	{
+		$theSql = '' ;
+		try
+		{
+			$theSql = $this->getTableDefSql( $aTableConst ) ;
+			$this->execDML( $theSql ) ;
+			$this->debugLog( $this->getRes(
+					'install/msg_create_table_x_success/' . $aTableName
+			) ) ;
+		}
+		catch( PDOException $pdox )
+		{
+			$this->debugLog(__METHOD__.' failed: '.$pdox->getMessage().' sql='.$theSql);
+			throw new DbException( $pdox, $theSql ) ;
+		}
+	}
+
 }//end class
 
 }//end namespace

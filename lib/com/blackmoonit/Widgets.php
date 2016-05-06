@@ -409,10 +409,26 @@ class Widgets
 			;	
 	}
 
+	/**
+	 * Checkboxes are strange animals in HTML forms. If they are unchecked,
+	 * their value is NOT submitted to the action's endpoint. To combat this
+	 * lack of submission quirk, a hidden input with a value of "0" is also
+	 * placed just before the checkbox so that something is always submitted.
+	 * PHP always takes the last defined input name as the actual value,
+	 * which is why this particular technique works out pretty well.  The
+	 * value "0" was chosen so that code checking for the checkbox can just
+	 * check for "!empty($aWidgetName)".
+	 * @param string $aWidgetName - the widget name.
+	 * @param boolean $isChecked - (optional) should the input be pre-checked
+	 * (default=FALSE).
+	 * @param string $aClass - (optional) classes that should be defined with
+	 * the widget.
+	 * @return string Returns an HTML checkbox element.
+	 */
 	static public function createCheckBox($aWidgetName, $isChecked=false, $aClass=''){
-		$checkbox = '<input type="checkbox" name="'.$aWidgetName.'" class="'.$aClass.'"'.(($isChecked)?' checked':'').' />';
-		$hiddenInput = '<input type="hidden" name="'.$aWidgetName.'" class="'.$aClass.'" />';
-		return  $hiddenInput." ".$checkbox;
+		$theClass = (!empty($aClass)) ? ' class="'.$aClass.'"' : '';
+		$theCheckbox = '<input type="checkbox" name="'.$aWidgetName.'"'.$theClass.(($isChecked)?' checked':'').' />';
+		return self::createHiddenPost($aWidgetName, '0').$theCheckbox;
 	}
 	
 	static public function createSubmitButton($aWidgetName, $aText='Submit', $aClass='btn-primary') {

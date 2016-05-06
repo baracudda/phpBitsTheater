@@ -217,7 +217,7 @@ implements ArrayAccess, IDirected
 		} else {
 			$theId = session_id();
 		}
-		if (preg_match('/^[a-zA-Z0-9,\-]{1,128}$/',$theId)) {
+		if (!empty($theId) && preg_match('/^[a-zA-Z0-9,\-]{1,128}$/',$theId)) {
 			return session_start();
 		}
 		return false;
@@ -354,6 +354,9 @@ implements ArrayAccess, IDirected
 	 */
 	static public function getModelClass($aModelName) {
 		if (is_string($aModelName)) {
+			$theModelSegPos = strpos($aModelName, 'models\\');
+			if (class_exists($aModelName) && !empty($theModelSegPos))
+				return $aModelName;
 			$theModelName = Strings::getClassName($aModelName);
 			$theModelClass = BITS_NAMESPACE_MODELS.$theModelName;
 			if (!class_exists($theModelClass)) {
