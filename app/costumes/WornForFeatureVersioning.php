@@ -6,6 +6,7 @@ use Exception;
 use PDOException;
 use com\blackmoonit\exceptions\DbException;
 use BitsTheater\costumes\colspecs\CommonMySql;
+use com\blackmoonit\Strings;
 { // begin namespace
 
 /**
@@ -70,6 +71,7 @@ trait WornForFeatureVersioning
 	 * Get the field size as the db has it currently defined.
 	 * @param string $aFieldName - the field/column name.
 	 * @param string $aTableName - the table name.
+	 * @return number Returns the size of the field.
 	 */
 	protected function getFieldSize($aFieldName, $aTableName) {
 		$theSql = SqlBuilder::withModel($this);
@@ -77,10 +79,15 @@ trait WornForFeatureVersioning
 		{
 			case self::DB_TYPE_MYSQL:
 			default:
+				//for this particular operation, having the database prepended to the table name breaks the SQL
+				if (strpos($aTableName, $this->myDbConnInfo->dbName)!==false)
+					$aTableName = Strings::strstr_after($aTableName, '`'.$this->myDbConnInfo->dbName.'`.');
+				//define the meta-table-info query
 				$theSql->startWith(CommonMySql::getFieldSizeSql(
 						$this->myDbConnInfo->dbName, $aTableName, $aFieldName)
 				);
 		}
+		//$this->debugLog(__METHOD__.' '.$this->debugStr($theSql));
 		return $theSql->getTheRow()['size']+0 ;
 	}
 	

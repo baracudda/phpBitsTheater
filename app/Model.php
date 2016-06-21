@@ -229,6 +229,9 @@ implements IDirected
 		$r = $this->query($aSql,$aParamValues,$aParamTypes);
 		if (!empty($r)) {
 			$theResult = $r->fetch();
+			//if nothing was found, "false" is returned, but we want to return "null"
+			if ($theResult===false)
+				$theResult = null;
 			$r->closeCursor();
 		}
 		return $theResult;

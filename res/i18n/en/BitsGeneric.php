@@ -21,20 +21,21 @@ use BitsTheater\res\Resources as BaseResources;
 
 class BitsGeneric extends BaseResources {
 	
-	public $page_not_found = 'Page Not Found';
+	public $page_not_found = 'Page Not Found' ;
 	
-	public $save_button_text = 'Save';
+	public $save_button_text = 'Save' ;
 	
-	public $msg_nothing_found = 'Nothing found.';
-	public $msg_permission_denied = 'Permission Denied';
+	public $msg_nothing_found = 'Nothing found.' ;
+	public $msg_permission_denied = 'Permission Denied' ;
 	
-	public $errmsg_default = 'I am slain, Horatio...' ;
+	public $errmsg_default =
+		'An error occurred. Examine the response data for details.' ;
 	public $errmsg_not_done_yet = 'Feature is not yet implemented.' ;
 	
-	public $errmsg_database_not_connected = 'database connection missing';
-	public $errmsg_arg_is_empty = 'parameter %s must not be empty';
-	public $errmsg_var_is_empty = '%s must not be empty';
-	public $errmsg_file_not_found = 'File not found';
+	public $errmsg_database_not_connected = 'Not connected to database.' ;
+	public $errmsg_arg_is_empty = 'Parameter [%s] must not be empty.' ;
+	public $errmsg_var_is_empty = '[%s] must not be empty.' ;
+	public $errmsg_file_not_found = 'File not found.' ;
 
 	public $errmsg_mailer_missing_config =
 		'Mailer was not given the required setting [%1$s].' ;

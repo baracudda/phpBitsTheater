@@ -42,6 +42,16 @@ class SqlBuilder extends BaseCostume {
 	 */
 	const SQLSTATE_NO_DATA = '02000';
 	/**
+	 * The SQL element meaning ascending order when sorting.
+	 * @var string
+	 */
+	const ORDER_BY_ASCENDING = 'ASC';
+	/**
+	 * The SQL element meaning descending order when sorting.
+	 * @var string
+	 */
+	const ORDER_BY_DESCENDING = 'DESC';
+	/**
 	 * The model class, so we can pass-thru some method calls like query.
 	 * Also useful for auto-determining database quirks like the char used
 	 * around field names.
@@ -253,7 +263,7 @@ class SqlBuilder extends BaseCostume {
 	
 	/**
 	 * Adds the fieldlist to the SQL string.
-	 * @param array/string $aFieldList - the list or comma string of fieldnames.
+	 * @param array|string $aFieldList - the list or comma string of fieldnames.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
 	public function addFieldList($aFieldList)
@@ -547,10 +557,11 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Some operators require alternate handling during WHERE clauses (e.g. "=" with NULLs).
 	 * This will setParamPrefix(" WHERE ") which will apply to the next addParam.
+	 * @param string $aAdditionalParamPrefix - string to append to " WHERE " as the next param prefix.
 	 */
-	public function startWhereClause() {
+	public function startWhereClause($aAdditionalParamPrefix='') {
 		$this->bUseIsNull = true;
-		return $this->setParamPrefix(' WHERE ');
+		return $this->setParamPrefix(' WHERE '.$aAdditionalParamPrefix);
 	}
 	
 	/**
@@ -651,25 +662,67 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
-	 * Sometimes pagers are used for larger sets of data. Use this method to determine what the
-	 * current query would return if the selected fields were replaced to count total rows.
-	 * @param string $aCountingColumnName - name of the column to run a DISTINCT count on.
-	 * @return number|NULL Returns the count of what this Sql object would return or null on fail.
+	 * Sometimes we want to aggregate the query somehow rather than return data from it.
+	 * @param array $aSqlAggragates - (optional) the aggregation list, defaults to array('count(*)'=>'total_rows').
+	 * @return array Returns the results of the aggregates.
 	 */
-	public function getQueryCountTotal($aSqlCountParam) {
-		//if we have a query limit, we may be using a pager, get total count for pager display
-		$theSqlFragment = '$1 SELECT count('.$aSqlCountParam.') as total_rows FROM $2';
-		$theSql = preg_replace('|(.*)SELECT .+ FROM (.+)|i', $theSqlFragment, $this->mySql, 1);
-		try {
-			$theRow = $this->myModel->getTheRow($theSql, $this->myParams, $this->myParamTypes);
-			if (!empty($theRow)) {
-				return $theRow['total_rows']+0;
+	public function getQueryTotals( $aSqlAggragates=array('count(*)'=>'total_rows') )
+	{
+		$theSqlFields = array();
+		foreach ($aSqlAggragates as $theField => $theName)
+			array_push($theSqlFields, $theField . ' AS ' . $theName);
+		$theSelectFields = implode(', ', $theSqlFields);
+		return $this->cloneFrom($this)->replaceSelectFieldsWith($theSelectFields)->getAggregateResults(array_values($aSqlAggragates));
+	}
+	
+	/**
+	 * Create a clone of the object param and return it.
+	 * @param SqlBuilder $aSqlBuilder - the builder to clone.
+	 * @return SqlBuilder Returns the cloned builder.
+	 */
+	public function cloneFrom(SqlBuilder $aSqlBuilder)
+	{
+		return clone $aSqlBuilder;
+	}
+	
+	/**
+	 * Replace the currently formed SELECT fields with the param.
+	 * @param string|array $aSelectFields - (optional) the fields to use instead, defaults to "*".
+	 * @return SqlBuilder Returns $this for chaining.
+	 */
+	public function replaceSelectFieldsWith($aSelectFields=null)
+	{
+		$theSelectFields = null;
+		if (is_string($aSelectFields))
+			$theSelectFields = $aSelectFields;
+		if (is_array($aSelectFields))
+			$theSelectFields = implode(',', $aSelectFields);
+		if (empty($theSelectFields))
+			$theSelectFields = '*';
+		$theSelectFields = 'SELECT '.$theSelectFields.' FROM';
+		//we want a "non-greedy" match so that it stops at the first "FROM" it finds: ".+?"
+		$this->mySql = preg_replace('|SELECT .+? FROM|i', $theSelectFields, $this->mySql, 1);
+		//$this->debugLog(__METHOD__.' sql='.$theSql->mySql.' params='.$this->debugStr($theSql->myParams));
+		return $this;
+	}
+
+	/**
+	 * Execute the currently built SELECT query and retrieve all the aggregates as numbers.
+	 * @param string[] $aSqlAggragateNames - the aggregate names to retrieve.
+	 * @return number[] Returns the array of aggregate values.
+	 */
+	public function getAggregateResults( $aSqlAggragateNames=array('total_rows') )
+	{
+		$theResults = array();
+		//$this->debugLog(__METHOD__.' sql='.$theSql->mySql.' params='.$this->debugStr($theSql->myParams));
+		$theRow = $this->getTheRow();
+		if (!empty($theRow)) {
+			foreach ($aSqlAggragateNames as $theName)
+			{
+				$theResults[$theName] = $theRow[$theName]+0;
 			}
-		} catch (PDOException $pdoe) {
-			$this->debugLog(__METHOD__.' failed: sql="'.$theSql->mySql.'" params='.$this->debugStr($theSql->myParams));
-			throw $pdoe;
 		}
-		return null;
+		return $theResults;
 	}
 	
 }//end class

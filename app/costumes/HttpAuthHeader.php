@@ -69,13 +69,6 @@ class HttpAuthHeader extends BaseCostume {
 	 * @var string
 	 */
 	public $auth_token = null;
-	/**
-	 * Auto-destroy the PHP session after URL request is handled.
-	 * Used to ensure the Broadway auth always performs its
-	 * circumstance checks to see if token is still valid.
-	 * @var boolean
-	 */
-	public $no_session = false;
 	
 	public function __construct($aHttpAuthHeader) {
 		if (!empty($aHttpAuthHeader)) {

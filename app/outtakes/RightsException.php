@@ -1,7 +1,7 @@
 <?php
 namespace BitsTheater\outtakes ;
 use BitsTheater\BrokenLeg ;
-{
+{//begin namespace
 
 /**
  * Provides error responses specific to user group permission management.

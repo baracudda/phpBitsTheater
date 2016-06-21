@@ -19,6 +19,7 @@ use BitsTheater\BrokenLeg ;
 use BitsTheater\costumes\ABitsCostume as BaseCostume ;
 use BitsTheater\costumes\SqlBuilder ;
 use BitsTheater\models\PropCloset\AuthBasic ;
+use BitsTheater\outtakes\PasswordResetException ;
 use com\blackmoonit\DbException ;
 use com\blackmoonit\database\DbUtils ;
 use com\blackmoonit\Strings ;
@@ -34,41 +35,20 @@ use \Exception ;
  */
 class AuthPasswordReset extends BaseCostume
 {
+	use WornByModel ;
+	
 	const TOKEN_PREFIX = 'PWRESET' ;
 	
-	private $model ;
-	
 	static private $properties = array(
-		'myEmailAddr', 'myAccountID', 'myAuthID', 'myTokens', 'myNewToken'
+		'myEmailAddr', 'myAccountID', 'myAuthID', 'myTokens', 'myNewToken',
+		'myReentryURL'
 	) ;
 	protected $myEmailAddr ;
 	protected $myAccountID ;
 	protected $myAuthID ;
 	protected $myTokens ;
 	protected $myNewToken ;
-	
-	/**
-	 * Static function to provide an instance of this costume pre-linked to the
-	 * specified AuthBasic model instance.
-	 * @param mixed $aModel an instance of the AuthBasic model.
-	 * @return \BitsTheater\costumes\AuthPasswordReset
-	 *  an instance of this costume, linked to the specified model  
-	 */
-	static public function withModel( &$aModel )
-	{
-		$theClassName = get_called_class() ;
-		$o = new $theClassName($aModel->director) ;
-		return $o->setModel($aModel) ;
-	}
-	
-	/**
-	 * Links the costume to an AuthBasic model instance.
-	 * @param mixed $aModel an instance of the AuthBasic model
-	 * @return \BitsTheater\costumes\AuthPasswordReset
-	 *  this costume instance, linked to the specified model
-	 */
-	public function setModel( &$aModel )
-	{ $this->model = $aModel ; return $this ; }
+	protected $myReentryURL = null ;
 	
 	/**
 	 * Clears all the data that has been recorded by this costume since it was
@@ -151,8 +131,7 @@ class AuthPasswordReset extends BaseCostume
 	public function getTokens()
 	{
 		if( empty($this->myAccountID) && empty($this->myAuthID) )
-			throw AuthPasswordResetException::toss( $this->myModel,
-					'NO_ACCOUNT_OR_AUTH_ID' ) ;
+			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_OR_AUTH_ID' ) ;
 		
 		$theTokens = $this->model->getAuthTokens( $this->myAuthID,
 			$this->myAccountID, self::TOKEN_PREFIX . '%', true ) ;
@@ -169,8 +148,7 @@ class AuthPasswordReset extends BaseCostume
 	public function hasRecentToken()
 	{
 		if( empty( $this->myAccountID ) && empty($this->myAuthID) )
-			throw AuthPasswordResetException::toss( $this->model,
-					'NO_ACCOUNT_OR_AUTH_ID' ) ;
+			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_OR_AUTH_ID' ) ;
 		if( empty( $this->myTokens ) ) return false ;
 		
 		/*
@@ -207,11 +185,9 @@ class AuthPasswordReset extends BaseCostume
 	public function generateToken()
 	{
 		if( empty( $this->myAccountID ) )
-			throw AuthPasswordResetException::toss( $this->model,
-					'NO_ACCOUNT_ID' ) ;
+			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_ID' ) ;
 		if( empty( $this->myAuthID ) )
-			throw AuthPasswordResetException::toss( $this->model,
-					'NO_AUTH_ID' ) ;
+			throw PasswordResetException::toss( $this, 'NO_AUTH_ID' ) ;
 		$theToken = AuthBasic::generatePrefixedAuthToken( self::TOKEN_PREFIX ) ;
 		$theSql = SqlBuilder::withModel($this->model)
 			->startWith( 'INSERT INTO ' )->add( $this->model->tnAuthTokens )
@@ -235,8 +211,7 @@ class AuthPasswordReset extends BaseCostume
 		catch( PDOException $pdoe )
 		{ $this->myNewToken = null ; }
 		
-		throw AuthPasswordResetException::toss( $this->model,
-				'TOKEN_GENERATION_FAILED' ) ;
+		throw PasswordResetException::toss( $this, 'TOKEN_GENERATION_FAILED' ) ;
 	}
 	
 	/**
@@ -247,11 +222,9 @@ class AuthPasswordReset extends BaseCostume
 	public function deleteOldTokens()
 	{
 		if( empty($this->myAccountID) && empty($this->myAuthID) )
-			throw AuthPasswordResetException::toss( $this->model,
-					'NO_ACCOUNT_OR_AUTH_ID' ) ;
+			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_OR_AUTH_ID' ) ;
 		if( empty( $this->myNewToken ) )
-			throw AuthPasswordResetException::toss( $this->model,
-					'NO_NEW_TOKEN' ) ;
+			throw PasswordResetException::toss( $this, 'NO_NEW_TOKEN' ) ;
 		$theAuthFilter = $this->chooseIdentifierForSearch() ;
 		$theSql = SqlBuilder::withModel($this->model)
 			->startWith( 'DELETE FROM ' )->add( $this->model->tnAuthTokens )
@@ -282,6 +255,28 @@ class AuthPasswordReset extends BaseCostume
 	}
 	
 	/**
+	 * Accessor for the "new" token for the most recent request, if any.
+	 * @return string the token
+	 */
+	public function getNewToken()
+	{ return $this->myNewToken ; }
+
+	/**
+	 * Accessor for pre-defined reentry URL.
+	 * @return string the reentry URL, if any is defined
+	 */
+	public function getReentryURL()
+	{ return $this->myReentryURL ; }
+
+	/**
+	 * Mutator for pre-defined reentry URL.
+	 * @param string $aURL the URL
+	 * @return AuthPasswordReset the costume instance
+	 */
+	public function setReentryURL( $aURL )
+	{ $this->myReentryURL = $aURL ; return $this ; }
+
+	/**
 	 * Dispatches the notification email to the user.
 	 * @param object $aMailer a MailUtils object that is already configured with
 	 *  the host/port/user/pw necessary to send outgoing mail.
@@ -290,8 +285,7 @@ class AuthPasswordReset extends BaseCostume
 	public function dispatchEmailToUser( &$aMailer )
 	{
 		if( $aMailer === null )
-			throw AuthPasswordResetException::toss( $this->model,
-					'EMAIL_LIBRARY_FAILED' ) ;
+			throw PasswordResetException::toss( $this, 'EMAIL_LIBRARY_FAILED' );
 		$aMailer->addAddress( $this->myEmailAddr ) ;
 		$aMailer->Subject =
 			$this->model->getRes( 'account/msg_pw_reset_requested' ) ;
@@ -306,7 +300,7 @@ class AuthPasswordReset extends BaseCostume
 		else
 		{
 			$this->debugLog( 'Password reset email dispatch failed.' ) ;
-			throw AuthPasswordResetException::toss( $this->model,
+			throw PasswordResetException::toss( $this,
 					'EMAIL_DISPATCH_FAILED', $this->myEmailAddr ) ;
 		}
 	}
@@ -317,7 +311,8 @@ class AuthPasswordReset extends BaseCostume
 	 */
 	protected function composeEmailToUser()
 	{
-		$theURL = $this->composeReentryURL() ;
+		$theURL = ( empty($this->myReentryURL) ?
+				$this->composeReentryURL() : $this->myReentryURL ) ;
 		$s = $this->model->getRes( 'account/email_body_pwd_reset_instr/'
 			. $this->myEmailAddr . '/'
 			. $this->getRandomCharsFromToken() )
@@ -344,7 +339,7 @@ class AuthPasswordReset extends BaseCostume
 	 */
 	protected function composeReentryURL()
 	{
-		$s = 'https://' . $_SERVER['SERVER_NAME']
+		$s = SERVER_URL
 				. $this->model->director->getSiteUrl('account/password_reset_reentry')
 				. '/' . $this->myAuthID . '/' . $this->myNewToken
 				;
@@ -357,21 +352,19 @@ class AuthPasswordReset extends BaseCostume
 	public function authenticateForReentry( &$aAuthID, &$aAuthToken )
 	{
 		if( empty( $aAuthID ) )
-			throw AuthPasswordResetException::toss( $this->model,
-					'NO_AUTH_ID' ) ;
+			throw PasswordResetException::toss( $this, 'NO_AUTH_ID' ) ;
 		if( empty( $aAuthToken ) )
-			throw AuthPasswordResetException::toss( $this->model,
-					'NO_NEW_TOKEN' ) ;
+			throw PasswordResetException::toss( $this, 'NO_NEW_TOKEN' ) ;
 		$this->setDataFrom(array(
 				'myAuthID' => $aAuthID,
 				'myNewToken' => $aAuthToken
-				)) ;
+			)) ;
 		$theTokens = $this->model->getAuthTokens( $aAuthID, null, $aAuthToken );
 		if( empty($theTokens) ) return false ;
 		$this->setDataFrom(array(
 				'myAccountID' => $theTokens[0]['account_id'],
 				'myTokens' => $theTokens
-				)) ;
+			)) ;
 		if( ! $this->hasRecentToken() ) return false ; // but leave the old one
 		
 		return $this->model->setPasswordResetCreds(
@@ -385,11 +378,9 @@ class AuthPasswordReset extends BaseCostume
 	public function clobberPassword()
 	{
 		if( empty($this->myAuthID) && empty($this->myAccountID) )
-			throw AuthPasswordResetException::toss( $this->model,
-					'NO_ACCOUNT_OR_AUTH_ID' ) ;
+			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_OR_AUTH_ID' ) ;
 		if( empty($this->myNewToken) )
-			throw AuthPasswordResetException::toss( $this->model,
-					'REENTRY_AUTH_FAILED' ) ;
+			throw PasswordResetException::toss( $this, 'REENTRY_AUTH_FAILED' ) ;
 		$theAuthFilter = $this->chooseIdentifierForSearch() ;
 		$theSql = SqlBuilder::withModel( $this->model )
 			->startWith( 'UPDATE ' )->add( $this->model->tnAuth )
@@ -405,107 +396,11 @@ class AuthPasswordReset extends BaseCostume
 		catch( PDOEsception $pdox )
 		{
 			$this->debugLog( __METHOD__ . ': ' . $pdox->getMessage() ) ;
-			throw AuthPasswordResetException::toss( $this->model,
+			throw PasswordResetException::toss( $this,
 					'DANG_PASSWORD_YOU_SCARY' ) ;
 		}
 	}
 		
 } // end AuthPasswordReset class
-
-/**
- * Provides standardized exception codes and text for the password request utils
- * costume.
- */
-class AuthPasswordResetException extends BrokenLeg
-{
-	// Status codes for the exception flavors. Should stay distinct.
-	const ERR_NOT_CONNECTED = -4 ;
-	const ERR_EMPERORS_NEW_COSTUME = -2 ;
-	const ERR_NO_ACCOUNT_ID = -1 ;
-	const ERR_NO_AUTH_ID = -1 ;
-	const ERR_NO_ACCOUNT_OR_AUTH_ID = -1 ;
-	const ERR_TOKEN_GENERATION_FAILED = 1 ;
-	const ERR_NO_NEW_TOKEN = 2 ;
-	const ERR_EMAIL_LIBRARY_FAILED = 3 ;
-	const ERR_EMAIL_DISPATCH_FAILED = 4 ;
-	const ERR_REENTRY_AUTH_FAILED = 5 ;
-	const ERR_DANG_PASSWORD_YOU_SCARY = 6 ;
-	
-	// These refer to message resources and can be "overloaded" onto resources.
-	const MSG_DEFAULT = 'account/err_fatal' ;
-	const MSG_NOT_CONNECTED = 'account/err_not_connected' ;
-	const MSG_EMPERORS_NEW_COSTUME = 'account/err_fatal' ;
-	const MSG_NO_ACCOUNT_ID = 'account/err_pw_request_failed' ;
-	const MSG_NO_AUTH_ID = 'account/err_pw_request_failed' ;
-	const MSG_NO_ACCOUNT_OR_AUTH_ID = 'account/err_pw_request_failed' ;
-	const MSG_TOKEN_GENERATION_FAILED = 'account/err_pw_request_failed' ;
-	const MSG_NO_NEW_TOKEN = 'account/err_pw_request_failed' ;
-	const MSG_EMAIL_LIBRARY_FAILED = 'account/err_fatal' ;
-	const MSG_EMAIL_DISPATCH_FAILED = 'account/err_email_dispatch_failed' ;
-	const MSG_REENTRY_AUTH_FAILED = 'account/msg_pw_request_denied' ;
-	const MSG_DANG_PASSWORD_YOU_SCARY = 'account/err_pw_request_failed' ;
-	
-//	protected $myCondition ;
-	
-	/**
-	 * Provides an instance of the exception using arguments that are relevant
-	 * to this costume.
-	 * @param object $aContext a BitsTheater object that can provide text
-	 *  resources (actor, model, or scene) 
-	 * @param string $aCondition a string uniquely identifying the exceptional
-	 *  scenario; this must correspond to one of the constants defined within
-	 *  the exception class
-	 * @param string $aResourceData (optional) any additional data that would be
-	 *  passed into a variable substitution in the definition of a text
-	 *  resource; if non-empty, then the initial '/' separator is inserted
-	 *  automatically here
-	 * @return \BitsTheater\costumes\AuthPasswordResetException
-	 *  an instance of this exception class, with the appropriate code and
-	 *  message set according to the function's arguments
-	 */
-/*	static public function toss( &$aContext, $aCondition, $aResourceData=null )
-	{
-		$theCode = self::ERR_DEFAULT ;
-		$theCodeID = get_called_class() . '::ERR_' . $aCondition ;
-		if( defined( $theCodeID ) )
-			$theCode = constant( $theCodeID ) ;
-		$theMessage = 'I can\'t even figure out how to throw an exception.' ;
-		$theMessageID = get_called_class() . '::MSG_' . $aCondition ;
-		if( defined( $theMessageID ) )
-		{ // Construct the exception message using translated text resources.
-			$theResource = constant($theMessageID) ;
-			if( ! empty($aResourceData) )
-				$theResource .= '/' . $aResourceData ;
-			$theMessage = $aContext->getRes( $theResource ) ;
-		}
-		$theException =
-			new AuthPasswordResetException( $theMessage, $theCode ) ;
-		$theException->setCondition($aCondition) ;
-		return $theException ;
-	}
-*/	
-	/** accessor for the condition */
-/*	public function getCondition()
-	{ return $this->myCondition ; }
-*/	
-	/** mutator for the condition; called by toss() */
-/*	protected function setCondition( $aCondition )
-	{ $this->myCondition = $aCondition ; return $this ; }
-*/	
-	/**
-	 * Renders the contents of the exception in a way that would be suitable for
-	 * a web UI in debug mode.
-	 * @return string a string showing the exception's code, message, and
-	 *  trigger condition
-	 */
-/*	public function getDisplayText()
-	{
-		$theText = '[' . $this->code . ']: ' . $this->message ;
-		if( ! empty($this->myCondition) )
-			$theText .= ' (' . $this->myCondition . ')' ;
-		return $theText ;
-	}
-*/	
-} // end AuthPasswordResetException class
 
 } // end namespace

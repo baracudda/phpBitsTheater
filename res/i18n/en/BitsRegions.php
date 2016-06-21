@@ -572,8 +572,9 @@ class BitsRegions extends BaseResources {
 	 * @var string
 	 */
 	public function cc_to_name($a2charCountryCode) {
-		if (!empty($a2charCountryCode) && !empty($this->cc_common_names[$a2charCountryCode]))
-			return $this->cc_common_names[$a2charCountryCode];
+		$theCC = strtoupper($a2charCountryCode);
+		if (!empty($theCC) && !empty($this->cc_common_names[$theCC]))
+			return $this->cc_common_names[$theCC];
 		else
 			return 'Unknown';
 	}

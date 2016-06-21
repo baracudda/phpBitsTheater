@@ -93,11 +93,6 @@ implements ArrayAccess, IDirected
 	 */
 	protected $dbAuth = null;
 	/**
-	 * If TRUE, destroy the session on class cleanup.
-	 * @var boolean
-	 */
-	protected $no_session = false;
-	/**
 	 * Cache of the config model in use.
 	 * @var Config
 	 */
@@ -143,11 +138,7 @@ implements ArrayAccess, IDirected
 	 */
 	public function cleanup() {
 		if (session_id()!='') {
-			if ($this->isNoSession()) {
-				session_destroy();
-			} else {
-				session_write_close();
-			}
+			session_write_close();
 		}
 		unset($this->account_info);
 		$this->returnProp($this->dbAuth);
@@ -229,23 +220,6 @@ implements ArrayAccess, IDirected
 		session_destroy();
 		session_write_close();
 		session_regenerate_id(true);
-	}
-	
-	/**
-	 * Returns TRUE if we are not going to save the session.
-	 * @return boolean Returns TRUE if not saving session.
-	 */
-	public function isNoSession() {
-		return $this->no_session;
-	}
-	
-	/**
-	 * Mobile API may not wish cookies or session lasting longer than
-	 * the current API call.
-	 */
-	public function destroySessionOnCleanup() {
-		$this->no_session = true;
-		ini_set('session.use_cookies', '0');  //do not return cookie data to the client
 	}
 	
 	public function isInstalled() {

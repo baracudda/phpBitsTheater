@@ -22,7 +22,7 @@ use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use BitsTheater\models\Auth; /* @var $dbAuth Auth */
 use BitsTheater\models\AuthGroups; /* @var $dbAuthGroups AuthGroups */
 use BitsTheater\costumes\AuthPasswordReset ;
-use BitsTheater\costumes\AuthPasswordResetException ;
+use BitsTheater\outtakes\PasswordResetException ;
 use com\blackmoonit\MailUtils ;
 use com\blackmoonit\MailUtilsException ;
 use com\blackmoonit\Strings ;
@@ -421,9 +421,9 @@ class AuthBasicAccount extends BaseActor {
 			$theMailer->setFrom( $this->config['email_out/default_from'] ) ;
 			$theResetUtils->dispatchEmailToUser( $theMailer ) ;
 		}
-		catch( AuthPasswordResetException $aprx )
+		catch( PasswordResetException $prx )
 		{
-			$v->err_msg = $aprx->getDisplayText() ;
+			$v->err_msg = $prx->getDisplayText() ;
 			$this->debugLog($v->err_msg) ;
 			return $this->requestPasswordReset(null) ;
 		}
@@ -467,7 +467,7 @@ class AuthBasicAccount extends BaseActor {
 	public function passwordResetReentry( $aAuthID, $aAuthToken )
 	{
 		$v =& $this->scene ;
-		$utils = AuthPasswordReset::withModel($this->getProp('auth')) ;
+		$utils = AuthPasswordReset::withModel($this->getProp('Auth')) ;
 		
 		$isAuthenticated = false ;
 		try
@@ -475,8 +475,8 @@ class AuthBasicAccount extends BaseActor {
 			$isAuthenticated =
 				$utils->authenticateForReentry( $aAuthID, $aAuthToken ) ;
 		}
-		catch( AuthPasswordResetException $aprx )
-		{ $this->debugLog( $aprx->getDisplayText() ) ; }
+		catch( PasswordResetException $prx )
+		{ $this->debugLog( $prx->getDisplayText() ) ; }
 		
 		if( $isAuthenticated )
 		{ // postcondition if true: user is now authenticated
@@ -533,9 +533,6 @@ class AuthBasicAccount extends BaseActor {
 		$this->renderThisView = 'results_as_json';
 		if (empty($aPing)) {
 			$dbAuth = $this->getProp('Auth');
-			if ($v->no_session) {
-				$this->director->destroySessionOnCleanup();
-			}
 			if (!$this->isGuest()) {
 				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
 						$this->director->account_info, $v->fingerprints, $v->circumstances);
