@@ -22,10 +22,10 @@ use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use BitsTheater\Scene;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\AuthPasswordReset ;
-use BitsTheater\costumes\AuthPasswordResetException ;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\costumes\HttpAuthHeader;
+use BitsTheater\outtakes\PasswordResetException ;
 use com\blackmoonit\database\FinallyCursor;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
@@ -39,7 +39,7 @@ use BitsTheater\costumes\WornForFeatureVersioning;
 class AuthBasic extends BaseModel implements IFeatureVersioning
 {
 	use WornForFeatureVersioning;
-	
+
 	/**
 	 * Used by meta data mechanism to keep the database up-to-date with the code.
 	 * A non-NULL string value here means alter-db-schema needs to be managed.
@@ -56,7 +56,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	const REGISTRATION_REG_CODE_FAIL = 3;
 	const REGISTRATION_UNKNOWN_ERROR = 4;
 	const REGISTRATION_CAP_EXCEEDED = 5;
-	
+
 	const REGISTRATION_ASK_EMAIL = true;
 	const REGISTRATION_ASK_PW = true;
 
@@ -67,12 +67,12 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	public $tnAuth; const TABLE_Auth = 'auth';
 	public $tnAuthTokens; const TABLE_AuthTokens = 'auth_tokens';
 	public $tnAuthMobile; const TABLE_AuthMobile = 'auth_mobile';
-	
+
 	/**
 	 * @var Config
 	 */
 	protected $dbConfig = null;
-		
+
 	/**
 	 * A Cookie's token prefix.
 	 * @var string
@@ -103,7 +103,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @var string
 	 */
 	protected $myAuthId = null;
-		
+
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
 		if ($this->director->canConnectDb()) {
@@ -113,7 +113,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$this->tnAuthTokens = $this->tbl_.self::TABLE_AuthTokens;
 		$this->tnAuthMobile = $this->tbl_.self::TABLE_AuthMobile;
 	}
-	
+
 	/**
 	 * Future db schema updates may need to create a temp table of one
 	 * of the table definitions in order to update the contained data,
@@ -185,10 +185,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 						", KEY `auth_id` (`auth_id`)".
 						") CHARACTER SET ascii COLLATE ascii_bin";
 			}//switch dbType
-			
+
 		}//switch TABLE const
 	}
-	
+
 	/**
 	 * Called during website installation to create whatever the models needs.
 	 * Check the database to be sure anything needs to be done and do not assume
@@ -201,7 +201,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
         $this->setupTable( self::TABLE_AuthTokens, $this->tnAuthTokens ) ;
         $this->setupTable( self::TABLE_AuthMobile, $this->tnAuthMobile ) ;
 	}
-	
+
 	/**
 	 * Other models may need to query ours to determine our version number
 	 * during Site Update. Without checking SetupDb, determine what version
@@ -222,7 +222,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}//switch
 		return self::FEATURE_VERSION_SEQ;
 	}
-	
+
 	/**
 	 * Check current feature version and compare it to the
 	 * current version, upgrading the db schema as needed.
@@ -239,7 +239,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				$this->execDML("DROP TABLE IF EXISTS {$tnAuthCookies}");
 				$this->execDML("DROP TABLE IF EXISTS {$this->tnAuthTokens}");
 				$this->execDML($this->getTableDefSql(self::TABLE_AuthTokens));
-	
+
 				//now update the Auth table... it is a bit trickier.
 				//change the default to _changed field (defaulted to 0 rather than current ts)
 				$theColDef = "_changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP";
@@ -277,30 +277,30 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				}
 		}//switch
 	}
-	
+
 	protected function exists($aTableName=null) {
 		return parent::exists( empty($aTableName) ? $this->tnAuth : $aTableName );
 	}
-	
+
 	public function isEmpty($aTableName=null) {
 		return parent::isEmpty( empty($aTableName) ? $this->tnAuth : $aTableName );
 	}
-	
+
 	public function getAuthByEmail($aEmail) {
 		$theSql = "SELECT * FROM {$this->tnAuth} WHERE email = :email";
 		return $this->getTheRow($theSql,array('email'=>$aEmail));
 	}
-	
+
 	public function getAuthByAccountId($aAccountId) {
 		$theSql = "SELECT * FROM {$this->tnAuth} WHERE account_id=:id";
 		return $this->getTheRow($theSql, array('id' => $aAccountId), array('id' => PDO::PARAM_INT));
 	}
-	
+
 	public function getAuthByAuthId($aAuthId) {
 		$theSql = "SELECT * FROM {$this->tnAuth} WHERE auth_id=:id";
 		return $this->getTheRow($theSql, array('id'=>$aAuthId));
 	}
-	
+
 	public function getAuthTokenRow($aAuthId, $aAuthToken) {
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 				'auth_id' => $aAuthId,
@@ -312,7 +312,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$theSql->endWhereClause();
 		return $theSql->getTheRow();
 	}
-	
+
 	public function getAuthMobilesByAccountId($aAccountId) {
 		$theSql = "SELECT * FROM {$this->tnAuthMobile} WHERE account_id=:id";
 		$ps = $this->query($theSql, array('id' => $aAccountId), array('id' => PDO::PARAM_INT));
@@ -320,7 +320,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			return $ps->fetchAll();
 		}
 	}
-	
+
 	public function getAuthMobilesByAuthId($aAuthId) {
 		$theSql = "SELECT * FROM {$this->tnAuthMobile} WHERE auth_id=:id";
 		$ps = $this->query($theSql, array('id' => $aAuthId));
@@ -328,7 +328,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			return $ps->fetchAll();
 		}
 	}
-	
+
 	/**
 	 * Retrieve the auth mobile data of a particular mobile_id.
 	 * @param string $aMobileId - the ID of the row to return.
@@ -342,13 +342,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$theSql->startWhereClause()->mustAddParam('mobile_id')->endWhereClause();
 		return $theSql->getTheRow();
 	}
-	
+
 	/**
 	 * Selects from the table of authentication tokens. The function allows the
 	 * caller to use any of the columns (except change date) as a query filter;
 	 * any parameter that is empty will be excluded from the WHERE clause of the
 	 * query.
-	 * 
+	 *
 	 * Get all tokens for a given auth ID:
 	 *     getAuthTokens( $aAuthID ) ;
 	 * Get a particular token:
@@ -358,20 +358,20 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * Get tokens for a particular auth ID with a suffix pattern:
 	 *     getAuthTokens( $aAuthID, null, ( '%' . $aSuffix ), true ) ;
 	 * etc.
-	 * 
+	 *
 	 * Note this tactic means that you cannot use the function to search for a
 	 * row in which a given value might actually be null/empty, but that should
 	 * be irrelevant, since no such row should ever exist in the database.
-	 * 
+	 *
 	 * @param string $aAuthID an authentication ID to include as a selection
 	 *  criterion, if any
 	 * @param string $aAccountID an account ID to include as a selection
-	 *  criterion, if any 
+	 *  criterion, if any
 	 * @param string $aToken a specific token value, or a search filter pattern
 	 *  to limit the format of the tokens that are returned (use SQL "LIKE"
 	 *  syntax for the latter)
 	 * @param boolean $isTokenAFilter indicates whether $aToken is a literal
-	 *  token value, or a filter pattern 
+	 *  token value, or a filter pattern
 	 * @return array the set of tokens, if any are found
 	 */
 	public function getAuthTokens( $aAuthID=null, $aAccountID=null,
@@ -379,7 +379,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	{
 		if( ! $this->isConnected() )
 			throw AuthPasswordResetException::toss( $this, 'NOT_CONNECTED' ) ;
-		
+
 		$theSet = null ; $theCursor = FinallyCursor::forDbCursor($theSet) ;
 		$theSql = SqlBuilder::withModel($this)
 			->startWith( 'SELECT * FROM ' )->add( $this->tnAuthTokens )
@@ -400,11 +400,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			}
 			else // token is a literal value
 				$theSql->addParam( 'token', $aToken ) ;
-			
+
 			$theSql->setParamPrefix(' AND ') ;
 		}
 		// future columns can be added here
-		
+
 		$theSql->endWhereClause()
 			->add( ' ORDER BY _changed DESC' )
 			;
@@ -423,7 +423,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			return null ;
 		}
 	}
-	
+
 	/**
 	 * Create and store an auth token mapped to an account (by account_id).
 	 * The token is guaranteed to be universally unique.
@@ -450,7 +450,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$theSql->execDML();
 		return $theAuthToken;
 	}
-	
+
 	/**
 	 * Creates an authorization token of the form PREFIX:RANDOMCHARS:UUID.
 	 * @param string $aPrefix a prefix to be used, if any
@@ -465,7 +465,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			. Strings::createUUID()
 			;
 	}
-	
+
 	/**
 	 * Creates an authorization token of the form RANDOMCHARS:UUID:SUFFIX.
 	 * @param string $aSuffix a suffix to be used, if any
@@ -480,7 +480,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			. $aSuffix
 			;
 	}
-	
+
 	/**
 	 * Return the $delta to add to time() to generate the expiration date.
 	 * @param string $aDuration - (optional) one of the config settings, NULL for what is
@@ -515,16 +515,16 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}//switch
 		return $delta;
 	}
-	
+
 	/**
 	 * Return the cookie expriation time based on Config settings.
-	 * @return number|null Returns the cookie expiration timestamp parameter. 
+	 * @return number|null Returns the cookie expiration timestamp parameter.
 	 */
 	public function getCookieStaleTimestamp() {
 		$delta = $this->getCookieDurationInDays();
 		return (!empty($delta)) ? time()+($delta*(60*60*24)) : null;
 	}
-	
+
 	/**
 	 * Create the set of cookies which will be used the next session to re-auth.
 	 * @param string $aAuthId - the auth_id used by the account
@@ -542,7 +542,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
 	}
-	
+
 	/**
 	 * Delete stale cookie tokens.
 	 */
@@ -560,7 +560,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
 	}
-	
+
 	/**
 	 * Delete stale mobile auth tokens.
 	 */
@@ -578,7 +578,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
 	}
-	
+
 	/**
 	 * Delete stale auth lockout tokens.
 	 */
@@ -596,7 +596,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
 	}
-	
+
 	/**
 	 * Delete stale auth lockout tokens.
 	 */
@@ -614,7 +614,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
 	}
-	
+
 	/**
 	 * Delete stale Anti CSRF tokens.
 	 */
@@ -632,7 +632,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
 	}
-	
+
 	/**
 	 * Delete a specific set of anti-CSRF tokens for a user.
 	 * @param string $aAuthId - the user's auth_id.
@@ -656,7 +656,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
 	}
-	
+
 	/**
 	 * Returns the token row if it existed and removes it.
 	 * @param string $aAuthId
@@ -683,7 +683,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}
 		return $theAuthTokenRow;
 	}
-	
+
 	/**
 	 * Loads all the appropriate data about an account for caching purposes.
 	 * @param Accounts $dbAcct - the accounts model.
@@ -701,12 +701,12 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Authenticates using only the information that a password reset object
 	 * would know upon reentry.
-	 * @param unknown $dbAccounts an Accounts prop
-	 * @param unknown $aResetUtils an AuthPasswordReset costume
+	 * @param Accounts $dbAccounts an Accounts prop
+	 * @param AuthPasswordReset $aResetUtils an AuthPasswordReset costume
 	 */
 	public function setPasswordResetCreds( Accounts &$dbAccounts,
 			AuthPasswordReset &$aResetUtils )
@@ -715,7 +715,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		{
 			$this->debugLog( __METHOD__ . ' caught a password reset reentry '
 					. 'that didn\'t have the right credentials.' ) ;
-			throw AuthPasswordResetException::toss( $this,
+			throw PasswordResetException::toss( $this,
 					'REENTRY_AUTH_FAILED' ) ;
 		}
 		$theAccountID = $aResetUtils->getAccountID() ;
@@ -725,7 +725,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$this->director[self::KEY_userinfo] = $theAccountID ;
 		return true ;
 	}
-	
+
 	/**
 	 * Retrieve the current CSRF token.
 	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.
@@ -746,7 +746,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		//if all else fails, call parent
 		return parent::getMyCsrfToken($aCsrfTokenName);
 	}
-	
+
 	/**
 	 * Set the CSRF token to use.
 	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.
@@ -764,7 +764,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		else
 			return parent::setMyCsrfToken($aCsrfTokenName, $aCsrfToken);
 	}
-	
+
 	/**
 	 * Removes the current CSRF token in use.
 	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.
@@ -777,11 +777,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		else
 			parent::clearMyCsrfToken($aCsrfTokenName);
 	}
-	
+
 	/**
 	 * Check PHP session data for account information.
 	 * @param Accounts $dbAccounts - the accounts model.
-	 * @param object $aScene - var container object for user/pw info; 
+	 * @param object $aScene - var container object for user/pw info;
 	 * if account name is non-empty, skip session data check.
 	 * @return boolean Returns TRUE if account was found and successfully loaded.
 	 */
@@ -798,7 +798,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}
 		return (!empty($this->director->account_info));
 	}
-	
+
 	/**
 	 * Check submitted webform data for account information.
 	 * @param Accounts $dbAccounts - the accounts model.
@@ -854,9 +854,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 
 		return (!empty($this->director->account_info));
 	}
-	
+
 	/**
-	 * Cookies might remember our user if the session forgot and they have 
+	 * Cookies might remember our user if the session forgot and they have
 	 * not tried to login.
 	 * @param Accounts $dbAccounts - the accounts model.
 	 * @param object $aCookieMonster - an object representing cookie keys and data.
@@ -865,11 +865,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	protected function checkCookiesForTicket(Accounts $dbAccounts, $aCookieMonster) {
 		if (empty($aCookieMonster[self::KEY_userinfo]) || empty($aCookieMonster[self::KEY_token]))
 			return false;
-		
+
 		$theAuthId = Strings::strstr_after($aCookieMonster[self::KEY_userinfo], $this->director->app_id.'-');
 		if (empty($theAuthId))
 			return false;
-		
+
 		$theAuthToken = $aCookieMonster[self::KEY_token];
 		try {
 			//our cookie mechanism consumes cookie on use and creates a new one
@@ -883,10 +883,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				if (!empty($this->director->account_info)) {
 					//data retrieval succeeded, save the account id in session cache
 					$this->director[self::KEY_userinfo] = $theAccountId;
-					if (!$this->director->isNoSession()) {
-						//bake (create) a new cookie for next time
-						$this->updateCookie($theAuthId, $theAccountId);
-					}
+					//bake (create) a new cookie for next time
+					$this->updateCookie($theAuthId, $theAccountId);
 				}
 				unset($theAuthTokenRow);
 			}
@@ -896,7 +894,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}
 		return (!empty($this->director->account_info));
 	}
-	
+
 	/**
 	 * Descendants may wish to further scrutinize header information before allowing access.
 	 * @param HttpAuthHeader $aAuthHeader - the header info.
@@ -924,7 +922,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		//barring checking circumstances like is GPS outside pre-determined bounds, we authenticated!
 		return true;
 	}
-	
+
 	/**
 	 * HTTP Headers may contain authorization information, check for that information and populate whatever we find
 	 * for subsequent auth mechanisms to find and evaluate.
@@ -952,9 +950,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				//$this->debugLog(__METHOD__.' chkhdr='.$this->debugStr($theAuthHeader));
 				if (!empty($theAuthHeader->auth_id) && !empty($theAuthHeader->auth_token)) {
 					$this->removeStaleMobileAuthTokens();
-					if ($theAuthHeader->no_session) {
-						$this->director->destroySessionOnCleanup();
-					}
 					$theAuthTokenRow = $this->getAuthTokenRow($theAuthHeader->auth_id, $theAuthHeader->auth_token);
 					//$this->debugLog(__METHOD__.' arow='.$this->debugStr($theAuthTokenRow));
 					if (!empty($theAuthTokenRow)) {
@@ -965,8 +960,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 							if (Strings::hasher($theFingerprintStr, $theMobileRow['fingerprint_hash'])) {
 								//$this->debugLog(__METHOD__.' fmatch?=true');
 								$theUserAccount = $this->getAccountInfoCache($dbAccounts, $theAuthTokenRow['account_id']);
-								if (!empty($theUserAccount) && 
-										$this->checkHeadersForMobileCircumstances($theAuthHeader, 
+								if (!empty($theUserAccount) &&
+										$this->checkHeadersForMobileCircumstances($theAuthHeader,
 												$theMobileRow, $theUserAccount) )
 								{
 									//$this->debugLog(__METHOD__.' save to session the mobile_id='.$theMobileRow['mobile_id']);
@@ -984,8 +979,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				}
 				break;
 		}//end switch
+		return false;
 	}
-	
+
 	/**
 	 * If a manual auth was attempted, return the information needed for a lockout token.
 	 * @param Accounts $dbAccounts - the accounts model.
@@ -1015,7 +1011,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}
 		return $theResult;
 	}
-	
+
 	/**
 	 * If a manual auth was attempted, and a lockout status was determined,
 	 * this method gets executed.
@@ -1025,7 +1021,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	protected function onAccountLocked(Accounts $dbAccounts, Scene $aScene) {
 		$aScene->addUserMsg($this->getRes('account/err_pw_failed_account_locked'), $aScene::USER_MSG_ERROR);
 	}
-	
+
 	/**
 	 * Check to see if manual auth failed so often its locked out.
 	 * @param Accounts $dbAccounts - the accounts model.
@@ -1057,7 +1053,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}
 		return $bLockedOut;
 	}
-	
+
 	/**
 	 * When a login attempt fails, update our count in case we need to lockout that account.
 	 * @param Accounts $dbAccounts - the accounts model.
@@ -1096,14 +1092,33 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		if ($this->director->canConnectDb()) {
 			$this->removeStaleAuthLockoutTokens();
 			$dbAccounts = $this->getProp('Accounts');
-
-			$bAuthorized = $this->checkHeadersForTicket($dbAccounts, $aScene);
+			$bAuthorized = false;
+			$bAuthorizedViaHeaders = false;
+			$bAuthorizedViaSession = false;
+			$bAuthorizedViaWebForm = false;
+			$bAuthorizedViaCookies = false;
+			
+			$bAuthorizedViaHeaders = $this->checkHeadersForTicket($dbAccounts, $aScene);
+			//if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth');
+			$bAuthorized = $bAuthorized || $bAuthorizedViaHeaders;
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
-				$bAuthorized = $this->checkSessionForTicket($dbAccounts, $aScene);
+			{
+				$bAuthorizedViaSession = $this->checkSessionForTicket($dbAccounts, $aScene);
+				//if ($bAuthorizedViaSession) $this->debugLog(__METHOD__.' session auth');
+				$bAuthorized = $bAuthorized || $bAuthorizedViaSession;
+			}
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
-				$bAuthorized = $this->checkWebFormForTicket($dbAccounts, $aScene);
+			{
+				$bAuthorizedViaWebForm = $this->checkWebFormForTicket($dbAccounts, $aScene);
+				//if ($bAuthorizedViaWebForm) $this->debugLog(__METHOD__.' webform auth');
+				$bAuthorized = $bAuthorized || $bAuthorizedViaWebForm;
+			}
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
-				$bAuthorized = $this->checkCookiesForTicket($dbAccounts, $_COOKIE);
+			{
+				$bAuthorizedViaCookies = $this->checkCookiesForTicket($dbAccounts, $_COOKIE);
+				//if ($bAuthorizedViaCookies) $this->debugLog(__METHOD__.' cookie auth');
+				$bAuthorized = $bAuthorized || $bAuthorizedViaCookies;
+			}
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 				parent::checkTicket($aScene);
 
@@ -1118,11 +1133,14 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 					if (!empty($theAuthRow))
 						$this->myAuthId = $theAuthRow['auth_id'];
 				}
-				$this->setCsrfTokenCookie();
+				//$this->debugLog(__METHOD__.' myAuthId='.$this->myAuthId);
+				if ($bAuthorizedViaWebForm || $bAuthorizedViaCookies)
+					$this->setCsrfTokenCookie();
 			}
+			//else $this->debugLog(__METHOD__.' not authorized');
 		}
 	}
-	
+
 	/**
 	 * Log the current user out and wipe the slate clean.
 	 * @see \BitsTheater\models\PropCloset\AuthBase::ripTicket()
@@ -1131,9 +1149,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		try {
 			$this->setMySiteCookie(self::KEY_userinfo);
 			$this->setMySiteCookie(self::KEY_token);
-			
+
 			$this->removeStaleCookies();
-			
+
 			//remove all cookie records for current login (logout means from everywhere but mobile)
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 					'account_id' => $this->director->account_info->account_id,
@@ -1162,7 +1180,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		if ($this->checkRegistrationCap()) {
 			return self::REGISTRATION_CAP_EXCEEDED;
 		}
-		
+
 		$dbAccounts = $this->getProp('Accounts');
 		$theResult = self::REGISTRATION_SUCCESS;
 		if ($dbAccounts->getByName($aAcctName)) {
@@ -1173,7 +1191,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$this->returnProp($dbAccounts);
 		return $theResult;
 	}
-		
+
 	/**
 	 * Register an account with our website.
 	 * @param array $aUserData - email, account_id, pwinput, verified_timestamp.
@@ -1186,7 +1204,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}
 		$nowAsUTC = $this->utc_now();
 		$theVerifiedTS = ($aUserData['verified_timestamp']==='now')
-				? $nowAsUTC 
+				? $nowAsUTC
 				: $aUserData['verified_timestamp']
 		;
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
@@ -1205,7 +1223,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$theSql->mustAddParam('email');
 		$theSql->mustAddParam('account_id', 0, PDO::PARAM_STR);
 		$theSql->mustAddParam('pwhash');
-		$theSql->addParam('verified');		
+		$theSql->addParam('verified');
 		if ($theSql->execDML()) {
 			$dbGroupMap = $this->getProp('AuthGroups');
 			$dbGroupMap->addAcctMap($aDefaultGroup,$aUserData['account_id']);
@@ -1216,7 +1234,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			return false;
 		}
 	}
-	
+
 	/**
 	 * Sudo-type mechanism where "manager override" needs to take place.
 	 * It can also be used as a way to prove the current user is still there.
@@ -1244,7 +1262,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$this->returnProp($dbAuthGroups);
 		return $theResult;
 	}
-	
+
 	/**
 	 * Check your authority mechanism to determine if a permission is allowed.
 	 * @param string $aNamespace - namespace of the permission.
@@ -1257,7 +1275,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->dbPermissions = $this->director->getProp('Permissions'); //cleanup will close this model
 		return $this->dbPermissions->isPermissionAllowed($aNamespace, $aPermission, $acctInfo);
 	}
-	
+
 	/**
 	 * Return the defined permission groups.
 	 */
@@ -1269,7 +1287,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$this->returnProp($dbAuthGroups);
 		return $theResult;
 	}
-	
+
 	/**
 	 * Checks the given account information for membership.
 	 * @param AccountInfoCache $aAccountInfo - the account info to check.
@@ -1282,7 +1300,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			return true;
 		}
 	}
-	
+
 	/**
 	 * Standard mechanism to convert the fingerprint array to a string so it can be
 	 * hashed or matched against a prior hash. This should match how the mobile app
@@ -1293,7 +1311,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	protected function cnvFingerprintArrayToString($aFingerprints) {
 		return '['.implode(', ', $aFingerprints).']';
 	}
-	
+
 	/**
 	 * Store device data so that we can determine if user/pw are required again.
 	 * @param array $aAuthRow - an array containing the auth row data.
@@ -1334,17 +1352,17 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$theFingerprintStr = $this->cnvFingerprintArrayToString($aFingerprints);
 			$theFingerprintHash = Strings::hasher($theFingerprintStr);
 			$theSql->mustAddParam('fingerprint_hash', $theFingerprintHash);
-			//$theSql->mustAddParam('fingerprint_str', $theFingerprintStr);			
-			
+			//$theSql->mustAddParam('fingerprint_str', $theFingerprintStr);
+
 			$theSql->execDML();
-			
+
 			//secret should remain secret, don't blab it back to caller.
 			unset($theSql->myParams['fingerprint_hash']);
-			
+
 			return $theSql->myParams;
 		}
 	}
-	
+
 	/**
 	 * It has been determined that the requestor has made a valid request, generate
 	 * a new auth token and return it as well as place it as a cookie with duration of 1 day.
@@ -1356,14 +1374,14 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		//generate a token with "mA" so we can tell them apart from cookie tokens
 		$theUserToken = $this->director->app_id.'-'.$aAuthId;
 		$theAuthToken = $this->generateAuthToken($aAuthId, $aAcctId, self::TOKEN_PREFIX_MOBILE);
+		/* do not give mobile the auth token in a cookie!
 		$theStaleTime = time()+($this->getCookieDurationInDays('duration_1_day')*(60*60*24));
-		if (!$this->director->isNoSession()) {
-			$this->setMySiteCookie(self::KEY_userinfo, $theUserToken, $theStaleTime);
-			$this->setMySiteCookie(self::KEY_token, $theAuthToken, $theStaleTime);
-		}
+		$this->setMySiteCookie(self::KEY_userinfo, $theUserToken, $theStaleTime);
+		$this->setMySiteCookie(self::KEY_token, $theAuthToken, $theStaleTime);
+		*/
 		return $theAuthToken;
 	}
-	
+
 	/**
 	 * Someone entered a user/pw combo correctly from a mobile device, give them tokens!
 	 * @param AccountInfoCache $aAcctInfo - successfully logged in account info.
@@ -1408,7 +1426,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		//$this->debugLog('mobile_pwlogin'.' r='.$this->debugStr($theResults));
 		return $theResults;
 	}
-	
+
 	/**
 	 * A mobile app is trying to automagically log someone in based on a previously
 	 * generated user token and their device fingerprints. If they mostly match, log them in
@@ -1467,18 +1485,18 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	public function isPasswordResetAllowedFor( $aEmailAddr, &$aResetUtils=null )
 	{
 		if( empty($aEmailAddr) ) return false ;
-		
+
 		$this->debugLog( 'Someone requested a password reset for ['
 				. $aEmailAddr . '].' ) ;
-		
+
 		$theResetUtils = null ;
 		if( isset($aResetUtils) )
 			$theResetUtils = &$aResetUtils ;
 		else
-			$theResetUtils = AuthPasswordReset::withModel($this) ; 
+			$theResetUtils = AuthPasswordReset::withModel($this) ;
 
 		if( !$this->isConnected() ) return false ;
-		
+
 		$theAccountID = $theResetUtils->getAccountIDForEmail( $aEmailAddr ) ;
 		if( empty( $theAccountID ) )
 		{
@@ -1487,7 +1505,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 					;
 			return false ;
 		}
-		
+
 		$theOldTokens = $theResetUtils->getTokens() ;
 		if( $theResetUtils->hasRecentToken() )
 		{
@@ -1499,27 +1517,27 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 
 		return true ;
 	}
-	
+
 	/**
 	 * Writes a new password reset request token into the database.
-	 * @param mixed $aResetUtils an instance of the AuthPasswordReset costume
-	 *  in which the account ID has already been populated
+	 * @param AuthPasswordReset $aResetUtils an instance of the
+	 *  AuthPasswordReset costume in which the account ID has already been
+	 *  populated
 	 * @return boolean true if successful, or an exception otherwise
 	 */
-	public function generatePasswordRequestFor( &$aResetUtils )
+	public function generatePasswordRequestFor( AuthPasswordReset &$aResetUtils )
 	{
 		if( ! $this->isConnected() )
-			throw AuthPasswordResetException::toss( $this, 'NOT_CONNECTED' ) ;
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		if( ! isset( $aResetUtils ) )
-			throw AuthPasswordResetException::toss( $this,
-					'EMPERORS_NEW_COSTUME' ) ;
+			throw PasswordResetException::toss( $this, 'EMPERORS_NEW_COSTUME' );
 
-		// Might throw exceptions: 
+		// Might throw exceptions:
 		$aResetUtils->generateToken()->deleteOldTokens() ;
-		
+
 		return true ; // and $aResetUtils got updated with more info
-	}	
-	
+	}
+
 	/**
 	 * Once the registration cap is reached, subsequent registrations will run
 	 * this method.
@@ -1553,7 +1571,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}
 		return $bLockedOut;
 	}
-	
+
 	/**
 	 * Registration has a cap; whenever we register, update our count in case we need
 	 * to lockout this session for going over its cap.
