@@ -45,9 +45,13 @@ define('BITS_APP_PATH',BITS_PATH.'app'.¦);
  * @var string
  */
 define('BITS_SERVER_NAME', (!empty($_SERVER['SERVER_NAME'])) ? $_SERVER['SERVER_NAME'] : 'localhost');
-define('BITS_CFG_PATH', (!file_exists(BITS_APP_PATH.'configs'.¦.BITS_SERVER_NAME) && file_exists(BITS_APP_PATH.'configs'.¦.'anyhost'))
-	? BITS_APP_PATH.'configs'.¦.'anyhost'.¦
-	: BITS_APP_PATH.'configs'.¦.BITS_SERVER_NAME.¦
+define('BITS_CONFIG_DIR', (file_exists(BITS_APP_PATH.'configs'))
+		? BITS_APP_PATH.'configs'
+		: BITS_PATH.'configs'
+);
+define('BITS_CFG_PATH', (!file_exists(BITS_CONFIG_DIR.¦.BITS_SERVER_NAME) && file_exists(BITS_CONFIG_DIR.¦.'anyhost'))
+	? BITS_CONFIG_DIR.¦.'anyhost'.¦
+	: BITS_CONFIG_DIR.¦.BITS_SERVER_NAME.¦
 );
 define('WEBAPP_PATH', BITS_APP_PATH);
 
