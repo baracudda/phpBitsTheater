@@ -1,20 +1,24 @@
 <?php
 use com\blackmoonit\Strings;
 use BitsTheater\Director;
-
+//initial defines before command line options are checked
 $theSitePath = dirname(dirname(dirname(__FILE__)));
 define('BITS_URL', str_replace(DIRECTORY_SEPARATOR, '/', $theSitePath) );
 define('VIRTUAL_HOST_NAME', 'local-cli');
-require_once('../../bootstrap.php');
-Strings::debugPrefix( '[local-cli-dbg] ');
-$director = new Director();
-
-$theOptions = getopt('u:p:');
+//now check for command line options
+$theOptions = getopt('u:p:h:');
 if (!empty($theOptions['u']))
 	$_SERVER['PHP_AUTH_USER'] = $theOptions['u'];
 if (!empty($theOptions['p']))
 	$_SERVER['PHP_AUTH_PW'] = $theOptions['p'];
-
+if (!empty($theOptions['h']))
+	$_SERVER['SERVER_NAME'] = $theOptions['h'];
+//after command line options are checked, Bootstrap time
+require_once(__DIR__.DIRECTORY_SEPARATOR.'../../bootstrap.php');
+Strings::debugPrefix( '[local-cli-dbg] ');
+//start the Director
+$director = new Director();
+//define some generic functions
 function dumpvar($x)
 { print "\n".Strings::debugStr($x,null); }
 
