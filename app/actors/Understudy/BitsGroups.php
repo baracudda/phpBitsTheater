@@ -219,9 +219,8 @@ class BitsGroups extends BaseActor {
 
 	/**
 	 * API function to get the permissions for a specified group.
-	 * For the actor function that supports the Joka 2.x UI page,
-	 * see group(int).
 	 * @param integer $aGroupID the group ID
+	 * @see BitsGroups::group(int)
 	 */
 	public function ajajGetPermissionsFor( $aGroupID=null )
 	{
