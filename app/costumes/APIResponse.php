@@ -52,7 +52,7 @@ class APIResponse extends BaseCostume {
 	 * and return the error information.
 	 * @param \BitsTheater\BrokenLeg $aError
 	 */
-	public function setError( BrokenLeg &$aError )
+	public function setError( BrokenLeg $aError )
 	{
 		$this->status = self::STATUS_FAILURE ;
 		$this->error = $aError->toJson() ;

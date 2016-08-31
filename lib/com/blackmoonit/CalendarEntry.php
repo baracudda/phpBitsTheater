@@ -16,13 +16,13 @@
  */
 
 namespace com\blackmoonit;
-use \DateTime;
-use \DateInterval;
+use DateTime;
+use DateInterval;
 {//begin namespace
 
 /**
  * Generic calendar entry used to export in iCal format into various standard calendar apps/sites.
- * @author Ryan Fischbach
+ * @author baracudda
  */
 class CalendarEntry extends AdamEve {
 	const _SetupArgCount = 3; //number of args required to call the setup() method.

@@ -199,7 +199,7 @@ implements IDirected
 	 * @throws FourOhFourExit if the view file is not found.
 	 */
 	public function renderView($anAction=null) {
-		if ($anAction=='_blank')
+		if ($anAction=='_blank' || http_response_code()==204)
 			return;
 		if (!$this->bHasBeenSetup)
 			throw new BadMethodCallException(__CLASS__.'::setup() must be called first.');
@@ -535,6 +535,40 @@ implements IDirected
 			return self::SITE_MODE_NORMAL;
 	}
 	
+	/**
+	 * Gets an entity ID from a URI segment or a POST data field. The caller
+	 * decides which is the "preferred" data source or an "alternate" data
+	 * source.
+	 * @param string $aValue the value of the entity ID as a URI segment
+	 * @param string $aField the name of a field in the POST data where the ID
+	 *  might be found, if not found in the URI segment
+	 * @param boolean $isRequired indicates whether to throw an exception if no
+	 *  value can be found for the entity ID in either data source; this
+	 *  defaults to true (required by default)
+	 * @return NULL|string the value that was found, preferring the URI segment
+	 *  but falling back to the POST data if needed; if no field name is given,
+	 *  and no value is found, NULL is returned
+	 * @throws BrokenLeg (MISSING_ARGUMENT) if no value was found in either data
+	 *  source, and the caller indicated that a result is required
+	 * @since 2016-08-29
+	 */
+	protected function getEntityID( $aValue=null, $aField=null, $isRequired=true )
+	{
+		$theValue = $aValue ;
+		if( empty($theValue) )
+		{
+			if( empty($aField) ) // Don't look for a substitute value.
+				return null ;
+			else if( ! empty( $this->scene->$aField ) )
+				$theValue = $this->scene->$aField ;
+			else if( $isRequired )
+				throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', $aField ) ;
+			else
+				return null ;
+		}
+		return $theValue ;
+	}
+
 }//end class
 
 }//end namespace

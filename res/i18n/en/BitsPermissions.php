@@ -23,15 +23,15 @@ class BitsPermissions extends BaseResources {
 	public $menu_rights_label = 'Permissions';
 	public $menu_rights_subtext = '';
 	
-	public $title_groups = 'Assign Rights To Groups';
+	public $title_groups = 'Assign Rights To Roles';
 	public $colheader_group_id = '#';
-	public $colheader_group_name = 'Rights Group';
+	public $colheader_group_name = 'Role';
 	public $colheader_group_parent = 'Description';
 	public $display_group_0_desc = 'visitor that is not logged in';
 	public $display_group_1_desc = 'always passes permission checks';
 	public $display_parent_group = 'subset of %s';
 	
-	public $title_group = 'Assign Rights for Group: %s';
+	public $title_group = 'Assign Rights for Role: %s';
 	public $colheader_right_name = 'Right';
 	public $colheader_right_value = 'Assign';
 	public $colheader_right_desc = 'Description';
@@ -45,9 +45,9 @@ class BitsPermissions extends BaseResources {
 			'deny' => 'Deny',
 	);
 	public $desc_right_values = array(
-			'allow' => 'Access granted, if no parent group explicitly Denies.',
-			'disallow' => 'Access denied unless a parent group explicitly Allows.',
-			'deny' => 'Access will be denied for this and all child groups.',
+			'allow' => 'Access granted, if no parent role explicitly denies it.',
+			'disallow' => 'Access denied unless a parent group explicitly allows it.',
+			'deny' => 'Access will be denied for this and all child roles.',
 	);
 	
 	public $label_namespace = array(
@@ -62,14 +62,14 @@ class BitsPermissions extends BaseResources {
 	);
 	
 	public $label_auth = array(
-			'modify' => 'Modify Permission Groups',
-			'create' => 'Create Permission Groups',
-			'delete' => 'Delete Permission Groups',
+			'modify' => 'Modify Roles',
+			'create' => 'Create Roles',
+			'delete' => 'Delete Roles',
 	);
 	public $desc_auth = array(
-			'modify' => 'Assign rights to groups.',
-			'create' => 'Define new rights groups.',
-			'delete' => 'Remove existing rights groups.',
+			'modify' => 'Assign rights to roles.',
+			'create' => 'Define new roles.',
+			'delete' => 'Remove existing roles.',
 	);
 	
 	public $label_config = array(
@@ -80,14 +80,14 @@ class BitsPermissions extends BaseResources {
 	);
 	
 	public $label_accounts = array(
-			'modify' => 'Modify Accounts',
+			'modify' => 'Modify User Accounts',
 			//no need for create right as everyone can create an account by registering
-			'delete' => 'Delete Accounts',
+			'delete' => 'Delete User Accounts',
 	);
 	public $desc_accounts = array(
-			'modify' => 'Modify any existing account.',
+			'modify' => 'Modify any existing user account.',
 			//no need for create right as everyone can create an account by registering
-			'delete' => 'Remove any existing account (requires Modify too).',
+			'delete' => 'Remove any existing user account (requires Modify too).',
 	);
 	
 }//end class

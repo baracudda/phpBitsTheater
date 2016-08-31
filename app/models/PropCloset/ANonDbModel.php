@@ -15,25 +15,27 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\costumes ;
-{ // begin namespace
+namespace BitsTheater\models\PropCloset;
+use BitsTheater\Model as BaseModel;
+{//begin namespace
 
-/**
- * A set of methods useful when running under CLI mode.
- */
-trait WornForCLI
+abstract class ANonDbModel extends BaseModel
 {
-
-	/**
-	 * Determine if we are executing in CLI mode or not.
-	 * @return boolean
-	 */
-	public function isRunningUnderCLI()
+	
+	public function connect($aDbConnName=null)
 	{
-		return (php_sapi_name() === 'cli' OR defined('STDIN'));
+		//do not call parent::connect() since we are not connecting to a db.
+		$this->setupModel();
+	}
+	
+	/**
+	 * Generic setup method for non-Db Models
+	 */
+	public function setupModel()
+	{
+		//setup code would go in a descendant
 	}
 
-} // end trait
+}//end class
 
-} // end namespace
-	
+}//end namespace

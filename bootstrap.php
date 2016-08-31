@@ -70,8 +70,10 @@ define('REQUEST_URL', array_key_exists('url',$_GET)?$_GET['url']:'');
  * Site URL that does not end in a /.
  * @var string
  */
-if (!defined('BITS_URL'))
-define('BITS_URL', (dirname($_SERVER['SCRIPT_NAME'])!=='.') ? str_replace(DIRECTORY_SEPARATOR,'/',dirname($_SERVER['SCRIPT_NAME'])) : '' );
+if (!defined('BITS_URL')) {
+	$theScriptFolder = dirname($_SERVER['SCRIPT_NAME']);
+	define('BITS_URL', ($theScriptFolder!='.' && $theScriptFolder!='/') ? str_replace(DIRECTORY_SEPARATOR,'/',$theScriptFolder) : '' );
+}
 
 /**
  * Virtual Host folder name, if exists.

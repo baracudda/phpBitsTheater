@@ -42,6 +42,7 @@ class BrokenLeg extends \Exception
 	const ERR_NOT_AUTHENTICATED = 401 ;
 	const ERR_SERVICE_UNAVAILABLE = 503;
 	const ERR_TOO_MANY_REQUESTS = 429;
+	const ERR_DEPRECATED_FUNCTION = 410 ;
 	
 	// General-purpose messages should be defined in the BitsGeneric resource.
 	const MSG_MISSING_ARGUMENT = 'generic/errmsg_arg_is_empty' ;
@@ -56,6 +57,7 @@ class BrokenLeg extends \Exception
 	const MSG_NOT_AUTHENTICATED = self::MSG_FORBIDDEN ;
 	const MSG_SERVICE_UNAVAILABLE = 'generic/errmsg_service_unavailable';
 	const MSG_TOO_MANY_REQUESTS = 'generic/errmsg_too_many_requests';
+	const MSG_DEPRECATED_FUNCTION = 'generic/errmsg_deprecated' ;
 
 	/**
 	 * Provides an instance of the exception.

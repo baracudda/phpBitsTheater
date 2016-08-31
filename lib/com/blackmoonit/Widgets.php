@@ -23,7 +23,7 @@ use \DateTime;
 
 /**
  * Purpose: convenience class for creating html widgets
- * @author: Ryan Fischbach
+ * @author: baracudda
  */
 class Widgets
 {

@@ -633,6 +633,36 @@ class AuthPermissions extends BaseModel {
 			);
 	}
 
+	/**
+	 * Convert an old namespace to a new one.
+	 */
+	public function migrateNamespace($aOldNamespace, $aNewNamespace)
+	{
+		if (!$this->isConnected())
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+				'namespace_old' => $aOldNamespace,
+				'namespace_new' => $aNewNamespace,
+		));
+		$theSql->startWith('UPDATE')->add($this->tnPermissions);
+		$theSql->add('SET')->mustAddFieldAndParam('namespace', 'namespace_new');
+		$theSql->startWhereClause();
+		$theSql->mustAddFieldAndParam('namespace', 'namespace_old');
+		$theSql->endWhereClause();
+		try {
+			$theSql->execDML();
+		}
+		catch(PDOException $pdox) {
+			throw new DbException($pdox, __METHOD__ . ' failed to convert permissions from ' .
+					$aOldNamespace . ' to ' . $aNewNamespace
+			);
+		}
+		
+		//after changing permissions, affect the cache too
+		$this->_permCache = array();
+		$this->isPermissionAllowed($aNewNamespace, '');
+	}
+
 }//end class
 
 }//end namespace

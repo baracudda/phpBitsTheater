@@ -46,6 +46,8 @@ class BitsGeneric extends BaseResources {
 		'Entity with ID [%1$s] not found.' ;
 	public $errmsg_service_unavailable = 'The server is currently unavailable.';
 	public $errmsg_too_many_requests = 'Too many requests at this time.';
+	public $errmsg_deprecated =
+		'That feature has been deprecated and is no longer supported by this service.' ;
 
 	public $label_header_title_suffix_demo_mode = '(demo)';
 	

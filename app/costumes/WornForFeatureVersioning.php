@@ -1,4 +1,20 @@
 <?php
+/*
+ * Copyright (C) 2016 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace BitsTheater\costumes ;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\models\SetupDb as MetaModel;
@@ -122,6 +138,26 @@ trait WornForFeatureVersioning
 			//echo $e->getMessage();
 		}
 		return false;
+	}
+	
+	/**
+	 * Sometimes a model changes its name and/or its FeatureID.
+	 * @param string $aOldFeatureId - the old feature ID.
+	 * @param unknown $aNewFeatureData
+	 */
+	public function migrateFeatureVersionId($aOldFeatureId)
+	{
+		/* @var $dbMeta MetaModel */
+		$dbMeta = $this->getProp('SetupDb');
+		if (!empty($dbMeta) && $dbMeta->isConnected()) {
+			$theOldFeatureData = $dbMeta->getFeature($aOldFeatureId);
+			if (!empty($theOldFeatureData)) {
+				$dbMeta->removeFeature($aOldFeatureId);
+				$theFeatureData = $this->getCurrentFeatureVersion();
+				$theFeatureData['version_seq'] = $theOldFeatureData['version_seq'];
+				$dbMeta->insertFeature($theFeatureData);
+			}
+		}
 	}
 	
 } // end trait

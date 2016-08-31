@@ -2,7 +2,6 @@
 use BitsTheater\scenes\Install as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
-use BitsTheater\models\SetupDb as MetaModel;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 $h = $v->cueActor('Fragments', 'get', 'csrf_header_jquery');
@@ -80,17 +79,14 @@ $w .= "<tbody>\n";
 //if the website framework has changed, do not list anything else; forces them to always update the website first, which
 //  in turn updates this feature list.
 $theFeatureList = $v->feature_version_list;
-$theFrameworkFeatureId = MetaModel::FEATURE_ID;
+//$v->debugPrint($v->debugStr($theFeatureList));
+$theMetaModel = $v->getProp('SetupDb');
+$theFrameworkFeatureId = $theMetaModel::FEATURE_ID;
 $theWebsiteFeatureId = $v->getRes('website/getFeatureId');
-if ($theFeatureList[$theFrameworkFeatureId]['version_display']!==$theFeatureList[$theFrameworkFeatureId]['version_display_new']) {
+if ($theFeatureList[$theFrameworkFeatureId]['needs_update']) {
 	$theFeatureList = array($theFrameworkFeatureId => $theFeatureList[$theFrameworkFeatureId]);
-} else if (empty($theFeatureList[$theWebsiteFeatureId]) ||
-		$theFeatureList[$theWebsiteFeatureId]['version_display']!==$theFeatureList[$theWebsiteFeatureId]['version_display_new']) {
-	$theFeatureList = array($theWebsiteFeatureId => array(
-			'feature_id' => $theWebsiteFeatureId,
-			'version_display' => $v->getRes('admin/field_value_unknown_version'),
-			'version_display_new' => $v->getRes('website/version'),
-	));
+} else if ($theFeatureList[$theWebsiteFeatureId]['needs_update']) {
+	$theFeatureList = array($theWebsiteFeatureId => $theFeatureList[$theWebsiteFeatureId]);
 }
 
 foreach ($theFeatureList as $theFeatureInfo) {
@@ -108,7 +104,7 @@ foreach ($theFeatureList as $theFeatureInfo) {
 	$r .= $theFeatureInfo['version_display_new'];
 	$r .= '</td>';
 	$r .= '<td>';
-	if ($theFeatureInfo['version_display']!=$theFeatureInfo['version_display_new']) {
+	if ($theFeatureInfo['needs_update']) {
 		$r .= '<button type="button" class="btn btn-danger btn-update-feature"';
 		$r .= ' feature_id="'.$theFeatureId.'"';       //style="color:#ed9c28;"
 		$r .= '>'.$v->getRes('admin/btn_label_update').'</button>';
@@ -126,11 +122,12 @@ $w .= "</table><br/>\n";
 $w .= '</div><span title=".panel" HIDDEN></span>'."\n";
 
 $w .= '<br>';
-$w .= 'Once all features are up-to-date, you may want to ensure all tables exist. ';
-$w .= 'This is usually important if restoring from a partial backup or imported data. ';
-$w .= '<br>';
-$w .= '<button type="button" id="btn_resetup_db" class="btn btn-warning">'.$v->getRes('admin/btn_label_resetup_db').'</button>';
-
+if (count($theFeatureList)!=1) {
+	$w .= 'Once all features are up-to-date, you may want to ensure all tables exist. ';
+	$w .= 'This is usually important if restoring from a partial backup or imported data. ';
+	$w .= '<br>';
+	$w .= '<button type="button" id="btn_resetup_db" class="btn btn-warning">'.$v->getRes('admin/btn_label_resetup_db').'</button>';
+}
 print($w);
 
 print($v->createJsTagBlock($jsCode));

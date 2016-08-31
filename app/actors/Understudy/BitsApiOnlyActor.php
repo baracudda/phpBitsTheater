@@ -40,6 +40,7 @@ class BitsApiOnlyActor extends BaseActor {
 			if (class_exists($theActorClass)) {
 				$theAction = Strings::getMethodName('api_'.array_shift($aQuery));
 				$theActor = new $theActorClass($this->getDirector(), $theAction);
+				$this->viewToRender('results_as_json'); //in case of error, JSON is returned
 				$theActor->viewToRender('results_as_json');
 				call_user_func_array(array($theActor, $theAction), $aQuery);
 				$theActor->renderView($theActor->viewToRender());

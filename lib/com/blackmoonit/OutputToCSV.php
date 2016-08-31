@@ -16,15 +16,15 @@
 */
 
 namespace com\blackmoonit;
-use \PDO;
-use \PDOStatement;
+use PDO;
+use PDOStatement;
 {//begin namespace
 
 /**
  * Output to CSV is complex enough to warrent its own class.  With so many options
  * available to modify the output to a CSV file/stream, making each option a
  * chainable method makes creating one that much easier.
- * @author Ryan Fischbach
+ * @author baracudda
  */
 class OutputToCSV {
 	/**
@@ -108,12 +108,6 @@ class OutputToCSV {
 	protected $csv = '';
 	
 	/**
-	 * Create a new instance of OutputToCSV.
-	 */
-	public function OutputToCSV() {
-	}
-	
-	/**
 	 * Factory method for those that like to use them.
 	 * @return \com\blackmoonit\OutputToCSV
 	 */
@@ -189,6 +183,13 @@ class OutputToCSV {
 	public function setOutputStream($aOutputStream) {
 		$this->mOutputStream = $aOutputStream;
 		return $this;
+	}
+	
+	/**
+	 * @return mixed Returns the output stream in use.
+	 */
+	public function getOutputStream() {
+		return $this->mOutputStream;
 	}
 	
 	/**

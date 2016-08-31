@@ -399,6 +399,16 @@ implements IDirected
 	}
 	
 	/**
+	 * During website development, some models may get orphaned. Prevent them
+	 * from being used by overriding and disallowing the old model names.
+	 * @param string $aModelName - the simple name of the model class.
+	 * @return boolean Returns TRUE if the model is to be used.
+	 */
+	static protected function isModelClassAllowed($aModelName) {
+		return true;
+	}
+	
+	/**
 	 * Get a list of models based on the parameter.
 	 * @param string $aModelClassPattern - NULL for all non-abstract models, else a result from getModelClassPattern.
 	 * @param boolean $bIncludeAbstracts - restricts the list to only instantiable classes if FALSE, default is FALSE.
@@ -410,6 +420,8 @@ implements IDirected
 		$theModels = array();
 		foreach (glob($theModelClassPattern) as $theModelFile) {
 			$theModelName = str_replace('.php','',basename($theModelFile));
+			if (!static::isModelClassAllowed($theModelName))
+				continue;
 			//Strings::debugLog(__METHOD__.' name to reflect: '.$theModelName);
 			$theModelClass = Director::getModelClass($theModelName);
 			//Strings::debugLog(__METHOD__.' reflecting: '.$theModelClass);
