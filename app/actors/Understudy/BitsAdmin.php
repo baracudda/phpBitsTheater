@@ -54,10 +54,12 @@ class BitsAdmin extends BaseActor {
 			try {
 				$v->results = APIResponse::resultsWithData($dbMeta->upgradeFeature($v));
 			} catch (Exception $e) {
+				$v->addUserMsg($e->getMessage(), $v::USER_MSG_ERROR);
 				throw BrokenLeg::tossException($this, $e);
 			}
-		} else
+		} else {
 			throw BrokenLeg::toss($this, 'FORBIDDEN');
+		}
 	}
 	
 	/**

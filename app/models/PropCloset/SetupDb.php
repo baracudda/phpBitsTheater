@@ -196,15 +196,9 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	 * @param Scene $aScene - extra data may be supplied
 	 */
 	public function upgradeFeatureVersion($aFeatureMetaData, $aScene) {
-		$theSeq = $aFeatureMetaData['version_seq'];
-		if ($aFeatureMetaData['feature_id']!==self::FEATURE_ID) {
-			//website update
-			$this->getRes('website/updateVersion/'.$theSeq);
-			//check for new features
-			$this->refreshFeatureTable($aScene);
-		} else {
-			//framework update
-			switch (true) {
+		$theSeq = $aFeatureMetaData['version_seq']+0;
+		//framework update
+		switch (true) {
 			//cases should always be lo->hi, never use break; so all changes are done in order.
 			case ($theSeq<3):
 				//replace old class file with new class file
@@ -221,20 +215,19 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 				if (!empty($dbAuthGroups)) {
 					$this->updateFeature($dbAuthGroups->getCurrentFeatureVersion());
 				}
-			}//switch
+		}//switch
 
-			//update the feature table with all but our own model
-			$theModels = self::getAllModelClassInfo();
-			for ($i=0; $i<count($theModels); $i++) {
-				if ($theModels[$i]->getShortName()===$this->mySimpleClassName) {
-					unset($theModels[$i]);
-					break;
-				}
+		//update the feature table with all but our own model
+		$theModels = self::getAllModelClassInfo();
+		for ($i=0; $i<count($theModels); $i++) {
+			if ($theModels[$i]->getShortName()===$this->mySimpleClassName) {
+				unset($theModels[$i]);
+				break;
 			}
-			$this->callModelMethod($this->director, $theModels, 'setupFeatureVersion', $aScene);
-			array_walk($theModels, function(&$n) { unset($n); } );
-			unset($theModels);
 		}
+		$this->callModelMethod($this->director, $theModels, 'setupFeatureVersion', $aScene);
+		array_walk($theModels, function(&$n) { unset($n); } );
+		unset($theModels);
 	}
 	
 	protected function exists($aTableName=null) {
@@ -328,7 +321,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 							continue;
 						}
 
-						self::normalizeFeature($theFeatureRow['feature_id']);
+						$this->normalizeFeature($theFeatureRow['feature_id']);
 						$theNewFeatureData = $dbModel->getCurrentFeatureVersion($theFeatureRow['feature_id']);
 						if (empty($theNewFeatureData['version_display'])) {
 							$theNewFeatureData['version_display'] = 'v'.$theNewFeatureData['version_seq'];
@@ -361,6 +354,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 						$theResultSet[$theWebappFeatureId]['model_class'] = $this->mySimpleClassName;
 						$theResultSet[$theWebappFeatureId]['version_seq'] = null;
 						$theResultSet[$theWebappFeatureId]['version_seq_new'] = $this->getRes('website/version_seq');
+						$theResultSet[$theWebappFeatureId]['version_display'] = $this->getRes('admin/field_value_unknown_version');
 						$theResultSet[$theWebappFeatureId]['version_display_new'] = $this->getRes('website/version');
 						$theResultSet[$theWebappFeatureId]['needs_update'] = true;
 					}
