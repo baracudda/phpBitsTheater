@@ -33,6 +33,8 @@ class AccountInfoCache extends BaseCostume {
 	public $email = null;
 	/** @var array */
 	public $groups = array(0);
+	/** @var string */
+	public $auth_id = null;
 	
 }//end class
 

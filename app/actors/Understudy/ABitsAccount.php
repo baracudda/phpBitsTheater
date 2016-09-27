@@ -23,6 +23,7 @@ use BitsTheater\costumes\AccountInfoCache;
 use com\blackmoonit\Strings;
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
+use Exception;
 {//namespace begin
 
 abstract class ABitsAccount extends BaseActor {
@@ -113,7 +114,6 @@ abstract class ABitsAccount extends BaseActor {
 	 * @see ABitsAccount::ajajGetAccountInfo()
 	 */
 	public function loginAs() {
-		$this->viewToRender('results_as_json');
 		return $this->ajajGetAccountInfo();
 	}
 	
@@ -125,10 +125,12 @@ abstract class ABitsAccount extends BaseActor {
 	public function ajajGetAccountInfo()
 	{
 		$v =& $this->scene;
+		$this->viewToRender('results_as_json');
 		if( ! $this->isGuest() )
 		{
 			$theData = $this->director->account_info ;
 			$theData->account_id = intval( $theData->account_id ) ;
+			//$theData->debugAuth = $v->debugAuth; unset($v->debugAuth); //DEBUG
 
 			$theGroupID =
 				( empty( $theData->groups ) ? false : $theData->groups[0] ) ;
@@ -139,11 +141,9 @@ abstract class ABitsAccount extends BaseActor {
 				$theData->permissions = $dbPerms->getGrantedRights($theGroupID);
 			}
 			catch( Exception $x )
-			{ $theError = BrokenLeg::toss( $this, $x ) ; }
+			{ throw BrokenLeg::tossException( $this, $x ) ; }
 
 			$v->results = APIResponse::resultsWithData($theData) ;
-			if( $theError != null )
-				$v->results->setError($theError) ;
 		}
 		else
 		{ throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED') ; }

@@ -168,9 +168,13 @@ abstract class AuthBase extends BaseModel {
 		list( $theCsrfCookieName, $theCsrfHeaderName) = $this->getCsrfCookieHeaderNames();
 		if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
 			$theCachedToken = $this->getMyCsrfToken($theCsrfHeaderName);
-			if (empty($theCachedToken)) {
+			if (empty($theCachedToken) || empty($_COOKIE[$theCsrfCookieName]) ||
+					$_COOKIE[$theCsrfCookieName] !== $theCachedToken) {
 				//$this->debugLog(__METHOD__.' creating new cookie-token');
-				$theNewToken = $this->setMyCsrfToken($theCsrfHeaderName, $aToken);
+				if (empty($theCachedToken))
+					$theNewToken = $this->setMyCsrfToken($theCsrfHeaderName, $aToken);
+				else
+					$theNewToken = $theCachedToken;
 				return $this->setMySiteCookie($theCsrfCookieName, $theNewToken, 0, false);
 			}
 			//else $this->debugLog(__METHOD__.' the cached token='.$theCachedToken);

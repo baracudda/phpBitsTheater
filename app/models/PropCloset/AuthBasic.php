@@ -98,11 +98,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @var string
 	 */
 	const TOKEN_PREFIX_ANTI_CSRF = 'aC';
-	/**
-	 * The currently logged in user's auth_id.
-	 * @var string
-	 */
-	protected $myAuthId = null;
 
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
@@ -380,7 +375,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		if( ! $this->isConnected() )
 			throw AuthPasswordResetException::toss( $this, 'NOT_CONNECTED' ) ;
 
-		$theSet = null ; $theCursor = FinallyCursor::forDbCursor($theSet) ;
 		$theSql = SqlBuilder::withModel($this)
 			->startWith( 'SELECT * FROM ' )->add( $this->tnAuthTokens )
 			->startWhereClause()
@@ -406,22 +400,21 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		// future columns can be added here
 
 		$theSql->endWhereClause()
-			->add( ' ORDER BY _changed DESC' )
+			->applyOrderByList(array('_changed' => SqlBuilder::ORDER_BY_DESCENDING))
 			;
 //		$this->debugLog( $theSql->mySql ) ;
 		try
 		{
 			$theSet = $theSql->query() ;
-			$theTokens = $theSet->fetchAll() ;
-			$theCursor->closeCursor($theSet) ;
-			return $theTokens ;
+			if (!empty($theSet))
+				return $theSet->fetchAll() ;
 		}
 		catch( PDOException $pdoe )
 		{
 			$this->debugLog( __METHOD__ . ' DB query failed: '
 					. $pdoe->getMessage() ) ;
-			return null ;
 		}
+		return null ;
 	}
 
 	/**
@@ -694,6 +687,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$theResult = AccountInfoCache::fromArray($dbAccounts->getAccount($aAccountId));
 		if (!empty($theResult) && !empty($theResult->account_name)) {
 			$theAuthRow = $this->getAuthByAccountId($aAccountId);
+			$theResult->auth_id = $theAuthRow['auth_id'];
 			$theResult->email = $theAuthRow['email'];
 			$theResult->groups = $this->belongsToGroups($aAccountId);
 			return $theResult;
@@ -732,9 +726,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @return string Returns the token.
 	 */
 	protected function getMyCsrfToken($aCsrfTokenName) {
-		if (!empty($this->myAuthId))
+		if (!empty($this->director->account_info))
 		{
-			$theTokens = $this->getAuthTokens($this->myAuthId,
+			$theTokens = $this->getAuthTokens($this->director->account_info->auth_id,
 					$this->director->account_info->account_id,
 					self::TOKEN_PREFIX_ANTI_CSRF.'%', true
 			);
@@ -756,8 +750,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 */
 	protected function setMyCsrfToken($aCsrfTokenName, $aCsrfToken=null) {
 		$delta = $this->getCookieDurationInDays();
-		if (!empty($this->myAuthId) && !empty($delta))
-			return $this->generateAuthToken($this->myAuthId,
+		if (!empty($this->director->account_info) && !empty($delta))
+			return $this->generateAuthToken($this->director->account_info->auth_id,
 					$this->director->account_info->account_id,
 					self::TOKEN_PREFIX_ANTI_CSRF
 			);
@@ -770,8 +764,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.
 	 */
 	protected function clearMyCsrfToken($aCsrfTokenName) {
-		if (!empty($this->myAuthId))
-			$this->removeAntiCsrfToken($this->myAuthId,
+		if (!empty($this->director->account_info))
+			$this->removeAntiCsrfToken($this->director->account_info->auth_id,
 					$this->director->account_info->account_id
 			);
 		else
@@ -1097,6 +1091,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$bAuthorizedViaSession = false;
 			$bAuthorizedViaWebForm = false;
 			$bAuthorizedViaCookies = false;
+			$bCsrfTokenWasBaked = false;
 			
 			$bAuthorizedViaHeaders = $this->checkHeadersForTicket($dbAccounts, $aScene);
 			//if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth');
@@ -1122,22 +1117,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 				parent::checkTicket($aScene);
 
-			$this->returnProp($dbAccounts);
 			if ($bAuthorized)
 			{
-				if (!empty($this->director->account_info->account_id))
-				{
-					$theAuthRow = $this->getAuthByAccountId(
-							$this->director->account_info->account_id
-					);
-					if (!empty($theAuthRow))
-						$this->myAuthId = $theAuthRow['auth_id'];
-				}
-				//$this->debugLog(__METHOD__.' myAuthId='.$this->myAuthId);
-				if ($bAuthorizedViaWebForm || $bAuthorizedViaCookies)
-					$this->setCsrfTokenCookie();
+				if ($bAuthorizedViaSession || $bAuthorizedViaWebForm || $bAuthorizedViaCookies)
+					$bCsrfTokenWasBaked = $this->setCsrfTokenCookie();
 			}
 			//else $this->debugLog(__METHOD__.' not authorized');
+			$this->returnProp($dbAccounts);
 		}
 	}
 
@@ -1167,8 +1153,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
 		parent::ripTicket();
-		//clear this var after parent call so clearMyCsrfToken() works ok
-		$this->myAuthId = null;
 	}
 
 	/**
