@@ -17,6 +17,8 @@
 
 namespace BitsTheater\costumes ;
 use com\blackmoonit\Strings;
+use BitsTheater\BrokenLeg;
+use BitsTheater\costumes\APIResponse;
 {//begin namespace
 
 /**
@@ -69,11 +71,16 @@ trait WornForRestService
 	public function generateHostList($aConfigNamespace, $aDefaultPort=null)
 	{
 		$theResults = array();
-		$theHosts = explode(',', $this->getConfigSetting($aConfigNamespace.'/host_list'));
-		foreach ($theHosts as $theHost) {
-			$theUrl = $this->constructHostString($theHost, $aConfigNamespace, $aDefaultPort);
-			if (!empty($theUrl))
-				$theResults[] = $theUrl;
+		$theConfigValue = $this->getConfigSetting($aConfigNamespace.'/host_list');
+		if (!empty($theConfigValue)) {
+			$theHosts = explode(',', $theConfigValue);
+			if (!empty($theHosts)) {
+				foreach ($theHosts as $theHost) {
+					$theUrl = $this->constructHostString($theHost, $aConfigNamespace, $aDefaultPort);
+					if (!empty($theUrl))
+						$theResults[] = $theUrl;
+				}
+			}
 		}
 		return $theResults;
 	}
@@ -91,6 +98,82 @@ trait WornForRestService
 			return implode(',', $theResults);
 	}
 	
+	/**
+	 * If the config settings are not fully defined, you may toss this
+	 * generic exception.
+	 * @param string $aConfigNamespace - the namespace of the config settings.
+	 * @throws BitsTheater\BrokenLeg
+	 */
+	public function tossWhenNotDefined($aConfigNamespace) {
+		$theCondition = strtoupper($aConfigNamespace) . '_NOT_DEFINED';
+		$theDirector = $this->getDirector();
+		throw BrokenLeg::pratfallRes($theDirector, $theCondition, 412,
+				'generic/errmsg_x_not_defined',
+				$theDirector->getRes('config/namespace')[$aConfigNamespace]->label
+		);
+	}
+	
+	/**
+	 * Sends a POST request to the Rest Service API.
+	 * @param string $aAction - the action to be performed.
+	 * @param string $aData - the POST data to accompany the request.
+	 * @param number $aTimeout - the timeout value for the request.
+	 * @return \Joka\costumes\APIResponse - the response from the endpoint,
+	 *  encapsulated in a known container.
+	 */
+	protected function sendRequestToRestService($aPostURL, $aAction=null, $aData=null, $aTimeout=45)
+	{
+		$theResult = new APIResponse() ;
+		if (empty($aPostURL))
+			throw BrokenLeg::toss( $this, 'SERVICE_UNAVAILABLE' ) ;
+		
+		$thePostURL = (Strings::endsWith($aPostURL, '/')) ? $aPostURL : $aPostURL . '/';
+		$thePostURL .= $aAction ;
+		$theRequest = curl_init() ;
+		curl_setopt( $theRequest, CURLOPT_URL, $thePostURL ) ;
+		curl_setopt( $theRequest, CURLOPT_RETURNTRANSFER, true ) ;
+		if (!empty($aData)) {
+			$theEncodedData = json_encode($aData) ;
+			curl_setopt( $theRequest, CURLOPT_CUSTOMREQUEST, 'POST' ) ;
+			curl_setopt( $theRequest, CURLOPT_POSTFIELDS, $theEncodedData ) ;
+			curl_setopt( $theRequest, CURLOPT_HTTPHEADER, array(
+					'Content-Type: application/json',
+					'Content-Length: ' . strlen($theEncodedData)
+			));
+		}
+		else {
+			curl_setopt( $theRequest, CURLOPT_CUSTOMREQUEST, 'GET' ) ;
+		}
+		curl_setopt( $theRequest, CURLOPT_CONNECTTIMEOUT, $aTimeout ) ;
+
+		$theRawResponse = curl_exec($theRequest) ;
+		$theRespData = json_decode($theRawResponse) ;
+		$theRespCode = curl_getinfo( $theRequest, CURLINFO_HTTP_CODE ) ;
+		curl_close($theRequest) ;
+//		$this->debugLog( __METHOD__ . ' DEBUG - URL [' . $thePostURL
+//				. ']; request data [' . json_encode($aData)
+//				. ']; response data [' . $theRawResponse
+//				. ']; HTTP code ['. $theRespCode . ']' )
+//				;
+		if( $theRespCode >= 200 && $theRespCode < 300 )
+		{ // Success!
+			$theResult->status = APIResponse::STATUS_SUCCESS ;
+			$theResult->data = $theRespData ;
+		}
+		else
+		{ // Failure!
+			$theResult->status = APIResponse::STATUS_FAILURE ;
+			$theResult->data = $theRespData ;
+			$theErrorMessage = $this->getRes('generic/errmsg_failure');
+			if( isset($theRespData->error) && isset($theRespData->error->message) )
+				$theErrorMessage = $theRespData->error->message ;
+			$theFailure = BrokenLeg::pratfall(strtoupper($this->getRes('generic/errmsg_failure')),
+					$theRespCode, $theErrorMessage ) ;
+			$theResult->error = $theFailure ;
+		}
+		return $theResult ;
+	}
+
 }//end class
 
 }//end namespace
