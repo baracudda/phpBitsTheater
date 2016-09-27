@@ -132,16 +132,24 @@ implements IDirected
 	
 	/**
 	 * Default behavior is to prevent all public methods inherent in Actor class
-	 * from being accessed via the URL. Descendants overriding this method
+	 * from being accessed via the URL. Static public methods of the descendant
+	 * class will also be prevented access. Descendants overriding this method
 	 * should call parent before adding to $this->myPublicMethodsAccessControl.
 	 * @see Actor::$myPublicMethodsAccessControl
 	 */
 	protected function setupMethodAccessControl() {
 		$rc = new ReflectionClass(__CLASS__);
 		$myMethods = $rc->getMethods(ReflectionMethod::IS_PUBLIC);
+		/* @var $theMethod ReflectionMethod */
 		foreach ($myMethods as $theMethod) {
-			/* @var $theMethod ReflectionMethod */
 			$this->myPublicMethodsAccessControl[$theMethod->name] = false;
+		}
+		//now check for all public/static methods
+		$rc = new ReflectionClass($this);
+		$myMethods = $rc->getMethods(ReflectionMethod::IS_STATIC);
+		foreach ($myMethods as $theMethod) {
+			if ($theMethod->isPublic())
+				$this->myPublicMethodsAccessControl[$theMethod->name] = false;
 		}
 	}
 
@@ -360,8 +368,10 @@ implements IDirected
 		$this->returnProp($dbAuth);
 		if ($theResult)
 			return true;
-		else
+		else {
+			$this->scene->addUserMsg($this->getRes('generic/msg_permission_denied'), MyScene::USER_MSG_ERROR);
 			throw BrokenLeg::toss($this, 'FORBIDDEN');
+		}
 	}
 	
 	/**
@@ -374,7 +384,7 @@ implements IDirected
 		if (isset($this->myPublicMethodsAccessControl[$aAction]))
 		{
 			$theResult = $this->myPublicMethodsAccessControl[$aAction];
-			if (!$theResult) $this->debugLog(__METHOD__.' denied Action "'.$aAction.'"');
+			if (!$theResult) $this->debugLog($this->myClassName.' denied Action "'.$aAction.'"');
 		}
 		if ($theResult)
 		{
@@ -513,7 +523,10 @@ implements IDirected
 	 * @var integer
 	 */
 	public function getMyAccountID() {
-		return $this->director->account_info->account_id;
+		if (!empty($this->director->account_info))
+			return $this->director->account_info->account_id;
+		else
+			return 0;
 	}
 	
 	/**
