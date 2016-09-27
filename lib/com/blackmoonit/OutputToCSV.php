@@ -44,13 +44,13 @@ class OutputToCSV {
 	 * within the data itself. Auto-replace with this string.
 	 * @var string
 	 */
-	protected $mReplaceEnclosureLeft = '&quot';
+	protected $mReplaceEnclosureLeft = '""';
 	/**
 	 * If data is enclosed, we cannot have the enclosure string
 	 * within the data itself. Auto-replace with this string.
 	 * @var string
 	 */
-	protected $mReplaceEnclosureRight = '&quot';
+	protected $mReplaceEnclosureRight = '""';
 	/**
 	 * The value delimiter is the string used between values in a row.
 	 * The value delimiter defaults to a comma, but it can be any string.
@@ -302,9 +302,13 @@ class OutputToCSV {
 					$theColValue = $this->mCallbacks[$theColName]($theColValue, $theRow);
 				}
 				$theColValue = str_replace($this->mEnclosureLeft,$this->mReplaceEnclosureLeft,$theColValue);
-				$theColValue = str_replace($this->mEnclosureRight,$this->mReplaceEnclosureRight,$theColValue);
+				if ($this->mEnclosureLeft != $this->mEnclosureRight)
+					$theColValue = str_replace($this->mEnclosureRight,$this->mReplaceEnclosureRight,$theColValue);
 				// Carriage Return and/or New Line converted to the literal '\n'
 				$theColValue = str_replace(array("\r\n", "\n", "\r"),'\n',$theColValue);
+				//to prevent Excel from converting value to formula, prepend with '=' before enclosure.
+				if (Strings::beginsWith($theColValue, '+'))
+					$this->csv .= '=';
 				$this->csv .= $this->mEnclosureLeft.$theColValue.$this->mEnclosureRight.$this->mValueDelimiter;
 			}
 			$theDelimSize = strlen($this->mValueDelimiter);
