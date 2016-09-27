@@ -23,10 +23,11 @@ use BitsTheater\outtakes\PasswordResetException ;
 use com\blackmoonit\DbException ;
 use com\blackmoonit\database\DbUtils ;
 use com\blackmoonit\Strings ;
-use \DateTime ;
-use \DateTimeZone ;
-use \PDO ;
-use \Exception ;
+use DateTime ;
+use DateTimeZone ;
+use PDO ;
+use PDOException ;
+use Exception ;
 { // begin namespace
 
 /**
@@ -107,6 +108,28 @@ class AuthPasswordReset extends BaseCostume
 	public function getAuthID()
 	{ return $this->myAuthID ; }
 	
+	/**
+	 * Set the account ID to use.
+	 * @param number $aAcctID - the account ID to use.
+	 * @return BitsTheater\costumes\AuthPasswordReset
+	 */
+	public function setAccountID($aAcctID)
+	{
+		$this->myAccountID = $aAcctID;
+		return $this;
+	}
+
+	/**
+	 * Set the auth ID to use.
+	 * @param number $aAuthID - the auth ID to use.
+	 * @return BitsTheater\costumes\AuthPasswordReset
+	 */
+	public function setAuthID($aAuthID)
+	{
+		$this->myAuthID = $aAuthID;
+		return $this;
+	}
+
 	/**
 	 * The object can execute some searches based on EITHER the auth ID or the
 	 * account ID; this protected function provides an array that indicates
@@ -255,6 +278,38 @@ class AuthPasswordReset extends BaseCostume
 	}
 	
 	/**
+	 * Once a new token is successfully used, this function will delete any
+	 * password request tokens that might be lingering in the database.
+	 * @return AuthPasswordReset the costume instance
+	 */
+	public function deleteAllTokens()
+	{
+		if( empty($this->myAccountID) && empty($this->myAuthID) )
+			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_OR_AUTH_ID' ) ;
+		if( empty( $this->myNewToken ) )
+			throw PasswordResetException::toss( $this, 'NO_NEW_TOKEN' ) ;
+		$theAuthFilter = $this->chooseIdentifierForSearch() ;
+		$theSql = SqlBuilder::withModel($this->model)
+			->startWith( 'DELETE FROM ' )->add( $this->model->tnAuthTokens )
+			->startWhereClause()
+			->mustAddParam( $theAuthFilter['col'], $theAuthFilter['val'] )
+			->endWhereClause()
+			;
+		try
+		{
+			$theSql->execDML();
+			unset($this->myTokens) ;
+			unset($this->myNewToken) ;
+		}
+		catch( PDOException $pdoe )
+		{
+			//do not care if removing tokens fails, log it so admin knows about it, though
+			$this->debugLog(__METHOD__ . ' ' . $pdoe->getErrorMsg());
+		}
+		return $this ;
+	}
+
+	/**
 	 * Accessor for the "new" token for the most recent request, if any.
 	 * @return string the token
 	 */
@@ -393,7 +448,7 @@ class AuthPasswordReset extends BaseCostume
 			;
 //		$this->debugLog( $theSql->mySql ) ;
 		try { $theSql->execDML() ; }
-		catch( PDOEsception $pdox )
+		catch( PDOException $pdox )
 		{
 			$this->debugLog( __METHOD__ . ': ' . $pdox->getMessage() ) ;
 			throw PasswordResetException::toss( $this,

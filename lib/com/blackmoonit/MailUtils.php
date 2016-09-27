@@ -122,11 +122,11 @@ class MailUtils
 	/**
 	 * Extracts config settings from a BitsTheater config array in which the
 	 * elements are addressed at the specified config setting path.
-	 * @param array $aBitsConfig a BitsTheater config array
+	 * @param ArrayAccess $aBitsConfig a BitsTheater config
 	 * @param string $aPath a path to the email settings
 	 * @return array a config settings array
 	 */
-	static protected function bitsConfigToArray( &$aBitsConfig, $aPath )
+	static protected function bitsConfigToArray( $aBitsConfig, $aPath )
 	{
 		$theConfigArray = array() ;
 		foreach( self::$REQUIRED_CONFIGS as $theSetting )
@@ -149,7 +149,7 @@ class MailUtils
 	}
 	
 	/** Consumed by bitsConfigToArray() */
-	private static function canAssignFromBitsConfig(&$aBitsConfig,$aSettingPath)
+	private static function canAssignFromBitsConfig($aBitsConfig,$aSettingPath)
 	{
 		$theValue = null ;
 		try { $theValue = $aBitsConfig[$aSettingPath] ; }
@@ -208,13 +208,13 @@ class MailUtils
 	 * Because of the wacky way that IDs are programmatically generated as paths
 	 * in BitsTheater config settings, this function is specially designed to
 	 * extract those settings from a particular config group.
-	 * @param unknown $aBitsConfig an array of BitsTheater configuration
+	 * @param ArrayAccess $aBitsConfig the configuration
 	 *  settings; this is the whole array for the whole app, not just a section
 	 * @param unknown $aPath the path to be prepended to the name of every
 	 *  email host configuration setting
 	 * @return object a PHPMailer object, or null if it can't be configured
 	 */
-	static public function buildMailerFromBitsConfig( &$aBitsConfig, $aPath )
+	static public function buildMailerFromBitsConfig( $aBitsConfig, $aPath )
 	{
 		$theConfigArray = self::bitsConfigToArray( $aBitsConfig, $aPath ) ;
 		return self::buildMailer($theConfigArray) ;

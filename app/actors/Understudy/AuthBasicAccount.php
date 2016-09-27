@@ -221,6 +221,8 @@ class AuthBasicAccount extends BaseActor {
 					$theAuthRow = $dbAuth->getAuthByEmail($v->email);
 					//cache the account_id in session data
 					$this->getDirector()[$v->getUsernameKey()] = $theAuthRow['account_id'];
+					//since we are "logged in" via a non-standard mechanism, create an anti-CSRF token
+					$dbAuth->setCsrfTokenCookie();
 					//get account info so we can return it via APIResponse data
 					$dbAccounts = $this->getProp('Accounts');
 					$this->getDirector()->account_info = $dbAuth->getAccountInfoCache($dbAccounts, $theAuthRow['account_id']);
@@ -423,12 +425,16 @@ class AuthBasicAccount extends BaseActor {
 		}
 		catch( PasswordResetException $prx )
 		{
+			//also remove all pw reset tokens for this account
+			$theResetUtils->deleteAllTokens() ;
 			$v->err_msg = $prx->getDisplayText() ;
 			$this->debugLog($v->err_msg) ;
 			return $this->requestPasswordReset(null) ;
 		}
 		catch( MailUtilsException $mue )
 		{
+			//also remove all pw reset tokens for this account
+			$theResetUtils->deleteAllTokens() ;
 			$v->err_msg = $mue->getMessage() ;
 			$this->debugLog($v->err_msg) ;
 			return $this->requestPasswordReset(null) ;
@@ -482,6 +488,10 @@ class AuthBasicAccount extends BaseActor {
 		{ // postcondition if true: user is now authenticated
 //			$this->debugLog( 'Reentry authenticated for [' . $aAuthID . '].' ) ;
 			$utils->clobberPassword() ;
+			//since we are "logged in" via a non-standard mechanism, create an anti-CSRF token
+			$utils->getModel()->setCsrfTokenCookie() ;
+			//also remove all pw reset tokens for this account
+			$utils->deleteAllTokens() ;
 			return $this->getSiteUrl('account/view/' . $utils->getAccountID()) ;
 		}
 		else
