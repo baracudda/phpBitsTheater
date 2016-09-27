@@ -103,6 +103,11 @@ implements IDirected
 	 * @var number
 	 */
 	public $_pager_total_row_count = null;
+	/**
+	 * Paged data results when TRUE.
+	 * @var boolean
+	 */
+	public $_pager_enabled = true;
 	
 	/**
 	 * Magic PHP method to limit what var_dump() shows.
@@ -117,6 +122,7 @@ implements IDirected
 		unset($vars['_properties']);
 		unset($vars['_dbResNames']);
 		unset($vars['_pager_total_row_count']);
+		unset($vars['_pager_enabled']);
 		unset($vars['myIconStyle']);
 		unset($vars['is_mobile']);
 		unset($vars['view_path']);
@@ -482,7 +488,7 @@ implements IDirected
 	
 	/**
 	 * Returns the URL for this site appended with relative path info.
-	 * @param mixed $aRelativeUrl - array of path segments OR a bunch of string parameters
+	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
 	 * equating to path segments.
 	 * @return string - returns the site domain + relative path URL.
 	 */
@@ -743,12 +749,40 @@ implements IDirected
 		die($aDieMsg);
 	}
 	
+	/**
+	 * @return number Returns the total count for query
+	 *   regardless of paging.
+	 */
 	public function getPagerTotalRowCount() {
 		return $this->_pager_total_row_count;
 	}
 	
+	/**
+	 * Models can set the query total regardless of paging.
+	 * @param number $aTotalRowCount - the total.
+	 * @return BitsTheater\Scene
+	 */
 	public function setPagerTotalRowCount($aTotalRowCount) {
 		$this->_pager_total_row_count = max($aTotalRowCount,0);
+		return $this;
+	}
+	
+	/**
+	 * Check to see if the pager is enabled.
+	 * @return boolean - returns the state of the pager.
+	 */
+	public function isPagerEnabled() {
+		return $this->_pager_enabled;
+	}
+	
+	/**
+	 * Enable/disable the pager.
+	 * @param boolean $aEnabled - desired state of pager.
+	 * @return BitsTheater\Scene
+	 */
+	public function setPagerEnabled($aEnabled) {
+		$this->_pager_enabled = !empty($aEnabled);
+		return $this;
 	}
 	
 	/**
@@ -758,6 +792,8 @@ implements IDirected
 	 * guaranteed to be 1 or greater.
 	 */
 	public function getPagerPageSize($aDefaultPageSize=25) {
+		if (!$this->isPagerEnabled())
+			return 0;
 		//TODO $this->_config['disply/query_limit'];
 		$theLimit = max($aDefaultPageSize,1);
 		if (!empty($this->query_limit) && is_numeric($this->query_limit))
