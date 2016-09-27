@@ -18,6 +18,7 @@ input[type="radio"][value="allow"]:checked+label {
 
 EOM;
 $h .= '</style>';
+$h .= $v->cueActor('Fragments', 'get', 'csrf_header_jquery');
 $recite->includeMyHeader($h);
 $w = '';
 

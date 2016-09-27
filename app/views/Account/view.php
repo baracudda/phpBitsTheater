@@ -3,7 +3,8 @@ use BitsTheater\scenes\Account as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
 use com\blackmoonit\Widgets;
-$recite->includeMyHeader();
+$h = $v->cueActor('Fragments', 'get', 'csrf_header_jquery');
+$recite->includeMyHeader($h);
 $w = '';
 
 $s = $v->getRes('account/msg_pw_nomatch');
