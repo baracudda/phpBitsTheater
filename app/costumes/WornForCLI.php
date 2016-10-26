@@ -25,16 +25,49 @@ use BitsTheater\Model ;
  */
 trait WornForCLI
 {
-
 	/**
 	 * Determine if we are executing in CLI mode or not.
 	 * @return boolean
 	 */
-	public function isRunningUnderCLI()
+	protected function isRunningUnderCLI()
 	{
 		return (php_sapi_name() === 'cli' OR defined('STDIN'));
 	}
 
+	/**
+	 * Return string used to start the CLI effect.
+	 * @param string $aCliEffect - one of the CLI_* consts.
+	 * @return string Returns the CLI effect string.
+	 * @see ITerminalOutput interface
+	 */
+	protected function startCliEffect($aCliEffect)
+	{
+		return chr(27) . $aCliEffect;
+	}
+	
+	/**
+	 * Return string used to end any CLI effect.
+	 * @return string Returns the CLI normal effect string.
+	 * @see ITerminalOutput interface
+	 */
+	protected function endCliEffect()
+	{
+		return chr(27) . self::CLI_NORMAL;
+	}
+	
+	/**
+	 * Wrap the string with codes needed to give the terminal window the
+	 * desired effect.
+	 * @param string $aStr - the string to wrap.
+	 * @param string $aCliEffect - one of the CLI_* consts.
+	 * @return string Returns the wrapped string.
+	 * @see ITerminalOutput interface
+	 */
+	protected function strWithCliEffect($aStr, $aCliEffect)
+	{
+		return $this->startCliEffect($aCliEffect) . $aStr . $this->endCliEffect();
+	}
+	
 	/**
 	 * Writes an error message to the standard error output stream on the
 	 * console.
