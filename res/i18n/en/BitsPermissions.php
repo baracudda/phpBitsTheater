@@ -80,14 +80,19 @@ class BitsPermissions extends BaseResources {
 	);
 	
 	public $label_accounts = array(
-			'modify' => 'Modify User Accounts',
-			//no need for create right as everyone can create an account by registering
-			'delete' => 'Delete User Accounts',
+			'create' => 'Create Accounts',
+			'modify' => 'Modify Accounts',
+			'view' => 'View Accounts',
+			'activate' => 'Activate/Deactivate Accounts',
+			'delete' => 'Delete Accounts',
 	);
+
 	public $desc_accounts = array(
-			'modify' => 'Modify any existing user account.',
-			//no need for create right as everyone can create an account by registering
-			'delete' => 'Remove any existing user account (requires Modify too).',
+			'create' => 'Create a new account.',
+			'modify' => 'Modify any existing account.',
+			'view' => 'Access information for other accounts.',
+			'activate' => 'Activate or deactivate an existing account.',
+			'delete' => 'Remove an inactive account.',
 	);
 	
 }//end class

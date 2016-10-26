@@ -452,7 +452,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 
 	/**
 	 * Updates an existing group.
-	 * @param Scene $aScene a scene containing usergroup data
+	 * @param Scene $aScene a scene containing account group data
 	 * @throws DbException if something goes wrong in the DB
 	 */
 	public function modifyGroup( Scene $v )
@@ -460,11 +460,21 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		if( empty( $this->db ) || ! $this->isConnected() )
 			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 
-		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($v)
+		$theGroup = ((object)( $this->getGroup( $v->group_id ) )) ;
+		if( $theGroup == null )
+			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $v->group_id ) ;
+		$theCols = array( 'group_name', 'parent_group_id' ) ;
+		foreach( $theCols as $theCol )
+		{ // Update the values of the existing rights group in cache.
+			if( property_exists( $v, $theCol ) ) // isset() doesn't pick up null
+				$theGroup->$theCol = $v->$theCol ;
+		}
+
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($theGroup)
 			->startWith( 'UPDATE ' . $this->tnGroups )
 			->add( 'SET' )
 			->mustAddParam( 'group_name' )
-			->setParamPrefix( ', ' )
+			->setParamPrefix(', ')
 			->mustAddParam( 'parent_group_id', null, PDO::PARAM_INT )
 			->startWhereClause()
 			->mustAddParam( 'group_id', null, PDO::PARAM_INT )
@@ -474,31 +484,61 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		catch( PDOException $pdox )
 		{
 			throw new DbException( $pdox, __METHOD__
-				. ' failed when updating the group data.' ) ;
+					. ' failed when updating the group data.' ) ;
 		}
 
-		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($v)
-			->startWith( 'DELETE FROM ' . $this->tnGroupRegCodes )
-			->startWhereClause()
-			->mustAddParam( 'group_id' )
-			->endWhereClause()
-			;
-		try { $theSql->execDML() ; }
-		catch( PDOException $pdox )
-		{
-			throw new DbException( $pdox, __METHOD__
-				. ' failed when deleting the old registration code.' ) ;
-		}
+		$theRegCode = $this->getGroupRegCode( $theGroup->group_id ) ;
 
-		if( isset( $v->reg_code ) && ! empty( $v->reg_code ) )
-			$this->insertGroupRegCode( $v->group_id, $v->reg_code ) ;
+		if( property_exists( $v, 'reg_code' ) )
+		{ // Modify the reg code only if specified in the request (BitsTheater 3.6.0)
+			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($v)
+				->startWith( 'DELETE FROM ' . $this->tnGroupRegCodes )
+				->startWhereClause()
+				->mustAddParam( 'group_id' )
+				->endWhereClause()
+				;
+			try { $theSql->execDML() ; }
+			catch( PDOException $pdox )
+			{
+				throw new DbException( $pdox, __METHOD__
+						. ' failed when deleting the old registration code.' ) ;
+			}
+
+			if( ! empty( $v->reg_code ) )
+				$this->insertGroupRegCode( $v->group_id, $v->reg_code ) ;
+
+			$theRegCode = $v->reg_code ;
+		}
 
 		return array(
-				'group_id' => $v->group_id,
-				'group_name' => $v->group_name,
-				'parent_group_id' => $v->parent_group_id,
-				'reg_code' => $v->reg_code,
-		);
+				'group_id' => $theGroup->group_id,
+				'group_name' => $theGroup->group_name,
+				'parent_group_id' => $theGroup->parent_group_id,
+				'reg_code' => $theRegCode,
+			);
+	}
+
+	/**
+	 * Fetches the registration code for a given group ID.
+	 * @param string $aGroupID the group ID
+	 * @throws DbException if something goes wrong while searching
+	 * @return string the registration code for that group
+	 */
+	protected function getGroupRegCode( $aGroupID )
+	{
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT reg_code FROM ' . $this->tnGroupRegCodes )
+			->startWhereClause()
+			->mustAddParam( 'group_id', $aGroupID )
+			->endWhereClause()
+			;
+		try { $theRow = $theSql->getTheRow() ; }
+		catch( PDOException $pdox )
+		{
+			throw new DbException( __METHOD__
+					. ' failed to get a group registration code.' ) ;
+		}
+		return $theRow['reg_code'] ;
 	}
 	
 	/**
@@ -614,6 +654,33 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			;
 		$theResult = $theSql->getTheRow() ;
 		return ( empty( $theResult ) ? false : true ) ;
+	}
+
+	/**
+	 * Fetches the account record for any account that is mapped into the
+	 * specified group.
+	 * @param integer $aGroupID
+	 * @return PDOStatement - the result set
+	 * @throws DbException if something goes wrong
+	 * @since BitsTheater 3.6
+	 */
+	public function getAccountsInGroup( $aGroupID )
+	{
+		$theGroupID = intval($aGroupID) ;
+		$dbAccounts = $this->getProp( 'Accounts' ) ;
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT A.* FROM ' )
+			->add( $dbAccounts->tnAccounts . ' AS A' )
+			->add( ' LEFT JOIN ' )
+			->add( $this->tnGroupMap . ' AS GM USING (account_id) ' )
+			->startWhereClause()
+			->mustAddParam( 'group_id', $aGroupID )
+			->endWhereClause()
+			;
+		$this->returnProp( $dbAccounts ) ;
+		try { return $theSql->query() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 
 }//end class

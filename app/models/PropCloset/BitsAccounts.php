@@ -19,6 +19,7 @@ namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
+use BitsTheater\costumes\SqlBuilder ;
 use PDOException;
 {//begin namespace
 
@@ -53,14 +54,30 @@ class BitsAccounts extends BaseModel {
 		return parent::isEmpty( empty($aTableName) ? $this->tnAccounts : $aTableName );
 	}
 	
-	public function getAccount($aAcctId) {
-		$theSql = "SELECT * FROM {$this->tnAccounts} WHERE account_id = :acct_id";
-		return $this->getTheRow($theSql,array('acct_id'=>$aAcctId));
+	public function getAccount( $aAccountID )
+	{
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT * FROM ' . $this->tnAccounts )
+			->startWhereClause()
+			->mustAddParam( 'account_id', $aAccountID )
+			->endWhereClause()
+			;
+		try { return $theSql->getTheRow() ; }
+		catch( PDOException $pdox )
+		{ throw new DbException( $pdox, __METHOD__ . ' failed.' ) ; }
 	}
 	
-	public function getByName($aName) {
-		$theSql = "SELECT * FROM {$this->tnAccounts} WHERE account_name = :acct_name";
-		return $this->getTheRow($theSql,array('acct_name'=>$aName));
+	public function getByName( $aName )
+	{
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT * FROM ' . $this->tnAccounts )
+			->startWhereClause()
+			->mustAddParam( 'account_name', $aName )
+			->endWhereClause()
+			;
+		try { return $theSql->getTheRow() ; }
+		catch( PDOException $pdox )
+		{ throw new DbException( $pdox, __METHOD__ . ' failed.' ) ; }
 	}
 	
 	public function getByExternalId($aExternalId) {
@@ -102,6 +119,23 @@ class BitsAccounts extends BaseModel {
 		return $this->execDML($theSql);
 	}
 	
+	/**
+	 * Gets the set of all account records.
+	 * TODO - Add paging someday.
+	 * @return PDOStatement - the iterable result of the SELECT query
+	 * @throws DbException if something goes wrong
+	 * @since BitsTheater 3.6
+	 */
+	public function getAll()
+	{
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT * FROM ' . $this->tnAccounts )
+			;
+		try { return $theSql->query() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
+	}
+
 
 }//end class
 

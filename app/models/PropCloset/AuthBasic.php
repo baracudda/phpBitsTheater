@@ -34,11 +34,13 @@ use PDO;
 use PDOException;
 use Exception;
 use BitsTheater\costumes\WornForFeatureVersioning;
+use BitsTheater\costumes\WornForAuditFields;
+use BitsTheater\costumes\colspecs\CommonMySql;
 {//namespace begin
 
 class AuthBasic extends BaseModel implements IFeatureVersioning
 {
-	use WornForFeatureVersioning;
+	use WornForFeatureVersioning, WornForAuditFields;
 
 	/**
 	 * Used by meta data mechanism to keep the database up-to-date with the code.
@@ -46,7 +48,14 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @var string
 	 */
 	const FEATURE_ID = 'BitsTheater/AuthBasic';
-	const FEATURE_VERSION_SEQ = 4; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 8; //always ++ when making db schema changes
+	//v08 - added is_active faux-Boolean column
+	//v07 - converted AuthMobile table to use standard audit fields
+	//v06 - converted AuthTokens table to use standard audit fields
+	//v05 - converted Auth table to use standard audit fields
+	//v04 - id field added to auth_tokens table
+	//v03 - auth_mobile table added
+	//v02 - auth_id added to auth table
 
 	const TYPE = 'basic';
 	const ALLOW_REGISTRATION = true;
@@ -67,6 +76,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	public $tnAuth; const TABLE_Auth = 'auth';
 	public $tnAuthTokens; const TABLE_AuthTokens = 'auth_tokens';
 	public $tnAuthMobile; const TABLE_AuthMobile = 'auth_mobile';
+
+	public $myExistingFeatureVersionNum = self::FEATURE_VERSION_SEQ;
 
 	/**
 	 * @var Config
@@ -107,6 +118,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$this->tnAuth = $this->tbl_.self::TABLE_Auth;
 		$this->tnAuthTokens = $this->tbl_.self::TABLE_AuthTokens;
 		$this->tnAuthMobile = $this->tbl_.self::TABLE_AuthMobile;
+
+		//since login needs to work even while we need to update
+		//  the auth schema tables, track our existing version
+		//  so code can use the correct field names.
+		$this->myExistingFeatureVersionNum = $this->determineExistingFeatureVersion(null);
 	}
 
 	/**
@@ -124,16 +140,15 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-						"( auth_id CHAR(36) CHARACTER SET ascii NOT NULL COLLATE ascii_bin PRIMARY KEY".
-						", email NCHAR(255) NOT NULL".		//store as typed, but collate as case-insensitive
-						", account_id INT NOT NULL".		//link to Accounts
-						", pwhash CHAR(85) CHARACTER SET ascii NOT NULL COLLATE ascii_bin".	//blowfish hash of pw & its salt
-						", verified DATETIME".				//UTC when acct was verified
-						", is_reset INT".					//force pw reset in effect since this unix timestamp (if set)
-						", _created TIMESTAMP NOT NULL DEFAULT '0000-00-00 00:00:00'".
-						", _changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP".
-						", UNIQUE KEY IdxEmail (email)".
-						", INDEX IdxAcctId (account_id)".
+						"( `auth_id` ".CommonMySQL::TYPE_UUID." NOT NULL PRIMARY KEY".
+						", `email` CHAR(255) NOT NULL".		//store as typed, but collate as case-insensitive
+						", `account_id` INT NOT NULL".		//link to Accounts
+						", `pwhash` CHAR(85) CHARACTER SET ascii NOT NULL COLLATE ascii_bin".	//blowfish hash of pw & its salt
+						", `verified_ts` TIMESTAMP DEFAULT NULL". //UTC of when acct was verified
+						", `is_active` " . CommonMySQL::TYPE_BOOLEAN_1 .
+						", ".CommonMySQL::getAuditFieldsForTableDefSql().
+						", UNIQUE KEY IdxEmail (`email`)".
+						", INDEX IdxAcctId (`account_id`)".
 						") CHARACTER SET utf8 COLLATE utf8_general_ci";
 			}//switch dbType
 		case self::TABLE_AuthTokens:
@@ -141,15 +156,15 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-						"( `id` int NOT NULL AUTO_INCREMENT". //strictly for phpMyAdmin ease of use
-						", auth_id CHAR(36) NOT NULL".
-						", account_id INT NOT NULL".
-						", token CHAR(128) NOT NULL".
-						", _changed TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP".
+						"( `id` INT NOT NULL AUTO_INCREMENT". //strictly for phpMyAdmin ease of use
+						", `auth_id` ".CommonMySQL::TYPE_UUID." NOT NULL".
+						", `account_id` INT NOT NULL".
+						", `token` CHAR(128) NOT NULL".
+						", ".CommonMySQL::getAuditFieldsForTableDefSql().
 						", PRIMARY KEY (`id`)".
-						", INDEX IdxAuthIdToken (auth_id, token)".
-						", INDEX IdxAcctIdToken (account_id, token)".
-						", INDEX IdxAuthToken (token, _changed)".
+						", INDEX IdxAuthIdToken (`auth_id`, `token`)".
+						", INDEX IdxAcctIdToken (`account_id`, `token`)".
+						", INDEX IdxAuthToken (`token`, `updated_ts`)".
 						") CHARACTER SET ascii COLLATE ascii_bin";
 			}//switch dbType
 		case self::TABLE_AuthMobile: //added in v3
@@ -157,14 +172,14 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-						"( `mobile_id` char(36) NOT NULL".
-						", `auth_id` CHAR(36) NOT NULL".
-						", `account_id` int NOT NULL".
-						", `auth_type` char(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'FULL_ACCESS'".
-						", `account_token` char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'STRANGE_TOKEN'".
-						", `device_name` char(64) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL".
-						", `latitude` decimal(11,8) DEFAULT NULL".
-						", `longitude` decimal(11,8) DEFAULT NULL".
+						"( `mobile_id` ".CommonMySQL::TYPE_UUID." NOT NULL".
+						", `auth_id` ".CommonMySQL::TYPE_UUID." NOT NULL".
+						", `account_id` INT NOT NULL".
+						", `auth_type` CHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'FULL_ACCESS'".
+						", `account_token` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'STRANGE_TOKEN'".
+						", `device_name` CHAR(64) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL".
+						", `latitude` DECIMAL(11,8) DEFAULT NULL".
+						", `longitude` DECIMAL(11,8) DEFAULT NULL".
 						/* might be considered "sensitive", storing hash instead
 						", `device_id` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
 						", `app_version_name` char(128) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
@@ -172,9 +187,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 						", `locale` char(8) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
 						", `app_fingerprint` char(36) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
 						*/
-						", `fingerprint_hash` char(85) DEFAULT NULL".
-						", `created_ts` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'".
-						", `updated_ts` timestamp ON UPDATE CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP".
+						", `fingerprint_hash` CHAR(85) DEFAULT NULL".
+						", ".CommonMySQL::getAuditFieldsForTableDefSql().
 						", PRIMARY KEY (`mobile_id`)".
 						", KEY `account_id` (`account_id`)".
 						", KEY `auth_id` (`auth_id`)".
@@ -205,17 +219,28 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 */
 	public function determineExistingFeatureVersion($aScene) {
 		switch ($this->dbType()) {
+			//Since this method is now called on every endpoint call, let us
+			//  reverse the logic to hopefully cut down the SQL calls to 1
+			//  instead of 7.
 			case self::DB_TYPE_MYSQL: default:
-				if (!$this->isFieldExists('auth_id', $this->tnAuth)) {
-					return 1;
-				} else if (!$this->exists($this->tnAuthMobile)) {
-					return 2;
-				} else if (!$this->isFieldExists('id', $this->tnAuthTokens)) {
+				if( $this->isFieldExists( 'is_active', $this->tnAuth ) )
+					return self::FEATURE_VERSION_SEQ ;
+				else if ($this->isFieldExists('created_by', $this->tnAuthMobile)) {
+					return 7;
+				} else if ($this->isFieldExists('created_by', $this->tnAuthTokens)) {
+					return 6;
+				} else if ($this->isFieldExists('created_by', $this->tnAuth)) {
+					return 5;
+				} else if ($this->isFieldExists('id', $this->tnAuthTokens)) {
+					return 4;
+				} else if ($this->exists($this->tnAuthMobile)) {
 					return 3;
+				} else if ($this->isFieldExists('auth_id', $this->tnAuth)) {
+					return 2;
 				}
 				break;
 		}//switch
-		return self::FEATURE_VERSION_SEQ;
+		return 1;
 	}
 
 	/**
@@ -226,9 +251,15 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 */
 	public function upgradeFeatureVersion($aFeatureMetaData, $aScene) {
 		$theSeq = $aFeatureMetaData['version_seq'];
+		$this->debugLog('Running '.__METHOD__.' v'.$theSeq.'->v'.self::FEATURE_VERSION_SEQ);
+
+		// This switch block's cases are tests against the current version
+		// sequence number. The cases must be implemented sequentially (low to
+		// high) and not use break, so that all changes between versions will
+		// fall through cumulatively to the end.
 		switch (true) {
-		//cases should always be lo->hi, never use break; so all changes are done in order.
 			case ($theSeq<2):
+			{
 				//update the cookie table first since its easier and we should empty it
 				$tnAuthCookies = $this->tbl_.'auth_cookie'; //v1 table, renamed auth_tokens
 				$this->execDML("DROP TABLE IF EXISTS {$tnAuthCookies}");
@@ -253,12 +284,20 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				$this->execDML('ALTER TABLE '.$this->tnAuth.' ADD PRIMARY KEY (auth_id)');
 				//put unique key constraint back on email
 				$this->execDML('ALTER TABLE '.$this->tnAuth.' ADD UNIQUE KEY (email)');
+			}
 			case ($theSeq<3):
-				//add new table
-				$theSql = $this->getTableDefSql(self::TABLE_AuthMobile);
-				$this->execDML($theSql);
-				$this->debugLog('v3: '.$this->getRes('install/msg_create_table_x_success/'.$this->tnAuthMobile));
+			{
+				if (!$this->isExists($this->tnAuthMobile)) {
+					//add new table
+					$theSql = $this->getTableDefSql(self::TABLE_AuthMobile);
+					$this->execDML($theSql);
+					$this->debugLog('v3: '.$this->getRes('install/msg_create_table_x_success/'.$this->tnAuthMobile));
+				} else {
+					$this->debugLog('v3: ' . $this->tnAuthMobile . ' already exists.');
+				}
+			}
 			case ( $theSeq < 4 ):
+			{
 				//previous versions may have added the field already, so double check before adding it.
 				if (!$this->isFieldExists('id', $this->tnAuthTokens)) {
 					$theSql = SqlBuilder::withModel($this);
@@ -270,6 +309,100 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				} else {
 					$this->debugLog('v4: id already exists in '.$this->tnAuthTokens);
 				}
+			}
+			case ($theSeq < 5):
+			{
+				$theSql = SqlBuilder::withModel($this);
+				if (!$this->isFieldExists('created_by', $this->tnAuth)) try {
+					$theSql->startWith('ALTER TABLE '.$this->tnAuth);
+					$theColDef = '`verified_ts` TIMESTAMP DEFAULT NULL';
+					$theSql->add('  CHANGE COLUMN verified')->add($theColDef);
+					$theSql->add(', DROP COLUMN is_reset');
+					$theColDef = CommonMySql::CREATED_TS_SPEC;
+					$theSql->add(', CHANGE COLUMN _created')->add($theColDef);
+					$theColDef = CommonMySql::UPDATED_TS_SPEC;
+					$theSql->add(', CHANGE COLUMN _changed')->add($theColDef);
+					$theColDef = CommonMySql::CREATED_BY_SPEC;
+					$theSql->add(', ADD COLUMN')->add($theColDef)->add('AFTER verified_ts');
+					$theColDef = CommonMySql::UPDATED_BY_SPEC;
+					$theSql->add(', ADD COLUMN')->add($theColDef)->add('AFTER created_by');
+					$theSql->execDML();
+					$this->debugLog('v5: added audit fields to '.$this->tnAuth);
+				} catch (Exception $e) {
+					throw $theSql->newDbException(__METHOD__, $e);
+				} else {
+					$this->debugLog('v5: ' . $this->tnAuth . ' already updated.');
+				}
+			}
+			case ($theSeq < 6):
+			{
+				$theSql = SqlBuilder::withModel($this);
+				if (!$this->isFieldExists('created_by', $this->tnAuthTokens)) try {
+					$theSql->startWith('ALTER TABLE '.$this->tnAuthTokens);
+					$theSql->add('  DROP INDEX `IdxAuthToken`');
+					$theColDef = CommonMySql::CREATED_BY_SPEC;
+					$theSql->add(', ADD COLUMN')->add($theColDef)->add('AFTER token');
+					$theColDef = CommonMySql::UPDATED_BY_SPEC;
+					$theSql->add(', ADD COLUMN')->add($theColDef)->add('AFTER created_by');
+					$theColDef = CommonMySql::CREATED_TS_SPEC;
+					$theSql->add(', ADD COLUMN')->add($theColDef)->add('AFTER updated_by');
+					$theColDef = CommonMySql::UPDATED_TS_SPEC;
+					$theSql->add(', CHANGE COLUMN _changed')->add($theColDef);
+					$theSql->add(', ADD INDEX `IdxAuthToken` (`token`, `updated_ts`)');
+					$theSql->execDML();
+					$this->debugLog('v6: added audit fields to '.$this->tnAuthTokens);
+				} catch (Exception $e) {
+					throw $theSql->newDbException(__METHOD__, $e);
+				} else {
+					$this->debugLog('v6: ' . $this->tnAuthTokens . ' already updated.');
+				}
+			}
+			case ($theSeq < 7):
+			{
+				$theSql = SqlBuilder::withModel($this);
+				if (!$this->isFieldExists('created_by', $this->tnAuthMobile)) try {
+					$theSql->startWith('ALTER TABLE '.$this->tnAuthMobile);
+					$theColDef = CommonMySql::CREATED_BY_SPEC;
+					$theSql->add('  ADD COLUMN')->add($theColDef)->add('AFTER fingerprint_hash');
+					$theColDef = CommonMySql::UPDATED_BY_SPEC;
+					$theSql->add(', ADD COLUMN')->add($theColDef)->add('AFTER created_by');
+					$theColDef = CommonMySql::CREATED_TS_SPEC;
+					$theSql->add(', MODIFY')->add($theColDef);
+					$theColDef = CommonMySql::UPDATED_TS_SPEC;
+					$theSql->add(', MODIFY')->add($theColDef);
+					$theSql->execDML();
+					$this->debugLog('v7: added audit fields to '.$this->tnAuthMobile);
+				} catch (Exception $e) {
+					throw $theSql->newDbException(__METHOD__, $e);
+				} else {
+					$this->debugLog('v7: ' . $this->tnAuthMobile . ' already updated.');
+				}
+			}
+			case( $theSeq < 8 ):
+			{
+				if( ! $this->isFieldExists( 'is_active', $this->tnAuth ) )
+				{
+					$theSql = SqlBuilder::withModel($this)
+						->startWith( 'ALTER TABLE ' . $this->tnAuth )
+						->add( ' ADD COLUMN `is_active` ' )
+						->add( CommonMySql::TYPE_BOOLEAN_1 )
+						->add( ' AFTER verified_ts' )
+						;
+					try
+					{
+						$theSql->execDML() ;
+						$this->debugLog( 'v8: Added `is_active` to '
+								. $this->tnAuth ) ;
+					}
+					catch( Exception $x )
+					{ throw $theSql->newDbException( __METHOD__, $x ) ; }
+				}
+				else
+				{
+					$this->debugLog( 'v8: Table ' . $this->tnAuth
+							. ' already had a `is_active` column.' ) ;
+				}
+			}
 		}//switch
 	}
 
@@ -399,9 +532,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}
 		// future columns can be added here
 
-		$theSql->endWhereClause()
-			->applyOrderByList(array('_changed' => SqlBuilder::ORDER_BY_DESCENDING))
-			;
+		$theSql->endWhereClause();
+		$theOrderByField = ($this->myExistingFeatureVersionNum>5) ? 'updated_ts' : '_changed';
+		$theSql->applyOrderByList(array($theOrderByField => SqlBuilder::ORDER_BY_DESCENDING));
 //		$this->debugLog( $theSql->mySql ) ;
 		try
 		{
@@ -411,8 +544,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		}
 		catch( PDOException $pdoe )
 		{
-			$this->debugLog( __METHOD__ . ' DB query failed: '
-					. $pdoe->getMessage() ) ;
+			$theSql->logSqlFailure(__METHOD__, $pdoe);
 		}
 		return null ;
 	}
@@ -434,9 +566,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				'account_id' => $aAcctId,
 				'token' => $theAuthToken,
 		));
-		$nowAsUTC = $this->utc_now();
 		$theSql->startWith('INSERT INTO')->add($this->tnAuthTokens);
-		$theSql->add('SET')->mustAddParam('_changed', $nowAsUTC)->setParamPrefix(', ');
+		if ($this->myExistingFeatureVersionNum>5)
+			$this->setAuditFieldsOnInsert($theSql);
+		else
+			$theSql->add('SET')->mustAddParam('_changed', $this->utc_now())->setParamPrefix(', ');
 		$theSql->mustAddParam('auth_id');
 		$theSql->mustAddParam('account_id');
 		$theSql->mustAddParam('token');
@@ -530,9 +664,33 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$theStaleTime = $this->getCookieStaleTimestamp();
 			$this->setMySiteCookie(self::KEY_userinfo, $theUserToken, $theStaleTime);
 			$this->setMySiteCookie(self::KEY_token, $theAuthToken, $theStaleTime);
-		} catch (DbException $e) {
+		} catch (Exception $e) {
 			//do not care if setting cookies fails, log it so admin knows about it, though
 			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+		}
+	}
+
+	/**
+	 * Remove stale tokens.
+	 */
+	protected function removeStaleTokens($aTokenPattern, $aExpireInterval) {
+		$theSql = SqlBuilder::withModel($this);
+		if (!empty($aExpireInterval) && $this->isConnected()) try {
+			$theSql->obtainParamsFrom(array(
+					'token' => $aTokenPattern,
+					'expire_ts' => "(NOW() - INTERVAL {$aExpireInterval}",
+			));
+			$theSql->startWith('DELETE FROM')->add($this->tnAuthTokens);
+			$theSql->startWhereClause();
+			$theSql->setParamOperator(' LIKE ')->mustAddParam('token');
+			$theSql->setParamPrefix(' AND ');
+			$theDeltaField = ($this->myExistingFeatureVersionNum>5) ? 'updated_ts' : '_changed';
+			$theSql->setParamOperator('<')->mustAddFieldAndParam($theDeltaField, 'expire_ts');
+			$theSql->endWhereClause();
+			$theSql->execDML();
+		} catch (Exception $e) {
+			//do not care if removing stale tokens fails, log it so admin knows about it, though
+			$theSql->logSqlFailure(__METHOD__, $e);
 		}
 	}
 
@@ -540,17 +698,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * Delete stale cookie tokens.
 	 */
 	protected function removeStaleCookies() {
-		try {
-			$delta = $this->getCookieDurationInDays();
-			if (!empty($delta)) {
-				$thePrefix = self::TOKEN_PREFIX_COOKIE;
-				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
-				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} DAY)";
-				$this->execDML($theSql);
-			}
-		} catch (DbException $e) {
-			//do not care if removing stale cookies fails, log it so admin knows about it, though
-			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+		$delta = $this->getCookieDurationInDays();
+		if (!empty($delta)) {
+			$this->removeStaleTokens(self::TOKEN_PREFIX_COOKIE.'%', $delta.' DAY');
 		}
 	}
 
@@ -558,35 +708,15 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * Delete stale mobile auth tokens.
 	 */
 	protected function removeStaleMobileAuthTokens() {
-		try {
-			$delta = 1;
-			if (!empty($delta)) {
-				$thePrefix = self::TOKEN_PREFIX_MOBILE;
-				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
-				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} DAY)";
-				$this->execDML($theSql);
-			}
-		} catch (DbException $e) {
-			//do not care if removing stale tokens fails, log it so admin knows about it, though
-			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
-		}
+		$this->removeStaleTokens(self::TOKEN_PREFIX_MOBILE.'%', '1 DAY');
 	}
 
 	/**
 	 * Delete stale auth lockout tokens.
 	 */
 	protected function removeStaleAuthLockoutTokens() {
-		try {
-			$delta = 1;
-			if ($this->director->isInstalled() && !empty($delta)) {
-				$thePrefix = self::TOKEN_PREFIX_LOCKOUT;
-				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
-				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} HOUR)";
-				$this->execDML($theSql);
-			}
-		} catch (DbException $e) {
-			//do not care if removing stale tokens fails, log it so admin knows about it, though
-			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+		if ($this->director->isInstalled()) {
+			$this->removeStaleTokens(self::TOKEN_PREFIX_LOCKOUT.'%', '1 HOUR');
 		}
 	}
 
@@ -594,35 +724,16 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * Delete stale auth lockout tokens.
 	 */
 	protected function removeStaleRegistrationCapTokens() {
-		try {
-			$delta = 1;
-			if (!empty($delta)) {
-				$thePrefix = self::TOKEN_PREFIX_REGCAP;
-				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
-				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} HOUR)";
-				$this->execDML($theSql);
-			}
-		} catch (DbException $e) {
-			//do not care if removing stale tokens fails, log it so admin knows about it, though
-			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
-		}
+		$this->removeStaleTokens(self::TOKEN_PREFIX_REGCAP.'%', '1 HOUR');
 	}
 
 	/**
 	 * Delete stale Anti CSRF tokens.
 	 */
 	protected function removeStaleAntiCsrfTokens() {
-		try {
-			$delta = $this->getCookieDurationInDays();
-			if (!empty($delta)) {
-				$thePrefix = self::TOKEN_PREFIX_ANTI_CSRF;
-				$theSql = 'DELETE FROM '.$this->tnAuthTokens;
-				$theSql .= " WHERE token LIKE '{$thePrefix}%' AND _changed < (NOW() - INTERVAL {$delta} DAY)";
-				$this->execDML($theSql);
-			}
-		} catch (DbException $e) {
-			//do not care if removing stale tokens fails, log it so admin knows about it, though
-			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+		$delta = $this->getCookieDurationInDays();
+		if (!empty($delta)) {
+			$this->removeStaleTokens(self::TOKEN_PREFIX_ANTI_CSRF.'%', $delta.' DAY');
 		}
 	}
 
@@ -632,8 +743,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @param number $aAcctId - the user's account_id.
 	 */
 	protected function removeAntiCsrfToken($aAuthId, $aAcctId) {
-		try {
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+		$theSql = SqlBuilder::withModel($this);
+		if ($this->isConnected()) try {
+			$theSql->obtainParamsFrom(array(
 					'auth_id' => $aAuthId,
 					'account_id' => $aAcctId,
 					'token' => self::TOKEN_PREFIX_ANTI_CSRF.'%',
@@ -644,9 +756,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$theSql->setParamOperator(' LIKE ')->mustAddParam('token');
 			$theSql->endWhereClause();
 			$theSql->execDML();
-		} catch (DbException $e) {
+		} catch (Exception $e) {
 			//do not care if removing token fails, log it so admin knows about it, though
-			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+			$theSql->logSqlFailure(__METHOD__, $e);
 		}
 	}
 
@@ -662,9 +774,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$this->removeStaleAntiCsrfTokens();
 		//now see if our cookie token still exists
 		$theAuthTokenRow = $this->getAuthTokenRow($aAuthId, $aAuthToken);
-		if (!empty($theAuthTokenRow)) {
+		$theSql = SqlBuilder::withModel($this);
+		if (!empty($theAuthTokenRow)) try {
 			//consume this particular cookie
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+			$theSql->obtainParamsFrom(array(
 					'auth_id' => $aAuthId,
 					'token' => $aAuthToken,
 			));
@@ -673,6 +786,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$theSql->setParamPrefix(' AND ')->mustAddParam('token');
 			$theSql->endWhereClause();
 			$theSql->execDML();
+		} catch (Exception $e) {
+			//do not care if removing cookie fails, log it so admin knows about it, though
+			$theSql->logSqlFailure(__METHOD__, $e);
 		}
 		return $theAuthTokenRow;
 	}
@@ -685,15 +801,19 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 */
 	public function getAccountInfoCache(Accounts $dbAccounts, $aAccountId) {
 		$theResult = AccountInfoCache::fromArray($dbAccounts->getAccount($aAccountId));
-		if (!empty($theResult) && !empty($theResult->account_name)) {
-			$theAuthRow = $this->getAuthByAccountId($aAccountId);
-			$theResult->auth_id = $theAuthRow['auth_id'];
-			$theResult->email = $theAuthRow['email'];
-			$theResult->groups = $this->belongsToGroups($aAccountId);
+		if( ! empty($theResult) && ! empty( $theResult->account_name ) )
+		{
+			$theAuthRow = $this->getAuthByAccountId($aAccountId) ;
+			$theResult->auth_id = $theAuthRow['auth_id'] ;
+			$theResult->email = $theAuthRow['email'] ;
+			$theResult->groups = $this->belongsToGroups($aAccountId) ;
+			$theResult->is_active =
+				( array_key_exists( 'is_active', $theAuthRow ) ?
+					((boolean)($theAuthRow['is_active'])) : true ) ;
 			return $theResult;
-		} else {
-			return null;
 		}
+		else
+			return null ;
 	}
 
 	/**
@@ -779,18 +899,21 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * if account name is non-empty, skip session data check.
 	 * @return boolean Returns TRUE if account was found and successfully loaded.
 	 */
-	protected function checkSessionForTicket(Accounts $dbAccounts, $aScene) {
+	protected function checkSessionForTicket(Accounts $dbAccounts, $aScene)
+	{
 		$theUserInput = $aScene->{self::KEY_userinfo};
 		//see if session remembers user
-		if (isset($this->director[self::KEY_userinfo]) && empty($theUserInput)) {
-			$theAccountId = $this->director[self::KEY_userinfo];
-			$this->director->account_info = $this->getAccountInfoCache($dbAccounts, $theAccountId);
-			if (empty($this->director->account_info)) {
-				//something seriously wrong if session data had values, but failed to load
-				$this->ripTicket();
+		if( isset( $this->director[self::KEY_userinfo] ) && empty($theUserInput) )
+		{
+			$theAccountId = $this->director[self::KEY_userinfo] ;
+			$this->director->account_info =
+				$this->getAccountInfoCache( $dbAccounts, $theAccountId ) ;
+			if( empty($this->director->account_info) || ! $this->director->account_info->is_active )
+			{ // Either account info is in weird state, or account is inactive.
+				$this->ripTicket() ;
 			}
 		}
-		return (!empty($this->director->account_info));
+		return( ! empty( $this->director->account_info ) ) ;
 	}
 
 	/**
@@ -907,7 +1030,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 					'longitude' => $aAuthHeader->getLongitude(),
 			));
 			$theSql->startWith('UPDATE')->add($this->tnAuthMobile);
-			$theSql->add('SET')->mustAddParam('updated_ts', $this->utc_now())->setParamPrefix(', ');
+			if ($this->myExistingFeatureVersionNum>6)
+				$this->setAuditFieldsOnUpdate($theSql);
+			else
+				$theSql->add('SET')->mustAddParam('updated_ts', $this->utc_now())->setParamPrefix(', ');
 			$theSql->mustAddParam('device_name');
 			$theSql->addParam('latitude')->addParam('longitude');
 			$theSql->startWhereClause()->mustAddParam('mobile_id')->endWhereClause();
@@ -1082,10 +1208,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * Check various mechanisms for authentication.
 	 * @see \BitsTheater\models\PropCloset\AuthBase::checkTicket()
 	 */
-	public function checkTicket($aScene) {
-		if ($this->director->canConnectDb()) {
-			$this->removeStaleAuthLockoutTokens();
-			$dbAccounts = $this->getProp('Accounts');
+	public function checkTicket($aScene)
+	{
+		if( $this->director->canConnectDb() )
+		{
+			$this->removeStaleAuthLockoutTokens() ;
+
+			$dbAccounts = $this->getProp('Accounts') ;
 			$bAuthorized = false;
 			$bAuthorizedViaHeaders = false;
 			$bAuthorizedViaSession = false;
@@ -1128,18 +1257,39 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
+	/**
+	 * Activates or deactivates an account.
+	 * @param integer $aAccountID the account ID.
+	 * @param boolean $bActive indicates that the account should be activated
+	 *  (true) or deactivated (false).
+	 * @since BitsTheater 3.6
+	 */
+	public function setInvitation( $aAccountID, $bActive )
+	{
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'UPDATE ' . $this->tnAuth )
+			->add( 'SET ' )
+			->mustAddParam( 'is_active', ( $bActive ? 1 : 0 ), PDO::PARAM_INT )
+			->startWhereClause()
+			->mustAddParam( 'account_id', $aAccountID )
+			->endWhereClause()
+			;
+		try { $theSql->execDML() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
+	}
+
+	/**
 	 * Log the current user out and wipe the slate clean.
 	 * @see \BitsTheater\models\PropCloset\AuthBase::ripTicket()
 	 */
 	public function ripTicket() {
+		$this->setMySiteCookie(self::KEY_userinfo);
+		$this->setMySiteCookie(self::KEY_token);
+		$theSql = SqlBuilder::withModel($this);
 		try {
-			$this->setMySiteCookie(self::KEY_userinfo);
-			$this->setMySiteCookie(self::KEY_token);
-
-			$this->removeStaleCookies();
-
 			//remove all cookie records for current login (logout means from everywhere but mobile)
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+			$theSql->obtainParamsFrom(array(
 					'account_id' => $this->director->account_info->account_id,
 					'token' => self::TOKEN_PREFIX_COOKIE . '%',
 			));
@@ -1148,11 +1298,68 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$theSql->setParamPrefix(' AND ')->setParamOperator(' LIKE ')->mustAddParam('token');
 			$theSql->endWhereClause();
 			$theSql->execDML();
-		} catch (DbException $e) {
+			//if successful, we should remove stale cookies as well
+			$this->removeStaleCookies();
+		} catch (Exception $e) {
 			//do not care if removing cookies fails, log it so admin knows about it, though
-			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+			$theSql->logSqlFailure(__METHOD__, $e);
 		}
 		parent::ripTicket();
+	}
+
+	/**
+	 * Deletes all tokens associated with the specified account ID.
+	 * Caller must ensure that the account ID is not null.
+	 * @param integer $aAccountID the account ID
+	 * @return AuthBasic $this
+	 * @since BitsTheater 3.6
+	 */
+	public function deleteFor( $aAccountID )
+	{
+		$bInTransaction = $this->db->inTransaction() ;
+		if( ! $bInTransaction )
+			$this->db->beginTransaction() ;
+
+		$theSqlForMobile = SqlBuilder::withModel($this)
+			->startWith( 'DELETE FROM ' . $this->tnAuthMobile )
+			->startWhereClause()
+			->mustAddParam( 'account_id', $aAccountID )
+			->endWhereClause()
+			;
+
+		$theSqlForTokens = SqlBuilder::withModel($this)
+			->startWith( 'DELETE FROM ' . $this->tnAuthTokens )
+			->startWhereClause()
+			->mustAddParam( 'account_id', $aAccountID )
+			->endWhereClause()
+			;
+
+		$theSqlForAuth = SqlBuilder::withModel($this)
+			->startWith( 'DELETE FROM ' . $this->tnAuth )
+			->startWhereClause()
+			->mustAddParam( 'account_id', $aAccountID )
+			->endWhereClause()
+			;
+
+		try
+		{
+			$theSqlForMobile->execDML() ;
+			$theSqlForTokens->execDML() ;
+			$theSqlForAuth->execDML() ;
+		}
+		catch( PDOException $pdox )
+		{
+			if( ! $bInTransaction )
+			{ // Roll back only if we controlled the transaction.
+				$this->debugLog( __METHOD__
+						. 'failed. Rolling back transaction.' ) ;
+				$this->db->rollBack() ;
+			}
+			throw new DbException( $pdox, __METHOD__ . ' failed.' ) ;
+		}
+
+		if( ! $bInTransaction )
+			$this->db->commit() ;
 	}
 
 	/**
@@ -1183,40 +1390,52 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @return boolean Returns TRUE if succeeded, FALSE otherwise.
 	 */
 	public function registerAccount($aUserData, $aDefaultGroup=0) {
-		if ($this->isEmpty()) {
-			$aDefaultGroup = 1;
+		$theSql = SqlBuilder::withModel($this);
+		if ($this->isConnected())
+		{
+			$this->db->beginTransaction() ;
+			try {
+				if ($this->isEmpty()) {
+					$aDefaultGroup = 1;
+				}
+				$nowAsUTC = $this->utc_now();
+				$theVerifiedTS = ($aUserData['verified_timestamp']==='now')
+						? $nowAsUTC
+						: $aUserData['verified_timestamp']
+				;
+				$theSql->obtainParamsFrom(array(
+						'created_by' => $aUserData[self::KEY_userinfo],
+						'email' => $aUserData['email'],
+						'account_id' => $aUserData['account_id'],
+						'pwhash' => Strings::hasher($aUserData[self::KEY_pwinput]),
+						'verified_ts' => $theVerifiedTS,
+				));
+				$theSql->startWith('INSERT INTO')->add($this->tnAuth);
+				// created_by, created_ts, updated_by, updated_ts
+				$this->setAuditFieldsOnInsert($theSql) ;
+				$theSql->mustAddParam('auth_id', Strings::createUUID());
+				$theSql->mustAddParam('email');
+				$theSql->mustAddParam('account_id', 0, PDO::PARAM_INT);
+				$theSql->mustAddParam('pwhash');
+				$theSql->addParam('verified_ts');
+				$theSql->execDML();
+				//group mapping
+				$dbGroupMap = $this->getProp('AuthGroups');
+				$dbGroupMap->addAcctMap($aDefaultGroup, $theSql->getParam('account_id'));
+				$this->returnProp($dbGroupMap);
+				//inc reg cap
+				$this->updateRegistrationCap();
+				//commit it all
+				$this->db->commit();
+				//success!
+				return true;
+			}
+			catch (PDOException $pdoe) {
+				$this->db->rollBack();
+				throw $theSql->newDbException(__METHOD__, $pdoe);
+			}
 		}
-		$nowAsUTC = $this->utc_now();
-		$theVerifiedTS = ($aUserData['verified_timestamp']==='now')
-				? $nowAsUTC
-				: $aUserData['verified_timestamp']
-		;
-		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
-				'auth_id' => Strings::createUUID(),
-				'email' => $aUserData['email'],
-				'account_id' => $aUserData['account_id'],
-				'pwhash' => Strings::hasher($aUserData[self::KEY_pwinput]),
-				'verified' => $theVerifiedTS,
-				'_created' => $nowAsUTC,
-				'_changed' => $nowAsUTC,
-		));
-		$theSql->startWith('INSERT INTO')->add($this->tnAuth);
-		$theSql->add('SET')->mustAddParam('_created')->setParamPrefix(', ');
-		$theSql->mustAddParam('_changed');
-		$theSql->mustAddParam('auth_id');
-		$theSql->mustAddParam('email');
-		$theSql->mustAddParam('account_id', 0, PDO::PARAM_STR);
-		$theSql->mustAddParam('pwhash');
-		$theSql->addParam('verified');
-		if ($theSql->execDML()) {
-			$dbGroupMap = $this->getProp('AuthGroups');
-			$dbGroupMap->addAcctMap($aDefaultGroup,$aUserData['account_id']);
-			$this->returnProp($dbGroupMap);
-			$this->updateRegistrationCap();
-			return true;
-		} else {
-			return false;
-		}
+		return false;
 	}
 
 	/**
@@ -1305,14 +1524,12 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 */
 	public function registerMobileFingerprints($aAuthRow, $aFingerprints, $aCircumstances) {
 		if (!empty($aAuthRow) && !empty($aFingerprints)) {
-			$nowAsUTC = $this->utc_now();
 			unset($aCircumstances->created_ts); //do not want outside influence on created_ts value.
 			unset($aCircumstances->updated_ts); //do not want outside influence on updated_ts value.
 			unset($aCircumstances->mobile_id); //do not want outside influence on mobile_id value.
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aCircumstances);
 			$theSql->startWith('INSERT INTO')->add($this->tnAuthMobile);
-			$theSql->add('SET')->mustAddParam('created_ts', $nowAsUTC)->setParamPrefix(', ');
-			$theSql->mustAddParam('updated_ts', $nowAsUTC);
+			$this->setAuditFieldsOnInsert($theSql);
 			$theSql->mustAddParam('mobile_id', Strings::createUUID());
 			$theSql->mustAddParam('auth_id', $aAuthRow['auth_id']);
 			$theSql->mustAddParam('account_id', $aAuthRow['account_id'], PDO::PARAM_INT);

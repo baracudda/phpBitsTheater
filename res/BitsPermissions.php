@@ -29,7 +29,16 @@ class BitsPermissions extends BaseResource {
 	
 	public $enum_config = array('modify');
 	
-	public $enum_accounts = array('modify','delete'); //anyone can create/register a new account
+	/**
+	 * Permissions for managing accounts.
+	 * Note that the "create" permission is specifically to control the ability
+	 * for a user to pre-provision accounts on behalf of other agents (users or
+	 * clients). Anyone who knows a valid registration code may register a new
+	 * account.
+	 * @var string[]
+	 */
+	public $enum_accounts =
+		array( 'create', 'modify', 'view', 'activate', 'delete' ) ;
 	
 	/**
 	 * Some resources need to be initialized by running code rather than a static definition.

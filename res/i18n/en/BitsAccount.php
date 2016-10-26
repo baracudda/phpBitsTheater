@@ -57,6 +57,14 @@ class BitsAccount extends BaseResources
 		'The password reset request failed. Contact the system administrator.' ;
 	public $err_email_dispatch_failed =
 		'Failed to dispatch an email to [%1$s].' ;
+	public $err_cannot_delete_active_account =
+		'Cannot delete account [%1$s]; the account is linked to data.' ;
+	public $err_cannot_delete_titan = 'That user cannot be deleted.' ;
+	public $err_cannot_delete_yourself = 'You cannot delete your own account!' ;
+	public $err_unique_field_already_exists =
+		'Unique field [%1$s] already exists in system.' ;
+	public $errmsg_cannot_update_to_titan =
+		'Account cannot be updated to belong to the specified group.' ;
 	
 	// "Help" messages should be initialized in the initHelpText() function that
 	// is invoked by the constructor.
