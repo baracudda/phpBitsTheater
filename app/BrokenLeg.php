@@ -26,23 +26,75 @@ use com\blackmoonit\exceptions\DbException;
  * scenarios could mapped to a common code or to a common message. Only the tag
  * used to choose the exception condition need be unique, and that uniqueness is
  * enforced by making it the name of the constant in the class definition.
+ *
+ * The class also provides mnemonic constants for a selection of HTTP error
+ * codes, so that the numeric constants for errors can be more obviously tied to
+ * those standard codes.
  */
 class BrokenLeg extends \Exception
 {
+	// Constants for a subset of standard HTTP error codes.
+	// https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+	const HTTP_OK = 200 ;
+	const HTTP_NO_CONTENT = 204 ;
+	const HTTP_MULTIPLE_CHOICES = 300 ;
+	const HTTP_MOVED_PERMANENTLY = 301 ;                 // Deprecated? see 308.
+	const HTTP_SEE_OTHER = 303 ;
+	const HTTP_NOT_MODIFIED = 304 ;
+	const HTTP_TEMPORARY_REDIRECT = 307 ;
+	const HTTP_PERMANENT_REDIRECT = 308 ;
+	const HTTP_BAD_REQUEST = 400 ;             // Not well-formed; contrast 422.
+	const HTTP_UNAUTHORIZED = 401 ;
+	const HTTP_PAYMENT_REQUIRED = 402 ;
+	const HTTP_FORBIDDEN = 403 ;
+	const HTTP_NOT_FOUND = 404 ;
+	const HTTP_METHOD_NOT_ALLOWED = 405 ;
+	const HTTP_NOT_ACCEPTABLE = 406 ;
+	const HTTP_PROXY_AUTH_REQUIRED = 407 ;
+	const HTTP_REQUEST_TIMEOUT = 408 ;
+	const HTTP_CONFLICT = 409 ;
+	const HTTP_GONE = 410 ;
+	const HTTP_LENGTH_REQUIRED = 411 ;
+	const HTTP_PRECONDITION_FAILED = 412 ;
+	const HTTP_PAYLOAD_TOO_LARGE = 413 ;
+	const HTTP_URI_TOO_LONG = 414 ;
+	const HTTP_UNSUPPORTED_MEDIA_TYPE = 415 ;
+	const HTTP_RANGE_NOT_SATISFIABLE = 416 ;
+	const HTTP_EXPECTATION_FAILED = 417 ;
+	const HTTP_TEAPOT = 418 ;
+	const HTTP_ENHANCE_YOUR_CALM = 420 ;  // Burst limit exceeded; contrast 429.
+	const HTTP_MISDRECTED_REQUEST = 421 ;
+	const HTTP_UNPROCESSABLE_ENTITY = 422 ; // Well-formed but unusable; contrast 400.
+	const HTTP_LOCKED = 423 ;
+	const HTTP_FAILED_DEPENDENCY = 424 ;
+	const HTTP_UPGRADE_REQUIRED = 426 ;
+	const HTTP_PRECONDITION_REQUIRED = 428 ;
+	const HTTP_TOO_MANY_REQUESTS = 429 ;   // Long-term limit exceeded; contrast 420.
+	const HTTP_HEADER_FIELDS_TOO_LARGE = 431 ;
+	const HTTP_CENSORED = 451 ;
+	const HTTP_INTERNAL_SERVER_ERROR = 500 ;
+	const HTTP_NOT_IMPLEMENTED = 501 ;
+	const HTTP_BAD_GATEWAY = 502 ;
+	const HTTP_SERVICE_UNAVAILABLE = 503 ;
+	const HTTP_GATEWAY_TIMEOUT = 504 ;
+	const HTTP_HTTP_VERSION_NOT_SUPPORTED = 505 ;
+	const HTTP_INSUFFICIENT_STORAGE = 507 ;
+	const HTTP_NOT_EXTENDED = 510 ;
+
 	// The default codes here all roughly correspond to HTTP response codes.
-	const ERR_MISSING_ARGUMENT = 400 ;
-	const ERR_MISSING_VALUE = 400 ;
-	const ERR_FILE_NOT_FOUND = 404;
-	const ERR_FORBIDDEN = 403 ;
-	const ERR_DEFAULT = 500 ;
-	const ERR_DB_EXCEPTION = 500 ;
-	const ERR_ENTITY_NOT_FOUND = 404 ;
-	const ERR_NOT_DONE_YET = 501 ;
-	const ERR_DB_CONNECTION_FAILED = 503 ;
-	const ERR_NOT_AUTHENTICATED = 401 ;
-	const ERR_SERVICE_UNAVAILABLE = 503;
-	const ERR_TOO_MANY_REQUESTS = 429;
-	const ERR_DEPRECATED_FUNCTION = 410 ;
+	const ERR_MISSING_ARGUMENT =     self::HTTP_BAD_REQUEST ;
+	const ERR_MISSING_VALUE =        self::HTTP_BAD_REQUEST ;
+	const ERR_FILE_NOT_FOUND =       self::HTTP_NOT_FOUND ;
+	const ERR_FORBIDDEN =            self::HTTP_FORBIDDEN ;
+	const ERR_DEFAULT =              self::HTTP_INTERNAL_SERVER_ERROR ;
+	const ERR_DB_EXCEPTION =         self::HTTP_INTERNAL_SERVER_ERROR ;
+	const ERR_ENTITY_NOT_FOUND =     self::HTTP_NOT_FOUND ;
+	const ERR_NOT_DONE_YET =         self::HTTP_NOT_IMPLEMENTED ;
+	const ERR_DB_CONNECTION_FAILED = self::HTTP_SERVICE_UNAVAILABLE ;
+	const ERR_NOT_AUTHENTICATED =    self::HTTP_UNAUTHORIZED ;
+	const ERR_SERVICE_UNAVAILABLE =  self::HTTP_SERVICE_UNAVAILABLE ;
+	const ERR_TOO_MANY_REQUESTS =    self::HTTP_TOO_MANY_REQUESTS ;
+	const ERR_DEPRECATED_FUNCTION =  self::HTTP_GONE ;
 	
 	// General-purpose messages should be defined in the BitsGeneric resource.
 	const MSG_MISSING_ARGUMENT = 'generic/errmsg_arg_is_empty' ;
@@ -157,6 +209,14 @@ class BrokenLeg extends \Exception
 	}
 	
 	/**
+	 * Accessor for the integer condition code (usually an HTTP status code)
+	 * recorded in this object.
+	 * @return integer - a condition code
+	 */
+	public function getConditionCode()
+	{ return $this->code ; }
+
+	/**
 	 * Retrives the resourced message substituting extra data where appropriate.
 	 * @param IDirected $aContext some BitsTheater object that can provide context
 	 *  for the website, so that text resources can be retrieved; this can be an
@@ -184,7 +244,7 @@ class BrokenLeg extends \Exception
 	 */
 	public function setErrorResponse( &$aContext=null )
 	{
-		$theResults = $this->toJson() ;
+		$theResults = $this->toResponseObject() ;
 
 		http_response_code( $this->code ) ;
 
@@ -255,16 +315,35 @@ class BrokenLeg extends \Exception
 	}
 	
 	/**
-	 * Forms the JSON representing this exception, for return in a response.
+	 * Forms the object representing this exception, for return in a response.
 	 * @return \stdClass an object with "cause" and "message" fields
+	 * @since BitsTheater 3.6
 	 */
-	public function toJson()
+	public function toResponseObject()
 	{
 		$theError = new \stdClass() ;
 		$theError->cause = $this->myCondition ;
 		$theError->message = $this->message ;
 		return $theError ;
 	}
+
+	/**
+	 * (Override) Returns the representation of this object that is appropriate
+	 * for error responses from the API.
+	 * @return stdClass an object with "cause" and "message" fields
+	 * @since BitsTheater 3.6
+	 */
+	public function exportData()
+	{ return $this->toResponseObject() ; }
+
+	/**
+	 * As toResponseObject(), but serializes that object to a JSON string.
+	 * @param string $aEncodeOptions the JSON encoding options
+	 * @return string a JSON serialization of the standard response object
+	 * @since BitsTheater 3.6
+	 */
+	public function toJson( $aEncodeOptions=null )
+	{ return json_encode( $this->exportData(), $aEncodeOptions ) ; }
 
 } // end BrokenLeg class
 	
