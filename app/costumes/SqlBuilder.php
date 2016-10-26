@@ -19,6 +19,7 @@ namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\Director;
 use BitsTheater\Model;
+use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
 use PDO;
 use PDOStatement;
@@ -132,6 +133,7 @@ class SqlBuilder extends BaseCostume {
 	 * Sets the dataset to be used by addParam methods.
 	 * @param array or StdClass $aDataSet - array or class used to get param data.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
+	 * @deprecated Please use {@link SqlBuilder::obtainParamsFrom()}
 	 */
 	public function setDataSet($aDataSet) {
 		$this->myDataSet = $aDataSet;
@@ -723,6 +725,35 @@ class SqlBuilder extends BaseCostume {
 			}
 		}
 		return $theResults;
+	}
+	
+	/**
+	 * Standardized SQL failure log(s) meant to easily record DbExceptions on the
+	 * server for postmortem debugging.
+	 * @param string $aWhatFailed - the thing that failed, typically __METHOD__.
+	 * @param string|object $aMsgOrException - error message or Exception object.
+	 * @return SqlBuilder Returns $this for chaining.
+	 */
+	public function logSqlFailure($aWhatFailed, $aMsgOrException) {
+		$theMsg = (is_object($aMsgOrException) && method_exists($aMsgOrException, 'getMessage'))
+				? $aMsgOrException->getMessage()
+				: $aMsgOrException
+		;
+		$this->debugLog($aWhatFailed . ' [1/3] failed: ' . $theMsg);
+		$this->debugLog($aWhatFailed . ' [2/3] sql=' . $this->mySql);
+		$this->debugLog($aWhatFailed . ' [3/3] params=' . $this->debugStr($this->myParams));
+		return $this;
+	}
+	
+	/**
+	 * Create the DbException object and log the SQL failure.
+	 * @param string $aWhatFailed - the thing that failed, typically __METHOD__.
+	 * @param PDOException $aPdoException - the PDOException that occurred.
+	 * @return DbException Return the new exception object.
+	 */
+	public function newDbException($aWhatFailed, $aPdoException) {
+		$this->logSqlFailure($aWhatFailed, $aPdoException);
+		return new DbException($aPdoException, $aWhatFailed . ' failed.');
 	}
 	
 }//end class
