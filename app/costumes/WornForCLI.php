@@ -72,7 +72,7 @@ trait WornForCLI
 	 * Writes an error message to the standard error output stream on the
 	 * console.
 	 * @param string $aMessage
-	 * @since 2016-10-11
+	 * @since BitsTheater 3.6
 	 */
 	public static function printError( $aMessage )
 	{
@@ -83,7 +83,7 @@ trait WornForCLI
 	 * Writes an error message to the standard error output stream on the
 	 * console, then dies.
 	 * @param string $aMessage the error message to be displayed
-	 * @since 2016-10-11
+	 * @since BitsTheater 3.6
 	 */
 	public static function printErrorAndDie( $aMessage )
 	{
@@ -97,7 +97,7 @@ trait WornForCLI
 	 * @param Director $aContext the context in which to construct the model
 	 * @param string $aModelName the model name
 	 * @return boolean|Model - the connected model, or `false` if not connected
-	 * @since 2016-10-11
+	 * @since BitsTheater 3.6
 	 */
 	public static function getDatabaseModel( Director $aContext, $aModelName )
 	{
@@ -114,7 +114,7 @@ trait WornForCLI
 	 * @param Director $aContext the context in which to construct the model
 	 * @param string $aModelName the model name
 	 * @return Model - the connected model
-	 * @since 2016-10-11
+	 * @since BitsTheater 3.6
 	 */
 	public static function requireDatabaseModel( Director $aContext, $aModelName )
 	{

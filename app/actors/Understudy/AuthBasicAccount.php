@@ -38,7 +38,7 @@ class AuthBasicAccount extends BaseActor
 	/**
 	 * The model that we expect to use for access to account data.
 	 * @var string
-	 * @since 2016.10.06
+	 * @since BitsTheater 3.6
 	 */
 	const CANONICAL_MODEL = 'Accounts' ;
 
@@ -48,7 +48,7 @@ class AuthBasicAccount extends BaseActor
 	 * @return Model - an instance of the model
 	 * @throws BrokenLeg - 'DB_CONNECTION_FAILED' if the model can't connect to
 	 *  the database
-	 * @since 2016.10.06
+	 * @since BitsTheater 3.6
 	 */
 	protected function getCanonicalModel()
 	{
@@ -492,7 +492,7 @@ class AuthBasicAccount extends BaseActor
 	/**
 	 * Catches a password reentry, verifies that it matches an existing token,
 	 * and redirects to password entry if successful.
-	 * @param string $aAuthID (from URL) the auth ID 
+	 * @param string $aAuthID (from URL) the auth ID
 	 * @param string $aAuthToken (from URL) the auth token
 	 */
 	public function passwordResetReentry( $aAuthID, $aAuthToken )
@@ -597,18 +597,18 @@ class AuthBasicAccount extends BaseActor
 	/**
 	 * Allows a site administrator to provision an account on behalf of another
 	 * user, device, or agent.
-	 * @param string account_name POST body parameter. Required; name of account to 
+	 * @param string account_name POST body parameter. Required; name of account to
 	 * create. Leading / ending whitespace will be trimmed.
-	 * @param string account_password POST body parameter. Required; password for 
+	 * @param string account_password POST body parameter. Required; password for
 	 * account to create. Leading / ending whitespace will be trimmed.
-	 * @param string email POST body parameter. Required, must be unique; 
+	 * @param string email POST body parameter. Required, must be unique;
 	 * email address of account to create. Leading / ending whitespace will be
 	 * trimmed.
-	 * @param string account_group_id POST body parameter. Optional; group id to map 
+	 * @param string account_group_id POST body parameter. Optional; group id to map
 	 * to this new account. Leading / ending whitespace will be trimmed.
-	 * @param string account_registration_code POST body parameter. Optional; registration 
+	 * @param string account_registration_code POST body parameter. Optional; registration
 	 * code to be used to assign a group to this new account. Leading / ending
-	 * whitespace will be trimmed. If aGroupId is specified, this parameter 
+	 * whitespace will be trimmed. If aGroupId is specified, this parameter
 	 * is ignored.
 	 * @throws BrokenLeg
 	 * * 'FORBIDDEN' - if user doesn't have accounts/create and accounts/view
