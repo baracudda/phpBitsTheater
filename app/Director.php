@@ -556,7 +556,6 @@ implements ArrayAccess, IDirected
 		if (empty($theAcctInfo)) {
 			$theAcctInfo = new AccountInfoCache();
 		}
-		//$this->debugPrint($this->debugStr($theAcctInfo));
 		if (isset($this->dbAuth)) {
 			return $this->dbAuth->isGuestAccount($theAcctInfo);
 		} else {

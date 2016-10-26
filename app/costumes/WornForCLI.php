@@ -16,6 +16,8 @@
  */
 
 namespace BitsTheater\costumes ;
+use BitsTheater\Director ;
+use BitsTheater\Model ;
 { // begin namespace
 
 /**
@@ -33,7 +35,65 @@ trait WornForCLI
 		return (php_sapi_name() === 'cli' OR defined('STDIN'));
 	}
 
+	/**
+	 * Writes an error message to the standard error output stream on the
+	 * console.
+	 * @param string $aMessage
+	 * @since 2016-10-11
+	 */
+	public static function printError( $aMessage )
+	{
+		fwrite( STDERR, $aMessage . PHP_EOL ) ;
+	}
+
+	/**
+	 * Writes an error message to the standard error output stream on the
+	 * console, then dies.
+	 * @param string $aMessage the error message to be displayed
+	 * @since 2016-10-11
+	 */
+	public static function printErrorAndDie( $aMessage )
+	{
+		self::printError($aMessage) ;
+		die ;
+	}
+
+	/**
+	 * Tries to get a DB model in the given context, and verify that it is
+	 * successfully connected to the database.
+	 * @param Director $aContext the context in which to construct the model
+	 * @param string $aModelName the model name
+	 * @return boolean|Model - the connected model, or `false` if not connected
+	 * @since 2016-10-11
+	 */
+	public static function getDatabaseModel( Director $aContext, $aModelName )
+	{
+		$theModel = $aContext->getProp( $aModelName ) ;
+		if( ! $theModel->isConnected() )
+			return false ;
+		else
+			return $theModel ;
+	}
+
+	/**
+	 * As getDatabaseModel(), but dies with an error message if the model is not
+	 * connected.
+	 * @param Director $aContext the context in which to construct the model
+	 * @param string $aModelName the model name
+	 * @return Model - the connected model
+	 * @since 2016-10-11
+	 */
+	public static function requireDatabaseModel( Director $aContext, $aModelName )
+	{
+		$theModel = self::getDatabaseModel( $aContext, $aModelName ) ;
+		if( $theModel === false )
+		{
+			self::printErrorAndDie( "[FATAL] Cannot connect to model ["
+					. $aModelName . "]." ) ;
+		}
+		return $theModel ;
+	}
+
 } // end trait
 
 } // end namespace
-	
