@@ -106,7 +106,8 @@ abstract class ASimpleCostume extends BaseCostume {
 	 * @return string Return self encoded as a standard class.
 	 */
 	public function exportData() {
-		return $this;
+		//default export is "all public fields"
+		return (object) call_user_func('get_object_vars', $this);
 	}
 	
 	/**
@@ -146,6 +147,14 @@ abstract class ASimpleCostume extends BaseCostume {
 		$o = self::cnvStdClassToXClass($aStdClass, get_called_class());
 		//Strings::debugLog('costume cls: '.Strings::debugStr($o));
 		return $o;
+	}
+	
+	/**
+	 * Return the public fields defined by my descendant class.
+	 * @return string[]
+	 */
+	static public function getDefinedFields() {
+		return array_keys( call_user_func('get_class_vars', get_called_class()) );
 	}
 	
 }//end class

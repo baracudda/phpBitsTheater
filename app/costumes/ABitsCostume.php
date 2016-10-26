@@ -32,7 +32,7 @@ implements IDirected
 	/**
 	 * @var Director
 	 */
-	public $_director = null;
+	protected $_director = null;
 	
 	/**
 	 * Magic PHP method to limit what var_dump() shows.
@@ -212,8 +212,8 @@ implements IDirected
 	 * @return string Return self encoded as a standard class.
 	 */
 	public function exportData() {
-		//ancestors remove their own metadata when calling debug info magic method
-		return (object)$this->__debugInfo();
+		//default export is "all public fields"
+		return (object) call_user_func('get_object_vars', $this);
 	}
 	
 	/**
