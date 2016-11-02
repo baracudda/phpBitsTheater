@@ -274,7 +274,8 @@ class AuthPermissions extends BaseModel {
 				unset( $thePerms[$theSpace] ) ;
 		}
 
-		return $thePerms ;
+		// Make sure what we return always looks like an object. (#2848)
+		return ((object)($thePerms)) ;
 	}
 
 	/**

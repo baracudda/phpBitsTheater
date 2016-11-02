@@ -17,23 +17,46 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\actors\Understudy\ABitsAccount as BaseActor;
-use BitsTheater\scenes\Account as MyScene; /* @var $v MyScene */
-use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
-use BitsTheater\models\Auth; /* @var $dbAuth Auth */
-use BitsTheater\models\AuthGroups; /* @var $dbAuthGroups AuthGroups */
-use BitsTheater\costumes\AuthPasswordReset ;
-use BitsTheater\outtakes\PasswordResetException ;
-use com\blackmoonit\MailUtils ;
-use com\blackmoonit\MailUtilsException ;
-use com\blackmoonit\Strings ;
+use BitsTheater\costumes\AuthPasswordReset;
+use BitsTheater\costumes\colspecs\CommonMySql;
+use BitsTheater\outtakes\AccountAdminException;
+use BitsTheater\outtakes\PasswordResetException;
+use com\blackmoonit\MailUtils;
+use com\blackmoonit\MailUtilsException;
+use com\blackmoonit\Strings;
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\SqlBuilder;
 use Exception;
+use PDOStatement ;
 {//namespace begin
 
-class AuthBasicAccount extends BaseActor {
+class AuthBasicAccount extends BaseActor
+{
 	const DEFAULT_ACTION = 'register';
+
+	/**
+	 * The model that we expect to use for access to account data.
+	 * @var string
+	 * @since BitsTheater 3.6
+	 */
+	const CANONICAL_MODEL = 'Accounts' ;
+
+	/**
+	 * Fetches an instance of the model usually accessed by this actor, granting
+	 * access to account data.
+	 * @return Model - an instance of the model
+	 * @throws BrokenLeg - 'DB_CONNECTION_FAILED' if the model can't connect to
+	 *  the database
+	 * @since BitsTheater 3.6
+	 */
+	protected function getCanonicalModel()
+	{
+		$dbModel = $this->getProp( self::CANONICAL_MODEL ) ;
+		if( ! $dbModel->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+		return $dbModel ;
+	}
 
 	public function view($aAcctId=null) {
 		//shortcut variable $v also in scope in our view php file.
@@ -103,9 +126,10 @@ class AuthBasicAccount extends BaseActor {
 				$theNewId = $this->addNewAccount($aAcctName);
 				if (!empty($theNewId)) {
 					$theNewAcct = array(
+							$dbAuth::KEY_userinfo => $aAcctName,
 							'email' => $aAcctEmail,
 							'account_id' => $theNewId,
-							'pwinput' => $aAcctPw,
+							$dbAuth::KEY_pwinput => $aAcctPw,
 							'verified_timestamp' => $theVerifiedTs,
 					);
 					$dbAuth->registerAccount($theNewAcct,$theDefaultGroup);
@@ -221,11 +245,12 @@ class AuthBasicAccount extends BaseActor {
 					$theAuthRow = $dbAuth->getAuthByEmail($v->email);
 					//cache the account_id in session data
 					$this->getDirector()[$v->getUsernameKey()] = $theAuthRow['account_id'];
-					//since we are "logged in" via a non-standard mechanism, create an anti-CSRF token
-					$dbAuth->setCsrfTokenCookie();
 					//get account info so we can return it via APIResponse data
 					$dbAccounts = $this->getProp('Accounts');
 					$this->getDirector()->account_info = $dbAuth->getAccountInfoCache($dbAccounts, $theAuthRow['account_id']);
+					//since we are "logged in" via a non-standard mechanism, create an anti-CSRF token
+					$dbAuth->setCsrfTokenCookie();
+					//we may wish to return the newly created account data
 					$this->ajajGetAccountInfo();
 					break;
 				case $dbAuth::REGISTRATION_REG_CODE_FAIL :
@@ -339,14 +364,14 @@ class AuthBasicAccount extends BaseActor {
 				$dbAuth->cudo($theAcctId, $v->$pwKeyOld)
 		);
 		//check permissions
-		$bAuthorizied = (
+		$bAuthorized = (
 				//everyone is allowed to modify email/pw of their own account
 				$theAcctId==$this->director->account_info->account_id ||
 				//admins may be allowed to modify someone else's account
 				$this->isAllowed('account','modify')
 		);
 		
-		if ($bCurrentPwMatch && $bAuthorizied) {
+		if ($bCurrentPwMatch && $bAuthorized) {
 			try {
 				//update EMAIL
 				$theOldEmail = trim($v->email_old);
@@ -467,7 +492,7 @@ class AuthBasicAccount extends BaseActor {
 	/**
 	 * Catches a password reentry, verifies that it matches an existing token,
 	 * and redirects to password entry if successful.
-	 * @param string $aAuthID (from URL) the auth ID 
+	 * @param string $aAuthID (from URL) the auth ID
 	 * @param string $aAuthToken (from URL) the auth token
 	 */
 	public function passwordResetReentry( $aAuthID, $aAuthToken )
@@ -497,7 +522,7 @@ class AuthBasicAccount extends BaseActor {
 		else
 		{
 			$theFailureMsg = $this->getRes( 'account/err_pw_request_failed' ) ;
-			$v->addUserMsg( $theFailureMsg, MyScene::USER_MSG_ERROR ) ;
+			$v->addUserMsg( $theFailureMsg, $v::USER_MSG_ERROR ) ;
 			return $this->getHomePage() ;
 		}
 	}
@@ -567,6 +592,539 @@ class AuthBasicAccount extends BaseActor {
 			);
 		}
 		*/
+	}
+
+	/**
+	 * Allows a site administrator to provision an account on behalf of another
+	 * user, device, or agent.
+	 * @param string account_name POST body parameter. Required; name of account to
+	 * create. Leading / ending whitespace will be trimmed.
+	 * @param string account_password POST body parameter. Required; password for
+	 * account to create. Leading / ending whitespace will be trimmed.
+	 * @param string email POST body parameter. Required, must be unique;
+	 * email address of account to create. Leading / ending whitespace will be
+	 * trimmed.
+	 * @param string account_group_id POST body parameter. Optional; group id to map
+	 * to this new account. Leading / ending whitespace will be trimmed.
+	 * @param string account_registration_code POST body parameter. Optional; registration
+	 * code to be used to assign a group to this new account. Leading / ending
+	 * whitespace will be trimmed. If aGroupId is specified, this parameter
+	 * is ignored.
+	 * @throws BrokenLeg
+	 * * 'FORBIDDEN' - if user doesn't have accounts/create and accounts/view
+	 * access.
+	 * * 'MISSING_ARGUMENT' - if the account name is not specified.
+	 * * 'UNIQUE_FIELD_ALREADY_EXISTS' - if unique field is specified to update,
+	 *  but already exists in the system.
+	 * * 'DB_EXCEPTION' - If another db exception occurs.
+	 * @since BitsTheater 3.6
+	 * @return APIResponse Returns the APIResponse with new account data.
+	 */
+	public function ajajCreate()
+	{
+		// Check Permissions.
+		if( !$this->isAllowed( 'accounts', 'create' ) || !$this->isAllowed( 'accounts', 'view' ))
+			throw BrokenLeg::toss( $this, 'FORBIDDEN' );
+
+		// Retrieve our passed-in values.
+		$v =& $this->scene;
+		$aName 		= trim ( $v->account_name );
+		$aPassword 	= trim ( $v->account_password );
+		$aEmail 	= trim ( $v->email );
+		$aGroupId 	= trim ( $v->account_group_id );
+		$aRegCode 	= trim ( $v->account_registration_code );
+
+		// Ensure required parameters are specified.
+		if ( empty ( $aName ) )
+			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', "account_name" );
+		if ( empty ( $aPassword ) )
+			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', "account_password" );
+		if ( empty ( $aEmail ) )
+			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', "email" );
+
+		// Reference respective models required.
+		$dbAccounts = $this->getCanonicalModel();
+		$dbAuth = $this->getProp('Auth');
+		$dbAuthGroups = $this->getProp('AuthGroups');
+
+		// Parse default group affiliation for this new account.
+		if ( empty ( $aGroupId ) ) {
+			if ( empty ( $aRegCode ) ) {
+				// New account will have no default group affiliation.
+				$accountGroup = 0;
+			} else {
+				// New account will have default group specified by supplied registration code.
+				$accountGroup = $dbAuthGroups->findGroupIdByRegCode($this->getAppId(), $aRegCode);
+			}
+		} else {
+			// New account will have the specified group id as its default group.
+			$accountGroup = $aGroupId;
+		}
+
+		// Verify new account can be registered.
+		$canRegister = $dbAuth->canRegister( $aName, $aEmail );
+		if ( $canRegister == $dbAuth::REGISTRATION_SUCCESS )
+		{
+			// Define verified time, if new account will be associated with a register group.
+			$verifiedTimestamp = ( ( $accountGroup != 0 ) ? $dbAccounts->utc_now() : null );
+		} elseif ($canRegister == $dbAuth::REGISTRATION_NAME_TAKEN) {
+			throw AccountAdminException::toss( $this,
+					'UNIQUE_FIELD_ALREADY_EXISTS', $aName ) ;
+			throw BrokenLeg::toss( $this, 'DB_EXCEPTION', "Name already exists in system." );
+		} elseif ($canRegister == $dbAuth::REGISTRATION_EMAIL_TAKEN) {
+			throw AccountAdminException::toss( $this,
+					'UNIQUE_FIELD_ALREADY_EXISTS', $aEmail ) ;
+		}
+
+		// Add account to Accounts table, generating our account ID.
+		$generatedAccountId = $this->addNewAccount( $aName );
+		if ( !empty ( $generatedAccountId ) )
+		{
+			// Aggregate our account data for registration.
+			$newAccountData = array(
+					'email' => $aEmail,
+					'account_id' => $generatedAccountId,
+					$dbAuth::KEY_pwinput => $aPassword,
+					'verified_timestamp' => $verifiedTimestamp
+			);
+
+			// Register account with affliated group.
+			$registrationResult = $dbAuth->registerAccount( $newAccountData, $accountGroup );
+
+			// Return successful APIResponse, generated by ajajGet().
+			$this->ajajGet( $generatedAccountId );
+		} else {
+			// Handle problem with adding new account and generating account ID.
+			throw BrokenLeg::toss( $this, 'DB_EXCEPTION', "Error in adding new account." );
+		}
+	}
+
+	/**
+	 * Allows a site administrator to update the details of an existing account
+	 * on behalf of another user, device, or agent.
+	 * @param integer $aAccountId the account ID (if null, fetch from POST var
+	 *  'account_id' instead)
+	 * @param string account_name Optional POST body parameter. Name to update of
+	 * account. Leading / ending whitespace will be trimmed.
+	 * @param string account_password Optional POST body parameter. Password to update
+	 * of account. Leading / ending whitespace will be trimmed.
+	 * @param string email Optional POST body parameter. Email to update of
+	 * account. Leading / ending whitespace will be trimmed.
+	 * @param string account_group_ids Optional POST body parameter. Array of group ids
+	 * to update of account. All previous group affiliations for this account
+	 * will be removed, replaced with updated group affiliations from this array.
+	 * Be aware that attempting to update account to the group id of the TITAN
+	 * group will result in an exception being thrown.
+	 * @throws BrokenLeg
+	 *  * 'MISSING_ARGUMENT' - if the account ID is not specified
+	 *  * 'ENTITY_NOT_FOUND' - if no account with that ID exists
+	 *  * 'FORBIDDEN' - if user doesn't have accounts/modify.
+	 *  * 'UNIQUE_FIELD_ALREADY_EXISTS' - if unique field is specified to update,
+	 *  but already exists in the system.
+	 *  * 'CANNOT_UPDATE_TO_TITAN' - if group_id of the TITAN group is specified.
+	 * @since BitsTheater 3.6
+	 */
+	public function ajajUpdate( $aAccountId = null )
+	{
+		// Check Permissions.
+		if( ! $this->isAllowed( 'accounts', 'modify' ) )
+			throw BrokenLeg::toss( $this, 'FORBIDDEN' );
+
+		// Retrieve our passed-in values.
+		$v =& $this->scene;
+		$aAccountId = trim ( $this->getEntityID( $aAccountId, 'account_id' ));
+		$aName 		= trim ( $v->account_name );
+		$aPassword 	= trim ( $v->account_password );
+		$aEmail 	= trim ( $v->email );
+		if ( isset ( $v->account_group_ids ) )
+			$aGroupIds = $v->account_group_ids;
+
+		// Reference respective models required.
+		$dbAccounts = $this->getCanonicalModel();
+		$dbAuth = $this->getProp('Auth');
+		$dbAuthGroups = $this->getProp('AuthGroups');
+		try
+		{
+			// Retrieve existing account for user.
+			$existingAccount = $dbAccounts->getAccount( $aAccountId );
+			if( empty($existingAccount) )
+				throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aAccountId );
+			$fullAccountInfo = (( object )( $existingAccount ));
+			$this->addAuthAndEmailTo( $fullAccountInfo );
+			$fullAccountInfo->groups = $this->getGroupsForAccount( $fullAccountInfo->account_id );
+
+			// Determine what values are different than existing values.
+			if ( !empty ( $aName ))
+				$updatedName = ( ( $aName === $fullAccountInfo->account_name ) ? null : $aName );
+			if ( !empty ( $aPassword ))
+				$updatedPassword = ( ( $dbAuth->cudo( $aAccountId, $aPassword ) ) ? null : $aPassword );
+			if ( !empty ( $aEmail ))
+				$updatedEmail = ( ( $aEmail === $fullAccountInfo->email ) ? null : $aEmail );
+
+			// Update email, if applicable.
+			if ( !empty ( $updatedEmail ))
+			{
+				// Verify new unique email update doesn't already exist in system.
+				if ( $dbAuth->getAuthByEmail( $updatedEmail ) )
+				{
+					throw AccountAdminException::toss( $this,
+						'UNIQUE_FIELD_ALREADY_EXISTS', $updatedEmail );
+				} else {
+					$theSql = SqlBuilder::withModel( $dbAuth )->obtainParamsFrom(
+							array(
+								'email' => $updatedEmail,
+								'account_id' => $aAccountId
+							));
+					$theSql->startWith( 'UPDATE' )->add( $dbAuth->tnAuth );
+					$theSql->add( 'SET' )->mustAddParam( 'email' );
+					$theSql->startWhereClause()->mustAddParam( 'account_id' )->endWhereClause();
+					$theSql->execDML();
+				}
+			}
+
+			// Update name, if applicable.
+			if ( !empty ( $updatedName ))
+			{
+				// Verify new unique name update doesn't already exist in system.
+				if ( $dbAccounts->getByName( $updatedName ) )
+				{
+					throw AccountAdminException::toss( $this,
+							'UNIQUE_FIELD_ALREADY_EXISTS', $updatedName );
+				} else {
+					$theSql = SqlBuilder::withModel( $dbAccounts )->obtainParamsFrom(
+							array(
+								'account_name' => $updatedName,
+								'account_id' => $aAccountId
+							));
+					$theSql->startWith( 'UPDATE' )->add( $dbAccounts->tnAccounts );
+					$theSql->add( 'SET' )->mustAddParam( 'account_name' );
+					$theSql->startWhereClause()->mustAddParam( 'account_id' )->endWhereClause();
+					$theSql->execDML();
+				}
+			}
+
+			// Update password, if applicable.
+			if ( !empty ( $updatedPassword ))
+			{
+				$theSql = SqlBuilder::withModel( $dbAuth )->obtainParamsFrom(
+						array(
+							'pwhash' => Strings::hasher( $updatedPassword ),
+							'account_id' => $aAccountId
+						));
+				$theSql->startWith( 'UPDATE' )->add( $dbAuth->tnAuth );
+				$theSql->add( 'SET' )->mustAddParam( 'pwhash' );
+				$theSql->startWhereClause()->mustAddParam( 'account_id' )->endWhereClause();
+				$theSql->execDML();
+			}
+
+			// Update account group, if applicable.
+			if ( isset ( $aGroupIds ))
+			{
+				// First we want to remove existing mappings of group ids for this account.
+				$currentAuthGroups = $dbAuthGroups->getAcctGroups( $aAccountId );
+				foreach ($currentAuthGroups as &$thisGroupId)
+				{
+					// Ensure not trying to remove group affiliation to special TITAN group.
+					if ( $thisGroupId != $dbAuthGroups::TITAN_GROUP_ID )
+						$dbAuthGroups->delAcctMap($thisGroupId, $aAccountId);
+				}
+				// Now insert mapping of account with updated group id values.
+				foreach ($aGroupIds as &$thisNewGroupId)
+				{
+					// Ensure not trying to set group affiliation to special TITAN group.
+					if ( $thisNewGroupId == $dbAuthGroups::TITAN_GROUP_ID )
+						throw AccountAdminException::toss( $this, 'CANNOT_UPDATE_TO_TITAN' );
+
+					// Add mapping.
+					$dbAuthGroups->addAcctMap( $thisNewGroupId, $aAccountId );
+				}
+			}
+		}
+		catch( DbException $dbx ) { throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ); }
+		catch( Exception $x ) { throw BrokenLeg::tossException( $this, $x ); }
+
+		// Print out successful APIResponse, generated by ajajGet().
+		$this->ajajGet( $aAccountId );
+	}
+
+	/**
+	 * Allows a site administrator to view the details of an existing account.
+	 * @param integer $aAccountID the account ID (if null, fetch from POST var
+	 *  'account_id' instead)
+	 * @throws BrokenLeg
+	 *  * 'FORBIDDEN' - if user doesn't have accounts/view access
+	 *  * 'MISSING_ARGUMENT' - if the account ID is not specified
+	 *  * 'ENTITY_NOT_FOUND' - if no account with that ID exists
+	 * @since BitsTheater 3.6
+	 */
+	public function ajajGet( $aAccountID=null )
+	{
+		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		if( ! $this->isAllowed( 'accounts', 'view' ) )
+			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+		$dbAccounts = $this->getCanonicalModel() ;
+		try
+		{
+			$theAccount = $dbAccounts->getAccount($theAccountID) ;
+			if( $theAccount == null ) // also try by name
+				$theAccount = $dbAccounts->getByName($theAccountID) ;
+		}
+		catch( DbException $dbx )
+		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
+		catch( Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+		if( $theAccount == null )
+			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $theAccountID ) ;
+		$theReturn = ((object)($theAccount)) ;
+		$this->addAuthAndEmailTo( $theReturn ) ;
+		$theReturn->groups =
+				$this->getGroupsForAccount( $theReturn->account_id ) ;
+		$this->scene->results = APIResponse::resultsWithData( $theReturn ) ;
+	}
+
+	/**
+	 * Fetches the auth history and email address associated with the account,
+	 * since it's in a separate table.
+	 * Consumed by ajajGet() and ajajGetAll().
+	 * @param object $aAccountInfo the information that we have about the
+	 *  account so far, to which we will write more data
+	 * @since BitsTheater 3.6
+	 */
+	protected function addAuthAndEmailTo( $aAccountInfo )
+	{
+		$dbAuth = $this->getProp( 'Auth' ) ;
+		if( ! $dbAuth->isConnected() )
+		{ // Don't fail the whole request; just return an empty result.
+			$this->debugLog( __METHOD__ . ' could not connect to DB.' ) ;
+		}
+		else try
+		{
+			$theAuth = ((object)($dbAuth->getAuthByAccountId($aAccountInfo->account_id))) ;
+			if( $theAuth != null )
+			{
+				$aAccountInfo->email = $theAuth->email ;
+				$aAccountInfo->is_active = ((boolean)($theAuth->is_active)) ;
+				$aAccountInfo->verified_ts =
+					CommonMySql::convertSQLTimestampToISOFormat($theAuth->verified_ts) ;
+				$aAccountInfo->created_ts =
+					CommonMySql::convertSQLTimestampToISOFormat($theAuth->created_ts) ;
+				$aAccountInfo->updated_ts =
+					CommonMySql::convertSQLTimestampToISOFormat($theAuth->updated_ts) ;
+			}
+		}
+		catch( Exception $x )
+		{
+			$this->debugLog( __METHOD__
+					. ' failed to fetch an email address for account ID ['
+					. $aAccountID . '] because of an exception: '
+					. $x->getMessage()
+				);
+		}
+	}
+
+	/**
+	 * Fetches information about the groups to which an account belongs.
+	 * Consumed by ajajGet() and ajajGetAll()
+	 * @param integer $aAccountID the account ID
+	 * @return array objects describing each permission group
+	 * @since BitsTheater 3.6
+	 */
+	protected function getGroupsForAccount( $aAccountID=null )
+	{
+		$dbGroups = $this->getProp( 'AuthGroups' ) ;
+		if( ! $dbGroups ->isConnected() )
+		{ // Don't fail the whole request; just return an empty set.
+			$this->debugLog( __METHOD__ . ' could not connect to DB.' ) ;
+			return null ;
+		}
+		try
+		{
+			$theReturn = array() ;
+			$theGroupIDs = $dbGroups->getAcctGroups($aAccountID) ;
+			if( empty($theGroupIDs) )
+				return $theReturn ;
+			foreach( $theGroupIDs as $theGroupID )
+			{
+				$theGroup = $dbGroups->getGroup($theGroupID) ;
+				if( $theGroup !== null )
+					$theReturn[] = ((object)($theGroup)) ;
+			}
+			return $theReturn ;
+		}
+		catch( Exception $x )
+		{
+			$this->debugLog( __METHOD__
+					. ' could not fetch groups for account ['
+					. $aAccountID . '] because of an exception: '
+					. $x->getMessage()
+				);
+			return null ;
+		}
+	}
+
+	/**
+	 * Allows a site administrator to view the details of all existing accounts
+	 * on the system, or all accounts in a particular "role" (permission group).
+	 * @param integer $aGroupID (optional) the ID of a permission group
+	 * @throws BrokenLeg
+	 *  * 'ENTITY_NOT_FOUND' - if a role ID is specified but doesn't exist
+	 * @since BitsTheater 3.5.3
+	 */
+	public function ajajGetAll( $aGroupID=null )
+	{
+		if( ! $this->isAllowed( 'accounts', 'view' ) )
+			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+		$theGroupID = $this->getEntityID( $aGroupID, 'group_id', false ) ;
+		if( ! empty($theGroupID) )
+		{ $this->getAllInGroup( $theGroupID ) ; return ; } // instead of "get all"
+		$dbAccounts = $this->getCanonicalModel() ;
+		$theResults = null ;
+		try { $theResults = $dbAccounts->getAll() ; }
+		catch( DbException $dbx )
+		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
+		$this->scene->results = APIResponse::resultsWithData(
+				$this->processSearchResults($theResults) ) ;
+	}
+
+	/**
+	 * Consumed by ajajGetAll().
+	 * @param integer $aGroupID the ID of the account group
+	 * @since BitsTheater 3.6
+	 */
+	protected function getAllInGroup( $aGroupID )
+	{
+		$dbGroups = $this->getProp( 'AuthGroups' ) ;
+		if( ! $dbGroups->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+		if( ! $dbGroups->groupExists($aGroupID) )
+			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aGroupID ) ;
+		$theResults = null ;
+		try { $theResults = $dbGroups->getAccountsInGroup($aGroupID) ; }
+		catch( DbException $dbx )
+		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
+		$this->scene->results = APIResponse::resultsWithData(
+				$this->processSearchResults($theResults) ) ;
+	}
+
+	/**
+	 * Post-processes each record of a "get all" result.
+	 * Consumed by ajajGetAll() and getAllInGroup().
+	 * @param PDOStatement $aResults the result of a database search
+	 * @return a dictionary of account IDs to account data, as an object
+	 * @since BitsTheater 3.6
+	 */
+	protected function processSearchResults( PDOStatement $aResults )
+	{
+		$theAccounts = array() ;
+		foreach( $aResults as $theResult )
+		{ // Post-process each record out of the result set. (#2794 challenge!)
+			$theAccount = ((object)($theResult)) ;
+			$this->addAuthAndEmailTo($theAccount) ;
+			$theAccount->groups =
+				$this->getGroupsForAccount( $theAccount->account_id ) ;
+			$theAccounts[$theAccount->account_id] = $theAccount ;
+		}
+		return ((object)($theAccounts)) ;
+	}
+
+	/**
+	 * Allows a site administrator to activate an existing account on behalf of
+	 * another user, device, or agent.
+	 * @param integer $aAccountID the account ID (if null, fetch from POST var
+	 *  'account_id' instead)
+	 * @throws BrokenLeg
+	 *  * 'MISSING_ARGUMENT' - if the account ID is not specified
+	 *  * 'ENTITY_NOT_FOUND' - if no account with that ID exists
+	 * @since BitsTheater 3.6
+	 */
+	public function ajajActivate( $aAccountID=null )
+	{
+		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$this->setActiveStatus( $theAccountID, true ) ;
+	}
+
+	/**
+	 * Allows a site administrator to deactivate the existing account of another
+	 * user, device, or agent.
+	 * @param integer $aAccountID the account ID (if null, fetch from POST var
+	 *  'account_id' instead)
+	 * @throws BrokenLeg
+	 *  * 'MISSING_ARGUMENT' - if the account ID is not specified
+	 *  * 'ENTITY_NOT_FOUND' - if no account with that ID exists
+	 * @since BitsTheater 3.6
+	 */
+	public function ajajDeactivate( $aAccountID=null )
+	{
+		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$this->setActiveStatus( $theAccountID, false ) ;
+		//TODO also remove tokens
+	}
+
+	/**
+	 * Activates or deactivates an account.
+	 * Consumed by ajajActivate() and ajajDeactivate().
+	 * @param integer $aAccountID the account ID
+	 * @param boolean $bActive set status to active (true) or inactive (false)
+	 * @since BitsTheater 3.6
+	 */
+	protected function setActiveStatus( $aAccountID, $bActive )
+	{
+		if( ! $this->isAllowed( 'accounts', 'activate' ) )
+			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+		$dbAuth = $this->getProp( 'Auth' ) ;
+		if( ! $dbAuth->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+		$theAuth = null ;
+		try { $theAuth = $dbAuth->getAuthByAccountId($aAccountID) ; }
+		catch( DbException $dbx )
+		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
+		if( empty($theAuth) )
+			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aAccountID ) ;
+		try { $dbAuth->setInvitation( $aAccountID, $bActive ) ; }
+		catch( DbException $dbx )
+		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
+
+		$theResponse = new \stdClass() ;
+		$theResponse->account_id = $aAccountID ;
+		$theResponse->is_active = $bActive ;
+		$this->scene->results = APIResponse::resultsWithData($theResponse) ;
+	}
+
+	/**
+	 * (Override) As ABitsAccount::ajajDelete(), but also deletes data from the
+	 * auth tables.
+	 * @since BitsTheater 3.6
+	 */
+	public function ajajDelete( $aAccountID=null )
+	{
+		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$this->checkCanDeleteAccount($theAccountID) ;
+
+		$this->deleteAuthData( $theAccountID ) ;           // This the override.
+
+		$this->deleteAccountData( $theAccountID ) ;  // Happens only on success.
+		$this->scene->results = APIResponse::noContentResponse() ;
+	}
+
+	/**
+	 * Deletes the auth data associated with an account ID.
+	 * Consumed by ajajDelete().
+	 * @param integer $aAccountID the account ID
+	 * @return AuthBasicAccount $this
+	 * @throws BrokenLeg
+	 * @since BitsTheater 3.6
+	 */
+	protected function deleteAuthData( $aAccountID )
+	{
+		$this->debugLog( __METHOD__ . ' - Deleting auth for account [' . $aAccountID . ']...' ) ;
+		$dbAuth = $this->getProp( 'Auth' ) ;
+		if( ! $dbAuth->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+		try { $dbAuth->deleteFor( $aAccountID ) ; }
+		catch( DbException $dbx )
+		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx ) ; }
+
+		return $this ;
 	}
 
 }//end class

@@ -563,7 +563,7 @@ implements IDirected
 	 *  and no value is found, NULL is returned
 	 * @throws BrokenLeg (MISSING_ARGUMENT) if no value was found in either data
 	 *  source, and the caller indicated that a result is required
-	 * @since 2016-08-29
+	 * @since BitsTheater 3.5.2
 	 */
 	protected function getEntityID( $aValue=null, $aField=null, $isRequired=true )
 	{

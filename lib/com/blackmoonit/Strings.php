@@ -17,7 +17,8 @@
 
 namespace com\blackmoonit;
 use com\blackmoonit\exceptions\IllegalArgumentException;
-use \Exception;
+use Exception;
+use PDOStatement;
 {//begin namespace
 
 class Strings {
@@ -315,6 +316,8 @@ class Strings {
 									$output .= $s.$fe;
 								}
 							}
+						} else if ($theVar instanceof PDOStatement) {
+							//do not allow debug var dump to fetch data from cursor object
 						} else {
 							foreach ($theVar as $key => $val) {
 								if ($key!==self::DEBUG_VAR_DUMP_FLAG) {

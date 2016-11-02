@@ -85,9 +85,13 @@ class AuthPasswordReset extends BaseCostume
 			->add( $this->model->tnAuth )
 			->startWhereClause()
 			->mustAddParam( 'email', $aEmailAddr )
-			->add( ' AND verified IS NOT NULL' )
+			->add( ' AND verified_ts IS NOT NULL' )
 			->endWhereClause()
-			->add( ' ORDER BY _created DESC' )   // Get only the newest account.
+			// Get only the newest account.
+			->applyOrderByList(array(
+					'created_ts' => SqlBuilder::ORDER_BY_DESCENDING,
+			))
+			->add('LIMIT 1')
 			;
 		$theAuthRecord = $theSql->getTheRow() ;
 		$theAccountID = $theAuthRecord['account_id'] ;
@@ -191,8 +195,8 @@ class AuthPasswordReset extends BaseCostume
 			{
 //				$theTokenDate = DateTime::createFromFormat(
 //						DbUtils::DATETIME_FORMAT_DEF_STD,
-//						$theToken['_changed'] ) ;
-				$theTokenDate = strtotime( $theToken['_changed'] ) ;
+//						$theToken['updated_ts'] ) ;
+				$theTokenDate = strtotime( $theToken['updated_ts'] ) ;
 				if( $theNow < $theTokenDate + $theExpirationInterval )
 					return true ;
 			}

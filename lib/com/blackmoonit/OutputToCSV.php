@@ -17,7 +17,6 @@
 
 namespace com\blackmoonit;
 use PDO;
-use PDOStatement;
 {//begin namespace
 
 /**
@@ -96,8 +95,8 @@ class OutputToCSV {
 	 */
 	protected $mInputArray = null;
 	/**
-	 * The input as PDOStatement used for output data.
-	 * @var PDOStatement
+	 * The input as object that can ->fetch() output data.
+	 * @var object
 	 */
 	protected $mInputPDOStatement = null;
 	/**
@@ -165,7 +164,7 @@ class OutputToCSV {
 	public function setInput($aInput) {
 		if (is_array($aInput)) {
 			$this->mInputArray = $aInput;
-		} else if ($aInput instanceof PDOStatement) {
+		} else if (is_object($aInput) && method_exists($aInput, 'fetch')) {
 			$this->mInputPDOStatement = $aInput;
 		} else {
 			//TODO input as stream too!

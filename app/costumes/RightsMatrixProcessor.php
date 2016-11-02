@@ -71,7 +71,8 @@ extends BaseCostume
 				) ;
 		}
 
-		return $this->myMatrix ;
+		// Make sure what we return always looks like an object. (#2848)
+		return ((object)($this->myMatrix)) ;
 	}
 
 	/**

@@ -45,4 +45,5 @@ This mini-framework extends the Model-View-Controller site model:
     
 <h2>Shout outs</h2>
     Thanks, Pasha Paterson, for the wonderful new password reset via email feature!
+    Thanks goes out to Dave Payne for his contributions to the Auth Accounts API feature!
 	

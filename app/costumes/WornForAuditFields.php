@@ -36,7 +36,7 @@ trait WornForAuditFields
 		$aSqlBuilder->add('SET')->mustAddParam('created_ts', $nowAsUTC)->setParamPrefix(', ');
 		$aSqlBuilder->mustAddParam('updated_ts', $nowAsUTC);
 		$aSqlBuilder->mustAddParam('created_by', $aSqlBuilder->getDirector()->getMyUsername());
-		//$aSqlBuilder->mustAddParam('updated_by'); //leaving blank/db default
+		$aSqlBuilder->mustAddParam('updated_by'); //default is NULL
 		return $aSqlBuilder;
 	}
 	

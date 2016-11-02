@@ -18,6 +18,9 @@
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ASimpleCostume as BaseCostume;
 use BitsTheater\BrokenLeg;
+use com\blackmoonit\Strings ;
+use com\blackmoonit\FinallyBlock ;
+use Exception ;
 {//namespace begin
 
 /**
@@ -55,7 +58,7 @@ class APIResponse extends BaseCostume {
 	public function setError( BrokenLeg $aError )
 	{
 		$this->status = self::STATUS_FAILURE ;
-		$this->error = $aError->toJson() ;
+		$this->error = $aError->toResponseObject() ;
 		http_response_code( $aError->getCode() ) ;
 	}
 	
@@ -67,6 +70,56 @@ class APIResponse extends BaseCostume {
 	{
 		http_response_code(204) ;
 		return null ;
+	}
+
+	/**
+	 * Prints the data set first, then the success and error fields, in case
+	 * something goes wrong while we're in the act of serializing the data.
+	 * @param string $aEncodeOptions options for `json_encode()`
+	 * @return APIResponse $this
+	 */
+	public function printAsJson( $aEncodeOptions=null )
+	{
+		if( is_object($this->data) && method_exists( $this->data, 'printAsJson' ) )
+		{
+			print( '{"data":' ) ;
+			$theFinalEnclosure = new FinallyBlock(function() {
+				print( '}' ) ;
+			});
+			try
+			{
+				$this->data->printAsJson($aEncodeOptions) ;
+				print( ',"status":"' . $this->status
+						. '","error":'
+					);
+				if( !empty($this->error) )
+					print( $this->error->toJson($aEncodeOptions) ) ;
+				else
+					print( 'null' ) ;
+			}
+			catch( Exception $x )
+			{
+				Strings::debugLog( __METHOD__
+						. ' caught an exception while serializing: '
+						. $x->getMessage()
+					);
+				print( ',"status":"' . self::STATUS_FAILURE
+						. '","error":'
+					);
+				$theError = $x ;
+				if( ! ( $x instanceof BrokenLeg ) )
+				{
+					$theError = BrokenLeg::pratfall( 'RESPONSE_FAILED',
+							BrokenLeg::HTTP_INTERNAL_SERVER_ERROR,
+							$x->getMessage() ) ;
+				}
+				print( $theError->toJson($aEncodeOptions) ) ;
+			}
+		}
+		else
+			print( json_encode( $this, $aEncodeOptions ) ) ;
+
+		return $this ;
 	}
 
 }//end class

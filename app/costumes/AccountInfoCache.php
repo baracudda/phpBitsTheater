@@ -22,7 +22,8 @@ use BitsTheater\costumes\ASimpleCostume as BaseCostume;
 /**
  * Helper class for session caching current non-sensitive login account info.
  */
-class AccountInfoCache extends BaseCostume {
+class AccountInfoCache extends BaseCostume
+{
 	/** @var integer */
 	public $account_id = null;
 	/** @var string */
@@ -35,6 +36,15 @@ class AccountInfoCache extends BaseCostume {
 	public $groups = array(0);
 	/** @var string */
 	public $auth_id = null;
+	/**
+	 * An indication that the account is active, expressed as a Boolean. Note
+	 * that this is generally stored as an integer (1 for true, 0 for false) in
+	 * the database, so the value from the DB should be marshalled by all
+	 * consumers to the data type that is most appropriate to the context.
+	 * @var boolean
+	 * @since BitsTheater 3.5.3
+	 */
+	public $is_active = true ;
 	
 }//end class
 
