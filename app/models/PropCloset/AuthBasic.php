@@ -794,10 +794,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Loads all the appropriate data about an account for caching purposes.
+	 * Loads all the appropriate data about an account for login caching purposes.
+	 * If the Account is INACTIVE, return NULL.
 	 * @param Accounts $dbAcct - the accounts model.
 	 * @param integer $aAccountId - the account id.
-	 * @return AccountInfoCache|NULL Returns the data if found, else NULL.
+	 * @return AccountInfoCache|NULL Returns the data if found and active, else NULL.
 	 */
 	public function getAccountInfoCache(Accounts $dbAccounts, $aAccountId) {
 		$theResult = AccountInfoCache::fromArray($dbAccounts->getAccount($aAccountId));
@@ -810,7 +811,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$theResult->is_active =
 				( array_key_exists( 'is_active', $theAuthRow ) ?
 					((boolean)($theAuthRow['is_active'])) : true ) ;
-			return $theResult;
+			return ( $theResult->is_active ) ? $theResult : null;
 		}
 		else
 			return null ;
@@ -908,7 +909,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$theAccountId = $this->director[self::KEY_userinfo] ;
 			$this->director->account_info =
 				$this->getAccountInfoCache( $dbAccounts, $theAccountId ) ;
-			if( empty($this->director->account_info) || ! $this->director->account_info->is_active )
+			if( empty($this->director->account_info) )
 			{ // Either account info is in weird state, or account is inactive.
 				$this->ripTicket() ;
 			}
@@ -1221,7 +1222,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$bAuthorizedViaWebForm = false;
 			$bAuthorizedViaCookies = false;
 			$bCsrfTokenWasBaked = false;
-			
+
 			$bAuthorizedViaHeaders = $this->checkHeadersForTicket($dbAccounts, $aScene);
 			//if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth');
 			$bAuthorized = $bAuthorized || $bAuthorizedViaHeaders;
