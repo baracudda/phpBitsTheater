@@ -192,7 +192,7 @@ class BitsWebsite extends BaseResources {
 			case ($aSeqNum<7):
 				return '3.2.'.($aSeqNum-6);
 			default:
-				return '3.6.0';
+				return '3.6.1';
 		}//switch
 	}
 	

@@ -65,6 +65,8 @@ class BitsAccount extends BaseResources
 		'Unique field [%1$s] already exists in system.' ;
 	public $errmsg_cannot_update_to_titan =
 		'Account cannot be updated to belong to the specified group.' ;
+	public $errmsg_cannot_create_account_titan =
+		'Account cannot be created belonging to the specified group.' ;
 	
 	// "Help" messages should be initialized in the initHelpText() function that
 	// is invoked by the constructor.

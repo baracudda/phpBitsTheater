@@ -661,6 +661,10 @@ class AuthBasicAccount extends BaseActor
 			$accountGroup = $aGroupId;
 		}
 
+		// Ensure not trying to create an account affiliated with the special TITAN group.
+		if ( $accountGroup == $dbAuthGroups::TITAN_GROUP_ID )
+			throw AccountAdminException::toss( $this, 'CANNOT_CREATE_TITAN_ACCOUNT' );
+
 		// Verify new account can be registered.
 		$canRegister = $dbAuth->canRegister( $aName, $aEmail );
 		if ( $canRegister == $dbAuth::REGISTRATION_SUCCESS )
