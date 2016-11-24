@@ -54,12 +54,18 @@ class APIResponse extends BaseCostume {
 	 * If an exception is caught, set the API response as a failure
 	 * and return the error information.
 	 * @param \BitsTheater\BrokenLeg $aError
+	 * @param boolean $bSetResponseCode specifies whether to overwrite the
+	 *  response code of the ongoing HTTP transaction with the error code of the
+	 *  `BrokenLeg` instance. Defaults to true, but you might want to set as
+	 *  false if you're using an `APIResponse` object as an interim data
+	 *  structure for some more elaborate transaction.
 	 */
-	public function setError( BrokenLeg $aError )
+	public function setError( BrokenLeg $aError, $bSetResponseCode=true )
 	{
 		$this->status = self::STATUS_FAILURE ;
 		$this->error = $aError->toResponseObject() ;
-		http_response_code( $aError->getCode() ) ;
+		if( $bSetResponseCode )
+			http_response_code( $aError->getCode() ) ;
 	}
 	
 	/**
