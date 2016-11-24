@@ -109,7 +109,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @var string
 	 */
 	const TOKEN_PREFIX_ANTI_CSRF = 'aC';
-
+	
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
 		if ($this->director->canConnectDb()) {
@@ -509,7 +509,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			throw AuthPasswordResetException::toss( $this, 'NOT_CONNECTED' ) ;
 
 		$theSql = SqlBuilder::withModel($this)
-			->startWith( 'SELECT * FROM ' )->add( $this->tnAuthTokens )
+			->startWith( 'SELECT * FROM' )->add( $this->tnAuthTokens )
 			->startWhereClause()
 			;
 		if( ! empty($aAuthID) )
@@ -535,7 +535,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$theSql->endWhereClause();
 		$theOrderByField = ($this->myExistingFeatureVersionNum>5) ? 'updated_ts' : '_changed';
 		$theSql->applyOrderByList(array($theOrderByField => SqlBuilder::ORDER_BY_DESCENDING));
-//		$this->debugLog( $theSql->mySql ) ;
+		//$this->debugLog( __METHOD__.' getAuthTokens='.$this->debugStr($theSql) ) ;
 		try
 		{
 			$theSet = $theSql->query() ;
@@ -550,6 +550,35 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
+	 * Insert the token into the table.
+	 * @param string $aAuthId - token mapped to auth record by this id.
+	 * @param number $aAcctId - the account which will map to this token.
+	 * @param string $aToken - the token.
+	 * @return array Returns the data inserted.
+	 * @since BitsTheater 3.6.1
+	 */
+	public function insertAuthToken($aAuthId, $aAcctId, $aToken) {
+		$theSql = SqlBuilder::withModel($this);
+		if ((!empty($aAuthId) || !empty($aAcctId))
+				&& !empty($aToken) && $this->isConnected())
+		try {
+			$theSql->startWith('INSERT INTO')->add($this->tnAuthTokens);
+			if ($this->myExistingFeatureVersionNum>5)
+				$this->setAuditFieldsOnInsert($theSql);
+			else
+				$theSql->add('SET')->mustAddParam('_changed', $this->utc_now())->setParamPrefix(', ');
+			$theSql->mustAddParam('auth_id', $aAuthId);
+			$theSql->mustAddParam('account_id', $aAcctId, PDO::PARAM_INT);
+			$theSql->mustAddParam('token', $aToken);
+			//$this->debugLog(__METHOD__ . $this->debugStr($theSql));
+			$theSql->execDML();
+			return $theSql->myParams;
+		} catch (PDOException $pdoe) {
+			throw $theSql->newDbException(__METHOD__, $pdoe);
+		}
+	}
+
+	/**
 	 * Create and store an auth token mapped to an account (by account_id).
 	 * The token is guaranteed to be universally unique.
 	 * @param string $aAuthId - token mapped to auth record by this id.
@@ -560,24 +589,24 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	public function generateAuthToken($aAuthId, $aAcctId, $aTweak=null) {
 		//64chars of unique gibberish
 		$theAuthToken = self::generatePrefixedAuthToken( $aTweak ) ;
-		//save in token table
-		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
-				'auth_id' => $aAuthId,
-				'account_id' => $aAcctId,
-				'token' => $theAuthToken,
-		));
-		$theSql->startWith('INSERT INTO')->add($this->tnAuthTokens);
-		if ($this->myExistingFeatureVersionNum>5)
-			$this->setAuditFieldsOnInsert($theSql);
-		else
-			$theSql->add('SET')->mustAddParam('_changed', $this->utc_now())->setParamPrefix(', ');
-		$theSql->mustAddParam('auth_id');
-		$theSql->mustAddParam('account_id');
-		$theSql->mustAddParam('token');
-		$theSql->execDML();
+		$this->insertAuthToken($aAuthId, $aAcctId, $theAuthToken);
 		return $theAuthToken;
 	}
 
+	/**
+	 * Prefix/Suffix Token generation may wish to pad small tokens to 64
+	 * and larger tokens with a fixed 10 random chars.
+	 * @param string $aStr - the prefix/suffix used to calc padding.
+	 * @return string Returns the padding to be used.
+	 * @since BitsTheater 3.6.1
+	 */
+	static protected function generateAuthTokenPadding($aStr)
+	{
+		return Strings::urlSafeRandomChars(
+				max(array(64-36-2-strlen($aStr), 10))
+		) . ':';
+	}
+	
 	/**
 	 * Creates an authorization token of the form PREFIX:RANDOMCHARS:UUID.
 	 * @param string $aPrefix a prefix to be used, if any
@@ -587,8 +616,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	{
 		return $aPrefix
 			. ( !empty($aPrefix) ? ':' : '' )
-			. Strings::urlSafeRandomChars(64-36-2-strlen($aPrefix))
-			. ':'
+			. self::generateAuthTokenPadding($aPrefix)
 			. Strings::createUUID()
 			;
 	}
@@ -600,8 +628,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 */
 	static public function generateSuffixedAuthToken( $aSuffix=null )
 	{
-		return Strings::urlSafeRandomChars(64-36-2-strlen($aSuffix))
-			. ':'
+		return self::generateAuthTokenPadding($aSuffix)
 			. Strings::createUUID()
 			. ( !empty($aSuffix) ? ':' : '' )
 			. $aSuffix
@@ -673,20 +700,19 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	/**
 	 * Remove stale tokens.
 	 */
-	protected function removeStaleTokens($aTokenPattern, $aExpireInterval) {
+	public function removeStaleTokens($aTokenPattern, $aExpireInterval) {
 		$theSql = SqlBuilder::withModel($this);
 		if (!empty($aExpireInterval) && $this->isConnected()) try {
 			$theSql->obtainParamsFrom(array(
 					'token' => $aTokenPattern,
-					'expire_ts' => "(NOW() - INTERVAL {$aExpireInterval}",
 			));
 			$theSql->startWith('DELETE FROM')->add($this->tnAuthTokens);
 			$theSql->startWhereClause();
 			$theSql->setParamOperator(' LIKE ')->mustAddParam('token');
-			$theSql->setParamPrefix(' AND ');
 			$theDeltaField = ($this->myExistingFeatureVersionNum>5) ? 'updated_ts' : '_changed';
-			$theSql->setParamOperator('<')->mustAddFieldAndParam($theDeltaField, 'expire_ts');
+			$theSql->add("AND {$theDeltaField}<(NOW() - INTERVAL {$aExpireInterval})");
 			$theSql->endWhereClause();
+			//$this->debugLog(__METHOD__ . $this->debugStr($theSql));
 			$theSql->execDML();
 		} catch (Exception $e) {
 			//do not care if removing stale tokens fails, log it so admin knows about it, though
@@ -721,7 +747,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Delete stale auth lockout tokens.
+	 * Delete stale registration cap tokens.
 	 */
 	protected function removeStaleRegistrationCapTokens() {
 		$this->removeStaleTokens(self::TOKEN_PREFIX_REGCAP.'%', '1 HOUR');
