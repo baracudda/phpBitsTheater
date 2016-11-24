@@ -283,6 +283,27 @@ class Arrays {
 		}
 	}
 
+	/**
+	 * Convert a CSV string of params into a true associative array.
+	 * e.g. '"param1"="value1","param2"="value2"\n"param3"="value3"' becomes
+	 *     [ [param1 => value1, param2 => value2], [param3 => value3] ]
+	 * @param string $aCsvString - the string to parse
+	 * @return array Returns an array of associative arrays of key => values.
+	 */
+	static public function parseCsvParamsStringToArray($aCsvString) {
+		$theResult = array();
+		//safely convert the string into array of key=value strings
+		$theParamsStrList = self::parse_csv_to_array($aCsvString);
+		if (!empty($theParamsStrList)) {
+			foreach ($theParamsStrList as $theParamsStr) {
+				//convert the key=value strs into a true associative array
+				$theResult[] = self::cnvKeyValuePairsToAssociativeArray($theParamsStr);
+			}
+		}
+		return $theResult;
+	}
+	
+	
 }//end class
 
 }//end namespace
