@@ -65,42 +65,6 @@ class Account extends MyScene {
 		$theKey = $this->getUseCookieKey();
 		return $this->$theKey;
 	}
-	
-	/**
-	 * API fingerprints from mobile device. Recomended that
-	 * your website mixes their order up, at the very least.
-	 * @param string[] $aFingerprints - string array of device info.
-	 * @return string[] Return a keyed array of device info.
-	 */
-	public function cnvFingerprints2KeyedArray($aFingerprints) {
-		if (!empty($aFingerprints)) {
-			return array(
-					'device_id' => $aFingerprints[0],
-					'app_version' => $aFingerprints[1],
-					'device_memory' => (is_numeric($aFingerprints[2]) ? $aFingerprints[2] : null),
-					'locale' => $aFingerprints[3],
-					'app_signature' => $aFingerprints[4],
-			);
-		} else return array();
-	}
-
-	/**
-	 * API circumstances from mobile device. Recommended that
-	 * your website mixes their order up, at the very least.
-	 * @param string[] $aCircumstances - string array of device meta,
-	 * such as current GPS, user device name setting, current timestamp, etc.
-	 * @return string[] Return a keyed array of device meta.
-	 */
-	public function cnvCircumstances2KeyedArray($aCircumstances) {
-		if (!empty($aCircumstances)) {
-			return array(
-					'now_ts' => $aCircumstances[0],
-					'latitude' => (is_numeric($aCircumstances[1]) ? $aCircumstances[1] : null),
-					'longitude' => (is_numeric($aCircumstances[2]) ? $aCircumstances[2] : null),
-					'device_name' => $aCircumstances[3],
-			);
-		} else return array();
-	}
 
 }//end class
 
