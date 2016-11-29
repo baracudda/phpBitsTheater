@@ -104,18 +104,21 @@ trait WornForHttpAuthBroadway
 	 * @param string $aAuthData
 	 */
 	protected function parseAuthHeaderAsAuthBroadway($aAuthData) {
-		$theParamsList = Arrays::parseCsvParamsStringToArray($aAuthData);
+		if (!empty($aAuthData))
+			$theParamsList = Arrays::parseCsvParamsStringToArray($aAuthData);
 		if (!empty($theParamsList)) {
 			foreach ($theParamsList as $theParams)
 				$this->setDataFrom($theParams);
 		}
 		$dbAuth = $this->getProp('Auth');
-		$this->setDataFrom($dbAuth->parseAuthBroadwayFingerprints(
-				explode($this->fsep, Strings::stripEnclosure($this->fingerprints,'[',']'))
-		));
-		$this->setDataFrom($dbAuth->parseAuthBroadwayCircumstances(
-				explode($this->csep, Strings::stripEnclosure($this->circumstances,'[',']'))
-		));
+		if (!empty($this->fingerprints))
+			$this->setDataFrom($dbAuth->parseAuthBroadwayFingerprints(
+					explode($this->fsep, Strings::stripEnclosure($this->fingerprints,'[',']'))
+			));
+		if (!empty($this->circumstances))
+			$this->setDataFrom($dbAuth->parseAuthBroadwayCircumstances(
+					explode($this->csep, Strings::stripEnclosure($this->circumstances,'[',']'))
+			));
 	}
 	
 	public function getDeviceName() {
