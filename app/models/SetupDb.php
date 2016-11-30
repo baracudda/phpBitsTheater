@@ -7,8 +7,15 @@ use com\blackmoonit\exceptions\DbException;
 use PDOException;
 {//begin namespace
 
-class SetupDb extends BaseModel {
-
+class SetupDb extends BaseModel
+{
+	/**
+	 * The name of the model which can be used in IDirected::getProp().
+	 * @var string
+	 * @since BitsTheater 3.6.1
+	 */
+	const MODEL_NAME = __CLASS__ ;
+	
 	/**
 	 * During website development, some models may get orphaned. Prevent them
 	 * from being used by overriding and disallowing the old model names.

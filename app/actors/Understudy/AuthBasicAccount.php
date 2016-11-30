@@ -26,6 +26,7 @@ use com\blackmoonit\MailUtilsException;
 use com\blackmoonit\Strings;
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
+use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\costumes\SqlBuilder;
 use Exception;
 use PDOStatement ;
@@ -41,6 +42,13 @@ class AuthBasicAccount extends BaseActor
 	 * @since BitsTheater 3.6
 	 */
 	const CANONICAL_MODEL = 'Accounts' ;
+
+	/**
+	 * Token to use for "ping"; override in descendant.
+	 * @see AuthBasicAccount::requestMobileAuth()
+	 * @var string
+	 */
+	const MAGIC_PING_TOKEN = 'pInG';
 
 	/**
 	 * Fetches an instance of the model usually accessed by this actor, granting
@@ -540,8 +548,12 @@ class AuthBasicAccount extends BaseActor
 		//$this->debugLog('regargs='.$v->name.', '.$v->salt.', '.$v->email.', '.$v->code);
 		$theRegResult = $this->registerNewAccount($v->name, $v->salt, $v->email, $v->code, false);
 		if ($theRegResult===$dbAuth::REGISTRATION_SUCCESS) {
-			$theMobileRow = $dbAuth->registerMobileFingerprints($dbAuth->getAuthByEmail($v->email),
-					$v->fingerprints, $v->circumstances);
+			$theAuthHeader = HttpAuthHeader::fromHttpAuthHeader($this->getDirector(),
+					(!empty($v->auth_header_data)) ? $v->auth_header_data : null
+			);
+			$theMobileRow = $dbAuth->registerMobileFingerprints(
+					$dbAuth->getAuthByEmail($v->email), $theAuthHeader
+			);
 			$v->results = array(
 					'code' => $theRegResult,
 					'auth_id' => $theMobileRow['auth_id'],
@@ -567,27 +579,38 @@ class AuthBasicAccount extends BaseActor
 		$v =& $this->scene;
 		$this->renderThisView = 'results_as_json';
 		if (empty($aPing)) {
+			$theAuthHeader = HttpAuthHeader::fromHttpAuthHeader($this->getDirector(),
+					(!empty($v->auth_header_data)) ? $v->auth_header_data : null
+			);
 			$dbAuth = $this->getProp('Auth');
 			if (!$this->isGuest()) {
 				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
-						$this->director->account_info, $v->fingerprints, $v->circumstances);
+						$this->director->account_info, $theAuthHeader
+				);
 			} else {
 				$v->results = $dbAuth->requestMobileAuthAutomatedByTokens(
-						$v->auth_id, $v->user_token, $v->fingerprints, $v->circumstances);
+						$v->auth_id, $v->user_token, $theAuthHeader
+				);
 			}
 			if (empty($v->results)) {
 				$this->director->logout();
 			}
+		} else if ($aPing===static::MAGIC_PING_TOKEN) {
+			$v->results = array(
+					'challenge' => 'ping',
+					'response' => 'pong',
+					'api_version_seq' => $v->getRes('website/api_version_seq'),
+			);
 		}
 		
 		/* example of descendant code
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		parent::requestMobileAuth($aPing);
-		if (empty($v->results) && $aPing==='ping') {
+		if (empty($v->results) && $aPing==='MY_PING_STRING') {
 			$v->results = array(
-					'user_token' => $aPing,
-					'auth_token' => 'pong',
+					'challenge' => $aPing,
+					'response' => 'pong',
 					'api_version_seq' => $this->getRes('website/api_version_seq'),
 			);
 		}
@@ -1131,6 +1154,84 @@ class AuthBasicAccount extends BaseActor
 		return $this ;
 	}
 
+	/**
+	 * Map a mobile device with an account to auto-login once configured.
+	 * @return Returns NO CONTENT.
+	 * @since BitsTheater 3.6.1
+	 */
+	public function ajajMapMobileToAccount() {
+		$v =& $this->scene;
+		$this->viewToRender('results_as_json');
+		//what device are we trying to map an account to?
+		if (empty($v->device_id))
+			throw BrokenLeg::toss( $this, 'MISSING_VALUE', 'device_id' ) ;
+		$dbAuth = $this->getProp('Auth');
+		if ( !$dbAuth->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+		$theAuthRow = null;
+		//we need either an account_id or an auth_id
+		//  get the other one using whichever we were given
+		if (!empty($v->account_id) && empty($v->auth_id)) {
+			$theAuthRow = $dbAuth->getAuthByAccountId($v->account_id);
+		}
+		if (empty($v->account_id) && !empty($v->auth_id)) {
+			$theAuthRow = $dbAuth->getAuthByAuthId($v->auth_id);
+		}
+		if (!empty($theAuthRow)) try {
+			//once we have all 3 peices, create our one-time mapping token
+			$dbAuth->generateAutoLoginForMobileDevice($theAuthRow['auth_id'],
+					$theAuthRow['account_id'], $v->device_id
+			);
+			$v->results = APIResponse::noContentResponse() ;
+		} catch (Exception $x) {
+			throw BrokenLeg::tossException( $this, $x ) ;
+		}
+		else
+			throw BrokenLeg::toss( $this, 'MISSING_VALUE', "'account_id' or 'auth_id'" ) ;
+	}
+	
+	/**
+	 * Mobile devices might ask the server for what account should be used
+	 * for authenticating mobile devices (which may be rooted).
+	 * @return Returns JSON encoded array[account_name, auth_id, user_token, auth_token]
+	 */
+	public function requestMobileAuthAccount() {
+		$v =& $this->scene;
+		$this->viewToRender('results_as_json');
+		
+		//Auth Header IS NOT SET because we do not have an account, yet
+		//  Most of the Auth Header data is in a POST param
+		if (!empty($v->auth_header_data))
+		{
+			$theHttpAuthHeader = HttpAuthHeader::fromHttpAuthHeader(
+					$this->getDirector(), $v->auth_header_data
+			);
+			$dbAuth = $this->getProp('Auth');
+			if ( !$dbAuth->isConnected() )
+				throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+			
+			$theDeviceTokenFilter = $dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':';
+			//ensure our tokens are not stale
+			$dbAuth->removeStaleTokens($theDeviceTokenFilter.'%', '3 MONTH');
+			$theDeviceTokenFilter .= $theHttpAuthHeader->device_id . ':%';
+			$theTokenRows = $dbAuth->getAuthTokens(null, null, $theDeviceTokenFilter, true);
+			//$this->debugLog(__METHOD__.' rows='.$this->debugStr($theTokenRows));
+			if (!empty($theTokenRows)) {
+				//just use the first one found
+				$theTokenRow = $theTokenRows[0];
+				$theAccountInfoCache = $dbAuth->getAccountInfoCache(
+						$this->getProp('Accounts'), $theTokenRow['account_id']
+				);
+				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
+						$theAccountInfoCache, $theHttpAuthHeader
+				);
+				//$this->debugLog(__METHOD__.' results='.$this->debugStr($v->results));
+				//remove any lingering device tokens unless one was JUST created
+				$dbAuth->removeStaleTokens($theDeviceTokenFilter, '1 SECOND');
+			}
+		}
+	}
+	
 }//end class
 
 }//end namespace

@@ -16,122 +16,79 @@
  */
 
 namespace BitsTheater\costumes;
-use BitsTheater\costumes\ASimpleCostume as BaseCostume;
-use com\blackmoonit\Arrays;
-use com\blackmoonit\Strings;
+use BitsTheater\costumes\ABitsCostume as BaseCostume;
+use BitsTheater\costumes\WornForHttpAuthBasic;
+use BitsTheater\costumes\WornForHttpAuthBroadway;
+use BitsTheater\Director;
 {//namespace begin
 
 /**
  * HTTP Authorization headers have different members based on the scheme
  * being utilized, but any common characterizitics/methods would go here.
  */
-class HttpAuthHeader extends BaseCostume {
+class HttpAuthHeader extends BaseCostume
+{
+	use WornForHttpAuthBasic, WornForHttpAuthBroadway;
+	
+	/**
+	 * The raw HTTP Auth header.
+	 * @var string
+	 */
 	public $auth_header = null;
+	/**
+	 * The scheme name for the HTTP Auth header.
+	 * @var string
+	 */
 	public $auth_scheme = null;
 	
 	/**
-	 * Basic http auth username.
-	 * @var string
+	 * Called during object construction.
+	 * @param Director $aDirector - site director object
 	 */
-	public $username = null;
+	public function setup(Director $aDirector) {
+		parent::setup($aDirector);
+		$this->setHttpAuthHeader($_SERVER['HTTP_AUTHORIZATION']);
+	}
+
 	/**
-	 * Basic http auth pw_input.
-	 * @var string
+	 * Construct a new object with an optional HTTP Auth parameter.
+	 * @param Director $aDirector - site director object.
+	 * @param string $aHttpAuthHeader - (optional) HTTP Auth header.
+	 * @return HttpAuthHeader Returns the newly constructed object.
 	 */
-	public $pw_input = null;
-	
+	static public function fromHttpAuthHeader(Director $aDirector, $aHttpAuthHeader=null) {
+		$theClassName = get_called_class();
+		$o = new $theClassName($aDirector);
+		return $o->setHttpAuthHeader($aHttpAuthHeader);
+	}
+
 	/**
-	 * Broadway http auth user auth_id.
-	 * @var string
+	 * Set the header and determine the scheme in use.
+	 * @param string $aHttpAuthHeader - the HTTP Auth header.
+	 * @return HttpAuthHeader Returns $this for chaining.
 	 */
-	public $auth_id = null;
-	/**
-	 * Broadway http auth device's fingerprints which are 
-	 * non-volatile between API calls.
-	 * @var string
-	 */
-	public $fingerprints = null;
-	/**
-	 * Broadway http auth device's circumstances which may be 
-	 * volatile between API calls. Contains items like GPS 
-	 * location and current timestamp.
-	 * @var string[]
-	 */
-	public $circumstances = null;
-	/**
-	 * Circumstances may be defined with a unique separator.
-	 * Defaults to ", ".
-	 * @var string
-	 */
-	public $csep = ', ';
-	/**
-	 * Broadway http auth token.
-	 * @var string
-	 */
-	public $auth_token = null;
-	
-	public function __construct($aHttpAuthHeader) {
+	public function setHttpAuthHeader($aHttpAuthHeader) {
 		if (!empty($aHttpAuthHeader)) {
 			$this->auth_header = $aHttpAuthHeader;
-		} else if (!empty($_SERVER['HTTP_AUTHORIZATION'])) {
-			$this->auth_header = $_SERVER['HTTP_AUTHORIZATION'];
-			unset($_SERVER['HTTP_AUTHORIZATION']);
+			$this->auth_scheme = strstr($this->auth_header, ' ', true);
+			$this->parseAuthData();
 		}
-		$this->auth_scheme = strstr($this->auth_header, ' ', true);
-		$this->parseAuthData();
+		return $this;
 	}
 	
-	protected function parseCsvString($aCsvString) {
-		$theResult = array();
-		$firstPass = Arrays::parse_csv_to_array($aCsvString);
-		if (!empty($firstPass[0])) {
-			$theResult = Arrays::cnvKeyValuePairsToAssociativeArray($firstPass[0]);
-		}
-		return $theResult;
-	}
-	
+	/**
+	 * Parse out the Auth data according to the Auth scheme.
+	 */
 	protected function parseAuthData() {
 		$theAuthData = base64_decode(substr($this->auth_header, strlen($this->auth_scheme)+1));
 		switch ($this->auth_scheme) {
 			case 'Basic':
-				list($this->account_name, $this->pw_input) = explode(':', $theAuthData);
+				$this->parseAuthHeaderAsAuthBasic($theAuthData);
 				break;
 			case 'Broadway':
-				$this->setDataFrom($this->parseCsvString($theAuthData));
-				
-				//fingerprints is itself an array of string
-				//  however, we do not wish to parse it, just use "as is"
-				
-				//circumstances is itself an array of strings
-				$this->circumstances = explode($this->csep, Strings::stripEnclosure($this->circumstances,'[',']'));
-				//Strings::debugLog(__METHOD__.' self='.Strings::debugStr($this));
+				$this->parseAuthHeaderAsAuthBroadway($theAuthData);
 				break;
-		}
-	}
-	
-	public function getDeviceName() {
-		if (!empty($this->circumstances) && !empty($this->circumstances[3]))
-			return $this->circumstances[3];
-	}
-	
-	public function getLatLong() {
-		if (!empty($this->circumstances))
-			return array($this->circumstances[1], $this->circumstances[2]);
-	}
-	
-	public function getLatitude() {
-		if (!empty($this->circumstances))
-			return $this->circumstances[1];
-	}
-	
-	public function getLongitude() {
-		if (!empty($this->circumstances))
-			return $this->circumstances[2];
-	}
-	
-	public function getTimestamp() {
-		if (!empty($this->circumstances) && !empty($this->circumstances[0]))
-			return $this->circumstances[0];
+		}//switch
 	}
 	
 }//end class
