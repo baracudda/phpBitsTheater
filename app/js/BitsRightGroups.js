@@ -85,9 +85,9 @@ BitsRightGroups.prototype.onGroupSaveClick = function(e) {
 			,
 			group_name: gn
 			,
-			group_parent: gp
+			parent_group_id: gp
 			,
-			group_reg_code: rc
+			reg_code: rc
 		})
 		.then (function (data) {
 			window.location.reload();
