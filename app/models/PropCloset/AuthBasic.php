@@ -1840,6 +1840,28 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
+	 * Create and store an TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT token mapped
+	 * to an account. The token is guaranteed to be universally unique.
+	 * @param string $aAuthId - token mapped to auth record by this id.
+	 * @param number $aAcctId - the account which will map to this token.
+	 * @return string Return the tokens mapped to an account.
+	 * @since BitsTheater 3.6.2
+	 */
+	public function getMobileHardwareIdsForAutoLogin($aAuthId, $aAcctId) {
+		$theIds = array();
+		$theAuthTokenRows = $this->getAuthTokens( $aAuthId, $aAcctId,
+				self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%', true
+		);
+		if (!empty($theAuthTokenRows)) {
+			foreach ($theAuthTokenRows as $theRow) {
+				list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theRow['token']);
+				$theIds[] = $theHardwareId;
+			}
+		}
+		return $theIds;
+	}
+
+	/**
 	 * API fingerprints from mobile device. Recommended that
 	 * your website mixes their order up, at the very least.
 	 * @param string[] $aFingerprints - string array of device info.

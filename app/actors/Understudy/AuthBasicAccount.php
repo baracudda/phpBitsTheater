@@ -906,6 +906,7 @@ class AuthBasicAccount extends BaseActor
 		$this->addAuthAndEmailTo( $theReturn ) ;
 		$theReturn->groups =
 				$this->getGroupsForAccount( $theReturn->account_id ) ;
+		$this->addMobileHardwareIdsForAutoLogin( $theReturn );
 		$this->scene->results = APIResponse::resultsWithData( $theReturn ) ;
 	}
 
@@ -988,7 +989,41 @@ class AuthBasicAccount extends BaseActor
 			return null ;
 		}
 	}
-
+	
+	/**
+	 * Fetches the hardware IDs for mobile auto-login associated with the
+	 * account, since it's in a separate table.
+	 * Consumed by ajajGet() and ajajGetAll().
+	 * @param object $aAccountInfo - the information that we have about the
+	 *  account so far, to which we will write more data
+	 * @since BitsTheater 3.6.2
+	 */
+	protected function addMobileHardwareIdsForAutoLogin( $aAccountInfo )
+	{
+		$dbAuth = $this->getProp( 'Auth' ) ;
+		if( ! $dbAuth->isConnected() )
+		{ // Don't fail the whole request; just return an empty result.
+			$this->debugLog( __METHOD__ . ' could not connect to DB.' ) ;
+		}
+		else try
+		{
+			$theIDs = $dbAuth->getMobileHardwareIdsForAutoLogin(
+					$aAccountInfo->auth_id, $aAccountInfo->account_id
+			);
+			if (!empty($theIDs)) {
+				$aAccountInfo->hardware_ids = (object)$theIDs ;
+			}
+		}
+		catch( Exception $x )
+		{
+			$this->debugLog( __METHOD__
+					. ' failed to fetch Mobile Hardware IDs for account ID ['
+					. $aAccountID . '] because of an exception: '
+					. $x->getMessage()
+			);
+		}
+	}
+	
 	/**
 	 * Allows a site administrator to view the details of all existing accounts
 	 * on the system, or all accounts in a particular "role" (permission group).
@@ -1049,6 +1084,7 @@ class AuthBasicAccount extends BaseActor
 			$this->addAuthAndEmailTo($theAccount) ;
 			$theAccount->groups =
 				$this->getGroupsForAccount( $theAccount->account_id ) ;
+			$this->addMobileHardwareIdsForAutoLogin($theAccount) ;
 			$theAccounts[$theAccount->account_id] = $theAccount ;
 		}
 		return ((object)($theAccounts)) ;
