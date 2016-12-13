@@ -1011,7 +1011,7 @@ class AuthBasicAccount extends BaseActor
 					$aAccountInfo->auth_id, $aAccountInfo->account_id
 			);
 			if (!empty($theIDs)) {
-				$aAccountInfo->hardware_ids = (object)$theIDs ;
+				$aAccountInfo->hardware_ids = $theIDs ;
 			}
 		}
 		catch( Exception $x )
