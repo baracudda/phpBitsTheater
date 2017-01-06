@@ -771,17 +771,19 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Delete a specific set of anti-CSRF tokens for a user.
+	 * Delete a specific set of tokens for a user.
 	 * @param string $aAuthId - the user's auth_id.
 	 * @param number $aAcctId - the user's account_id.
+	 * @param string $aTokenPattern - the tokens to match via LIKE.
 	 */
-	protected function removeAntiCsrfToken($aAuthId, $aAcctId) {
+	protected function removeTokensFor($aAuthId, $aAcctId, $aTokenPattern)
+	{
 		$theSql = SqlBuilder::withModel($this);
 		if ($this->isConnected()) try {
 			$theSql->obtainParamsFrom(array(
 					'auth_id' => $aAuthId,
 					'account_id' => $aAcctId,
-					'token' => self::TOKEN_PREFIX_ANTI_CSRF.'%',
+					'token' => $aTokenPattern,
 			));
 			$theSql->startWith('DELETE FROM')->add($this->tnAuthTokens);
 			$theSql->startWhereClause()->mustAddParam('auth_id');
@@ -793,6 +795,15 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			//do not care if removing token fails, log it so admin knows about it, though
 			$theSql->logSqlFailure(__METHOD__, $e);
 		}
+	}
+
+	/**
+	 * Delete a specific set of anti-CSRF tokens for a user.
+	 * @param string $aAuthId - the user's auth_id.
+	 * @param number $aAcctId - the user's account_id.
+	 */
+	protected function removeAntiCsrfToken($aAuthId, $aAcctId) {
+		$this->removeTokensFor($aAuthId, $aAcctId, self::TOKEN_PREFIX_ANTI_CSRF.'%');
 	}
 
 	/**
