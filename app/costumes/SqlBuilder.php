@@ -688,7 +688,10 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
-	 * Replace the currently formed SELECT fields with the param.
+	 * Replace the currently formed SELECT fields with the param.  If you have nested queries,
+	 * you will need to use the
+	 * <pre>SELECT /&#42 FIELDLIST &#42/ field1, field2, (SELECT blah) AS field3 /&#42 /FIELDLIST &#42/ FROM</pre>
+	 * hints in the SQL.
 	 * @param string|array $aSelectFields - (optional) the fields to use instead, defaults to "*".
 	 * @return SqlBuilder Returns $this for chaining.
 	 */
@@ -702,8 +705,13 @@ class SqlBuilder extends BaseCostume {
 		if (empty($theSelectFields))
 			$theSelectFields = '*';
 		$theSelectFields = 'SELECT '.$theSelectFields.' FROM';
-		//we want a "non-greedy" match so that it stops at the first "FROM" it finds: ".+?"
-		$this->mySql = preg_replace('|SELECT .+? FROM|i', $theSelectFields, $this->mySql, 1);
+		//nested queries can mess us up, so check for hints first
+		if (strpos($this->mySql, '/* FIELDLIST */')>0 && strpos($this->mySql, '/* /FIELDLIST */')>0) {
+			$this->mySql = preg_replace('|SELECT /\* FIELDLIST \*/ .+? /\* /FIELDLIST \*/ FROM|i', $theSelectFields, $this->mySql, 1);
+		} else {
+			//we want a "non-greedy" match so that it stops at the first "FROM" it finds: ".+?"
+			$this->mySql = preg_replace('|SELECT .+? FROM|i', $theSelectFields, $this->mySql, 1);
+		}
 		//$this->debugLog(__METHOD__.' sql='.$theSql->mySql.' params='.$this->debugStr($theSql->myParams));
 		return $this;
 	}
