@@ -1,11 +1,80 @@
 # ChangeLog
 
+## Version 5.2.21 (December 28th 2016)
+* Fix missed number update in version file - no functional changes
+
+## Version 5.2.20 (December 28th 2016)
+* **SECURITY** Critical security update for CVE-2016-10045 please update now! Thanks to [Dawid Golunski](https://legalhackers.com) and Paul Buonopane (@Zenexer).
+
+## Version 5.2.19 (December 26th 2016)
+* Minor cleanup
+
+## Version 5.2.18 (December 24th 2016)
+* **SECURITY** Critical security update for CVE-2016-10033 please update now! Thanks to [Dawid Golunski](https://legalhackers.com).
+* Add ability to extract the SMTP transaction ID from some common SMTP success messages
+* Minor documentation tweaks
+
+## Version 5.2.17 (December 9th 2016)
+* This is officially the last feature release of 5.2. Security fixes only from now on; use PHPMailer 6.0!
+* Allow DKIM private key to be provided as a string
+* Provide mechanism to allow overriding of boundary and message ID creation
+* Improve Brazilian Portuguese, Spanish, Swedish, Romanian, and German translations
+* PHP 7.1 support for Travis-CI
+* Fix some language codes
+* Add security notices
+* Improve DKIM compatibility in older PHP versions
+* Improve trapping and capture of SMTP connection errors
+* Improve passthrough of error levels for debug output
+* PHPDoc cleanup
+
+## Version 5.2.16 (June 6th 2016)
+* Added DKIM example
+* Fixed empty additional_parameters problem
+* Fixed wrong version number in VERSION file!
+* Improve line-length tests
+* Use instance settings for SMTP::connect by default
+* Use more secure auth mechanisms first
+
+## Version 5.2.15 (May 10th 2016)
+* Added ability to inject custom address validators, and set the default validator
+* Fix TLS 1.2 compatibility
+* Remove some excess line breaks in MIME structure
+* Updated Polish, Russian, Brazilian Portuguese, Georgian translations
+* More DRY!
+* Improve error messages
+* Update dependencies
+* Add example showing how to handle multiple form file uploads
+* Improve SMTP example
+* Improve Windows compatibility
+* Use consistent names for temp files
+* Fix gmail XOAUTH2 scope, thanks to @sherryl4george
+* Fix extra line break in getSentMIMEMessage()
+* Improve DKIM signing to use SHA-2
+
+## Version 5.2.14 (Nov 1st 2015)
+* Allow addresses with IDN (Internationalized Domain Name) in PHP 5.3+, thanks to @fbonzon
+* Allow access to POP3 errors
+* Make all POP3 private properties and methods protected
+* **SECURITY** Fix vulnerability that allowed email addresses with line breaks (valid in RFC5322) to pass to SMTP, permitting message injection at the SMTP level. Mitigated in both the address validator and in the lower-level SMTP class. Thanks to Takeshi Terada.
+* Updated Brazilian Portuguese translations (Thanks to @phelipealves)
+
+## Version 5.2.13 (Sep 14th 2015)
+* Rename internal oauth class to avoid name clashes
+* Improve Estonian translations
+
+## Version 5.2.12 (Sep 1st 2015)
+* Fix incorrect composer package dependencies
+* Skip existing embedded image `cid`s in `msgHTML`
+
+## Version 5.2.11 (Aug 31st 2015)
 * Don't switch to quoted-printable for long lines if already using base64
 * Fixed Travis-CI config when run on PHP 7
+* Added Google XOAUTH2 authentication mechanism, thanks to @sherryl4george
 * Add address parser for RFC822-format addresses
 * Update MS Office MIME types
 * Don't convert line breaks when using quoted-printable encoding
 * Handle MS Exchange returning an invalid empty AUTH-type list in EHLO
+* Don't set name or filename properties on MIME parts that don't have one
 
 ## Version 5.2.10 (May 4th 2015)
 * Add custom header getter

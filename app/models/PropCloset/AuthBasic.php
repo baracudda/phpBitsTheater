@@ -151,7 +151,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 						", `email` CHAR(255) NOT NULL".		//store as typed, but collate as case-insensitive
 						", `account_id` INT NOT NULL".		//link to Accounts
 						", `pwhash` CHAR(85) CHARACTER SET ascii NOT NULL COLLATE ascii_bin".	//blowfish hash of pw & its salt
-						", `verified_ts` TIMESTAMP DEFAULT NULL". //UTC of when acct was verified
+						", `verified_ts` TIMESTAMP NULL DEFAULT NULL". //UTC of when acct was verified
 						", `is_active` " . CommonMySQL::TYPE_BOOLEAN_1 .
 						", ".CommonMySQL::getAuditFieldsForTableDefSql().
 						", UNIQUE KEY IdxEmail (`email`)".
@@ -230,7 +230,11 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			//  reverse the logic to hopefully cut down the SQL calls to 1
 			//  instead of 7.
 			case self::DB_TYPE_MYSQL: default:
-				if( $this->isFieldExists( 'is_active', $this->tnAuth ) )
+				if (!$this->exists()) {
+					//setupWebsite endpoint will detect the wrong version unless
+					//  we check for the non-existance of the main table first
+					return self::FEATURE_VERSION_SEQ ;
+				} else if( $this->isFieldExists( 'is_active', $this->tnAuth ) )
 					return self::FEATURE_VERSION_SEQ ;
 				else if ($this->isFieldExists('created_by', $this->tnAuthMobile)) {
 					return 7;
@@ -322,7 +326,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				$theSql = SqlBuilder::withModel($this);
 				if (!$this->isFieldExists('created_by', $this->tnAuth)) try {
 					$theSql->startWith('ALTER TABLE '.$this->tnAuth);
-					$theColDef = '`verified_ts` TIMESTAMP DEFAULT NULL';
+					$theColDef = '`verified_ts` TIMESTAMP NULL DEFAULT NULL';
 					$theSql->add('  CHANGE COLUMN verified')->add($theColDef);
 					$theSql->add(', DROP COLUMN is_reset');
 					$theColDef = CommonMySql::CREATED_TS_SPEC;
@@ -771,17 +775,19 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Delete a specific set of anti-CSRF tokens for a user.
+	 * Delete a specific set of tokens for a user.
 	 * @param string $aAuthId - the user's auth_id.
 	 * @param number $aAcctId - the user's account_id.
+	 * @param string $aTokenPattern - the tokens to match via LIKE.
 	 */
-	protected function removeAntiCsrfToken($aAuthId, $aAcctId) {
+	protected function removeTokensFor($aAuthId, $aAcctId, $aTokenPattern)
+	{
 		$theSql = SqlBuilder::withModel($this);
 		if ($this->isConnected()) try {
 			$theSql->obtainParamsFrom(array(
 					'auth_id' => $aAuthId,
 					'account_id' => $aAcctId,
-					'token' => self::TOKEN_PREFIX_ANTI_CSRF.'%',
+					'token' => $aTokenPattern,
 			));
 			$theSql->startWith('DELETE FROM')->add($this->tnAuthTokens);
 			$theSql->startWhereClause()->mustAddParam('auth_id');
@@ -793,6 +799,15 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			//do not care if removing token fails, log it so admin knows about it, though
 			$theSql->logSqlFailure(__METHOD__, $e);
 		}
+	}
+
+	/**
+	 * Delete a specific set of anti-CSRF tokens for a user.
+	 * @param string $aAuthId - the user's auth_id.
+	 * @param number $aAcctId - the user's account_id.
+	 */
+	protected function removeAntiCsrfToken($aAuthId, $aAcctId) {
+		$this->removeTokensFor($aAuthId, $aAcctId, self::TOKEN_PREFIX_ANTI_CSRF.'%');
 	}
 
 	/**
