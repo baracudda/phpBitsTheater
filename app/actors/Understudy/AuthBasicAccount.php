@@ -21,6 +21,7 @@ use BitsTheater\costumes\AuthPasswordReset;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\outtakes\AccountAdminException;
 use BitsTheater\outtakes\PasswordResetException;
+use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\MailUtils;
 use com\blackmoonit\MailUtilsException;
 use com\blackmoonit\Strings;
@@ -28,6 +29,10 @@ use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\costumes\SqlBuilder;
+use BitsTheater\costumes\AuthAccount;
+use BitsTheater\costumes\AuthAccountSet;
+use BitsTheater\costumes\AuthGroup;
+use BitsTheater\costumes\AuthGroupList;
 use Exception;
 use PDOStatement ;
 {//namespace begin
@@ -1025,11 +1030,63 @@ class AuthBasicAccount extends BaseActor
 	}
 	
 	/**
+	 * Standard output for either getAll or getAllInGroup.
+	 * @param PDOStatement $aRowSet - the result set to return.
+	 * @return AuthAccountSet Returns the wrapper class used.
+	 * @since BitsTheater 3.7.0
+	 */
+	protected function getAuthAccountSet($aRowSet) {
+		$v =& $this->scene ;
+		//get all fields, even the optional ones
+		$theFieldList = AuthAccount::getDefinedFields();
+		//construct our iterator object
+		$theAccountSet = AuthAccountSet::create( $this->getDirector() )
+				->setItemClass(AuthAccount::ITEM_CLASS,
+						array($this->getProp('Auth'), $theFieldList) )
+				->setDataFromPDO($aRowSet)
+				;
+		$theAccountSet->filter = $v->filter ;
+		$theAccountSet->total_count = $v->getPagerTotalRowCount() ;
+					
+		//include group details.
+		$theGroupFieldList = array('group_id', 'group_name');
+		$theAccountSet->mGroupList = AuthGroupList::create( $this->getDirector() )
+				->setFieldList($theGroupFieldList)
+				->setItemClass(AuthGroup::ITEM_CLASS,
+						array($this->getProp('AuthGroups'), $theGroupFieldList) )
+				;
+					
+		return $theAccountSet;
+	}
+
+	/**
+	 * Consumed by ajajGetAll().
+	 * @param integer $aGroupID the ID of the account group
+	 * @since BitsTheater 3.6.0
+	 */
+	protected function getAllInGroup( $aGroupID )
+	{
+		$dbGroups = $this->getProp('AuthGroups');
+		if( ! $dbGroups->isConnected() )
+			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
+		if( ! $dbGroups->groupExists($aGroupID) )
+			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aGroupID ) ;
+		$dbAuth = $this->getProp('Auth');
+		try {
+			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene, $aGroupID);
+			$this->scene->results = APIResponse::resultsWithData(
+					$this->getAuthAccountSet($theRowSet)
+			);
+		} catch (DbException $dbx) {
+			throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ;
+		}
+	}
+
+	/**
 	 * Allows a site administrator to view the details of all existing accounts
 	 * on the system, or all accounts in a particular "role" (permission group).
-	 * @param integer $aGroupID (optional) the ID of a permission group
-	 * @throws BrokenLeg
-	 *  * 'ENTITY_NOT_FOUND' - if a role ID is specified but doesn't exist
+	 * @param integer $aGroupID - (optional) the ID of a permission group
+	 * @throws BrokenLeg 'ENTITY_NOT_FOUND' - if GroupID does not exist
 	 * @since BitsTheater 3.5.3
 	 */
 	public function ajajGetAll( $aGroupID=null )
@@ -1038,58 +1095,18 @@ class AuthBasicAccount extends BaseActor
 			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
 		$theGroupID = $this->getEntityID( $aGroupID, 'group_id', false ) ;
 		if( ! empty($theGroupID) )
-		{ $this->getAllInGroup( $theGroupID ) ; return ; } // instead of "get all"
-		$dbAccounts = $this->getCanonicalModel() ;
-		$theResults = null ;
-		try { $theResults = $dbAccounts->getAll() ; }
-		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
-		$this->scene->results = APIResponse::resultsWithData(
-				$this->processSearchResults($theResults) ) ;
-	}
-
-	/**
-	 * Consumed by ajajGetAll().
-	 * @param integer $aGroupID the ID of the account group
-	 * @since BitsTheater 3.6
-	 */
-	protected function getAllInGroup( $aGroupID )
-	{
-		$dbGroups = $this->getProp( 'AuthGroups' ) ;
-		if( ! $dbGroups->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
-		if( ! $dbGroups->groupExists($aGroupID) )
-			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aGroupID ) ;
-		$theResults = null ;
-		try { $theResults = $dbGroups->getAccountsInGroup($aGroupID) ; }
-		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
-		$this->scene->results = APIResponse::resultsWithData(
-				$this->processSearchResults($theResults) ) ;
-	}
-
-	/**
-	 * Post-processes each record of a "get all" result.
-	 * Consumed by ajajGetAll() and getAllInGroup().
-	 * @param PDOStatement $aResults the result of a database search
-	 * @return a dictionary of account IDs to account data, as an object
-	 * @since BitsTheater 3.6
-	 */
-	protected function processSearchResults( PDOStatement $aResults )
-	{
-		$theAccounts = array() ;
-		foreach( $aResults as $theResult )
-		{ // Post-process each record out of the result set. (#2794 challenge!)
-			$theAccount = ((object)($theResult)) ;
-			$this->addAuthAndEmailTo($theAccount) ;
-			$theAccount->groups =
-				$this->getGroupsForAccount( $theAccount->account_id ) ;
-			$this->addMobileHardwareIdsForAutoLogin($theAccount) ;
-			$theAccounts[$theAccount->account_id] = $theAccount ;
+			return $this->getAllInGroup( $theGroupID ) ; // instead of "get all"
+		$dbAuth = $this->getProp('Auth');
+		try {
+			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene);
+			$this->scene->results = APIResponse::resultsWithData(
+					$this->getAuthAccountSet($theRowSet)
+			);
+		} catch (DbException $dbx) {
+			throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ;
 		}
-		return ((object)($theAccounts)) ;
 	}
-
+	
 	/**
 	 * Allows a site administrator to activate an existing account on behalf of
 	 * another user, device, or agent.

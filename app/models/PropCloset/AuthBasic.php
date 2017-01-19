@@ -469,6 +469,66 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
+	 * Gets the set of all account records.
+	 * @param Scene $aScene - scene being used in case we need user-defined query limits.
+	 * @param number $aGroupId - (optional) the group id to filter on
+	 * @return PDOStatement - the iterable result of the SELECT query
+	 * @throws DbException if something goes wrong
+	 */
+	public function getAccountsToDisplay($aScene, $aGroupId=null) {
+		$theQueryLimit = (!empty($aScene)) ? $aScene->getQueryLimit($this->dbType()) : null;
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+				'group_id' => $aGroupId,
+				'token' => self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%',
+		));
+		if ($this->isConnected()) try {
+			//determine OrderBy (so can report on it in case of exception)
+			if (empty($aScene->orderby))
+				$aScene->orderby = 'acct.account_name';
+			$theOrderByList = array( $aScene->orderby =>
+					($aScene->orderbyrvs ? $theSql::ORDER_BY_DESCENDING : $theSql::ORDER_BY_ASCENDING)
+			);
+			//query field list
+			$dbAccounts = $this->getProp('Accounts');
+			//NOTE: since we have a nested query in field list, must add HINT for getQueryTotals()
+			$theSql->startWith('SELECT /* FIELDLIST */')->add('auth.*, acct.account_name');
+			//find mapped hardware ids, if any (AuthAccount costume will convert this field into appropriate string)
+			$theSql->add(', (')
+					->add("SELECT GROUP_CONCAT(`token` SEPARATOR ', ') FROM")->add($this->tnAuthTokens)
+					->add('WHERE auth.account_id=account_id')->setParamPrefix(' AND ')
+					->setParamOperator(' LIKE ')->mustAddParam('token')->setParamOperator('=')
+					->add(') AS hardware_ids')
+					;
+			//done with fields, now for rest of query
+			$theSql->add('/* /FIELDLIST */ FROM')->add($this->tnAuth)->add('AS auth');
+			$theSql->add('JOIN')->add($dbAccounts->tnAccounts)->add('AS acct ON auth.account_id=acct.account_id');
+			if (!is_null($aGroupId)) {
+				$dbAuthGroups = $this->getProp('AuthGroups');
+				$theSql->add('JOIN')->add($dbAuthGroups->tnGroupMap)->add('AS gm ON auth.account_id=gm.account_id');
+				$theSql->startWhereClause()->mustAddParam('group_id')->endWhereClause();
+			}
+			//if we have a query limit, we may be using a pager, get total count for pager display
+			if (!empty($theQueryLimit)) {
+				$theCount = $theSql->getQueryTotals();
+				if (!empty($theCount)) {
+					$aScene->setPagerTotalRowCount($theCount['total_rows']);
+				}
+			}
+			//if we have not caused an exception yet, apply OrderBy and set QueryLimit
+			$theSql->applyOrderByList($theOrderByList);
+			if (!empty($theQueryLimit)) {
+				$theSql->add($theQueryLimit);
+			}
+			//return the executed query result
+			return $theSql->query();
+		} catch (PDOException $pdoe) {
+			//also log the sort specification.
+			$this->debugLog( __METHOD__ . ' Sort: ' . $this->debugStr($theOrderByList) );
+			throw $theSql->newDbException(__METHOD__, $pdoe);
+		}
+	}
+	
+	/**
 	 * Retrieve the auth mobile data of a particular mobile_id.
 	 * @param string $aMobileId - the ID of the row to return.
 	 * @return array Returns an array of data for the mobile row.
