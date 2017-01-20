@@ -101,7 +101,8 @@ $w .= "</table><br/>\n";
 $w .= '</div>'."\n";
 
 $clsCannotCreate = ($v->isAllowed('auth','create')) ? '' : 'invisible';
-$w .= '<button id="btn_add_group" type="button" class="btn btn-primary '.$clsCannotCreate.'"><span class="glyphicon glyphicon-plus"></span> Add Group</button> ';
+$labelBtn = $v->getRes('permissions/label_button_add_role');
+$w .= '<button id="btn_add_group" type="button" class="btn btn-primary '.$clsCannotCreate.'">'.$labelBtn.'</button> ';
 
 print($w);
 print($v->createJsTagBlock($jsCode));

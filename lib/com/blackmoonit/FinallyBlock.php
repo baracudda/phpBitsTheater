@@ -20,7 +20,7 @@ namespace com\blackmoonit;
 
 /**
  * Since PHP still does not support try-finally, emulate it with RAII.<br />
- * All exceptions will be eaten, if you want to throw one, return the $e var 
+ * All exceptions will be eaten, if you want to throw one, return the $e var
  * (try-catch: return new \Exception();)
  * Please note that this finally only occurs after the function/method exits.
  * Example useage:<pre>
@@ -48,7 +48,7 @@ class FinallyBlock {
 	function __destruct() {
 		$eErr = null;
 		if (is_callable($this->callback)) try {
-			$eErr = call_user_func_array($this->callback,$this->args);
+			$eErr = call_user_func_array($this->callback, $this->args);
 		} catch (\Exception $e) {
 			//eat all exceptions
 		}
@@ -57,10 +57,27 @@ class FinallyBlock {
 		}
 	}
 	
+	/**
+	 * Update the arguments given during object construction so that when
+	 * the FinallyBlock does execute, it uses these updated parameters.
+	 */
+	public function updateArgs() {
+		$this->args = func_get_args();
+	}
+	
+	/**
+	 * Construct a closeCursor FinallyBlock for PDOStatements.
+	 * @param PDOStatement $aPdoStatement - the PDOStatement to close.
+	 * @return \com\blackmoonit\FinallyBlock
+	 */
 	static public function forDbCursor(&$aPdoStatement) {
 		return new self(__NAMESPACE__ .'\FinallyBlock::closeCursor',$aPdoStatement);
 	}
 	
+	/**
+	 * Closes a PDOStatement.
+	 * @param string $aPdoStatement - the PDOStatement to close.
+	 */
 	static public function closeCursor(&$aPdoStatement=null) {
 		if ($aPdoStatement) {
 			$aPdoStatement->closeCursor();

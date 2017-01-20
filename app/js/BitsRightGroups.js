@@ -27,7 +27,7 @@ var BitsRightGroups = BaseClass.extend({
 });
 
 BitsRightGroups.prototype.onAddGroupClick = function(e) {
-	$('#dialog_title',this.mDialogGroup).html('Add Group');
+	$('#dialog_title',this.mDialogGroup).html('Add Role');
 
 	$('#group_id',this.mDialogGroup).val('-1');
 	$('#group_name',this.mDialogGroup).val('');
@@ -43,7 +43,7 @@ BitsRightGroups.prototype.onAddGroupClick = function(e) {
 };
 
 BitsRightGroups.prototype.onEditGroupClick = function(e) {
-	$('#dialog_title',this.mDialogGroup).html('Edit Group');
+	$('#dialog_title',this.mDialogGroup).html('Edit Role');
 	
 	var id = e.currentTarget.getAttribute('group_id');
 	var gn = e.currentTarget.getAttribute('group_name');
@@ -78,7 +78,7 @@ BitsRightGroups.prototype.onGroupSaveClick = function(e) {
 	//var gd = $('#group_desc',this.mDialogGroup).val();
 	var gp = $('#group_parent',this.mDialogGroup).val();
 	var rc = $('#group_reg_code',this.mDialogGroup).val();
-	console.log('SAVE group click id='+id+' gn='+gn+' gp='+gp+' rc='+rc);
+	//console.log('SAVE group click id='+id+' gn='+gn+' gp='+gp+' rc='+rc);
 	if (gn) {
 		$.post(thisone.mUrlUpdateGroup,{
 			group_id: id

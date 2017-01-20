@@ -24,6 +24,7 @@ use BitsTheater\outtakes\PasswordResetException;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\MailUtils;
 use com\blackmoonit\MailUtilsException;
+use com\blackmoonit\Arrays;
 use com\blackmoonit\Strings;
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
@@ -1285,6 +1286,25 @@ class AuthBasicAccount extends BaseActor
 		}
 	}
 	
+	/**
+	 * Render a page for viewing a table of accounts.
+	 * @return NULL|string Return a re-direction URL, if any.
+	 */
+	public function viewAll()
+	{
+		if (!$this->isAllowed('accounts','view'))
+			return $this->getHomePage();
+		//shortcut variable $v also in scope in our view php file.
+		$v =& $this->scene;
+		//indicate what top menu we are currently in
+		$this->setCurrentMenuKey('admin');
+		
+		$dbAuth = $this->getProp('Auth');
+		$theRowSet = $dbAuth->getAccountsToDisplay($v);
+		$v->results = $this->getAuthAccountSet($theRowSet);
+		$v->auth_groups = Arrays::array_column_as_key($dbAuth->getGroupList(), 'group_id');
+	}
+
 }//end class
 
 }//end namespace

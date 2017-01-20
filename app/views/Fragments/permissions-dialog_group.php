@@ -3,7 +3,7 @@
 <div class="modal-content">
   <div class="modal-header">
 	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-	<h4 id="dialog_title" class="modal-title">Add Group</h4>
+	<h4 id="dialog_title" class="modal-title">Add Role</h4>
   </div>
   <div class="modal-body">
   	<div class="form-group">
@@ -17,7 +17,7 @@
   		<label style="width:10em;text-align: right">Parent:</label> <select id="group_parent" name="group_parent" ></select><br>
   		<br>
   		<label style="width:10em;text-align: right">Registration Code:</label> <input style="width: 40ch" type="text" id="group_reg_code" name="group_reg_code" /><br>
-  		<p style="padding-left:10em">When registering, a user supplying this code will automatically be a member of this group.</p><br>
+  		<p style="padding-left:10em">When registering, a user supplying this code will automatically be a member of this role.</p><br>
 	</div>
   </div>
   <div class="modal-footer">

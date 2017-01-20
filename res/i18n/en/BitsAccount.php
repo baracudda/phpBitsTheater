@@ -23,6 +23,29 @@ class BitsAccount extends BaseResources
 {
 	public $menu_account_label = 'My Account';
 	public $menu_account_subtext = 'me, myself, &amp; I';
+
+	public $menu_acctlist_label = 'Accounts';
+	public $menu_acctlist_subtext = '';
+	
+	public $title_acctlist = 'Account List';
+	
+	public $colheader_account_id = '#';
+	public $colheader_account_name = 'Name';
+	public $colheader_account_extid = 'ExtID'; //$external_id;
+	public $colheader_auth_id = 'ID';
+	public $colheader_email = 'Email';
+	public $colheader_verified_ts = 'Verified';
+	public $colheader_account_is_active = 'Active';
+	//public $colheader_hardware_ids;
+	public $colheader_created_by = 'Created By';
+	public $colheader_updated_by = 'Updated By';
+	public $colheader_created_ts = 'Created On';
+	public $colheader_updated_ts = 'Updated On';
+	
+	public $label_is_active_true = 'Yes';
+	public $label_is_active_false = 'No';
+	public $label_button_add_account = '<span class="glyphicon glyphicon-plus"></span> Add Account';
+	
 	
 	public $title_request_pwd_reset = 'Request Password Reset' ;
 	

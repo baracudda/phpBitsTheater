@@ -50,6 +50,7 @@ class BitsGeneric extends BaseResources {
 		'That feature has been deprecated and is no longer supported by this service.' ;
 
 	public $label_header_title_suffix_demo_mode = '(demo)';
+	public $label_jump_to_top = 'Jump to top';
 	
 }//end class
 

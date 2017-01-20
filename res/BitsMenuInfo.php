@@ -90,6 +90,12 @@ class BitsMenuInfo extends Resources {
 				->label('&res@admin/menu_website_status_label')
 				->subtext('&res@admin/menu_website_status_subtext')
 		;
+		$this->menu_item_accounts = MenuItemResEntry::makeEntry($aDirector, 'accounts')
+				->label('&res@account/menu_acctlist_label')
+				->link(BITS_URL.'/account/view_all')
+				->filter('&right@account/view')
+				->subtext('&res@account/menu_acctlist_subtext')
+		;
 		
 		//==================================
 		// Menu Group Definitions
@@ -103,11 +109,12 @@ class BitsMenuInfo extends Resources {
 		$this->menu_admin = array(
 				'config' => $this->menu_item_config,
 				'rights' => $this->menu_item_rights,
+				'accounts' => $this->menu_item_accounts,
 				'website' => $this->menu_item_website,
 		);
 		
 		//===============================================
-		// DEFAULT MENU (Override this in MenuInfo.php
+		// DEFAULT MENU (Override this in MenuInfo.php)
 		//===============================================
 		$this->menu_main = array(
 				'home' => $this->menu_item_home,

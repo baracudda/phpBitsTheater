@@ -30,12 +30,12 @@ class BitsAuthGroups extends BaseResources {
 			4=>'restricted',
 	);
 
-	public $errmsg_cannot_modify_titan = 'That user group cannot be modified.' ;
+	public $errmsg_cannot_modify_titan = 'That user role cannot be modified.' ;
 	public $errmsg_cannot_copy_from_titan =
-		'That user group\'s permissions cannot be copied to another group.' ;
+		'That user role\'s permissions cannot be copied to another role.' ;
 	public $errmsg_cannot_copy_to_titan =
-		'Permissions cannot be copied into that user group.' ;
-	public $errmsg_group_not_found = 'User group [%1$s] not found.' ;
+		'Permissions cannot be copied into that role.' ;
+	public $errmsg_group_not_found = 'Role [%1$s] not found.' ;
 
 }//end class
 
