@@ -23,16 +23,23 @@ class BitsFragments extends BaseActor {
 	const DEFAULT_ACTION = 'view';
 	
 	/**
-	 * Protected from being rendered directly by a URL, other views can 
-	 * call this method to obtain HTML snippets to build into their pages. 
+	 * Protected from being rendered directly by a URL, other views can
+	 * call this method to obtain HTML snippets to build into their pages.
 	 * Typically used for dialogs, but this can be used for anything, really.
 	 * Example use from another view:<pre>
 	 * print($v->cueActor('Fragments', 'get', 'myfragmentfile_no_extension'));
 	 * </pre>
 	 * @param string $aFragmentFilename - fragment filename without the extension.
+	 * @param array $args - keyed array of [variable name => value] of named
+	 *     values to set on the Scene so the fragment has access to them.
 	 */
-	protected function get($aFragmentFilename) {
+	protected function get($aFragmentFilename, $args=null) {
 		$this->renderThisView = (!empty($aFragmentFilename)) ? $aFragmentFilename : '_blank';
+		if (is_array($args)) {
+			foreach ($args as $key => $val) {
+				$this->scene->{$key} = $val;
+			}
+		}
 	}
 	
 	/**
@@ -46,9 +53,16 @@ class BitsFragments extends BaseActor {
 	 * Instead of merely returning data from an API post the results to this
 	 * endpoint and have your custom HTML wrap the API results in your PHP template.
 	 * @param string $aFragmentFilename - fragment filename without the extension.
+	 * @param array $args - keyed array of [variable name => value] of named
+	 *     values to set on the Scene so the fragment has access to them.
 	 */
-	public function ajajGet($aFragmentFilename) {
+	public function ajajGet($aFragmentFilename, $args=null) {
 		$this->renderThisView = (!empty($aFragmentFilename)) ? $aFragmentFilename : '_blank';
+		if (is_array($args)) {
+			foreach ($args as $key => $val) {
+				$this->scene->{$key} = $val;
+			}
+		}
 	}
 	
 }//end class
