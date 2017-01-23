@@ -31,6 +31,7 @@ class Website extends BaseResources {
 				/* * /
 				'webapp.js' => WEBAPP_JS_URL,
 				'BitsRightGroups.js' => WEBAPP_JS_URL,
+				'BitsAuthBasicAccounts.js' => WEBAPP_JS_URL,
 				//'AnotherFile.js' => WEBAPP_JS_URL,
 				/* end of webapp JS */
 		));

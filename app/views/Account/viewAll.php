@@ -5,21 +5,21 @@ use BitsTheater\scenes\Account as MyScene;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use com\blackmoonit\FinallyBlock;
-use Exception;
 
 $h = $v->cueActor('Fragments', 'get', 'csrf_header_jquery');
 $recite->includeMyHeader($h);
 $w = '';
 
-$theAuthGroupsJS = Strings::phpArray2jsArray($v->auth_groups,'');
 $v->jsCode = <<<EOD
 $(document).ready(function(){
-//var rg = new BitsAuthAccounts('{$v->getSiteURL('account/ajajSaveAccount')}',{$theAuthGroupsJS}).setup();
+var d = new BitsAuthBasicAccounts('{$v->getSiteURL('account/ajajCreate')}','{$v->getSiteURL('account/ajajUpdate')}').setup();
 
 EOD;
 //closer of above ready function done in FinallyBlock
 
-//print($v->cueActor('Fragments', 'get', 'accounts-dialog_account'));
+print($v->cueActor('Fragments', 'get', 'accounts-dialog_account',
+		array( 'auth_groups' => $v->auth_groups )
+));
 
 $w .= "<h2>{$v->getRes('account/title_acctlist')}</h2>\n";
 $w .= $v->renderMyUserMsgsAsString();
@@ -35,17 +35,11 @@ $w .= '<div class="panel panel-default">';
 $w .= '<table class="db-display table">';
 
 $w .= '<thead class="rowh">';
-$w .= $v->getColHeaderTextForSortableField('width:4ch', 'view_all', 'account_id');
-$w .= $v->getColHeaderTextForSortableField('width:32ch', 'view_all', 'account_name');
-//$w .= $v->getColHeaderTextForSortableField('width:4ch', 'view_all', 'external_id');
-//$w .= $v->getColHeaderTextForSortableField('width:32ch', 'view_all', 'auth_id');
-$w .= $v->getColHeaderTextForSortableField('width:40ch', 'view_all', 'email');
-//$w .= $v->getColHeaderTextForSortableField('width:32ch', 'view_all', 'verified_ts');
-$w .= $v->getColHeaderTextForSortableField('width:5ch', 'view_all', 'is_active');
-$w .= $v->getColHeaderTextForSortableField('width:30ch', 'view_all', 'created_by');
-$w .= $v->getColHeaderTextForSortableField('width:32ch', 'view_all', 'created_ts');
-$w .= $v->getColHeaderTextForSortableField('width:30ch', 'view_all', 'updated_by');
-$w .= $v->getColHeaderTextForSortableField('width:32ch', 'view_all', 'updated_ts');
+foreach( $v->table_cols as $theFieldname => $theColInfo) {
+	$w .= $v->getColHeaderTextForSortableField('view_all',
+			$theFieldname, $theColInfo['style']
+	);
+}
 $w .= "</thead>\n";
 print($w);
 
@@ -69,47 +63,8 @@ $theFinalEnclosure = new FinallyBlock(function($v, $w) {
 try {
 	for ( $theRow = $v->results->fetch(); ($theRow !== false); $theRow = $v->results->fetch() ) {
 		$r = '<tr class="'.$v->_rowClass.'">';
-		
-		/*
-		$r .= '<td>';
-		{ //edit button
-			$r .= '<button type="button" class="btn_edit_group btn btn-default btn-sm"';
-			$r .= ' group_id="'.$theGroup['group_id'].'"';
-			$r .= ' group_name="'.$theGroup['group_name'].'"';
-			//$r .= ' group_desc="'.$theGroup['group_desc'].'"';
-			$r .= ' group_parent="'.$theGroup['parent_group_id'].'"';
-			if (!empty($v->group_reg_codes[$theGroup['group_id']]))
-				$r .= ' group_reg_code="'.$v->group_reg_codes[$theGroup['group_id']]['reg_code'].'"';
-			$r .= '><span class="glyphicon glyphicon-pencil"></span></button> ';
-		}
-		$r .= '</td>';
-		*/
-		
-		$r .= '<td style="align:center">'.$theRow->account_id.'</td>';
-
-		$r .= '<td>'.$theRow->account_name.'</td>';
-		
-		//$r .= '<td>'.$theRow->external_id.'</td>';
-		//$r .= '<td>'.$theRow->auth_id.'</td>';
-		
-		$r .= '<td>'.$theRow->email.'</td>';
-		
-		//$r .= '<td>'.$v->getLocalTimestampValue($theRow->verified_ts).'</td>';
-		
-		$r .= '<td style="align:center">';
-		$r .= $theRow->is_active
-				? $v->getRes('account/label_is_active_true')
-				: $v->getRes('account/label_is_active_false')
-		;
-		$r .= '</td>';
-		
-		$r .= '<td>'.$theRow->created_by.'</td>';
-		$r .= '<td>'.$v->getLocalTimestampValue($theRow->created_ts).'</td>';
-		$r .= '<td>'.$theRow->updated_by.'</td>';
-		if ($theRow->created_ts === $theRow->updated_ts) {
-			$r .= '<td></td>';
-		} else {
-			$r .= '<td>'.$v->getLocalTimestampValue($theRow->updated_ts).'</td>';
+		foreach( $v->table_cols as $theFieldname => $theColInfo) {
+			$r .= $v->getColCellValue($theFieldname, $theRow) . "\n";
 		}
 		$r .= "</tr>\n";
 		print($r);

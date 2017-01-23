@@ -45,6 +45,9 @@ class BitsAccount extends BaseResources
 	public $label_is_active_true = 'Yes';
 	public $label_is_active_false = 'No';
 	public $label_button_add_account = '<span class="glyphicon glyphicon-plus"></span> Add Account';
+	public $label_dialog_title_account_add = 'Add Account';
+	public $label_dialog_title_account_edit = 'Edit Account';
+	public $label_dialog_auth_groups = 'Roles';
 	
 	
 	public $title_request_pwd_reset = 'Request Password Reset' ;

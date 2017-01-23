@@ -1303,6 +1303,22 @@ class AuthBasicAccount extends BaseActor
 		$theRowSet = $dbAuth->getAccountsToDisplay($v);
 		$v->results = $this->getAuthAccountSet($theRowSet);
 		$v->auth_groups = Arrays::array_column_as_key($dbAuth->getGroupList(), 'group_id');
+		
+		//display these fields in table
+		$v->table_cols = array(
+				'edit_button'  => array( 'fieldname' => 'edit_button',  'style' => 'width:5ch' ),
+				'account_id'   => array( 'fieldname' => 'account_id',   'style' => 'width:4ch' ),
+				'account_name' => array( 'fieldname' => 'account_name', 'style' => 'width:32ch' ),
+				//'external_id'  => array( 'fieldname' => 'external_id',  'style' => 'width:4ch' ),
+				//'auth_id'      => array( 'fieldname' => 'auth_id',      'style' => 'width:32ch' ),
+				'email'        => array( 'fieldname' => 'email',        'style' => 'width:40ch' ),
+				//'verified_ts'  => array( 'fieldname' => 'verified_ts',  'style' => 'width:32ch' ),
+				'is_active'    => array( 'fieldname' => 'is_active',    'style' => 'width:5ch' ),
+				'created_by'   => array( 'fieldname' => 'created_by',   'style' => 'width:30ch' ),
+				'created_ts'   => array( 'fieldname' => 'created_ts',   'style' => 'width:32ch' ),
+				'updated_by'   => array( 'fieldname' => 'updated_by',   'style' => 'width:30ch' ),
+				'updated_ts'   => array( 'fieldname' => 'updated_ts',   'style' => 'width:32ch' ),
+		);
 	}
 
 }//end class
