@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\scenes;
+namespace BitsTheater\scenes\Closet;
 use BitsTheater\Scene as MyScene;
 use BitsTheater\costumes\MenuItemResEntry;
 use com\blackmoonit\Strings;

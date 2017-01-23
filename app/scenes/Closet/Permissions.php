@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\scenes;
+namespace BitsTheater\scenes\Closet;
 use BitsTheater\Scene as MyScene;
 use com\blackmoonit\Widgets;
 {//namespace begin
 
-class Rights extends MyScene {
+class Permissions extends MyScene {
 
 	protected function setupDefaults() {
 		parent::setupDefaults();
@@ -62,4 +62,3 @@ class Rights extends MyScene {
 }//end class
 
 }//end namespace
-

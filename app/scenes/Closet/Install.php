@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\scenes;
+namespace BitsTheater\scenes\Closet;
 use BitsTheater\Scene as MyScene;
 use com\blackmoonit\Widgets;
 use com\blackmoonit\database\DbConnOptions;
@@ -173,4 +173,3 @@ class Install extends MyScene {
 }//end class
 
 }//end namespace
-

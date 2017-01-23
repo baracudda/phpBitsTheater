@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\scenes;
+namespace BitsTheater\scenes\Closet;
 use BitsTheater\Scene as MyScene;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use ReflectionClass;
 {//namespace begin
 
-class Account extends MyScene {
+class AuthBasicAccount extends MyScene {
 	protected $KEY_userinfo = '';
 	protected $KEY_pwinput = '';
 	protected $KEY_cookie = '';
@@ -107,13 +107,12 @@ class Account extends MyScene {
 
 	/**
 	 * Construct the HTML used for a column header for a particular field.
-	 * @param string $aStyle - the style for the header column.
 	 * @param string $aViewName - the name of the view with the table.
 	 * @param string $aFieldName - the field name to sort on.
+	 * @param string $aStyle - the style for the header column.
 	 * @return string Returns the HTML to use.
 	 */
-	public function getColHeaderTextForSortableField($aStyle, $aViewName,
-			$aFieldName)
+	public function getColHeaderTextForSortableField($aViewName, $aFieldName, $aStyle)
 	{
 		return '<th style="'.$aStyle.'"><a href="'
 				. $this->getColHeaderHrefForSortableField($aViewName, $aFieldName)
@@ -132,6 +131,58 @@ class Account extends MyScene {
 		$theTsId = Strings::createUUID();
 		$this->jsCode .= Widgets::cnvUtcTs2LocalStr($theTsId, $aTime)."\n";
 		return '<span id="'.$theTsId.'" data-orig="'.$aTime.'">'.$aTime.'</span>';
+	}
+	
+	public function getColCellValue($aFieldName, $aDataRow)
+	{
+		switch ($aFieldName) {
+			case 'edit_button':
+				$w = '<td>';
+				$w .= '<button type="button" class="btn_edit_account btn btn-default btn-sm"';
+				$w .= ' data-account_id="' . $aDataRow->account_id . '"';
+				$w .= ' data-account_name="' . htmlspecialchars($aDataRow->account_name, ENT_QUOTES, 'UTF-8') . '"';
+				$w .= ' data-email="' . htmlspecialchars($aDataRow->email, ENT_QUOTES, 'UTF-8') . '"';
+				$w .= ' data-is_active="' . ( ($aDataRow->is_active) ? '1' : '0' ) . '"';
+				$w .= ' data-groups="' . htmlspecialchars(json_encode($aDataRow->groups), ENT_QUOTES, 'UTF-8') . '"';
+				$w .= '><span class="glyphicon glyphicon-pencil"></span></button> ';
+				$w .= '</td>';
+				return $w;
+			case 'account_id':
+				return '<td style="align:center">'.$aDataRow->account_id.'</td>';
+			case 'account_name':
+				return '<td>'.$aDataRow->account_name.'</td>';
+			case 'external_id':
+				return '<td>'.$aDataRow->external_id.'</td>';
+			case 'auth_id':
+				return '<td>'.$aDataRow->auth_id.'</td>';
+			case 'email':
+				return '<td>'.$aDataRow->email.'</td>';
+			case 'verified_ts':
+				return '<td>'.$this->getLocalTimestampValue($aDataRow->verified_ts).'</td>';
+			case 'is_active':
+		 		$w = '<td style="align:center">';
+		 		$w .= $aDataRow->is_active
+						? $this->getRes('account/label_is_active_true')
+						: $this->getRes('account/label_is_active_false')
+				;
+				$w .= '</td>';
+				return $w;
+			case 'created_by':
+				return '<td>'.$aDataRow->created_by.'</td>';
+			case 'created_ts':
+				return '<td>'.$this->getLocalTimestampValue($aDataRow->created_ts).'</td>';
+			case 'updated_by':
+				return '<td>'.$aDataRow->updated_by.'</td>';
+			case 'updated_ts':
+				$w = '<td>';
+				if ($aDataRow->created_ts !== $aDataRow->updated_ts) {
+					$w .= $this->getLocalTimestampValue($aDataRow->updated_ts);
+				}
+				$w .= '</td>';
+				return $w;
+			default:
+				return '<td></td>';
+		}//end switch
 	}
 
 }//end class
