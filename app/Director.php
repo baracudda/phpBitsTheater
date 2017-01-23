@@ -496,17 +496,27 @@ implements ArrayAccess, IDirected
 				throw new ResException($this->_resManager,$aRes,$aResClass,$args,$e);
 			}
 		} else {
-			if (isset($resObj->$aRes)) {
+			if (isset($resObj->{$aRes})) {
+				$theValue = $resObj->{$aRes};
 				if (isset($args)) {
-					//$this->debugPrint('b: '.$resObj->$aRes.Strings::debugStr($args));
-					try {
-						return call_user_func_array(array('com\blackmoonit\Strings','format'),Arrays::array_prepend($args,$resObj->$aRes));
-					} catch (Exception $e) {
-						throw new ResException($this->_resManager,$aRes,$aResClass,$args,$e);
+					//handle nested arrays until we get to a string
+					while (is_array($theValue)) {
+						//$this->debugLog(__METHOD__.' v='.$this->debugStr($theValue).' a='.$this->debugStr($args));
+						$theValue = $theValue[array_shift($args)];
 					}
-				} else {
-					return $resObj->$aRes;
+					//if we still have args left once we get to a string, format it
+					if (!empty($args)) {
+						//$this->debugPrint('b: '.$theValue.Strings::debugStr($args));
+						try {
+							$theValue = call_user_func_array(array('com\blackmoonit\Strings','format'),
+									Arrays::array_prepend($args,$theValue)
+							);
+						} catch (Exception $e) {
+							throw new ResException($this->_resManager,$aRes,$aResClass,$args,$e);
+						}
+					}
 				}
+				return $theValue;
 			} else {
 				throw new ResException($this->_resManager,(isset($resObj) ? $aResClass.'/' : '').$aRes);
 			}
@@ -526,7 +536,7 @@ implements ArrayAccess, IDirected
 			$this->dbAuth = $this->getProp('Auth'); //director will close this on cleanup
 			if (!empty($this->dbAuth)) {
 				return $this->dbAuth->checkTicket($aScene);
-			} else { 
+			} else {
 				return true;
 			}
 		}
