@@ -115,7 +115,7 @@ class Strings {
 		foreach ($aArray as $key=>$val) {
 			$s .= $key.': ';
 			if (is_array($val))
-				$s .= self::phpArray2jsArray($val);
+				$s .= self::phpArray2jsArray($val, $elemPostChar);
 			else if (is_string($val))
 				if (self::beginsWith($val,'function'))
 					$s .= $val;

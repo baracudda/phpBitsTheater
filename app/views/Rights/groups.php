@@ -13,7 +13,7 @@ foreach ($v->groups as $gid => $row) {
 	if ($gid>1)
 		$theParentGroups[$gid] = $row['group_name'];
 }
-$theParentGroupsJS = Strings::phpArray2jsArray($theParentGroups,'');
+$theParentGroupsJS = json_encode($theParentGroups, JSON_FORCE_OBJECT);
 $jsCode = <<<EOD
 $(document).ready(function(){
 	var rg = new BitsRightGroups('{$v->getSiteURL('rights/ajajSaveGroup')}',{$theParentGroupsJS}).setup();

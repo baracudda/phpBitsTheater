@@ -85,9 +85,11 @@ class AuthAccountSet extends BaseCostume
 		try {
 			if (!empty($this->mGroupList) && !empty($aRow)) {
 				$aRow->groups = $this->dbAuthGroups->getAcctGroups($aRow->account_id);
+				/* instead of forcing strings, use JSON_FORCE_OBJECT in json_encode options
 				if (!empty($aRow->groups))
 					foreach ($aRow->groups as &$theGroupId)
 						$theGroupId = strval($theGroupId);
+				*/
 				$this->mGroupList->addListOfIds($aRow->groups);
 			}
 			if ($aRow !== false && !empty($aRow->hardware_ids))
@@ -125,10 +127,11 @@ class AuthAccountSet extends BaseCostume
 			print( '"filter":"' . $this->filter . '"');
 			print( ',"total_count":' . $this->total_count );
 			print( ',"accounts":');
-			parent::printAsJson( $aEncodeOptions );
+			//use JSON_FORCE_OBJECT to ensure the group_id keys get encoded
+			parent::printAsJson( $aEncodeOptions | JSON_FORCE_OBJECT );
 			if (!empty($this->mGroupList)) {
 				print( ',"authgroups":');
-				$this->mGroupList->printAsJson( $aEncodeOptions );
+				$this->mGroupList->printAsJson( $aEncodeOptions | JSON_FORCE_OBJECT );
 			}
 		}
 		catch( Exception $x )
