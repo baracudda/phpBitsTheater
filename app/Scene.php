@@ -6,7 +6,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *	  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -361,12 +361,12 @@ implements IDirected
 		$s .= '<style>label.error {width: 250px; display: inline; color: red;}</style>'."\n";
 		/*
 		//jquery-validation engine
-        $s = '<script type="text/javascript">jQuery(document).ready(function(){jQuery("#'.$aFormName.'").validationEngine();});'."\n";
+		$s = '<script type="text/javascript">jQuery(document).ready(function(){jQuery("#'.$aFormName.'").validationEngine();});'."\n";
 		$validationMethod = 'validate_functions_'.$aFormName;
 		if ($this->me->hasMethod($validationMethod))
-        	$s .= $this->$validationMethod();
-        $s .= "</script>\n";
-        */
+			$s .= $this->$validationMethod();
+		$s .= "</script>\n";
+		*/
 		return $s;
 	}
 	
@@ -635,6 +635,25 @@ implements IDirected
 			return "<script type=\"text/javascript\" {$theIdAttr}>" . PHP_EOL
 					. $theTrimmedCode . PHP_EOL
 					. '</script>' . PHP_EOL
+			;
+		}
+	}
+
+	/**
+	 * Wrap CSS code in the appropriate HTML tag block.
+	 * If the parameter is just empty or whitespace, nothing will be returned.
+	 * @param string $aCssCode - the CSS code.
+	 * @return string|NULL Return the CSS code wrapped appropriately for
+	 * inclusion in HTML or NULL if $aCssCode is nothing but whitespace.
+	 */
+	public function createCssTagBlock($aCssCode)
+	{
+		$theTrimmedCode = trim($aCssCode) ;
+		if( !empty($theTrimmedCode) )
+		{
+			return "<style type=\"text/css\">" . PHP_EOL
+					. $theTrimmedCode . PHP_EOL
+					. '</style>' . PHP_EOL
 			;
 		}
 	}
