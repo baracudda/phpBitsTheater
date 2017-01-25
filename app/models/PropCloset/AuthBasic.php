@@ -19,6 +19,7 @@ namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\AuthBase as BaseModel;
 use BitsTheater\models\SetupDb as MetaModel;
 use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
+use BitsTheater\models\AuthGroups; /* @var $dbAuthGroups AuthGroups */
 use BitsTheater\Scene;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\AuthPasswordReset ;
@@ -1503,29 +1504,32 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	/**
 	 * Register an account with our website.
 	 * @param array $aUserData - email, account_id, pwinput, verified_timestamp.
-	 * @param number $aDefaultGroup - (optional) default group membership.
-	 * @return boolean Returns TRUE if succeeded, FALSE otherwise.
+	 * @param number|array $aAuthGroups - (optional) auth group membership(s).
+	 * @return array Returns account info with ID if succeeds, NULL otherwise.
 	 */
-	public function registerAccount($aUserData, $aDefaultGroup=0) {
+	public function registerAccount($aUserData, $aAuthGroups=0) {
 		$theSql = SqlBuilder::withModel($this);
 		if ($this->isConnected())
 		{
 			$this->db->beginTransaction() ;
 			try {
 				if ($this->isEmpty()) {
-					$aDefaultGroup = 1;
+					$aAuthGroups = AuthGroups::TITAN_GROUP_ID;
 				}
 				$nowAsUTC = $this->utc_now();
 				$theVerifiedTS = ($aUserData['verified_timestamp']==='now')
 						? $nowAsUTC
 						: $aUserData['verified_timestamp']
 				;
+				//avoids an undefined key in error logs if not supplied
+				$theCreatedBy = (!empty($aUserData[self::KEY_userinfo])) ? $aUserData[self::KEY_userinfo] : null;
 				$theSql->obtainParamsFrom(array(
-						'created_by' => $aUserData[self::KEY_userinfo],
+						'created_by' => $theCreatedBy,
 						'email' => $aUserData['email'],
-						'account_id' => $aUserData['account_id'],
+						'account_id' => intval($aUserData['account_id']),
 						'pwhash' => Strings::hasher($aUserData[self::KEY_pwinput]),
 						'verified_ts' => $theVerifiedTS,
+						'is_active' => $aUserData['account_is_active'],
 				));
 				$theSql->startWith('INSERT INTO')->add($this->tnAuth);
 				// created_by, created_ts, updated_by, updated_ts
@@ -1535,24 +1539,32 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				$theSql->mustAddParam('account_id', 0, PDO::PARAM_INT);
 				$theSql->mustAddParam('pwhash');
 				$theSql->addParam('verified_ts');
+				$theSql->addParam('is_active', 1, PDO::PARAM_INT);
 				$theSql->execDML();
 				//group mapping
-				$dbGroupMap = $this->getProp('AuthGroups');
-				$dbGroupMap->addAcctMap($aDefaultGroup, $theSql->getParam('account_id'));
-				$this->returnProp($dbGroupMap);
+				$dbAuthGroups = $this->getProp('AuthGroups');
+				if (is_array($aAuthGroups)) {
+					$dbAuthGroups->addGroupsToAccount(
+							$theSql->getParam('account_id'), $aAuthGroups
+					);
+				} else {
+					$dbAuthGroups->addAcctMap(
+							$aAuthGroups, $theSql->getParam('account_id')
+					);
+				}
+				$this->returnProp($dbAuthGroups);
 				//inc reg cap
 				$this->updateRegistrationCap();
 				//commit it all
 				$this->db->commit();
 				//success!
-				return true;
+				return $theSql->myParams;
 			}
 			catch (PDOException $pdoe) {
 				$this->db->rollBack();
 				throw $theSql->newDbException(__METHOD__, $pdoe);
 			}
 		}
-		return false;
 	}
 
 	/**

@@ -272,6 +272,29 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
+	 * Add a set of records to the account/group map table.
+	 * @param number $aAcctId - the account ID.
+	 * @param array $aGroupIds - the group IDs.
+	 * @throws DbException if there was a problem.
+	 */
+	public function addGroupsToAccount($aAcctId, $aGroupIds)
+	{
+		$theSql = SqlBuilder::withModel($this);
+		if ($this->isConnected() && is_array($aGroupIds)) try {
+			$theParamList = array();
+			foreach ($aGroupIds as $anID) {
+				$theParamList[] = array('account_id' => $aAcctId, 'group_id' => $anID);
+			}
+			$theSql->startWith('INSERT INTO')->add($this->tnGroupMap);
+			$theSql->add('SET')->mustAddParam('account_id', $aAcctId, PDO::PARAM_INT)->setParamPrefix(', ');
+			$theSql->mustAddParam('group_id', 0, PDO::PARAM_INT);
+			$theSql->execMultiDML($theParamList);
+		} catch (PDOException $pdoe) {
+			throw $theSql->newDbException(__METHOD__, $pdoe);
+		}
+	}
+	
+	/**
 	 * Add a record to the account/group map table.
 	 * @param integer $aGroupId - the group ID.
 	 * @param integer $aAcctId - the account ID.

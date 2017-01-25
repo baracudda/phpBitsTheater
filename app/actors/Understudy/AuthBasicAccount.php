@@ -660,7 +660,7 @@ class AuthBasicAccount extends BaseActor
 		$aName 		= trim ( $v->account_name );
 		$aPassword 	= trim ( $v->account_password );
 		$aEmail 	= trim ( $v->email );
-		$aGroupId 	= trim ( $v->account_group_id );
+		$aGroupId 	= $v->account_group_ids ;
 		$aRegCode 	= trim ( $v->account_registration_code );
 
 		// Ensure required parameters are specified.
@@ -686,8 +686,25 @@ class AuthBasicAccount extends BaseActor
 				$accountGroup = $dbAuthGroups->findGroupIdByRegCode($this->getAppId(), $aRegCode);
 			}
 		} else {
+			$filterOptions = array(
+					'default' => $dbAuthGroups::UNREG_GROUP_ID, // value to return if the filter fails
+					'flags' => FILTER_FLAG_NONE,
+			);
 			// New account will have the specified group id as its default group.
-			$accountGroup = $aGroupId;
+			if (is_array($aGroupId)) {
+				$accountGroup = array();
+				foreach ($aGroupId as $anID) {
+					$theID = filter_var($anID, FILTER_VALIDATE_INT, $filterOptions);
+					//if not TITAN group and not already in group, add to group list
+					if ( ($theID!==$dbAuthGroups::TITAN_GROUP_ID) &&
+						(array_search($theID, $accountGroup, true)===false) )
+					{
+						$accountGroup[] = $theID;
+					}
+				}
+			} else {
+				$accountGroup = filter_var($aGroupId, FILTER_VALIDATE_INT, $filterOptions);
+			}
 		}
 
 		// Ensure not trying to create an account affiliated with the special TITAN group.
@@ -699,7 +716,10 @@ class AuthBasicAccount extends BaseActor
 		if ( $canRegister == $dbAuth::REGISTRATION_SUCCESS )
 		{
 			// Define verified time, if new account will be associated with a register group.
-			$verifiedTimestamp = ( ( $accountGroup != 0 ) ? $dbAccounts->utc_now() : null );
+			$verifiedTimestamp = ( ( $accountGroup != $dbAuthGroups::UNREG_GROUP_ID )
+					? $dbAccounts->utc_now()
+					: null
+			);
 		} elseif ($canRegister == $dbAuth::REGISTRATION_NAME_TAKEN) {
 			throw AccountAdminException::toss( $this,
 					'UNIQUE_FIELD_ALREADY_EXISTS', $aName ) ;
@@ -718,8 +738,10 @@ class AuthBasicAccount extends BaseActor
 					'email' => $aEmail,
 					'account_id' => $generatedAccountId,
 					$dbAuth::KEY_pwinput => $aPassword,
-					'verified_timestamp' => $verifiedTimestamp
+					'verified_timestamp' => $verifiedTimestamp,
 			);
+			if (isset($v->account_is_active))
+				$newAccountData['account_is_active'] = $v->account_is_active;
 
 			// Register account with affliated group.
 			$registrationResult = $dbAuth->registerAccount( $newAccountData, $accountGroup );
@@ -936,6 +958,7 @@ class AuthBasicAccount extends BaseActor
 			$theAuth = ((object)($dbAuth->getAuthByAccountId($aAccountInfo->account_id))) ;
 			if( $theAuth != null )
 			{
+				$aAccountInfo->auth_id = $theAuth->auth_id;
 				$aAccountInfo->email = $theAuth->email ;
 				$aAccountInfo->is_active = ((boolean)($theAuth->is_active)) ;
 				$aAccountInfo->verified_ts =

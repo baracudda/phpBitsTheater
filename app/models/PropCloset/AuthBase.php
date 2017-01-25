@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-namespace BitsTheater\models\PropCloset; 
+namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use com\blackmoonit\Strings;
 {//namespace begin
@@ -58,7 +58,12 @@ abstract class AuthBase extends BaseModel {
 	public function canRegister($aAcctName, $aEmailAddy) {
 		return static::ALLOW_REGISTRATION;
 	}
-		
+	
+	/**
+	 * Register an account with our website.
+	 * @param array $aUserData - account info.
+	 * @return array Returns account info with ID if succeeds, NULL otherwise.
+	 */
 	public function registerAccount($aUserData) {
 		//overwrite this
 	}
