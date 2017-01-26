@@ -34,12 +34,16 @@ use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthAccountSet;
 use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\AuthGroupList;
+use BitsTheater\costumes\WornForAuditFields;
 use Exception;
 use PDOStatement ;
+use PDOException ;
 {//namespace begin
 
 class AuthBasicAccount extends BaseActor
 {
+	use WornForAuditFields;
+	
 	const DEFAULT_ACTION = 'register';
 
 	/**
@@ -791,8 +795,8 @@ class AuthBasicAccount extends BaseActor
 		$aName 		= trim ( $v->account_name );
 		$aPassword 	= trim ( $v->account_password );
 		$aEmail 	= trim ( $v->email );
-		if ( isset ( $v->account_group_ids ) )
-			$aGroupIds = $v->account_group_ids;
+		$aGroupIds  = $v->account_group_ids;
+		$aIsActive  = (!empty($v->account_is_active)) ? 1 : 0;
 
 		// Reference respective models required.
 		$dbAccounts = $this->getCanonicalModel();
@@ -815,7 +819,9 @@ class AuthBasicAccount extends BaseActor
 				$updatedPassword = ( ( $dbAuth->cudo( $aAccountId, $aPassword ) ) ? null : $aPassword );
 			if ( !empty ( $aEmail ))
 				$updatedEmail = ( ( $aEmail === $fullAccountInfo->email ) ? null : $aEmail );
-
+			if ( !empty( $aIsActive ) && $this->isAllowed( 'accounts', 'activate' ) )
+				$updatedIsActive = ( ( $aIsActive == $fullAccountInfo->is_active ) ? null : $aIsActive );
+				
 			// Update email, if applicable.
 			if ( !empty ( $updatedEmail ))
 			{
@@ -831,7 +837,7 @@ class AuthBasicAccount extends BaseActor
 								'account_id' => $aAccountId
 							));
 					$theSql->startWith( 'UPDATE' )->add( $dbAuth->tnAuth );
-					$theSql->add( 'SET' )->mustAddParam( 'email' );
+					$this->setAuditFieldsOnUpdate($theSql)->mustAddParam( 'email' );
 					$theSql->startWhereClause()->mustAddParam( 'account_id' )->endWhereClause();
 					$theSql->execDML();
 				}
@@ -867,10 +873,14 @@ class AuthBasicAccount extends BaseActor
 							'account_id' => $aAccountId
 						));
 				$theSql->startWith( 'UPDATE' )->add( $dbAuth->tnAuth );
-				$theSql->add( 'SET' )->mustAddParam( 'pwhash' );
+				$this->setAuditFieldsOnUpdate($theSql)->mustAddParam( 'pwhash' );
 				$theSql->startWhereClause()->mustAddParam( 'account_id' )->endWhereClause();
 				$theSql->execDML();
 			}
+			
+			//update is_active, if applicable
+			if ( !empty($updatedIsActive) )
+				$dbAuth->setInvitation( $aAccountId, $updatedIsActive );
 
 			// Update account group, if applicable.
 			if ( isset ( $aGroupIds ))
@@ -895,6 +905,7 @@ class AuthBasicAccount extends BaseActor
 				}
 			}
 		}
+		catch( PDOException $dbx ) { throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ); }
 		catch( DbException $dbx ) { throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ); }
 		catch( Exception $x ) { throw BrokenLeg::tossException( $this, $x ); }
 

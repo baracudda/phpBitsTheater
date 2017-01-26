@@ -1384,9 +1384,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 */
 	public function setInvitation( $aAccountID, $bActive )
 	{
-		$theSql = SqlBuilder::withModel($this)
-			->startWith( 'UPDATE ' . $this->tnAuth )
-			->add( 'SET ' )
+		$theSql = SqlBuilder::withModel($this);
+		$theSql->startWith( 'UPDATE ' . $this->tnAuth );
+		$this->setAuditFieldsOnUpdate($theSql)
 			->mustAddParam( 'is_active', ( $bActive ? 1 : 0 ), PDO::PARAM_INT )
 			->startWhereClause()
 			->mustAddParam( 'account_id', $aAccountID )

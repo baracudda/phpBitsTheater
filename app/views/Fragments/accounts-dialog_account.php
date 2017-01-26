@@ -27,7 +27,9 @@ use com\blackmoonit\Widgets;
   		</tr>
   		<tr>
   			<td style="padding:1em;width:5em;text-align:right"><label><?php print($v->getRes('account/colheader_account_is_active'));?>:</label></td>
-  			<td style="padding:1em"><input type="checkbox" id="account_is_active" name="account_is_active"></td>
+  			<td style="padding:1em"><input type="checkbox" id="account_is_active" name="account_is_active"
+  			<?php if( !$this->isAllowed( 'accounts', 'activate' ) ): ?>disabled<?php endif; ?>
+  			></td>
   		</tr>
   		<tr>
   		  <td style="padding:1em;width:5em;text-align:right;vertical-align:top;"><label><?php print($v->getRes('account/label_dialog_auth_groups'));?>:</label></td>
