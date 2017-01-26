@@ -490,7 +490,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		foreach( $theCols as $theCol )
 		{ // Update the values of the existing rights group in cache.
 			if( property_exists( $v, $theCol ) ) // isset() doesn't pick up null
-				$theGroup->$theCol = $v->$theCol ;
+				$theGroup->{$theCol} = $v->{$theCol} ;
 		}
 
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($theGroup)
@@ -503,12 +503,11 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			->mustAddParam( 'group_id', null, PDO::PARAM_INT )
 			->endWhereClause()
 			;
+		$theSql->logSqlDebug(__METHOD__);
+		$this->debugLog($v);
 		try { $theSql->execDML() ; }
 		catch( PDOException $pdox )
-		{
-			throw new DbException( $pdox, __METHOD__
-					. ' failed when updating the group data.' ) ;
-		}
+		{ throw $theSql->newDbException(__METHOD__, $pdox) ; }
 
 		$theRegCode = $this->getGroupRegCode( $theGroup->group_id ) ;
 

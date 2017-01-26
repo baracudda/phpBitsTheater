@@ -764,6 +764,19 @@ class SqlBuilder extends BaseCostume {
 		return new DbException($aPdoException, $aWhatFailed . ' failed.');
 	}
 	
+	/**
+	 * Standardized SQL failure log(s) meant to easily record DbExceptions on the
+	 * server for postmortem debugging.
+	 * @param string $aWhatMethod - the thing that you are debugging, typically __METHOD__.
+	 * @param string $aMsg - (optional) debug message.
+	 * @return SqlBuilder Returns $this for chaining.
+	 */
+	public function logSqlDebug($aWhatMethod, $aMsg = '') {
+		$this->debugLog($aWhatMethod . ' [1/2] ' . $aMsg . ' sql=' . $this->mySql);
+		$this->debugLog($aWhatMethod . ' [2/2] params=' . $this->debugStr($this->myParams));
+		return $this;
+	}
+	
 }//end class
 	
 }//end namespace

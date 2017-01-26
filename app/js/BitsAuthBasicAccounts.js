@@ -25,7 +25,7 @@ BitsAuthBasicAccounts.prototype.getGroupIdArray = function() {
 		return this.value;
     }).toArray();
 	if (theGroupIds.length<1)
-		theGroupIds = null;
+		theGroupIds = undefined;
 	return theGroupIds;
 }
 
@@ -95,13 +95,13 @@ BitsAuthBasicAccounts.prototype.onEditClick = function(e) {
 
 BitsAuthBasicAccounts.prototype.onSaveClick = function(e) {
 	var id = Number($('#account_id',this.mDialogAccount).val());
-	if(id<0)id=null;
+	if(id<0)id=undefined;
 	var an = $('#account_name',this.mDialogAccount).val();
-	if(an=="")an=null;
+	if(an=="")an=undefined;
 	var ap = $('#account_password',this.mDialogAccount).val();
-	if(ap=="")ap=null;
+	if(ap=="")ap=undefined;
 	var ae = $('#email',this.mDialogAccount).val();
-	if(ae=="")ae=null;
+	if(ae=="")ae=undefined;
 	var ia = $('#account_is_active',this.mDialogAccount).prop('checked') ? 1 : 0;
 	var theGroupIds = this.getGroupIdArray();
 	//console.log(theGroupIds);
