@@ -491,12 +491,14 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		{ // Update the values of the existing rights group in cache.
 			if( property_exists( $v, $theCol ) ) // isset() doesn't pick up null
 				$theGroup->{$theCol} = $v->{$theCol} ;
+			else
+				$theGroup->{$theCol} = null ;
 		}
 
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($theGroup)
 			->startWith( 'UPDATE ' . $this->tnGroups )
 			->add( 'SET' )
-			->mustAddParam( 'group_name' )
+			->mustAddParam( 'group_name', 'Group ' . $v->group_id )
 			->setParamPrefix(', ')
 			->mustAddParam( 'parent_group_id', null, PDO::PARAM_INT )
 			->startWhereClause()
