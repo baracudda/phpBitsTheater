@@ -17,6 +17,7 @@
 
 namespace BitsTheater\costumes ;
 use BitsTheater\costumes\SqlBuilder;
+use BitsTheater\costumes\colspecs\CommonMySql;
 { // begin namespace
 
 /**
@@ -52,6 +53,38 @@ trait WornForAuditFields
 		$aSqlBuilder->add('SET')->mustAddParam('updated_ts', $nowAsUTC)->setParamPrefix(', ');
 		$aSqlBuilder->mustAddParam('updated_by', $aSqlBuilder->getDirector()->getMyUsername());
 		return $aSqlBuilder;
+	}
+	
+	/**
+	 * Add audit fields to an existing table that lacks them.
+	 * @param string $aTable - the fully qualified table name.
+	 * @param number|string $aVersionNum - the version number for log entries.
+	 * @param string $aAfterExistingFieldX - (optional) - place the audit
+	 *   fields structurally after this one.
+	 */
+	protected function addAuditFieldsForTable($aTable, $aVersionNum,
+			$aAfterExistingFieldX=null)
+	{
+		$theSql = SqlBuilder::withModel($this);
+		if (!$this->isFieldExists('created_by', $aTable)) try {
+			$theSql->startWith('ALTER TABLE '.$aTable);
+			$theColDef = CommonMySql::CREATED_BY_SPEC;
+			$theSql->add('  ADD COLUMN')->add($theColDef);
+			if (!empty($aAfterExistingFieldX))
+				$theSql->add('AFTER')->add($aAfterExistingFieldX);
+			$theColDef = CommonMySql::UPDATED_BY_SPEC;
+			$theSql->add(', ADD COLUMN')->add($theColDef)->add('AFTER created_by');
+			$theColDef = CommonMySql::CREATED_TS_SPEC;
+			$theSql->add(', ADD COLUMN')->add($theColDef)->add('AFTER updated_by');
+			$theColDef = CommonMySql::UPDATED_TS_SPEC;
+			$theSql->add(', ADD COLUMN')->add($theColDef)->add('AFTER created_ts');
+			$theSql->execDML();
+			$this->debugLog("v{$aVersionNum}: added audit fields to {$aTable}");
+		} catch (\Exception $e) {
+			throw $theSql->newDbException(__METHOD__ . "({$aTable})", $e);
+		} else {
+			$this->debugLog("v{$aVersionNum}: {$aTable} already updated.");
+		}
 	}
 	
 } // end trait

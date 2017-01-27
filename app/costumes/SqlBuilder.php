@@ -664,6 +664,20 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
+	 * Execute DML (data manipulation language - INSERT, UPDATE, DELETE) statements
+	 * and return the params used in the query. Convenience method when using
+	 * parameterized queries since PDOStatement::execDML() always only returns TRUE.
+	 * @throws DbException if there is an error.
+	 * @return Returns the param data.
+	 * @see \PDOStatement::execute();
+	 */
+	public function execDMLandGetParams()
+	{
+		$this->myModel->execDML($this->mySql, $this->myParams, $this->myParamTypes);
+		return $this->myParams;
+	}
+	
+	/**
 	 * Sometimes we want to aggregate the query somehow rather than return data from it.
 	 * @param array $aSqlAggragates - (optional) the aggregation list, defaults to array('count(*)'=>'total_rows').
 	 * @return array Returns the results of the aggregates.

@@ -12,12 +12,12 @@ use com\blackmoonit\exceptions\DbException;
  * the basis of the exception's message. Some standard error messages are
  * defined here, corresponding to general-purpose error messages in the
  * BitsGeneric resource.
- * 
+ *
  * A consumer of this class would call the static toss() method, passing in a
  * resource context (actor, model, or scene), a semantic exception tag, and
  * (optionally) additional data that is part of the corresponding text message
  * resource.
- * 
+ *
  * The class is self-sufficient for generating standard exceptions; to extend
  * it, your custom exception class need only provide additional constants with
  * names following the covention of "ERR_tag" and "MSG_tag", where the "ERR_"
@@ -170,7 +170,12 @@ class BrokenLeg extends \Exception
 			return $aException ;
 		else if ($aException instanceof DbException)
 		{
-			throw static::toss($aContext, 'DB_EXCEPTION', $aException->getErrorMsg());
+			$aDbCode = intval($aException-getCode());
+			$theErr = ($aDbCode>2000 && $aDbCode<2030)
+					? 'DB_CONNECTION_FAILED'
+					: 'DB_EXCEPTION'
+					;
+			throw static::toss($aContext, $theErr, $aException->getErrorMsg());
 		}
 		else if(isset($aException->code) && isset($aException->message))
 		{
@@ -183,7 +188,7 @@ class BrokenLeg extends \Exception
 			if (!empty($theErrMsg))
 				$o->message = $theErrMsg;
 			return $o;
-		}		
+		}
 	}
 	
 	/** Stores the original condition code that was passed into toss(). */

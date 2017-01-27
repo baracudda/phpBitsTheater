@@ -108,7 +108,9 @@ implements IDirected
 			}
 			$this->db = $this->myDbConnInfo->connect();
 		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe,'Failed to connect'.(!empty($this->myDbConnInfo->dbName) ? ' to '.$this->myDbConnInfo->dbName : ''));
+			throw new DbException($pdoe,'Failed to connect'.
+					(!empty($this->myDbConnInfo->dbName) ? ' to '.$this->myDbConnInfo->dbName : '')
+			);
 		}
 		if (!empty($this->db)) {
 			$this->setupAfterDbConnected();

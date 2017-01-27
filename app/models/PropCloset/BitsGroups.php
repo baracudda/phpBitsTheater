@@ -17,19 +17,21 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\Scene;
+use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\SqlBuilder;
+use BitsTheater\costumes\WornForAuditFields;
+use BitsTheater\costumes\WornForFeatureVersioning;
+use BitsTheater\outtakes\RightsException ;
 use BitsTheater\models\SetupDb as MetaModel;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\Strings;
+use BitsTheater\BrokenLeg ;
 use PDO;
 use PDOException;
-use BitsTheater\BrokenLeg ;
-use BitsTheater\Scene;
-use BitsTheater\outtakes\RightsException ;
 use Exception;
-use BitsTheater\costumes\WornForFeatureVersioning;
 {//begin namespace
 
 /**
@@ -39,7 +41,7 @@ use BitsTheater\costumes\WornForFeatureVersioning;
  */
 class BitsGroups extends BaseModel implements IFeatureVersioning
 {
-	use WornForFeatureVersioning;
+	use WornForFeatureVersioning, WornForAuditFields;
 	
 	/**
 	 * Used by meta data mechanism to keep the database up-to-date with the code.
@@ -48,6 +50,9 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 */
 	const FEATURE_ID = 'BitsTheater/groups';
 	const FEATURE_VERSION_SEQ = 3; //always ++ when making db schema changes
+	//v 4 - added Audit fields to all tables
+	//v 3 - removed group_type field from groups table
+	//v 2 - added groups_reg_codes child table
 
 	public $tnGroups;			const TABLE_Groups = 'groups';
 	public $tnGroupMap;			const TABLE_GroupMap = 'groups_map';
@@ -84,6 +89,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 						", group_name NCHAR(60) NOT NULL".
 						", parent_group_id INT NULL".
 						//", group_desc NCHAR(200) NULL".
+						", ".CommonMySQL::getAuditFieldsForTableDefSql().
 						", PRIMARY KEY (group_id)".
 						") CHARACTER SET utf8 COLLATE utf8_general_ci";
 			}//switch dbType
@@ -94,6 +100,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
 						"( account_id INT NOT NULL".
 						", group_id INT NOT NULL".
+						", ".CommonMySQL::getAuditFieldsForTableDefSql().
 						", PRIMARY KEY (account_id, group_id)".
 						//", UNIQUE KEY (group_id, account_id)".  IDK if it'd be useful
 						") CHARACTER SET utf8 COLLATE utf8_general_ci";
@@ -105,6 +112,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
 						"( group_id INT NOT NULL".
 						", reg_code NCHAR(64) NOT NULL".
+						", ".CommonMySQL::getAuditFieldsForTableDefSql().
 						", PRIMARY KEY (reg_code, group_id)".
 						") CHARACTER SET utf8 COLLATE utf8_general_ci COMMENT='Auto-assign group_id if Registration Code matches reg_code'";
 			}//switch dbType
@@ -122,31 +130,75 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
+	 * If the groups table is empty, supply some default starter-data.
+	 */
+	protected function setupDefaultDataForGroups()
+	{
+		if ($this->isEmpty($this->tnGroups)) {
+			$theGroupNames = $this->getRes('AuthGroups/group_names');
+			$theDefaultData = array(
+					array('group_id'=>1, 'group_name'=>$theGroupNames[1],),
+					array('group_id'=>2, 'group_name'=>$theGroupNames[2],),
+					array('group_id'=>3, 'group_name'=>$theGroupNames[3],),
+					array('group_id'=>4, 'group_name'=>$theGroupNames[4],),
+					array('group_id'=>5, 'group_name'=>$theGroupNames[0],),
+			);
+			$theSql = SqlBuilder::withModel($this);
+			$theSql->startWith('INSERT INTO')->add($this->tnGroups);
+			$this->setAuditFieldsOnInsert($theSql);
+			$theSql->mustAddParam('group_id', 0, PDO::PARAM_INT);
+			$theSql->mustAddParam('group_name');
+			try {
+				$theSql->execMultiDML($theDefaultData);
+			} catch (PDOException $pdoe) {
+				throw $theSql->newDbException(__METHOD__, $pdoe);
+			}
+		
+			//set group_id 5 to 0, cannot set 0 on insert since auto-inc
+			//  columns in MySQL interpret 0 as "next id" instead of just 0.
+			$theSql = SqlBuilder::withModel($this);
+			$theSql->startWith('UPDATE')->add($this->tnGroups);
+			$this->setAuditFieldsOnUpdate($theSql);
+			$theSql->mustAddParam('group_id', 0, PDO::PARAM_INT);
+			$theSql->startWhereClause()->mustAddParam('group_id', 5)->endWhereClause();
+			try {
+				$theSql->execDML();
+			} catch (PDOException $pdoe) {
+				throw $theSql->newDbException(__METHOD__, $pdoe);
+			}
+		}
+	}
+	
+	/**
+	 * If the group registration code table is empty,
+	 * supply some default starter-data.
+	 */
+	protected function setupDefaultDataForGroupRegCodes()
+	{
+		if ($this->isEmpty($this->tnGroupRegCodes)) {
+			$theSql = SqlBuilder::withModel($this);
+			$theSql->startWith('INSERT INTO')->add($this->tnGroupRegCodes);
+			$this->setAuditFieldsOnInsert($theSql);
+			$theSql->mustAddParam('group_id', 3, PDO::PARAM_INT);
+			$theSql->mustAddParam('reg_code', $this->getDirector()->app_id);
+			try {
+				$theSql->execDML();
+			} catch (PDOException $pdoe) {
+				throw $theSql->newDbException(__METHOD__, $pdoe);
+			}
+		}
+	}
+	
+	/**
 	 * When tables are created, default data may be needed in them. Check
 	 * the table(s) for isEmpty() before filling it with default data.
 	 * @param Scene $aScene - (optional) extra data may be supplied
 	 */
-	public function setupDefaultData($aScene) {
-		if ($this->isEmpty()) {
-			$group_names = $aScene->getRes('AuthGroups/group_names');
-			$default_data = array(
-					array('group_id'=>1, 'group_name'=>$group_names[1],),
-					array('group_id'=>2, 'group_name'=>$group_names[2],),
-					array('group_id'=>3, 'group_name'=>$group_names[3],),
-					array('group_id'=>4, 'group_name'=>$group_names[4],),
-					array('group_id'=>5, 'group_name'=>$group_names[0],),
-			);
-			$theSql = "INSERT INTO {$this->tnGroups} ".
-					"(group_id, group_name) VALUES (:group_id, :group_name)";
-			$theParamTypes = array('group_id'=>PDO::PARAM_INT, 'group_name'=>PDO::PARAM_STR,);
-			$this->execMultiDML($theSql,$default_data,$theParamTypes);
-			//set group_id 5 to 0, cannot set 0 on insert since auto-inc columns in MySQL interpret 0 as "next id" instead of just 0.
-			$theSql = 'UPDATE '.$this->tnGroups.' SET group_id=0 WHERE group_id=5';
-			$this->execDML($theSql);
-		}
-		if ($this->isEmpty($this->tnGroupRegCodes)) {
-			$theSql = "INSERT INTO {$this->tnGroupRegCodes} SET group_id=3, reg_code=".'"'.$this->director->app_id.'"';
-			$this->execDML($theSql);
+	public function setupDefaultData($aScene=null) {
+		//only want default data if the groups table is empty
+		if ($this->isEmpty($this->tnGroups)) {
+			$this->setupDefaultDataForGroups();
+			$this->setupDefaultDataForGroupRegCodes();
 		}
 	}
 	
@@ -163,6 +215,10 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 					return 1 ;
 				else if( $this->isFieldExists( 'group_type', $this->tnGroups ) )
 					return 2 ;
+				else if ( !$this->isFieldExists('created_by', $this->tnGroups)
+						|| !$this->isFieldExists('created_by', $this->tnGroupMap)
+						|| !$this->isFieldExists('created_by', $this->tnGroupRegCodes) )
+					return 3;
 		}//switch
 		return self::FEATURE_VERSION_SEQ ;
 	}
@@ -175,21 +231,36 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function upgradeFeatureVersion($aFeatureMetaData, $aScene) {
 		$theSeq = $aFeatureMetaData['version_seq'];
+		$this->debugLog('Running '.__METHOD__.' v'.$theSeq.'->v'.self::FEATURE_VERSION_SEQ);
+
+		// This switch block's cases are tests against the current version
+		// sequence number. The cases must be implemented sequentially (low to
+		// high) and not use break, so that all changes between versions will
+		// fall through cumulatively to the end.
 		switch (true) {
-		//cases should always be lo->hi, never use break; so all changes are done in order.
-		case ($theSeq<2):
-			//create new GroupRegCodes table
-			$this->setupModel();
-			$this->setupDefaultData($aScene);
-		case ($theSeq<3):
-			if( $this->isFieldExists( 'group_type', $this->tnGroups ) )
+			case ($theSeq<2):
+				//create new GroupRegCodes table
+				$this->setupTable( self::TABLE_GroupRegCodes, $this->tnGroupRegCodes ) ;
+				$this->setupDefaultDataForGroupRegCodes();
+				$this->debugLog('v2: added table '.$this->tnGroupRegCodes);
+			case ($theSeq<3):
+				if( $this->isFieldExists( 'group_type', $this->tnGroups ) )
+				{
+					//two step process to remove the unused field: re-number the group_id=5, 0-group-type to ID=0
+					$theSql = 'UPDATE '.$this->tnGroups.' SET group_id=0 WHERE group_id=5 AND group_type=0 LIMIT 1';
+					$this->execDML($theSql);
+					//now alter the table and drop the column
+					$theSql = 'ALTER TABLE '.$this->tnGroups.' DROP group_type';
+					$this->execDML($theSql);
+					$this->debugLog('v3: removed field group_type from '.$this->tnGroups);
+				} else {
+					$this->debugLog('v3: already removed field group_type from '.$this->tnGroups);
+				}
+			case ($theSeq < 4):
 			{
-				//two step process to remove the unused field: re-number the group_id=5, 0-group-type to ID=0
-				$theSql = 'UPDATE '.$this->tnGroups.' SET group_id=0 WHERE group_id=5 AND group_type=0 LIMIT 1';
-				$this->execDML($theSql);
-				//now alter the table and drop the column
-				$theSql = 'ALTER TABLE '.$this->tnGroups.' DROP group_type';
-				$this->execDML($theSql);
+				$this->addAuditFieldsForTable($this->tnGroups, 4);
+				$this->addAuditFieldsForTable($this->tnGroupMap, 4);
+				$this->addAuditFieldsForTable($this->tnGroupRegCodes, 4);
 			}
 		}//switch
 	}
@@ -204,43 +275,43 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	
 	/**
 	 * Retrieve a single group row.
-	 * @param string $aGroupId - the group_id to get.
+	 * @param number $aGroupId - the group_id to get.
 	 * @param string $aFieldList - which fields to return, default is all of them.
 	 * @return array Returns the row data.
 	 */
 	public function getGroup($aGroupId, $aFieldList=null) {
-		$theResults = null;
-		if ($this->isConnected() && !empty($aGroupId)) try {
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array('group_id' => $aGroupId));
-			$theSql->startWith('SELECT')->addFieldList($aFieldList)->add('FROM')->add($this->tnGroups);
-			$theSql->startWhereClause()->mustAddParam('group_id', null, PDO::PARAM_INT)->endWhereClause();
-			$theResults = $theSql->getTheRow();
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe, __METHOD__.' failed.');
-		}
-		return $theResults;
+		if ($aGroupId<0)
+			throw new \InvalidArgumentException('invalid $aGroupId param');
+		$theSql = SqlBuilder::withModel($this);
+		$theSql->startWith('SELECT')->addFieldList($aFieldList);
+		$theSql->add('FROM')->add($this->tnGroups);
+		$theSql->startWhereClause();
+		$theSql->mustAddParam('group_id', $aGroupId, PDO::PARAM_INT);
+		$theSql->endWhereClause();
+		try { return $theSql->getTheRow(); }
+		catch (PDOException $pdoe)
+		{ throw $theSql->newDbException(__METHOD__, $pdoe); }
 	}
 	
 	/**
 	 * Insert a group record.
-	 * @param Object|Scene $aDataObject - the (usually Scene) object containing the POST data used for insert.
+	 * @param Object|Scene $aDataObject - the (usually Scene) object containing
+	 *   the POST data used for insert.
 	 * @return Returns the data posted to the database.
 	 */
 	public function add($aDataObject) {
-		$theResultSet = null;
-		if ($this->isConnected() && !empty($aDataObject)) try {
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
-			$theSql->startWith('INSERT INTO')->add($this->tnGroups);
-			$theSql->add('SET')->mustAddParam('group_name')->setParamPrefix(', ');
-			$theSql->mustAddParam('parent_group_id', null, PDO::PARAM_INT);
-			$theSql->addParamIfDefined('group_id', 0, PDO::PARAM_INT);
-			//$this->debugLog($this->debugStr($theSql));
-			$theSql->execDML();
-			$theResultSet = $theSql->myParams;
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
+		$theSql->startWith('INSERT INTO')->add($this->tnGroups);
+		$this->setAuditFieldsOnInsert($theSql);
+		$theSql->mustAddParam('group_name');
+		$theSql->mustAddParam('parent_group_id', null, PDO::PARAM_INT);
+		$theSql->addParamIfDefined('group_id', 0, PDO::PARAM_INT);
+		//$theSql->logSqlDebug(__METHOD__);
+		try {
+			return $theSql->execDMLandGetParams();
 		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe, __METHOD__.' failed.');
+			throw $theSql->newDbException(__METHOD__, $pdoe);
 		}
-		return $theResultSet;
 	}
 	
 	/**
@@ -249,26 +320,29 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 * @return Returns an array('group_id'=>$aGroupId).
 	 */
 	public function del($aGroupId) {
+		$theSql = SqlBuilder::withModel($this);
 		$theGroupId = intval($aGroupId);
-		$theResultSet = null;
-		if ($this->isConnected() && $theGroupId>self::TITAN_GROUP_ID) try {
+		if ($theGroupId>self::TITAN_GROUP_ID) try {
 			$this->db->beginTransaction();
 			
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array('group_id' => $theGroupId));
 			$theSql->startWith('DELETE FROM')->add($this->tnGroupMap);
-			$theSql->startWhereClause()->mustAddParam('group_id', null, PDO::PARAM_INT)->endWhereClause();
+			$theSql->startWhereClause();
+			$theSql->mustAddParam('group_id', $theGroupId, PDO::PARAM_INT);
+			$theSql->endWhereClause();
 			$theSql->execDML();
+			
 			$theSql->reset()->startWith('DELETE FROM')->add($this->tnGroups);
-			$theSql->startWhereClause()->mustAddParam('group_id', null, PDO::PARAM_INT)->endWhereClause();
+			$theSql->startWhereClause();
+			$theSql->mustAddParam('group_id', $theGroupId, PDO::PARAM_INT);
+			$theSql->endWhereClause();
 			$theSql->execDML();
 			
 			$this->db->commit();
-			$theResultSet = $theSql->myParams;
+			return $theSql->myParams;
 		} catch (PDOException $pdoe) {
 			$this->db->rollBack();
-			throw new DbException($pdoe, __METHOD__.' failed.');
+			throw $theSql->newDbException(__METHOD__, $pdoe);
 		}
-		return $theResultSet;
 	}
 	
 	/**
@@ -279,15 +353,30 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function addGroupsToAccount($aAcctId, $aGroupIds)
 	{
+		$theAcctId = intval($aAcctId);
+		if ($theAcctId<1)
+			throw new \InvalidArgumentException('invalid $aAcctId param');
+		if (empty($aGroupIds) || !is_array($aGroupIds))
+			throw new \InvalidArgumentException('invalid $aGroupIds param');
 		$theSql = SqlBuilder::withModel($this);
-		if ($this->isConnected() && is_array($aGroupIds)) try {
+		try {
+			$theSql->startWith('INSERT INTO')->add($this->tnGroupMap);
+			$this->setAuditFieldsOnInsert($theSql);
+			$theSql->mustAddParam('account_id', $theAcctId, PDO::PARAM_INT);
+			$theSql->mustAddParam('group_id', 0, PDO::PARAM_INT);
+			//use the params added so far to help create our multi-DML array
+			//  every entry needs to match the number of SQL parameters used
 			$theParamList = array();
 			foreach ($aGroupIds as $anID) {
-				$theParamList[] = array('account_id' => $aAcctId, 'group_id' => $anID);
+				$theParamList[] = array(
+						'created_ts' => $theSql->getParam('created_ts'),
+						'updated_ts' => $theSql->getParam('updated_ts'),
+						'created_by' => $theSql->getParam('created_by'),
+						'updated_by' => $theSql->getParam('updated_by'),
+						'account_id' => $theSql->getParam('account_id'),
+						'group_id' => $anID,
+				);
 			}
-			$theSql->startWith('INSERT INTO')->add($this->tnGroupMap);
-			$theSql->add('SET')->mustAddParam('account_id', $aAcctId, PDO::PARAM_INT)->setParamPrefix(', ');
-			$theSql->mustAddParam('group_id', 0, PDO::PARAM_INT);
 			$theSql->execMultiDML($theParamList);
 		} catch (PDOException $pdoe) {
 			throw $theSql->newDbException(__METHOD__, $pdoe);
@@ -296,28 +385,27 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	
 	/**
 	 * Add a record to the account/group map table.
-	 * @param integer $aGroupId - the group ID.
-	 * @param integer $aAcctId - the account ID.
+	 * @param number $aGroupId - the group ID.
+	 * @param number $aAcctId - the account ID.
 	 * @return Returns the data added.
 	 */
 	public function addAcctMap($aGroupId, $aAcctId) {
 		$theGroupId = intval($aGroupId);
 		$theAcctId = intval($aAcctId);
-		$theResultSet = null;
-		if ($this->isConnected() && $theGroupId>=self::UNREG_GROUP_ID) try {
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
-					'group_id' => $theGroupId,
-					'account_id' => $theAcctId,
-			));
+		if ($theGroupId<self::UNREG_GROUP_ID)
+			throw new \InvalidArgumentException('invalid $aGroupId param');
+		if ($theAcctId<1)
+			throw new \InvalidArgumentException('invalid $aAcctId param');
+		$theSql = SqlBuilder::withModel($this);
+		try {
 			$theSql->startWith('INSERT INTO')->add($this->tnGroupMap);
-			$theSql->add('SET')->mustAddParam('group_id', null, PDO::PARAM_INT)->setParamPrefix(', ');
-			$theSql->mustAddParam('account_id', null, PDO::PARAM_INT);
-			$theSql->execDML();
-			$theResultSet = $theSql->myParams;
+			$this->setAuditFieldsOnInsert($theSql);
+			$theSql->mustAddParam('account_id', $theAcctId, PDO::PARAM_INT);
+			$theSql->mustAddParam('group_id', $theGroupId, PDO::PARAM_INT);
+			return $theSql->execDMLandGetParams();
 		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe, __METHOD__.' failed.');
+			throw $theSql->newDbException(__METHOD__, $pdoe);
 		}
-		return $theResultSet;
 	}
 	
 	/**
@@ -329,23 +417,22 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	public function delAcctMap($aGroupId, $aAcctId) {
 		$theGroupId = intval($aGroupId);
 		$theAcctId = intval($aAcctId);
-		$theResultSet = null;
-		if ($this->isConnected() && $theGroupId>=self::UNREG_GROUP_ID) try {
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
-					'group_id' => $theGroupId,
-					'account_id' => $theAcctId,
-			));
+		if ($theGroupId<self::UNREG_GROUP_ID)
+			throw new \InvalidArgumentException('invalid $aGroupId param');
+		if ($theAcctId<1)
+			throw new \InvalidArgumentException('invalid $aAcctId param');
+		$theSql = SqlBuilder::withModel($this);
+		try {
 			$theSql->startWith('DELETE FROM')->add($this->tnGroupMap);
 			$theSql->startWhereClause();
-			$theSql->mustAddParam('group_id', null, PDO::PARAM_INT)->setParamPrefix(' AND ');
-			$theSql->mustAddParam('account_id', null, PDO::PARAM_INT);
+			$theSql->mustAddParam('group_id', $theGroupId, PDO::PARAM_INT);
+			$theSql->setParamPrefix(' AND ');
+			$theSql->mustAddParam('account_id', $theAcctId, PDO::PARAM_INT);
 			$theSql->endWhereClause();
-			$theSql->execDML();
-			$theResultSet = $theSql->myParams;
+			return $theSql->execDMLandGetParams();
 		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe, __METHOD__.' failed.');
+			throw $theSql->newDbException(__METHOD__, $pdoe);
 		}
-		return $theResultSet;
 	}
 	
 	/**
@@ -355,24 +442,20 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function getAcctGroups($aAcctId) {
 		$theAcctId = intval($aAcctId);
-		$theResultSet = null;
-		if ($this->isConnected() && isset($theAcctId)) try {
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
-					'account_id' => $theAcctId,
-			));
+		if ($theAcctId<1)
+			throw new \InvalidArgumentException('invalid $aAcctId param');
+		$theSql = SqlBuilder::withModel($this);
+		try {
 			$theSql->startWith('SELECT group_id FROM')->add($this->tnGroupMap);
 			$theSql->startWhereClause();
-			$theSql->mustAddParam('account_id', null, PDO::PARAM_INT);
+			$theSql->mustAddParam('account_id', $theAcctId, PDO::PARAM_INT);
 			$theSql->endWhereClause();
-			$rs = $theSql->query();
-			$theResultSet = $rs->fetchAll(PDO::FETCH_COLUMN, 0);
-			foreach ($theResultSet as &$theGroupId) {
-				$theGroupId = intval($theGroupId);
-			}
+			return $theSql->query()->fetchAll(PDO::FETCH_FUNC, function($id) {
+				return intval($id);
+			});
 		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe, __METHOD__.' failed.');
+			throw $theSql->newDbException(__METHOD__, $pdoe);
 		}
-		return $theResultSet;
 	}
 	
 	/**
