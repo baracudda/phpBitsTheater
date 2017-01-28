@@ -100,7 +100,7 @@ implements IDirected
 		$this->setupMethodAccessControl();
 		$theSceneClass = Director::getSceneClass($this->mySimpleClassName);
 		if (!class_exists($theSceneClass)) {
-			Strings::debugLog(__METHOD__.': cannot find Scene class: '.$theSceneClass);
+			Strings::errorLog(__METHOD__.': cannot find Scene class: '.$theSceneClass);
 		}
 		$this->scene = new $theSceneClass($this,$anAction);
 		if ($this->director->canConnectDb() && $this->director->isInstalled()) {

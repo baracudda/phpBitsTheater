@@ -268,7 +268,7 @@ implements IDirected
 		if (!empty($aJsonData)) {
 			$theData = json_decode($aJsonData,true);
 			if (json_last_error() !== JSON_ERROR_NONE) {
-				$this->debugLog(__METHOD__.' json error: '.json_last_error().' data='.$this->debugStr($aJsonData));
+				$this->errorLog(__METHOD__.' json error: '.json_last_error().' data='.$this->debugStr($aJsonData));
 			}
 		}
 		if (!empty($theData)) {

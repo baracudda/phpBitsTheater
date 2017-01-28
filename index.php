@@ -20,7 +20,7 @@ use com\blackmoonit\Strings;
 use com\blackmoonit\exceptions\IDebuggableException;
 use com\blackmoonit\exceptions\FourOhFourExit;
 use com\blackmoonit\excpetions\SystemExit;
-use \Exception;
+use Exception;
 {//namespace begin
 
 try {
@@ -41,7 +41,7 @@ try {
 	})->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
 	$e->debugPrint();
 	if (ini_get('log_errors')) {
-		Strings::debugLog($e->getMessage().' c_stk: '.$e->getTraceAsString());
+		Strings::errorLog($e->getMessage().' c_stk: '.$e->getTraceAsString());
 	}
 	header("HTTP/1.0 500 Internal Server Error");
 	die();
@@ -56,7 +56,7 @@ try {
 		print($theTrace);
 	}
 	if (ini_get('log_errors')) {
-		Strings::debugLog($e->getMessage().' cs: '.$e->getTraceAsString());
+		Strings::errorLog($e->getMessage().' cs: '.$e->getTraceAsString());
 	}
 	header("HTTP/1.0 500 Internal Server Error");
 	die();

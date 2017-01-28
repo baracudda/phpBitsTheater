@@ -84,6 +84,7 @@ function route_request(Director $aDirector, $aUrl) {
 }
 
 Strings::debugPrefix( (defined('VIRTUAL_HOST_NAME') && VIRTUAL_HOST_NAME) ? '['.VIRTUAL_HOST_NAME.'-dbg] ' : null );
+Strings::errorPrefix( (defined('VIRTUAL_HOST_NAME') && VIRTUAL_HOST_NAME) ? '['.VIRTUAL_HOST_NAME.'-err] ' : null );
 removeMagicQuotes();
 unregisterGlobals();
 global $director; //exposed as a Global Var so legacy systems can interface with us

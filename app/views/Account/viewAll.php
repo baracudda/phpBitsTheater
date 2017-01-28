@@ -70,7 +70,7 @@ try {
 		print($r);
 	}//end foreach
 } catch (Exception $e) {
-	$v->debugLog('account/view_all failed: ' . $e->getMessage() );
+	$v->errorLog('account/view_all failed: ' . $e->getMessage() );
 	throw $e;
 }
 //if the data printed out ok, place a button after the table

@@ -105,7 +105,7 @@ class AuthAccountSet extends BaseCostume
 					$aRow->hardware_ids = $aRow->hardware_ids[0];
 			}
 		} catch (Exception $e) {
-			$this->debugLog(__METHOD__ . $e->getMessage());
+			$this->errorLog(__METHOD__ . $e->getMessage());
 		}
 		return parent::onFetch($aRow);
 	}
@@ -136,7 +136,7 @@ class AuthAccountSet extends BaseCostume
 		}
 		catch( Exception $x )
 		{
-			$this->debugLog( __METHOD__ . ' failed: ' . $x->getMessage() );
+			$this->errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
 			throw $x ;
 		}
 		return $this ;

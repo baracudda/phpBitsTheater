@@ -395,10 +395,12 @@ class Strings {
 	}
 
 	/**
-	 * Send the string parameter to the debug log.
-	 * Current implementation is the LOG_ERR destination with
-	 * a prefix of "[dbg] " prepended to the parameter.
-	 * @param string $s - string to send to the debug log.
+	 * Send the string parameter to the debug log with the defined debugPrefix prepended.
+	 * Current implementation is the LOG_ERR destination.
+	 * @param $s - var to log, strings sent "as is", anything else converted to string via
+	 *     the debugStr() method.
+	 * @see Strings::debugPrefix()
+	 * @see Strings::debugStr()
 	 */
 	static public function debugLog($s) {
 		if (!is_string($s))
@@ -406,6 +408,37 @@ class Strings {
 		syslog(LOG_ERR,self::debugPrefix().$s);
 	}
 	
+	/**
+	 * Sets/Gets the error prefix string in use.
+	 * @param string $aPrefix - (optional) if not null, it will set the value.
+	 * @return string Returns the currently set error prefix (defaults to "[err] ").
+	 */
+	static public function errorPrefix($aPrefix=null) {
+		static $myErrorPrefix = '[err] ';
+		if (isset($aPrefix))
+			$myErrorPrefix = $aPrefix;
+		return $myErrorPrefix;
+	}
+
+	/**
+	 * Send the string parameter to the error log with the defined errorPrefix prepended.
+	 * Current implementation is the LOG_ERR destination.
+	 * @param $s - var to log, strings sent "as is", anything else converted to string via
+	 *     the debugStr() method.
+	 * @see Strings::errorPrefix()
+	 * @see Strings::debugStr()
+	 */
+	static public function errorLog($s) {
+		if (!is_string($s))
+			$s = self::debugStr($s);
+		syslog(LOG_ERR,self::errorPrefix().$s);
+	}
+	
+	/**
+	 * Uppercase all matches found in the regex match results (all keys > 0).
+	 * @param array $matches - the result of regex matching.
+	 * @return array Returns the match result, but with all matches uppercased.
+	 */
 	static protected function upperStrMatches($matches) {
 		$num_matches = count($matches);
 		if ($num_matches>1) {

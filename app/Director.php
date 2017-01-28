@@ -161,7 +161,7 @@ implements ArrayAccess, IDirected
 	public function onShutdown() {
 		$err = error_get_last();
 		if (!empty($err)) {
-			Strings::debugLog( __METHOD__ . ' ' . Strings::debugStr($err) ) ;
+			Strings::errorLog( __METHOD__ . ' ' . Strings::debugStr($err) ) ;
 // Uncomment the following 6 lines if you need more information.
 //			Strings::debugLog('OOM?: last 3 known new AdamEve-based classes:'
 //					.(static::$lastClassLoaded1 ? ' '. static::$lastClassLoaded1->myClassName : '')
@@ -310,7 +310,7 @@ implements ArrayAccess, IDirected
 					header('Location: '.$theResult);
 				}
 			} catch (ReflectionException $e) {
-				$this->debugLog($e->getMessage());
+				$this->errorLog($e->getMessage());
 				//no method to call, just ignore it
 			}
 		}
@@ -359,14 +359,14 @@ implements ArrayAccess, IDirected
 							'ref_count' => 0,
 					);
 				} catch (Exception $e) {
-					$this->debugLog(__METHOD__.' '.$e->getMessage());
+					$this->errorLog(__METHOD__.' '.$e->getMessage());
 					return;
 				}
 			}
 			$this->_propMaster[$theModelClass]['ref_count'] += 1;
 			return $this->_propMaster[$theModelClass]['model'];
 		} else {
-			$this->debugLog(__METHOD__.' cannot find Model class: '.$theModelClass);
+			$this->errorLog(__METHOD__.' cannot find Model class: '.$theModelClass);
 		}
 	}
 	

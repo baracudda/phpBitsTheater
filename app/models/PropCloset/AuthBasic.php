@@ -524,7 +524,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			return $theSql->query();
 		} catch (PDOException $pdoe) {
 			//also log the sort specification.
-			$this->debugLog( __METHOD__ . ' Sort: ' . $this->debugStr($theOrderByList) );
+			$this->errorLog( __METHOD__ . ' Sort: ' . $this->debugStr($theOrderByList) );
 			throw $theSql->newDbException(__METHOD__, $pdoe);
 		}
 	}
@@ -1469,8 +1469,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		{
 			if( ! $bInTransaction )
 			{ // Roll back only if we controlled the transaction.
-				$this->debugLog( __METHOD__
-						. 'failed. Rolling back transaction.' ) ;
+				$this->errorLog( __METHOD__ . 'failed. ' . $pdox->getMessage()) ;
 				$this->db->rollBack() ;
 			}
 			throw new DbException( $pdox, __METHOD__ . ' failed.' ) ;

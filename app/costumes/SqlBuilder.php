@@ -541,7 +541,7 @@ class SqlBuilder extends BaseCostume {
 		if (!empty($aOrderByList)) {
 			$theSortKeyword = 'ORDER BY';
 			//other db types may use a diff reserved keyword, set that here
-			//...
+			//TODO ...
 			$this->add($theSortKeyword);
 			
 			$theOrderByList = $aOrderByList;
@@ -761,9 +761,9 @@ class SqlBuilder extends BaseCostume {
 				? $aMsgOrException->getMessage()
 				: $aMsgOrException
 		;
-		$this->debugLog($aWhatFailed . ' [1/3] failed: ' . $theMsg);
-		$this->debugLog($aWhatFailed . ' [2/3] sql=' . $this->mySql);
-		$this->debugLog($aWhatFailed . ' [3/3] params=' . $this->debugStr($this->myParams));
+		$this->errorLog($aWhatFailed . ' [1/3] failed: ' . $theMsg);
+		$this->errorLog($aWhatFailed . ' [2/3] sql=' . $this->mySql);
+		$this->errorLog($aWhatFailed . ' [3/3] params=' . $this->debugStr($this->myParams));
 		return $this;
 	}
 	

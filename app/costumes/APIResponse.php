@@ -105,7 +105,7 @@ class APIResponse extends BaseCostume {
 			}
 			catch( Exception $x )
 			{
-				Strings::debugLog( __METHOD__
+				Strings::errorLog( __METHOD__
 						. ' caught an exception while serializing: '
 						. $x->getMessage()
 					);

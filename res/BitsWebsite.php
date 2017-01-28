@@ -212,7 +212,7 @@ class BitsWebsite extends BaseResources {
 			}//end switch
 		} catch (Exception $e) {
 			//throw expection if your update code fails (logging it would be a good idea, too).
-			$this->debugLog(__METHOD__.' '.$e->getMessage());
+			$this->errorLog(__METHOD__.' '.$e->getMessage());
 			throw $e;
 		}
 	}

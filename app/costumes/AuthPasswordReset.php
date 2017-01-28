@@ -170,7 +170,7 @@ class AuthPasswordReset extends BaseCostume
 	 * Indicates whether the token set contains a token which was created
 	 * within the last 24 hours and is linked to the specified account ID.
 	 * @return boolean true if one of the supplied tokens was created or updated
-	 *  within the last 24 hours 
+	 *  within the last 24 hours
 	 */
 	public function hasRecentToken()
 	{
@@ -187,7 +187,7 @@ class AuthPasswordReset extends BaseCostume
 		 */
 //		$theNow = new DateTime( 'now', new DateTimeZone('UTC') ) ;
 		$theNow = strtotime('now') ;
-		$theExpirationInterval = 60 * 60 * 24 ;              // a day of seconds		
+		$theExpirationInterval = 60 * 60 * 24 ;              // a day of seconds
 		$theAuthFilter = $this->chooseIdentifierForSearch() ;
 		foreach( $this->myTokens as $theToken )
 		{
@@ -272,7 +272,7 @@ class AuthPasswordReset extends BaseCostume
 		{ ; }
 		if( ! $isSuccess )
 		{
-			$this->debugLog( 'Failed to delete old pasword reset tokens for '
+			$this->errorLog( 'Failed to delete old pasword reset tokens for '
 					. 'user. Administrator may need to purge expired tokens '
 					. 'manually.'
 				) ;
@@ -454,7 +454,7 @@ class AuthPasswordReset extends BaseCostume
 		try { $theSql->execDML() ; }
 		catch( PDOException $pdox )
 		{
-			$this->debugLog( __METHOD__ . ': ' . $pdox->getMessage() ) ;
+			$this->errorLog( __METHOD__ . ': ' . $pdox->getMessage() ) ;
 			throw PasswordResetException::toss( $this,
 					'DANG_PASSWORD_YOU_SCARY' ) ;
 		}

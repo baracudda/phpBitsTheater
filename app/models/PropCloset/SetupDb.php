@@ -20,6 +20,7 @@ use BitsTheater\Model as BaseModel;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\colspecs\CommonMySql ;
 use BitsTheater\costumes\IFeatureVersioning;
+use BitsTheater\costumes\WornForFeatureVersioning;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\Strings;
@@ -27,7 +28,6 @@ use com\blackmoonit\FileUtils;
 use PDO;
 use PDOException;
 use Exception;
-use BitsTheater\costumes\WornForFeatureVersioning;
 {//namespace begin
 
 class SetupDb extends BaseModel implements IFeatureVersioning
@@ -170,7 +170,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 				throw new Exception($theMsg);
 			}
 		} catch (Exception $e) {
-			$this->debugLog(__METHOD__."('$aSrcFilePath','$aDestFilePath') failed: ".$e->getMessage());
+			$this->errorLog(__METHOD__."('$aSrcFilePath','$aDestFilePath') failed: ".$e->getMessage());
 			throw $e;
 		}
 	}
@@ -461,7 +461,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 						$aDataObject->addUserMsg($this->getRes('admin/msg_update_success'));
 					}
 				} catch (Exception $e) {
-					$this->debugLog($e->getMessage());
+					$this->errorLog($e->getMessage());
 					if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'),true)) {
 						$aDataObject->addUserMsg($e->getMessage(), $aDataObject::USER_MSG_ERROR);
 					}
@@ -479,7 +479,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					$aDataObject->addUserMsg($this->getRes('admin/msg_update_success'));
 				}
 			} catch (Exception $e) {
-				$this->debugLog($e->getMessage());
+				$this->errorLog($e->getMessage());
 				if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'))) {
 					$aDataObject->addUserMsg($e->getMessage(), $aDataObject::USER_MSG_ERROR);
 				}

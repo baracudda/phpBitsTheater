@@ -65,7 +65,7 @@ class BitsConfig extends BaseActor {
 			$v->addUserMsg($this->getRes('config/msg_save_applied'), $v::USER_MSG_NOTICE);
 		} catch (Exception $e) {
 			if ( !($e instanceof BrokenLeg && $e->getCode()==400 && $e->getCondition()=='NO_UPDATES') )
-				$this->debugLog(__METHOD__.' '.$this->debugStr($e));
+				$this->errorLog(__METHOD__.' '.$this->debugStr($e));
 			$v->addUserMsg($this->getRes('config/msg_save_aborted'), $v::USER_MSG_ERROR);
 		}
 		return $v->redirect;

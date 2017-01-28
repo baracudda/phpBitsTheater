@@ -108,7 +108,7 @@ class FileUtils {
 				}
 				else {
 					$tl = microtime(true);
-					Strings::debugLog(__METHOD__.' fwrite fail. wrote: '.$num_wrote.
+					Strings::errorLog(__METHOD__.' fwrite fail. wrote: '.$num_wrote.
 							' duration: '.number_format($tl-$ts).' text: '.$aText);
 				}
 			}
@@ -130,7 +130,7 @@ class FileUtils {
 	}
 	
 	/**
-	 * Appends a path segment onto an existing path which may or may not have 
+	 * Appends a path segment onto an existing path which may or may not have
 	 * a directory separator already.
 	 * @param string $aExistingPath - the existing path string.
 	 * @param string $aPathSegment - the path segment to append.

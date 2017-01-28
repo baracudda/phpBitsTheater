@@ -32,6 +32,6 @@ if ($v->results instanceof ICalendarEntry) {
 	$theICS->generateICS($v->results);
 	//fclose($theICS->getOutputStream());
 } else {
-	$v->debugLog('OutputToICS fail; results not ICalendarEntry');
+	$v->errorLog('OutputToICS fail; results not ICalendarEntry');
 	//not sure
 }

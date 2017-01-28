@@ -180,7 +180,7 @@ class AuthBasicAccount extends BaseActor
 		if ($bPostKeyOk && $bPwOk && $bRegCodeOk && $bPostKeyOldEnough) {
 			$dbAuth = $this->getProp('Auth');
 			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey, $v->email, $v->reg_code);
-			$this->debugLog(__METHOD__.' '.$v->$userKey.' code='.$theRegResult.' redirect='.$v->redirect);
+			//$this->debugLog(__METHOD__.' '.$v->$userKey.' code='.$theRegResult.' redirect='.$v->redirect);
 			if (isset($theRegResult)) {
 				if ($theRegResult===$dbAuth::REGISTRATION_EMAIL_TAKEN) {
 					$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email')),$v::USER_MSG_ERROR);
@@ -471,7 +471,7 @@ class AuthBasicAccount extends BaseActor
 			//also remove all pw reset tokens for this account
 			$theResetUtils->deleteAllTokens() ;
 			$v->err_msg = $prx->getDisplayText() ;
-			$this->debugLog($v->err_msg) ;
+			$this->errorLog($v->err_msg) ;
 			return $this->requestPasswordReset(null) ;
 		}
 		catch( MailUtilsException $mue )
@@ -479,7 +479,7 @@ class AuthBasicAccount extends BaseActor
 			//also remove all pw reset tokens for this account
 			$theResetUtils->deleteAllTokens() ;
 			$v->err_msg = $mue->getMessage() ;
-			$this->debugLog($v->err_msg) ;
+			$this->errorLog($v->err_msg) ;
 			return $this->requestPasswordReset(null) ;
 		}
 		
@@ -525,7 +525,7 @@ class AuthBasicAccount extends BaseActor
 				$utils->authenticateForReentry( $aAuthID, $aAuthToken ) ;
 		}
 		catch( PasswordResetException $prx )
-		{ $this->debugLog( $prx->getDisplayText() ) ; }
+		{ $this->errorLog( $prx->getDisplayText() ) ; }
 		
 		if( $isAuthenticated )
 		{ // postcondition if true: user is now authenticated
@@ -982,7 +982,7 @@ class AuthBasicAccount extends BaseActor
 		}
 		catch( Exception $x )
 		{
-			$this->debugLog( __METHOD__
+			$this->errorLog( __METHOD__
 					. ' failed to fetch an email address for account ID ['
 					. $aAccountID . '] because of an exception: '
 					. $x->getMessage()
@@ -1021,7 +1021,7 @@ class AuthBasicAccount extends BaseActor
 		}
 		catch( Exception $x )
 		{
-			$this->debugLog( __METHOD__
+			$this->errorLog( __METHOD__
 					. ' could not fetch groups for account ['
 					. $aAccountID . '] because of an exception: '
 					. $x->getMessage()
@@ -1056,7 +1056,7 @@ class AuthBasicAccount extends BaseActor
 		}
 		catch( Exception $x )
 		{
-			$this->debugLog( __METHOD__
+			$this->errorLog( __METHOD__
 					. ' failed to fetch Mobile Hardware IDs for account ID ['
 					. $aAccountID . '] because of an exception: '
 					. $x->getMessage()

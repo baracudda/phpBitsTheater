@@ -141,8 +141,9 @@ class AdamEve extends BaseClass {
 	
 	/**
 	 * Send string out to the debug log (or std log as [dbg]).
-	 * @param string $s - string parameter to print out
-	 * @see Strings::debugLog($s)
+	 * @param $s - parameter to print out (non-strings converted with debugStr()).
+	 * @see Strings::debugLog()
+	 * @see AdamEve::debugStr()
 	 */
 	public function debugLog($s) {
 		Strings::debugLog($s);
@@ -157,6 +158,16 @@ class AdamEve extends BaseClass {
 	 */
 	public function debugStr($aVar, $aNewLineReplacement=' ') {
 		return Strings::debugStr($aVar, $aNewLineReplacement);
+	}
+	
+	/**
+	 * Send string out to the error log prepended with the defined error prefix.
+	 * @param $s - parameter to print out (non-strings converted with debugStr()).
+	 * @see Strings::errorLog($s)
+	 * @see AdamEve::debugStr()
+	 */
+	public function errorLog($s) {
+		Strings::errorLog($s);
 	}
 	
 	/**

@@ -158,10 +158,10 @@ class BrokenLeg extends \Exception
 	{
 		if (ini_get('log_errors') && $aException instanceof IDebuggableException)
 		{
-			$aContext->getDirector()->debugLog('[1/2] msg: '.
+			$aContext->getDirector()->errorLog('[1/2] msg: '.
 					$aException->getMessage().' context:'.$aException->getContextMsg()
 			);
-			$aContext->getDirector()->debugLog('[2/2] c_stk: '.
+			$aContext->getDirector()->errorLog('[2/2] c_stk: '.
 					$aException->getTraceAsString()
 			);
 		}

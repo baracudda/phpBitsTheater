@@ -162,7 +162,7 @@ class OutputToICS {
 		$this->pushToOutput("VERSION:2.0\n");
 		$this->pushToOutput("CALSCALE:GREGORIAN\n");
 		foreach ($this->mCalendarEntries as $theCalEntry) {
-			Strings::debugLog($theCalEntry);
+			//Strings::debugLog($theCalEntry);
 			$this->pushToOutput($this->exportEvent($theCalEntry));
 		}
 		$this->pushToOutput("END:VCALENDAR\n");
@@ -211,7 +211,7 @@ class OutputToICS {
 			flock($theFileHandle, LOCK_UN);
 			$bSuccess = true;
 		} else {
-			$this->debugLog(__METHOD__.' lock fail: '.$aFilePath);
+			$this->errorLog(__METHOD__.' lock fail: '.$aFilePath);
 		}
 		fclose($theFileHandle);
 		return $bSuccess;

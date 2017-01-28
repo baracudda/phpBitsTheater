@@ -50,7 +50,7 @@ class Website extends BaseResources {
 			//nothing to do, yet
 		} catch (Exception $e) {
 			//throw exception if your update code fails (logging it would be a good idea, too).
-			$this->debugLog(__METHOD__.' '.$e->getMessage());
+			$this->errorLog(__METHOD__.' '.$e->getMessage());
 			throw $e;
 		}
 	}

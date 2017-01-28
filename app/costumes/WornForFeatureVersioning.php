@@ -78,7 +78,7 @@ trait WornForFeatureVersioning
 		}
 		catch( PDOException $pdox )
 		{
-			$this->debugLog(__METHOD__.' failed: '.$pdox->getMessage().' sql='.$theSql);
+			$this->errorLog(__METHOD__.' failed: '.$pdox->getMessage().' sql='.$theSql);
 			throw new DbException( $pdox, $theSql ) ;
 		}
 	}

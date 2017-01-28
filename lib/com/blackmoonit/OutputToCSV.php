@@ -265,7 +265,7 @@ class OutputToCSV {
 	 * @return string Returns the CSV header line to output.
 	 */
 	protected function generateHeaderRow($aHeaderValues=null) {
-		$theHeaderValues = (!empty($aHeaderValues)) ? $aHeaderValues : $this->mHeaderRow; 
+		$theHeaderValues = (!empty($aHeaderValues)) ? $aHeaderValues : $this->mHeaderRow;
 		foreach ($theHeaderValues as &$theName) {
 			$theName = str_replace($this->mEnclosureLeft,$this->mReplaceEnclosureLeft,$theName);
 			$theName = str_replace($this->mEnclosureRight,$this->mReplaceEnclosureRight,$theName);
@@ -365,7 +365,7 @@ class OutputToCSV {
 			flock($theFileHandle, LOCK_UN);
 			$bSuccess = true;
 		} else {
-			$this->debugLog(__METHOD__.' lock fail: '.$aFilePath);
+			$this->errorLog(__METHOD__.' lock fail: '.$aFilePath);
 		}
 		fclose($theFileHandle);
 		return $bSuccess;

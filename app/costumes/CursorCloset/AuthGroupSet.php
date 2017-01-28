@@ -81,7 +81,7 @@ class AuthGroupSet extends BaseCostume
 		}
 		catch( Exception $x )
 		{
-			$this->debugLog( __METHOD__ . ' failed: ' . $x->getMessage() );
+			$this->errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
 			throw $x ;
 		}
 		return $this ;
