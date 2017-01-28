@@ -21,7 +21,7 @@ use com\blackmoonit\Strings ;
 {
 
 /**
- * All other widgets should extend BaseWidget.
+ * Base widget for Block-style elements.
  */
 class BlockWidget extends BaseWidget
 {
@@ -42,7 +42,7 @@ class BlockWidget extends BaseWidget
 	/**
 	 * Appends a string directly to the block widget's content.
 	 * @param string $aString the string to append
-	 * @param boolean $bReturnAndAppend whether to also append a newline 
+	 * @param boolean $bReturnAndAppend whether to also append a newline
 	 * @return \com\blackmoonit\widgetbuilder\BlockWidget the updated widget
 	 */
 	public function append( $aString, $bReturnAndAppend=true )

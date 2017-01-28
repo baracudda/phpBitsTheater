@@ -66,6 +66,12 @@ class BitsAccount extends BaseResources
 	public $label_register = 'Register' ;
 	public $label_requestpwreset = 'Request Password Reset' ;
 	
+	public $placeholder_name = '   your name or alias';
+	public $placeholder_email = '   you@example.com';
+	public $placeholder_pwinput = '   your own personal secret phrase';
+	public $placeholder_pwconfirm = '   re-type your secret phrase';
+	public $placeholder_regcode = '   open-sesame!';
+	
 	public $msg_pw_nomatch = 'Passwords do not match.' ;
 	public $msg_acctexists =
 		'%1$s already exists. Please use a different one.' ;

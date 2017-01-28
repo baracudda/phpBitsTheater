@@ -48,6 +48,18 @@ class BaseWidget
 	{
 		$this->setID($aID) ;
 	}
+	
+	/**
+	 * Factory convenience method for use instead of (new X()) constructor.
+	 * @param string $aID - the ID of the element.
+	 * @return BaseWidget Returns the new object for chaining.
+	 */
+	static public function newWidget( $aID=null )
+	{
+		$thisClassName = get_called_class();
+		$o = new $thisClassName( $aID );
+		return $o;
+	}
 
 	/**
 	 * Sets the element's type. Silently ignores blank values.
