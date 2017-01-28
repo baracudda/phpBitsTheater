@@ -62,6 +62,8 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	const UNREG_GROUP_ID = 0 ;
 	/** The constant, assumed ID of the "titan" superuser group. */
 	const TITAN_GROUP_ID = 1 ;
+	/** The constant, assumed ID of the "default APP_ID reg code group. */
+	const DEFAULT_REG_GROUP_ID = 3;
 
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
@@ -179,13 +181,11 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			$theSql = SqlBuilder::withModel($this);
 			$theSql->startWith('INSERT INTO')->add($this->tnGroupRegCodes);
 			$this->setAuditFieldsOnInsert($theSql);
-			$theSql->mustAddParam('group_id', 3, PDO::PARAM_INT);
+			$theSql->mustAddParam('group_id', static::DEFAULT_REG_GROUP_ID, PDO::PARAM_INT);
 			$theSql->mustAddParam('reg_code', $this->getDirector()->app_id);
-			try {
-				$theSql->execDML();
-			} catch (PDOException $pdoe) {
-				throw $theSql->newDbException(__METHOD__, $pdoe);
-			}
+			try { $theSql->execDML(); }
+			catch (PDOException $pdoe)
+			{ throw $theSql->newDbException(__METHOD__, $pdoe); }
 		}
 	}
 	
@@ -471,35 +471,29 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function createGroup( $aGroupName, $aGroupParentId=null, $aGroupRegCode=null, $aGroupCopyID=null )
 	{
-		if( empty( $this->db ) || ! $this->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
-		
 		$theGroupParentId = intval($aGroupParentId);
-
+		if ($theGroupParentId<=self::UNREG_GROUP_ID)
+			$theGroupParentId = null;
+		
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 				'group_name' => $aGroupName,
-				'parent_group_id' => (!empty($theGroupParentId)) ? $theGroupParentId : null,
+				'parent_group_id' => $theGroupParentId,
 		));
 		$theSql->startWith( 'INSERT INTO ' . $this->tnGroups ) ;
-		$theSql->add('SET')->mustAddParam('group_name')->setParamPrefix(', ');
+		$this->setAuditFieldsOnInsert($theSql);
+		$theSql->mustAddParam('group_name');
 		$theSql->addParam('parent_group_id');
 		$theGroupID = 0 ;
 		try { $theGroupID = $theSql->addAndGetId() ; }
 		catch( PDOException $pdox )
-		{
-			throw new DbException( $pdox, __METHOD__
-					. ' failed when inserting a new user group.' ) ;
-		}
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 		
 		if( ! empty( $theGroupID ) && ! empty( $aGroupRegCode ) )
 			$this->insertGroupRegCode( $theGroupID, $aGroupRegCode ) ;
 
-		$theResults = array(
-				'group_id' => $theGroupID,
-				'group_name' => $aGroupName,
-				'parent_group_id' => $aGroupParentId,
-				'reg_code' => (!empty($aGroupRegCode)) ? $aGroupRegCode : null,
-		);
+		$theResults = $theSql->myParams;
+		$theResults['group_id'] = $theGroupID;
+		$theResults['reg_code'] = (!empty($aGroupRegCode)) ? $aGroupRegCode : null;
 
 		if( ! empty( $theGroupID ) && ! empty( $aGroupCopyID ) )
 		{
@@ -511,41 +505,13 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 				$theResults['copied_group'] = $aGroupCopyID ;
 				$theResults['copied_perms'] = $theCopyResult['count'] ;
 			}
-			catch( RightsException $rx )
-			{
-				$this->debugLog( __METHOD__
-						. ' failed to copy permissions for group ['
-						. $aGroupCopyID . '] because of a RightsException: '
-						. $rx->getMessage()
-						);
-				$theResults['copied_group'] = -1 ;
-				$theResults['group_copy_error'] = $rx->getMessage() ;
-			}
-			catch( BrokenLeg $blx )
-			{
-				$this->debugLog( __METHOD__
-						. ' failed to copy permissions for group ['
-						. $aGroupCopyID . '] because of a BrokenLeg: '
-						. $blx->getMessage()
-					);
-				$theResults['copied_group'] = -1 ;
-				$theResults['group_copy_error'] = $blx->getMessage() ;
-			}
-			catch( DbException $dbx )
-			{
-				$this->debugLog( __METHOD__
-						. ' failed to copy permissions for group ['
-						. $aGroupCopyID . '] because of a DbException: '
-						. $dbx->getMessage()
-						);
-				$theResults['copied_group'] = -1 ;
-				$theResults['group_copy_error'] = $dbx->getMessage() ;
-			}
 			catch( Exception $x )
 			{
-				$this->debugLog( __METHOD__
+				$theExClass = (new \ReflectionClass($x))->getShortName();
+				$this->errorLog( __METHOD__
 						. ' failed to copy permissions for group ['
-						. $aGroupCopyID . ']: '
+						. $aGroupCopyID . '] because of a '
+						. $theExClass . ': '
 						. $x->getMessage()
 						);
 				$theResults['copied_group'] = -1 ;
@@ -563,11 +529,8 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function modifyGroup( Scene $v )
 	{
-		if( empty( $this->db ) || ! $this->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
-
 		$theGroup = ((object)( $this->getGroup( $v->group_id ) )) ;
-		if( $theGroup == null )
+		if( empty( $theGroup )
 			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $v->group_id ) ;
 		$theCols = array( 'group_name', 'parent_group_id' ) ;
 		foreach( $theCols as $theCol )
@@ -580,16 +543,15 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($theGroup)
 			->startWith( 'UPDATE ' . $this->tnGroups )
-			->add( 'SET' )
+			;
+		$this->setAuditFieldsOnUpdate($theSql)
 			->mustAddParam( 'group_name', 'Group ' . $v->group_id )
-			->setParamPrefix(', ')
 			->mustAddParam( 'parent_group_id', null, PDO::PARAM_INT )
 			->startWhereClause()
 			->mustAddParam( 'group_id', null, PDO::PARAM_INT )
 			->endWhereClause()
 			;
-		$theSql->logSqlDebug(__METHOD__);
-		$this->debugLog($v);
+		//$theSql->logSqlDebug(__METHOD__);
 		try { $theSql->execDML() ; }
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException(__METHOD__, $pdox) ; }
@@ -607,8 +569,9 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			try { $theSql->execDML() ; }
 			catch( PDOException $pdox )
 			{
-				throw new DbException( $pdox, __METHOD__
-						. ' failed when deleting the old registration code.' ) ;
+				$errMsg = __METHOD__ . ' failed when deleting the old registration code.';
+				$this->errorLog($errMsg);
+				throw new DbException( $pdox, $errMsg ) ;
 			}
 
 			if( ! empty( $v->reg_code ) )
@@ -641,10 +604,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			;
 		try { $theRow = $theSql->getTheRow() ; }
 		catch( PDOException $pdox )
-		{
-			throw new DbException( __METHOD__
-					. ' failed to get a group registration code.' ) ;
-		}
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 		return $theRow['reg_code'] ;
 	}
 	
@@ -665,11 +625,12 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 					'reg_code' => $theRegCode,
 			));
 			$theSql->startWith( 'INSERT INTO ' . $this->tnGroupRegCodes );
-			$theSql->add('SET')->mustAddParam('group_id')->setParamPrefix(', ');
+			$this->setAuditFieldsOnInsert($theSql);
+			$theSql->mustAddParam('group_id');
 			$theSql->mustAddParam('reg_code');
 			try { $theSql->execDML() ; }
 			catch( PDOException $pdox )
-			{ throw new DbException( $pdox, __METHOD__ . ' failed.' ) ; }
+			{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 		}
 	}
 
@@ -698,9 +659,9 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			$theSql->startWith('SELECT group_id FROM')->add($this->tnGroupRegCodes);
 			$theSql->startWhereClause()->mustAddParam('reg_code')->endWhereClause();
 			$theRow = $theSql->getTheRow();
-			return (!empty($theRow)) ? $theRow['group_id']+0 : self::UNREG_GROUP_ID;
+			return (!empty($theRow)) ? intval($theRow['group_id']) : self::UNREG_GROUP_ID;
 		} else {
-			return ($theRegCode==$aAppId) ? 3 : self::UNREG_GROUP_ID;
+			return ($theRegCode==$aAppId) ? static::DEFAULT_REG_GROUP_ID : self::UNREG_GROUP_ID;
 		}
 	}
 
@@ -714,9 +675,6 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function getAllGroups( $bIncludeSystemGroups=false )
 	{
-		if( empty( $this->db ) || ! $this->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
-
 		$theSql = SqlBuilder::withModel($this)
 			->startWith( 'SELECT G.group_id, G.group_name,' )
 			->add( 'G.parent_group_id, GRC.reg_code' )
@@ -740,7 +698,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 
 		try { return $theSql->query()->fetchAll() ; }
 		catch( PDOException $pdox )
-		{ throw new DbException( $pdox, __METHOD__ . ' failed.' ) ; }
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 
 	/**
