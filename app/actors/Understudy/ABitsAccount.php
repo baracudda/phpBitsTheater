@@ -24,7 +24,6 @@ use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\outtakes\AccountAdminException ;
 use Exception;
-use PDOException ;
 {//namespace begin
 
 abstract class ABitsAccount extends BaseActor {
@@ -64,7 +63,7 @@ abstract class ABitsAccount extends BaseActor {
 		);
 		$v->action_url_login = $v->getSiteUrl(
 				$this->getConfigSetting('auth/login_url')
-		);		
+		);
 	}
 	
 	public function login() {
@@ -193,8 +192,6 @@ abstract class ABitsAccount extends BaseActor {
 			throw AccountAdminException::toss( $this, 'CANNOT_DELETE_YOURSELF' ) ;
 
 		$dbAccounts = $this->getProp( 'Accounts' ) ;
-		if( ! $dbAccounts->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		$theAccount = null ;
 		try { $theAccount = $dbAccounts->getAccount($aAccountID) ; }
 		catch( DbException $dbx )
@@ -227,15 +224,10 @@ abstract class ABitsAccount extends BaseActor {
 	 */
 	protected function deleteAccountData( $aAccountID )
 	{
-		$this->debugLog( __METHOD__ . ' Deleting account ['
-				. $aAccountID . ']...' ) ;
+		$this->debugLog( __METHOD__ . ' Deleting account [' . $aAccountID . ']...' ) ;
 
 		$dbAccounts = $this->getProp( 'Accounts' ) ;
-		if( ! $dbAccounts->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		try { $dbAccounts->del($aAccountID) ; }
-		catch( PDOException $pdox )
-		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $pdox->getMessage() ) ; }
 		catch( DbException $dbx )
 		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
 

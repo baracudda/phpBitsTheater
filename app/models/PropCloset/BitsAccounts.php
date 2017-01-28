@@ -114,9 +114,27 @@ class BitsAccounts extends BaseModel {
 		return $theResult;
 	}
 	
+	/**
+	 * Delete an account.
+	 * @param number $aAccountId - the account ID.
+	 * @throws \InvalidArgumentException
+	 * @throws DbException
+	 * @return array Returns the account ID passed in.
+	 */
 	public function del($aAccountId) {
-		$theSql = "DELETE FROM {$this->tnAccounts} WHERE account_id=$aAccountId ";
-		return $this->execDML($theSql);
+		$theAcctId = intval($aAccountId);
+		if (empty($theAcctId))
+			throw new \InvalidArgumentException('invalid $aAccountId param');
+		$theSql = SqlBuilder::withModel($this);
+		try {
+			$theSql->startWith('DELETE FROM')->add($this->tnAccounts);
+			$theSql->startWhereClause();
+			$theSql->mustAddParam('account_id', $theAcctId, PDO::PARAM_INT);
+			$theSql->endWhereClause();
+			return $theSql->execDMLandGetParams();
+		} catch (PDOException $pdoe) {
+			throw $theSql->newDbException(__METHOD__, $pdoe);
+		}
 	}
 	
 	/**

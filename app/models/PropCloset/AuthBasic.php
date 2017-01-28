@@ -482,7 +482,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				'group_id' => $aGroupId,
 				'token' => self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%',
 		));
-		if ($this->isConnected()) try {
+		try {
 			//determine OrderBy (so can report on it in case of exception)
 			if (empty($aScene->orderby))
 				$aScene->orderby = 'acct.account_name';
@@ -577,9 +577,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	public function getAuthTokens( $aAuthID=null, $aAccountID=null,
 			$aToken=null, $isTokenAFilter=false )
 	{
-		if( ! $this->isConnected() )
-			throw AuthPasswordResetException::toss( $this, 'NOT_CONNECTED' ) ;
-
 		$theSql = SqlBuilder::withModel($this)
 			->startWith( 'SELECT * FROM' )->add( $this->tnAuthTokens )
 			->startWhereClause()
@@ -630,24 +627,25 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @since BitsTheater 3.6.1
 	 */
 	public function insertAuthToken($aAuthId, $aAcctId, $aToken) {
+		if (empty($aAuthId))
+			throw new \InvalidArgumentException('invalid $aAuthId param');
+		if (empty($aAcctId))
+			throw new \InvalidArgumentException('invalid $aAcctId param');
+		if (empty($aToken))
+			throw new \InvalidArgumentException('invalid $aToken param');
 		$theSql = SqlBuilder::withModel($this);
-		if ((!empty($aAuthId) || !empty($aAcctId))
-				&& !empty($aToken) && $this->isConnected())
-		try {
-			$theSql->startWith('INSERT INTO')->add($this->tnAuthTokens);
-			if ($this->myExistingFeatureVersionNum>5)
-				$this->setAuditFieldsOnInsert($theSql);
-			else
-				$theSql->add('SET')->mustAddParam('_changed', $this->utc_now())->setParamPrefix(', ');
-			$theSql->mustAddParam('auth_id', $aAuthId);
-			$theSql->mustAddParam('account_id', $aAcctId, PDO::PARAM_INT);
-			$theSql->mustAddParam('token', $aToken);
-			//$this->debugLog(__METHOD__ . $this->debugStr($theSql));
-			$theSql->execDML();
-			return $theSql->myParams;
-		} catch (PDOException $pdoe) {
-			throw $theSql->newDbException(__METHOD__, $pdoe);
-		}
+		$theSql->startWith('INSERT INTO')->add($this->tnAuthTokens);
+		if ($this->myExistingFeatureVersionNum>5)
+			$this->setAuditFieldsOnInsert($theSql);
+		else
+			$theSql->add('SET')->mustAddParam('_changed', $this->utc_now())->setParamPrefix(', ');
+		$theSql->mustAddParam('auth_id', $aAuthId);
+		$theSql->mustAddParam('account_id', $aAcctId, PDO::PARAM_INT);
+		$theSql->mustAddParam('token', $aToken);
+		//$theSql->logSqlDebug(__METHOD__);
+		try { return $theSql->execDMLandGetParams(); }
+		catch (PDOException $pdoe)
+		{ throw $theSql->newDbException(__METHOD__, $pdoe); }
 	}
 
 	/**
@@ -1842,8 +1840,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 */
 	public function generatePasswordRequestFor( AuthPasswordReset &$aResetUtils )
 	{
-		if( ! $this->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		if( ! isset( $aResetUtils ) )
 			throw PasswordResetException::toss( $this, 'EMPERORS_NEW_COSTUME' );
 

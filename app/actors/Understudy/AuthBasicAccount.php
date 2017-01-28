@@ -70,10 +70,7 @@ class AuthBasicAccount extends BaseActor
 	 */
 	protected function getCanonicalModel()
 	{
-		$dbModel = $this->getProp( self::CANONICAL_MODEL ) ;
-		if( ! $dbModel->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
-		return $dbModel ;
+		return $this->getProp( self::CANONICAL_MODEL ) ;
 	}
 
 	public function view($aAcctId=null) {
@@ -960,11 +957,7 @@ class AuthBasicAccount extends BaseActor
 	protected function addAuthAndEmailTo( $aAccountInfo )
 	{
 		$dbAuth = $this->getProp( 'Auth' ) ;
-		if( ! $dbAuth->isConnected() )
-		{ // Don't fail the whole request; just return an empty result.
-			$this->debugLog( __METHOD__ . ' could not connect to DB.' ) ;
-		}
-		else try
+		try
 		{
 			$theAuth = ((object)($dbAuth->getAuthByAccountId($aAccountInfo->account_id))) ;
 			if( $theAuth != null )
@@ -1000,11 +993,6 @@ class AuthBasicAccount extends BaseActor
 	protected function getGroupsForAccount( $aAccountID=null )
 	{
 		$dbGroups = $this->getProp( 'AuthGroups' ) ;
-		if( ! $dbGroups ->isConnected() )
-		{ // Don't fail the whole request; just return an empty set.
-			$this->debugLog( __METHOD__ . ' could not connect to DB.' ) ;
-			return null ;
-		}
 		try
 		{
 			$theReturn = array() ;
@@ -1041,11 +1029,7 @@ class AuthBasicAccount extends BaseActor
 	protected function addMobileHardwareIdsForAutoLogin( $aAccountInfo )
 	{
 		$dbAuth = $this->getProp( 'Auth' ) ;
-		if( ! $dbAuth->isConnected() )
-		{ // Don't fail the whole request; just return an empty result.
-			$this->debugLog( __METHOD__ . ' could not connect to DB.' ) ;
-		}
-		else try
+		try
 		{
 			$theIDs = $dbAuth->getMobileHardwareIdsForAutoLogin(
 					$aAccountInfo->auth_id, $aAccountInfo->account_id
@@ -1102,8 +1086,6 @@ class AuthBasicAccount extends BaseActor
 	protected function getAllInGroup( $aGroupID )
 	{
 		$dbGroups = $this->getProp('AuthGroups');
-		if( ! $dbGroups->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		if( ! $dbGroups->groupExists($aGroupID) )
 			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aGroupID ) ;
 		$dbAuth = $this->getProp('Auth');
@@ -1187,8 +1169,6 @@ class AuthBasicAccount extends BaseActor
 		if( ! $this->isAllowed( 'accounts', 'activate' ) )
 			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
 		$dbAuth = $this->getProp( 'Auth' ) ;
-		if( ! $dbAuth->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		$theAuth = null ;
 		try { $theAuth = $dbAuth->getAuthByAccountId($aAccountID) ; }
 		catch( DbException $dbx )
@@ -1233,12 +1213,9 @@ class AuthBasicAccount extends BaseActor
 	{
 		$this->debugLog( __METHOD__ . ' - Deleting auth for account [' . $aAccountID . ']...' ) ;
 		$dbAuth = $this->getProp( 'Auth' ) ;
-		if( ! $dbAuth->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		try { $dbAuth->deleteFor( $aAccountID ) ; }
 		catch( DbException $dbx )
 		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx ) ; }
-
 		return $this ;
 	}
 
@@ -1254,8 +1231,6 @@ class AuthBasicAccount extends BaseActor
 		if (empty($v->device_id))
 			throw BrokenLeg::toss( $this, 'MISSING_VALUE', 'device_id' ) ;
 		$dbAuth = $this->getProp('Auth');
-		if ( !$dbAuth->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		$theAuthRow = null;
 		//we need either an account_id or an auth_id
 		//  get the other one using whichever we were given
@@ -1295,8 +1270,6 @@ class AuthBasicAccount extends BaseActor
 					$this->getDirector(), $v->auth_header_data
 			);
 			$dbAuth = $this->getProp('Auth');
-			if ( !$dbAuth->isConnected() )
-				throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 			
 			$theDeviceTokenFilter = $dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':';
 			//ensure our tokens are not stale

@@ -264,22 +264,26 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	 * @return array Returns the feature row as an array.
 	 */
 	public function getFeature($aFeatureId, $aFieldList=null) {
-		$theResultSet = null;
-		if ($this->isConnected()) try {
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array('feature_id' => $aFeatureId));
-			$theSql->startWith('SELECT')->addFieldList($aFieldList)->add('FROM')->add($this->tnSiteVersions);
-			$theSql->startWhereClause()->mustAddParam('feature_id')->endWhereClause();
-			$theResultSet = $theSql->getTheRow();
-			if (!empty($theResultSet)) {
-				$theResultSet['version_seq'] += 0;
-				if (empty($theResultSet['version_display'])) {
-					$theResultSet['version_display'] = 'v'.$theResultSet['version_seq'];
+		$theSql = SqlBuilder::withModel($this);
+		$theSql->startWith('SELECT')->addFieldList($aFieldList)
+				->add('FROM')->add($this->tnSiteVersions);
+				->startWhereClause()
+				->mustAddParam('feature_id',$aFeatureId)
+				->endWhereClause()
+				;
+		try {
+			$theResult = $theSql->getTheRow();
+			if (!empty($theResult))
+			{
+				if (array_key_exists('version_seq', $theResult))
+					$theResult['version_seq'] = intval($theResult['version_seq']);
+				if (array_key_exists('version_display', $theResult)) {
+					$theResult['version_display'] = 'v'.$theResult['version_seq'];
 				}
 			}
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe,  __METHOD__.' failed.');
-		}
-		return $theResultSet;
+			return $theResult;
+		} catch (PDOException $pdoe)
+		{ throw $theSql->newDbException(__METHOD__, $pdoe); }
 	}
 	
 	/**
@@ -288,14 +292,12 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	 * @param string $aFeatureId - the feature ID.
 	 */
 	public function removeFeature($aFeatureId) {
-		if ($this->isConnected()) try {
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array('feature_id' => $aFeatureId));
-			$theSql->startWith('DELETE')->add('FROM')->add($this->tnSiteVersions);
-			$theSql->startWhereClause()->mustAddParam('feature_id')->endWhereClause();
-			$theSql->execDML();
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe,  __METHOD__.' failed.');
-		}
+		$theSql = SqlBuilder::withModel($this);
+		$theSql->startWith('DELETE')->add('FROM')->add($this->tnSiteVersions);
+		$theSql->startWhereClause()->mustAddParam('feature_id', $aFeatureId)->endWhereClause();
+		try { $theSql->execDML(); }
+		catch (PDOException $pdoe)
+		{ throw $theSql->newDbException(__METHOD__, $pdoe); }
 	}
 	
 	/**
@@ -380,25 +382,19 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	 * @return Returns array(feature info) on success, else NULL.
 	 */
 	public function insertFeature($aDataObject) {
-		$theResultSet = null;
-		if ($this->isConnected()) try {
-			$nowAsUTC = $this->utc_now();
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
-			$theSql->startWith('INSERT INTO')->add($this->tnSiteVersions);
-			$theSql->add('SET')->mustAddParam('created_ts', $nowAsUTC)->setParamPrefix(', ');
-			$theSql->mustAddParam('updated_ts', $nowAsUTC);
-			$theSql->mustAddParam('feature_id');
-			$theSql->mustAddParam('model_class');
-			$theSql->mustAddParam('version_seq', 1, PDO::PARAM_INT);
-			$theSql->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
-			//$this->debugLog($this->debugStr($theSql));
-			if ($theSql->execDML()) {
-				$theResultSet = $theSql->myParams;
-			}
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe,  __METHOD__.' failed.');
-		}
-		return $theResultSet;
+		$nowAsUTC = $this->utc_now();
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
+		$theSql->startWith('INSERT INTO')->add($this->tnSiteVersions);
+		$theSql->add('SET')->mustAddParam('created_ts', $nowAsUTC)->setParamPrefix(', ');
+		$theSql->mustAddParam('updated_ts', $nowAsUTC);
+		$theSql->mustAddParam('feature_id');
+		$theSql->mustAddParam('model_class');
+		$theSql->mustAddParam('version_seq', 1, PDO::PARAM_INT);
+		$theSql->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
+		//$theSql->logSqlDebug(__METHOD__);
+		try { return $theSql->execDMLandGetParams(); }
+		catch (PDOException $pdoe)
+		{ throw $theSql->newDbException( __METHOD__, $pdoe ); }
 	}
 	
 	/**
@@ -408,24 +404,18 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	 * @return Returns array(device_id, name) on success, else NULL.
 	 */
 	public function updateFeature($aDataObject) {
-		$theResultSet = null;
-		if ($this->isConnected()) try {
-			$nowAsUTC = $this->utc_now();
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
-			$theSql->startWith('UPDATE')->add($this->tnSiteVersions);
-			$theSql->add('SET')->mustAddParam('updated_ts', $nowAsUTC)->setParamPrefix(', ');
-			$theSql->mustAddParam('version_seq');
-			$theSql->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
-			$theSql->addParam('model_class');
-			$theSql->addFieldAndParam('feature_id', 'new_feature_id');
-			$theSql->startWhereClause()->mustAddParam('feature_id')->endWhereClause();
-			if ($theSql->execDML()) {
-				$theResultSet = $theSql->myParams;
-			}
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe,  __METHOD__.' failed.');
-		}
-		return $theResultSet;
+		$nowAsUTC = $this->utc_now();
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
+		$theSql->startWith('UPDATE')->add($this->tnSiteVersions);
+		$theSql->add('SET')->mustAddParam('updated_ts', $nowAsUTC)->setParamPrefix(', ');
+		$theSql->mustAddParam('version_seq');
+		$theSql->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
+		$theSql->addParam('model_class');
+		$theSql->addFieldAndParam('feature_id', 'new_feature_id');
+		$theSql->startWhereClause()->mustAddParam('feature_id')->endWhereClause();
+		try { return $theSql->execDMLandGetParams(); }
+		catch (PDOException $pdoe)
+		{ throw $theSql->newDbException(__METHOD__, $pdoe); }
 	}
 	
 	/**

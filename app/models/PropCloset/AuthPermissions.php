@@ -225,8 +225,6 @@ class AuthPermissions extends BaseModel {
 	 */
 	public function getGrantedRights( $aGroupID=null )
 	{
-		if( ! $this->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		if( empty( $aGroupID ) )
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'group_id' ) ;
 
@@ -406,9 +404,6 @@ class AuthPermissions extends BaseModel {
 	 */
 	public function getPermissionMap( $bIncludeSystemGroups=false )
 	{
-		if( ! $this->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
-
 		$theSql = SqlBuilder::withModel($this)
 			->startWith( 'SELECT group_id, namespace AS ns, ' )
 			->add( ' permission, value FROM ' . $this->tnPermissions )
@@ -443,9 +438,6 @@ class AuthPermissions extends BaseModel {
 	 */
 	public function copyPermissions( $aSourceGroupID=null, $aTargetGroupID=null )
 	{
-		if( ! $this->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
-
 		if( ! isset( $aSourceGroupID ) )
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT',
 					'source_group_id' ) ;
@@ -559,8 +551,6 @@ class AuthPermissions extends BaseModel {
 	 */
 	public function setPermission( $aGroupID=null, $aNamespace=null, $aPerm=null, $aValue=null )
 	{
-		if( ! $this->isConnected() )
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		if( empty( $aGroupID ) )
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'group_id' ) ;
 		if( empty( $aNamespace ) )
@@ -639,8 +629,6 @@ class AuthPermissions extends BaseModel {
 	 */
 	public function migrateNamespace($aOldNamespace, $aNewNamespace)
 	{
-		if (!$this->isConnected())
-			throw BrokenLeg::toss( $this, 'DB_CONNECTION_FAILED' ) ;
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 				'namespace_old' => $aOldNamespace,
 				'namespace_new' => $aNewNamespace,
