@@ -266,7 +266,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	public function getFeature($aFeatureId, $aFieldList=null) {
 		$theSql = SqlBuilder::withModel($this);
 		$theSql->startWith('SELECT')->addFieldList($aFieldList)
-				->add('FROM')->add($this->tnSiteVersions);
+				->add('FROM')->add($this->tnSiteVersions)
 				->startWhereClause()
 				->mustAddParam('feature_id',$aFeatureId)
 				->endWhereClause()

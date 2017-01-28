@@ -4,6 +4,7 @@ use BitsTheater\costumes\IDirected;
 use com\blackmoonit\exceptions\IDebuggableException;
 use BitsTheater\costumes\APIResponse;
 use com\blackmoonit\exceptions\DbException;
+use PDOException;
 {
 
 /**
@@ -162,15 +163,17 @@ class BrokenLeg extends \Exception
 					$aException->getMessage().' context:'.$aException->getContextMsg()
 			);
 			$aContext->getDirector()->errorLog('[2/2] c_stk: '.
-					$aException->getTraceAsString()
+					str_replace( realpath(BITS_ROOT),
+							'[%site]', $aException->getTraceAsString()
+					)
 			);
 		}
 
 		if( $aException instanceof BrokenLeg )
 			return $aException ;
-		else if ($aException instanceof DbException)
+		else if ($aException instanceof DbException || $aException instanceof PDOException)
 		{
-			$aDbCode = intval($aException-getCode());
+			$aDbCode = intval($aException->getCode());
 			$theErr = ($aDbCode>2000 && $aDbCode<2030)
 					? 'DB_CONNECTION_FAILED'
 					: 'DB_EXCEPTION'

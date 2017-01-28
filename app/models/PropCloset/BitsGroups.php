@@ -49,7 +49,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 * @var string
 	 */
 	const FEATURE_ID = 'BitsTheater/groups';
-	const FEATURE_VERSION_SEQ = 3; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 4; //always ++ when making db schema changes
 	//v 4 - added Audit fields to all tables
 	//v 3 - removed group_type field from groups table
 	//v 2 - added groups_reg_codes child table
@@ -530,7 +530,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	public function modifyGroup( Scene $v )
 	{
 		$theGroup = ((object)( $this->getGroup( $v->group_id ) )) ;
-		if( empty( $theGroup )
+		if( empty( $theGroup ) )
 			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $v->group_id ) ;
 		$theCols = array( 'group_name', 'parent_group_id' ) ;
 		foreach( $theCols as $theCol )

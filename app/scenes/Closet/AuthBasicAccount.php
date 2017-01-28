@@ -17,6 +17,7 @@
 
 namespace BitsTheater\scenes\Closet;
 use BitsTheater\Scene as MyScene;
+use BitsTheater\models\Auth as AuthModel;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use ReflectionClass;
@@ -30,8 +31,7 @@ class AuthBasicAccount extends MyScene {
 
 	protected function setupDefaults() {
 		parent::setupDefaults();
-		$dbAuth = $this->getProp('Auth');
-		$theMetaAuth = new ReflectionClass($dbAuth);
+		$theMetaAuth = new ReflectionClass(AuthModel::MODEL_NAME);
 		if ($theMetaAuth->hasConstant('KEY_userinfo'))
 			$this->KEY_userinfo = $theMetaAuth->getConstant('KEY_userinfo');
 		if ($theMetaAuth->hasConstant('KEY_pwinput'))
@@ -39,7 +39,6 @@ class AuthBasicAccount extends MyScene {
 		if ($theMetaAuth->hasConstant('KEY_cookie'))
 			$this->KEY_cookie = $theMetaAuth->getConstant('KEY_cookie');
 		$theMetaAuth = null;
-		$this->returnProp($dbAuth);
 	}
 	
 	public function getUsernameKey() {
