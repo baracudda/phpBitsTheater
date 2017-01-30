@@ -36,6 +36,9 @@ class BitsAuthGroups extends BaseResources {
 	public $errmsg_cannot_copy_to_titan =
 		'Permissions cannot be copied into that role.' ;
 	public $errmsg_group_not_found = 'Role [%1$s] not found.' ;
+	
+	public $placeholder_group_name = '    role name';
+	public $placeholder_reg_code = '    map-to-role phrase';
 
 }//end class
 

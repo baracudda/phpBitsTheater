@@ -71,6 +71,8 @@ class BitsAccount extends BaseResources
 	public $placeholder_pwinput = '   your own personal secret phrase';
 	public $placeholder_pwconfirm = '   re-type your secret phrase';
 	public $placeholder_regcode = '   open-sesame!';
+	public $placeholder_autharea_username = '  user';
+	public $placeholder_autharea_password = '  pw';
 	
 	public $msg_pw_nomatch = 'Passwords do not match.' ;
 	public $msg_acctexists =

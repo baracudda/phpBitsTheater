@@ -1,3 +1,6 @@
+<?php
+use com\blackmoonit\Widgets;
+?>
 <div class="modal fade" id="dialog_group">
 <div class="modal-dialog "><!-- modal-lg -->
 <div class="modal-content">
@@ -8,15 +11,20 @@
   <div class="modal-body">
   	<div class="form-group">
   		<input type="hidden" name="group_id" id="group_id" />
-  		<label style="width:10em;text-align: right">Name:</label> <input style="width: 30ch" type="text" id="group_name" name="group_name" /><br>
-  		<br>
+  		<label style="width:10em;text-align: right">Name:</label> <?php
+  			print( Widgets::buildTextBox('group_name')->setSize(30)->setRequired()
+				->setPlaceholder( $v->getRes('auth_groups/placeholder_group_name') )->renderInline() );
+  		?><br>
   		<!--
   		<label style="width:10em;text-align: right">Description:</label> <input style="width: 60ch" type="text" id="group_desc" name="group_desc" /><br>
   		<br>
   		-->
   		<label style="width:10em;text-align: right">Parent:</label> <select id="group_parent" name="group_parent" ></select><br>
   		<br>
-  		<label style="width:10em;text-align: right">Registration Code:</label> <input style="width: 40ch" type="text" id="group_reg_code" name="group_reg_code" /><br>
+  		<label style="width:10em;text-align: right">Registration Code:</label> <?php
+  			print( Widgets::buildTextBox('group_reg_code')->setSize(40)
+  				->setPlaceholder( $v->getRes('auth_groups/placeholder_reg_code') )->renderInline() );
+  		?><br>
   		<p style="padding-left:10em">When registering, a user supplying this code will automatically be a member of this role.</p><br>
 	</div>
   </div>

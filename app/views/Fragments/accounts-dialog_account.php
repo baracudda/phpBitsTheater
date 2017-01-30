@@ -15,15 +15,21 @@ use com\blackmoonit\Widgets;
   		<table>
   		<tr>
   			<td style="padding:1em;width:5em;text-align:right"><label><?php print($v->getRes('account/colheader_account_name'));?>:</label></td>
-  			<td style="padding:1em"><input style="width: 30ch" type="text" id="account_name" name="account_name" /></td>
+  			<td style="padding:1em"><?php
+  				print( Widgets::buildTextBox('account_name')->setRequired()->setSize(40)->renderInline() );
+  			?></td>
   		</tr>
   		<tr>
 	  		<td style="padding:1em;width:5em;text-align:right"><label><?php print($v->getRes('account/colheader_email'));?>:</label></td>
-	  		<td style="padding:1em"><input style="width: 50ch" type="text" id="email" name="email" /></td>
+	  		<td style="padding:1em"><?php
+  				print( Widgets::buildEmailBox('email')->setRequired()->setSize(40)->renderInline() );
+	  		?></td>
   		</tr>
   		<tr id="row_account_password">
   			<td style="padding:1em;width:5em;text-align:right"><label><?php print($v->getRes('account/label_pwinput'));?>:</label></td>
-  			<td style="padding:1em"><input style="width: 30ch" type="text" id="account_password" name="account_password" /></td>
+  			<td style="padding:1em"><?php
+  				print( Widgets::buildPassBox('account_password')->setSize(40)->renderInline() );
+	  		?></td>
   		</tr>
   		<tr>
   			<td style="padding:1em;width:5em;text-align:right"><label><?php print($v->getRes('account/colheader_account_is_active'));?>:</label></td>

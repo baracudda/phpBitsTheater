@@ -18,7 +18,7 @@
 namespace com\blackmoonit;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
-use \DateTime;
+use DateTime;
 {//begin namespace
 
 /**
@@ -74,7 +74,7 @@ class Widgets
 		$theWidget = '' ;
 		if( !empty($aItemList) && is_array($aItemList) )
 		{
-			$theWidget = Strings::spaces($aIndent) 
+			$theWidget = Strings::spaces($aIndent)
 				. '<select name="' . $aWidgetName
 				. '" id="' . self::sanitizeElementID($aWidgetName)
 				. '" class="field">'
@@ -105,7 +105,7 @@ class Widgets
 	 *  the ID
 	 * @param array $aItemList an array of options; this should be an array in
 	 *  which the key is the <option> element's actual value, and the value is
-	 *  the caption to be rendered; 
+	 *  the caption to be rendered;
 	 * @param number $aSize the number of rows to render in the selection box
 	 * @param array $aValuesSelected an array of values which should be
 	 *  selected by default
@@ -132,7 +132,7 @@ class Widgets
 		{
 			foreach( $aItemList as $theValue => $theCaption )
 			{
-				$theSelector .= Strings::spaces($aIndent+1) 
+				$theSelector .= Strings::spaces($aIndent+1)
 					. '<option '
 					. 'value="' . $theValue
 					. '"'
@@ -147,7 +147,7 @@ class Widgets
 		}
 		else if( isset($aItemList) )
 		{ // Some weirdo passed a simple value into this function.
-			$theSelector .= Strings::spaces($aIndent+1) 
+			$theSelector .= Strings::spaces($aIndent+1)
 				. '<option value="' . $aItemList . '">'
 				. $aItemList . '</option>' . PHP_EOL
 				;
@@ -191,7 +191,7 @@ class Widgets
 					&& array_key_exists( $aCaptionField, $aOption ) )
 				{ // Use the caption.
 					$theCaption = $aOption[$aCaptionField] ;
-				} 
+				}
 				else // the value is the caption.
 					$theCaption = $theValue ;
 			}
@@ -228,7 +228,7 @@ class Widgets
 	 *  size allowed by PHP on this server; must be valid for a "file-maxsize"
 	 *  attribute spec
 	 * @param string $isRequired indicates whether the input control's value is
-	 *  required by the form 
+	 *  required by the form
 	 * @param number $aLimit maximum number of files allowed; default 1; must be
 	 *  numeric and valid for "file-limit" attribute spec
 	 * @return string a fully-formed &lt;input&gt; tag or FILE_WIDGET_RENDERING_ERROR
@@ -406,7 +406,7 @@ class Widgets
 			. ( $isSelected ? 'checked ' : '' )
 			. ( !empty($aJavaScript) ? $aJavaScript : '' )
 			. '/>'
-			;	
+			;
 	}
 
 	/**
@@ -589,8 +589,39 @@ class Widgets
 		else
 			return $aTextNew;
 	}
+	
+	/**
+	 * Factory convenience method for creating a text input.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @return widgetbuilder\InputWidget Returns the new object for chaining.
+	 */
+	static public function buildInputBox($aName)
+	{ return widgetbuilder\InputWidget::asText($aName); }
 
+	/**
+	 * Factory convenience method for creating a text input.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @return widgetbuilder\InputWidget Returns the new object for chaining.
+	 */
+	static public function buildTextBox($aName)
+	{ return widgetbuilder\InputWidget::asText($aName); }
 
+	/**
+	 * Factory convenience method for creating an email input.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @return widgetbuilder\InputWidget Returns the new object for chaining.
+	 */
+	static public function buildEmailBox($aName)
+	{ return widgetbuilder\InputWidget::asEmail($aName); }
+	
+	/**
+	 * Factory convenience method for creating a password input.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @return widgetbuilder\InputWidget Returns the new object for chaining.
+	 */
+	static public function buildPassBox($aName)
+	{ return widgetbuilder\InputWidget::asPassword($aName); }
+	
 }//end class
 
 }//end namespace

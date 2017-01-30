@@ -10,12 +10,14 @@ $w = '' ;
 if( $recite->isGuest() )
 { // Draw the login/register/reset form.
 	$theSeparator = '&nbsp;&nbsp;|&nbsp;&nbsp;' ;
-	$w .= Widgets::createTextBox( $v->getUsernameKey(),
-			$v->getUsername(), false,10,255 ) . PHP_EOL
-	   .  Widgets::createPassBox( $v->getPwInputKey(),
-			$v->getPwInput(), false, 10, 255 ) . PHP_EOL
-	   .  Widgets::createSubmitButton( 'button_login',
-			$v->getRes( 'account/label_login' ) ) . '<br/>' . PHP_EOL
+	$w .= Widgets::buildTextBox( $v->getUsernameKey() )//->setSize( 10 )
+			->setPlaceholder( $v->getRes( 'account/placeholder_autharea_username' ) )
+			->renderInline() . PHP_EOL
+	   .  Widgets::buildPassBox( $v->getPwInputKey() )//->setSize( 10 )
+			->setPlaceholder( $v->getRes( 'account/placeholder_autharea_password' ) )
+			->renderInline() . PHP_EOL
+	   .  Widgets::createSubmitButton( 'button_login', $v->getRes( 'account/label_login' ) )
+	   .  '<br/>' . PHP_EOL
 	   .  '<a href="' . $v->action_url_register . '">'
 	   .  $v->getRes( 'account/label_register' ) . '</a>'
 	   .  $theSeparator
@@ -25,7 +27,7 @@ if( $recite->isGuest() )
 	   .  $theSeparator
 	   .  $v->getRes( 'account/label_save_cookie') . '&nbsp;'
 	   .  Widgets::createCheckBox( $v->getUseCookieKey(), false ) . PHP_EOL
-	   ; 
+	   ;
 	if( empty($v->redirect) )
 	{
 		/*
