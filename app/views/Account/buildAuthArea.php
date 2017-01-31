@@ -10,13 +10,14 @@ $w = '' ;
 if( $recite->isGuest() )
 { // Draw the login/register/reset form.
 	$theSeparator = '&nbsp;&nbsp;|&nbsp;&nbsp;' ;
-	$w .= Widgets::buildTextBox( $v->getUsernameKey() )//->setSize( 10 )
+	$w .= Widgets::buildTextBox( $v->getUsernameKey() )->setSize( 20 )
 			->setPlaceholder( $v->getRes( 'account/placeholder_autharea_username' ) )
-			->renderInline() . PHP_EOL
-	   .  Widgets::buildPassBox( $v->getPwInputKey() )//->setSize( 10 )
+			->setAttr('autocomplete', 'off')->render() . PHP_EOL
+	   .  Widgets::buildPassBox( $v->getPwInputKey() )->setSize( 20 )
 			->setPlaceholder( $v->getRes( 'account/placeholder_autharea_password' ) )
-			->renderInline() . PHP_EOL
-	   .  Widgets::createSubmitButton( 'button_login', $v->getRes( 'account/label_login' ) )
+			->setAttr('autocomplete', 'off')->render() . PHP_EOL
+	   .  Widgets::buildSubmitButton( 'button_login', $v->getRes( 'account/label_login' ) )
+	   		->addClass('btn-primary')->addClass('btn-sm')->render()
 	   .  '<br/>' . PHP_EOL
 	   .  '<a href="' . $v->action_url_register . '">'
 	   .  $v->getRes( 'account/label_register' ) . '</a>'
@@ -43,8 +44,8 @@ if( $recite->isGuest() )
 		//}
 		//print('redirect='.$v->redirect); //DEBUG
 	}
-	$form_html = Widgets::createForm( $v->action_url_login, $w, $v->redirect ) ;
-	print($form_html) ;
+	$theForm = Widgets::buildForm($v->action_url_login)->setRedirect($v->redirect)->append($w);
+	print( $theForm->render() ) ;
 }
 else
 {

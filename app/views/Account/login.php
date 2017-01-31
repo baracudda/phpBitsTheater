@@ -18,20 +18,22 @@ $w .= '<tr><td class="db-field-label">'
     . $v->getRes('account/label_name')
     . ':</td><td class="db-field">'
     . Widgets::buildTextBox( $v->getUsernameKey() )->setValue( $v->getUsername() )
-    		->setPlaceholder( $v->getRes('account/placeholder_name') )->renderInline()
+    		->setPlaceholder( $v->getRes('account/placeholder_name') )
+    		->setAttr('autocomplete', 'off')->render()
     . '</td></tr>' . PHP_EOL
     ;
 $w .= '<tr><td class="db-field-label">'
     . $v->getRes('account/label_pwinput')
     . ':</td><td class="db-field">'
     . Widgets::buildPassBox( $v->getPwInputKey() )->setValue( $v->getPwInput() )
-    		->setPlaceholder( $v->getRes('account/placeholder_pwinput') )->renderInline()
+    		->setPlaceholder( $v->getRes('account/placeholder_pwinput') )
+    		->setAttr('autocomplete', 'off')->render()
     . '</td></tr>' . PHP_EOL
     ;
 $w .= '<tr><td class="db-field-label"></td><td class="db-field">' . PHP_EOL
     . '    '
-    . Widgets::createSubmitButton( 'button_login',
-    		$v->getRes('account/label_login') ) . PHP_EOL
+    . Widgets::buildSubmitButton( 'button_login', $v->getRes('account/label_login') )
+    		->addClass('btn-primary')->render() . PHP_EOL
     . '    <a class="btn btn-primary" id="btn_Register" href="'
     . $v->action_url_register . '">'
     . $v->getRes('account/label_register') . '</a>' . PHP_EOL
@@ -42,7 +44,7 @@ $w .= '<tr><td class="db-field-label"></td><td class="db-field">' . PHP_EOL
     ;
 $w .= "</table>\n" ;
 
-$form_html = Widgets::createForm($recite->action_url_login,$w,$v->redirect) ;
-print( $form_html ) ;
+$theForm = Widgets::buildForm($v->action_url_login)->setRedirect($v->redirect)->append($w) ;
+print( $theForm->render() ) ;
 print( str_repeat( '<br/>', 3 ) ) ;
 $recite->includeMyFooter() ;

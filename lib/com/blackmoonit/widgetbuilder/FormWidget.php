@@ -123,9 +123,8 @@ class FormWidget extends BlockWidget
 		if( isset($this->myRedirect) )
 		{
 			$theHTML = $this->indent( $this->myIndentLevel + 1 )
-				. '<input type="hidden" name="redirect" value="'
-				. $this->myRedirect
-				. '"/>' . PHP_EOL
+				. InputWidget::asHidden( 'redirect', $this->myRedirect )
+					->render() . PHP_EOL
 				;
 			return $theHTML ;
 		}

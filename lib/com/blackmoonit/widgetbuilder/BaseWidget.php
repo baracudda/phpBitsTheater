@@ -356,9 +356,25 @@ class BaseWidget
 	/**
 	 * In case you try to print a widget to the output stream because you forgot
 	 * to invoke render() or renderInline() instead...
+	 * @return string Returns the rendered HTML code.
 	 */
 	public function __toString()
 	{ return $this->render() ; }
-}
+	
+	/**
+	 * HTML5 introduces the "data-X" attribute so custom attrs can be used and
+	 * their namespace is protected so that HTML standards will never conflict.
+	 * @param string $aDataName - the X part of the "data-X" attribute name.
+	 * @param string $aDataValue - the "data-X" value to HTML-encode.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setDataAttr($aDataName, $aDataValue)
+	{
+		return $this->setAttr( 'data-' . Widgets::sanitizeAttributeName($aDataName),
+				htmlentities($aDataValue)
+		);
+	}
+	
+} // end class
 
 } // end namespace com\blackmoonit\widgetbuilder

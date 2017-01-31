@@ -19,7 +19,7 @@ $form = '<table class="db-entry">' . PHP_EOL
       .   '</td>' . PHP_EOL
       . '  <td class="db-field">'
       . Widgets::buildEmailBox( 'send_to_email' )->setRequired()
-      		->setPlaceholder( $v->getRes('account/placeholder_email') )->renderInline()
+      		->setPlaceholder( $v->getRes('account/placeholder_email') )->render()
       .   '</td>' . PHP_EOL
       . '  <td class="db-field-label">'
       . Widgets::createSubmitButton( 'button_request_pwd_reset',
@@ -27,6 +27,7 @@ $form = '<table class="db-entry">' . PHP_EOL
       .   '</td>' . PHP_EOL
       . ' </tr>' . PHP_EOL
       . '</table>'
+      . Widgets::buildHoneyPotInput('requested_by')->render();
       ;
 $w .= Widgets::createHtmlForm( $v->form_name,
 		$v->action_url_requestpwreset . '/proc', $form, $v->redirect )

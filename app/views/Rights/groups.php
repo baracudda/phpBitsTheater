@@ -50,23 +50,25 @@ foreach ($v->groups as $theGroup) {
 	
 	$r .= '<td>';
 	if ($theGroup['group_id']!=1) { //1 is super-admin group cannot be modified anyway
-		$r .= '<button type="button" class="btn_edit_group btn btn-default btn-sm"';
-		$r .= ' group_id="'.$theGroup['group_id'].'"';
-		$r .= ' group_name="'.$theGroup['group_name'].'"';
-		//$r .= ' group_desc="'.$theGroup['group_desc'].'"';
-		$r .= ' group_parent="'.$theGroup['parent_group_id'].'"';
+		$o = Widgets::buildButton()
+				->addClass('btn-default')->addClass('btn-sm')->addClass('btn_edit_group')
+				->setDataAttr('group_id', $theGroup['group_id'])
+				->setDataAttr('group_name', $theGroup['group_name'])
+				->setDataAttr('group_parent', $theGroup['parent_group_id'])
+				;
 		if (!empty($v->group_reg_codes[$theGroup['group_id']]))
-			$r .= ' group_reg_code="'.$v->group_reg_codes[$theGroup['group_id']]['reg_code'].'"';
-		$r .= '><span class="glyphicon glyphicon-pencil"></span></button> ';
+			$o->setDataAttr('group_reg_code', $v->group_reg_codes[$theGroup['group_id']]['reg_code']);
+		$o->append('<span class="glyphicon glyphicon-pencil"></span>');
+		$r .= $o->render();
 	}
 	$r .= '</td>';
 	
 	$r .= '<td>'.$theGroup['group_id'].'</td>';
 	
 	if ($theGroup['group_id']==1) //super-admin group cannot be modified anyway
-		$theLink = $theGroup['group_name'];
+		$theLink = htmlentities($theGroup['group_name']);
 	else
-		$theLink = '<a href="'.BITS_URL.'/rights/group/'.$theGroup['group_id'].'">'.$theGroup['group_name'].'</a>';
+		$theLink = '<a href="'.BITS_URL.'/rights/group/'.$theGroup['group_id'].'">'.htmlentities($theGroup['group_name']).'</a>';
 	$r .= '<td>'.$theLink.'</td>';
 
 	$theGroupDesc = '';
@@ -85,11 +87,11 @@ foreach ($v->groups as $theGroup) {
 			}
 		}
 	}
-	$r .= '<td>'.$theGroupDesc.'</td>';
+	$r .= '<td>'.htmlentities($theGroupDesc).'</td>';
 	
 	$r .= '<td>';
 	if (!empty($v->group_reg_codes[$theGroup['group_id']]))
-		$r .= $v->group_reg_codes[$theGroup['group_id']]['reg_code'];
+		$r .= htmlentities($v->group_reg_codes[$theGroup['group_id']]['reg_code']);
 	$r .= '</td>';
 	
 	$r .= "</tr>\n";
@@ -100,9 +102,11 @@ $w .= "</table><br/>\n";
 
 $w .= '</div>'."\n";
 
-$clsCannotCreate = ($v->isAllowed('auth','create')) ? '' : 'invisible';
-$labelBtn = $v->getRes('permissions/label_button_add_role');
-$w .= '<button id="btn_add_group" type="button" class="btn btn-primary '.$clsCannotCreate.'">'.$labelBtn.'</button> ';
+$btn = Widgets::buildButton('btn_add_group')->addClass('btn-primary')
+		->append($v->getRes('permissions/label_button_add_role'));
+if (!$v->isAllowed('auth','create'))
+	$btn->addClass('invisible');
+$w .= $btn->render();
 
 print($w);
 print($v->createJsTagBlock($jsCode));

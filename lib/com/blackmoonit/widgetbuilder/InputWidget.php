@@ -27,7 +27,9 @@ class InputWidget extends SingletonWidget
 	const INPUT_TYPE_TEXT = 'text';
 	const INPUT_TYPE_EMAIL = 'email';
 	const INPUT_TYPE_PASSWORD = 'password';
-
+	const INPUT_TYPE_HIDDEN = 'hidden';
+	const INPUT_TYPE_SUBMIT_BUTTON = 'submit';
+	
 	/**
 	 * Override of inherited field $myAttrs provides some default values for
 	 * defining a text area widget.
@@ -103,6 +105,41 @@ class InputWidget extends SingletonWidget
 	}
 	
 	/**
+	 * Factory convenience method for creating a hidden input.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @param string $aValue - the Value of the element.
+	 * @return InputWidget Returns the new object for chaining.
+	 */
+	static public function asHidden( $aName, $aValue )
+	{
+		return self::withNameAndType( $aName, self::INPUT_TYPE_HIDDEN )
+				->setValue($aValue);
+	}
+	
+	/**
+	 * Factory convenience method for creating a honeypot input. Used to create
+	 * a non-visible input element to trap spam bots into filling it out.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @return InputWidget Returns the new object for chaining.
+	 */
+	static public function asHoneyPot( $aName )
+	{
+		return self::withName( $aName )->addClass('hidden');
+	}
+	
+	/**
+	 * Factory convenience method for creating a standard submit button.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @param string $aLabel - the label the button will display.
+	 * @return InputWidget Returns the new object for chaining.
+	 */
+	static public function asSubmitButton( $aName, $aLabel )
+	{
+		return self::withNameAndType( $aName, self::INPUT_TYPE_SUBMIT_BUTTON )
+				->setValue($aLabel)->addClass('btn-primary');
+	}
+	
+	/**
 	 * Set the input type to something other than 'text'.
 	 * @param string $aInputType - one of the self::INPUT_TYPE_* consts.
 	 * @return InputWidget Returns the new object for chaining.
@@ -143,9 +180,7 @@ class InputWidget extends SingletonWidget
 	 * @return InputWidget Returns the new object for chaining.
 	 */
 	public function setSize( $aInputSize )
-	{
-		return $this->setAttr('size', $aInputSize);
-	}
+	{ return $this->setAttr('size', $aInputSize); }
 	
 	/**
 	 * Convenience method for setting the placeholder attribute of an input (ghost text).
@@ -153,9 +188,7 @@ class InputWidget extends SingletonWidget
 	 * @return InputWidget Returns the new object for chaining.
 	 */
 	public function setPlaceholder( $aPlaceholder )
-	{
-		return $this->setAttr('placeholder', $aPlaceholder);
-	}
+	{ return $this->setAttr('placeholder', $aPlaceholder); }
 
 }//end class
 

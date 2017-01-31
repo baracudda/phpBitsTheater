@@ -38,6 +38,9 @@ class TextAreaWidget extends BlockWidget
 		'wrap' => self::WRAP_SOFT,
 	) ;
 
+	/**
+	 * @return TextAreaWidget Returns $this for chaining.
+	 */
 	public function setID( $aID )
 	{
 		parent::setID($aID) ;
@@ -45,17 +48,24 @@ class TextAreaWidget extends BlockWidget
 		return $this ;
 	}
 
-	/** Shorthand to set the number of rows for the text area. */
+	/**
+	 * Shorthand to set the number of rows for the text area.
+	 * @return TextAreaWidget Returns $this for chaining.
+	 */
 	public function setRows( $aRows )
 	{ return $this->setAttr( 'rows', $aRows ) ; }
 
-	/** Shorthand to set the number of columns for the text area. */
+	/**
+	 * Shorthand to set the number of columns for the text area.
+	 * @return TextAreaWidget Returns $this for chaining.
+	 */
 	public function setCols( $aCols )
 	{ return $this->setAttr( 'cols', $aCols ) ; }
 
 	/**
 	 * Shorthand, with validation, to set the text wrap policy for the box.
 	 * see http://www.w3.org/TR/html-markup/textarea.html#textarea.attrs.wrap.hard
+	 * @return TextAreaWidget Returns $this for chaining.
 	 */
 	public function setWrap( $aWrap )
 	{
@@ -70,6 +80,27 @@ class TextAreaWidget extends BlockWidget
 		}
 		return $this ;
 	}
+	
+	/**
+	 * Set this input widget as required.
+	 * @param string $isReq - (optional) will not set if pass in FALSE.
+	 * @return TextAreaWidget Returns $this for chaining.
+	 */
+	public function setRequired( $isReq=true )
+	{
+		if (!empty($isReq))
+			$this->setAttr('required', 'required');
+		return $this;
+	}
+	
+	/**
+	 * Convenience method for setting the placeholder attribute of an input (ghost text).
+	 * @param string $aPlaceholder - the helpful ghost text placed in an empty input.
+	 * @return TextAreaWidget Returns $this for chaining.
+	 */
+	public function setPlaceholder( $aPlaceholder )
+	{ return $this->setAttr('placeholder', $aPlaceholder); }
+
 } // end class TextAreaWidget
 
 } // end namespace com\blackmoonit\widgetbuilder

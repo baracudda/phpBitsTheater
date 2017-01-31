@@ -45,11 +45,11 @@ BitsRightGroups.prototype.onAddGroupClick = function(e) {
 BitsRightGroups.prototype.onEditGroupClick = function(e) {
 	$('#dialog_title',this.mDialogGroup).html('Edit Role');
 	
-	var id = e.currentTarget.getAttribute('group_id');
-	var gn = e.currentTarget.getAttribute('group_name');
-	//var gd = e.currentTarget.getAttribute('group_desc');
-	var gp = e.currentTarget.getAttribute('group_parent');
-	var rc = e.currentTarget.getAttribute('group_reg_code');
+	var id = e.currentTarget.getAttribute('data-group_id');
+	var gn = e.currentTarget.getAttribute('data-group_name');
+	//var gd = e.currentTarget.getAttribute('data-group_desc');
+	var gp = e.currentTarget.getAttribute('data-group_parent');
+	var rc = e.currentTarget.getAttribute('data-group_reg_code');
 	$('#group_id',this.mDialogGroup).val(id);
 	$('#group_name',this.mDialogGroup).val(gn);
 	//$('#group_desc',this.mDialogGroup).val(gd);

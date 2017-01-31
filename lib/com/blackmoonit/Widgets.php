@@ -31,14 +31,99 @@ class Widgets
 	const ALIGN_RIGHT = 'right' ;
 	const ALIGN_CENTER = 'center' ;
 	
+	/** INVALID_ID = '__invalid:ID__' */
+	const INVALID_ID = '__invalid:ID__';
+	/** INVALID_ATTR_NAME = '__invalid-name__' */
+	const INVALID_ATTR_NAME = '__invalid-name__';
+	
 	private function __construct() {} //do not instantiate
 	
+	/**
+	 * HTML "id" attributes have a specified format which this method
+	 * enforces. It is fairly typical variable naming convention with
+	 * some extra punctuation involved. A-z, 0-9, "-", "_", ":", and "."
+	 * @param string $aElementID - the string to test.
+	 * @return boolean Returns TRUE if the parameter is a valid ID.
+	 */
+	static public function isValidHtmlID( $aElementID )
+	{
+		return preg_match('/^[a-zA-Z][\w.:-]*$/', $aElementID);
+		//note: ID must begin with a letter
+		//note: \w is similar to [a-zA-Z\d_]
+	}
+
+	/**
+	 * HTML "id" attributes have a specified format which this method
+	 * enforces. If it could not come up with anything valid then
+	 * {@link Widgets::INVALID_ID} will be used instead.
+	 * @param string $aElementID - the string to sanitize.
+	 * @return string Returns the sanitized string.
+	 */
 	static public function sanitizeElementID( $aElementID )
 	{
 		if( !isset($aElementID) ) return '' ;
-		return preg_replace( '/[^A-Za-z0-9_\-]/', '', $aElementID ) ;
+		if( self::isValidHtmlID($aElementID) ) return $aElementID ;
+		//if param is not a valid ID, attempt to sanitize it
+		$s = preg_replace( '/[^\w.:-]/', '', $aElementID ) ;
+		return ( self::isValidHtmlID($s) ) ? $s : self::INVALID_ID;
 	}
-
+	
+	/**
+	 * HTML attribute names have a specified format which this method
+	 * enforces. It is fairly broadly defined with a few notalbe
+	 * exceptions like the lack of "@", and HTML punctuation.
+	 * @param string $aAttrName - the string to test.
+	 * @return boolean Returns TRUE if the parameter is valid.
+	 */
+	static public function isValidHtmlAttrName( $aAttrName )
+	{
+		//note: PHP translates the "." into "_" on POST, so
+		//  we will consider "." invalid since we're using PHP
+		$basicTest = preg_match('/^[a-zA-Z_:][\w:-]*$/', $aAttrName);
+		if ($basicTest) return true;
+		//if the first match fails, check the entire range
+		$theStartChar = '[a-zA-Z_:]'
+				. ' | [\xC0-\xD6]'
+				. ' | [\xD8-\xF6]'
+				. ' | [\x{00F8}-\x{02FF}]'
+				. ' | [\x{0370}-\x{037D}]'
+				. ' | [\x{037F}-\x{1FFF}]'
+				. ' | [\x{200C}-\x{200D}]' //ZERO WIDTH NON}-JOINER, ZERO WIDTH JOINER
+				. ' | [\x{2070}-\x{218F}]'
+				. ' | [\x{2C00}-\x{2FEF}]'
+				. ' | [\x{3001}-\x{D7FF}]'
+				. ' | [\x{F900}-\x{FDCF}]'
+				. ' | [\x{FDF0}-\x{FFFD}]'
+				. ' | [\x{10000}-\x{EFFFF}]'
+				;
+		$thePattern = '/^(?:'.$theStartChar.')(?:'.$theStartChar
+				. ' | [0-9-]'
+				. ' | [\xB7]' //Middle dot "·" - Georgian comma
+				. ' | [\x{0300}-\x{036F}]' //Combining Diacritical Marks
+				. ' | [\x{203F}-\x{2040}]' //‿ ⁀
+				. ')*$/u';
+		return preg_match($thePattern, $aAttrName);
+	}
+	
+	/**
+	 * HTML attribute names have a specified format which this method
+	 * enforces. If it could not come up with anything valid then
+	 * "__invalid-name__" will be used instead.
+	 * @param string $aAttrName - the string to sanitize.
+	 * @return string Returns the sanitized string.
+	 */
+	static public function sanitizeAttributeName( $aAttrName )
+	{
+		if( !isset($aAttrName) ) return self::INVALID_ATTR_NAME ;
+		if( self::isValidHtmlAttrName($aAttrName) ) return $aAttrName ;
+		//if param is not valid, attempt to sanitize it
+		//note: PHP translates the "." into "_" on POST
+		$s = str_replace( '.', '_', $aAttrName );
+		$s = preg_replace( '/[^\w\-:]/', '', $s ) ;
+		return ( self::isValidHtmlAttrName($s) ) ? $s : self::INVALID_ATTR_NAME ;
+	}
+	
+	/** @deprecated Please use {@link Widgets::buildForm()} */
 	static public function createHtmlForm( $aFormName, $aFormAction,
 			$aDisplayHtml, $redirectLink='', $isPopup=false )
 	{
@@ -276,11 +361,16 @@ class Widgets
 		return $theTag ;
 	}
 	
-	static public function createInputBox($aWidgetName, $aType='text', $aValue='', $isRequired=false, $aSize=60, $aMaxLen=255, $aJsEvents='') {
-		$attr_size = (!is_null($aSize)) ? " size=\"$aSize\"" : '';
-		$attr_maxlen = (!is_null($aMaxLen)) ? " maxlength=\"$aMaxLen\"" : '';
-		return Strings::format('<input type="%2$s" name="%1$s" id="%1$s" value="%3$s"%5$s%6$s%7$s%4$s class="field" />',
-				$aWidgetName,$aType,$aValue,($isRequired)?' required':'',$attr_size,$attr_maxlen,$aJsEvents);
+	/**
+	 * @deprecated Please use {@link Widgets::buildInputBox()}.
+	 */
+	static public function createInputBox($aWidgetName, $aType='text', $aValue='',
+			$isRequired=false, $aSize=60, $aMaxLen=255, $aJsEvents='')
+	{
+		return (new widgetbuilder\InputWidget($aWidgetName))->setInputType($aType)
+				->setAttr('name', $aWidgetName)->setValue($aValue)->setRequired($isRequired)
+				->setSize($aSize)->setAttr('maxlength', $aMaxLen)
+				->render();
 	}
 	
 	static public function createPassBox($aWidgetName, $aValue='', $isRequired=false, $aSize=60, $aMaxLen=255, $aJsEvents='') {
@@ -307,14 +397,24 @@ class Widgets
 				$aWidgetName,$aValue,($isRequired)?' required':'',$attr_size,$attr_step,$attr_min,$attr_max,$aJsEvents);
 	}
 	
-	static public function createTextArea($aWidgetName, $aValue, $isRequired=false, $aRows=3, $aCols=40, $aWrap='soft') {
-		return Strings::format('<textarea name="%1$s" id="%1$s" rows="%4$d" cols="%5$d" wrap="%6$s"%3$s class="field" >%2$s</textarea>',
-				$aWidgetName,$aValue,($isRequired)?' required':'',$aRows,$aCols,$aWrap);
+	/**
+	 * @deprecated Please use {@link Widgets::buildTextArea()}
+	 */
+	static public function createTextArea($aWidgetName, $aValue, $isRequired=false,
+			$aRows=3, $aCols=40, $aWrap='soft')
+	{
+		return self::buildTextArea($aWidgetName)->setRows($aRows)->setCols($aCols)
+				->setWrap($aWrap)->setRequired($isRequired)->append($aValue)->render();
 	}
 	
-	static public function createHiddenPost($aWidgetName, $aValue) {
-		return Strings::format('<input type="hidden" name="%1$s" id="%1$s" value="%2$s" />',$aWidgetName,$aValue);
-	}
+	/**
+	 * Create HTML for a hidden input.
+	 * @param string $aWidgetName - the name and ID of the input.
+	 * @param string $aValue - the value for the input.
+	 * @return string Returns the HTML string.
+	 */
+	static public function createHiddenPost($aWidgetName, $aValue)
+	{ return self::buildHiddenInput($aWidgetName, $aValue)->render(); }
 	
 	/**
 	 * Renders a set of matched radio buttons.
@@ -430,18 +530,24 @@ class Widgets
 		$theCheckbox = '<input type="checkbox" name="'.$aWidgetName.'"'.$theClass.(($isChecked)?' checked':'').' />';
 		return self::createHiddenPost($aWidgetName, '0').$theCheckbox;
 	}
-	
+
+	/**
+	 * Create a standard HTML input submit button.
+	 * @param string $aWidgetName - the name and ID of the widget.
+	 * @param string $aText - (optional) the button label, defaults to "Submit".
+	 * @param string $aClass - (optional) the widget class(es), defaults to "btn-primary".
+	 * @return string Return the HTML string.
+	 */
 	static public function createSubmitButton($aWidgetName, $aText='Submit', $aClass='btn-primary') {
 		if (empty($aText))
 			$aText = 'Submit';
-		return Strings::format('<input type="submit" name="%1$s" id="%1$s" class="%3$s" value="%2$s"/>',
-				$aWidgetName,$aText,$aClass);
+		return self::buildSubmitInput($aWidgetName, $aText)->addClass('btn-primary')->render();
 	}
 	
 	static public function createResetButton( $aWidgetName='bits_button_reset',
 		$aText='Reset', $aClass='btn-primary', $aAttrs=null )
 	{
-		$theButton = '<button type="reset" id="' . $aWidgetName
+		$theButton = '<button type="reset" id="' . self::sanitizeElementID($aWidgetName)
 			. '" name="' . $aWidgetName . '" class="' . $aClass . '" '
 			;
 		if( is_array($aAttrs) )
@@ -621,6 +727,73 @@ class Widgets
 	 */
 	static public function buildPassBox($aName)
 	{ return widgetbuilder\InputWidget::asPassword($aName); }
+	
+	/**
+	 * Factory convenience method for creating a hidden input.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @return widgetbuilder\InputWidget Returns the new object for chaining.
+	 */
+	static public function buildHiddenInput($aName, $aValue)
+	{ return widgetbuilder\InputWidget::asHidden($aName, $aValue); }
+	
+	/**
+	 * Factory convenience method for creating a honeypot input. Used to create
+	 * a non-visible input element to trap spam bots into filling it out.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @return widgetbuilder\InputWidget Returns the new object for chaining.
+	 */
+	static public function buildHoneyPotInput($aName)
+	{ return widgetbuilder\InputWidget::asHoneyPot($aName); }
+	
+	/**
+	 * Factory convenience method for creating an older-style submit button.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @param string $aLabel - the label the button will display.
+	 * @return widgetbuilder\InputWidget Returns the new object for chaining.
+	 * @deprecated Please use {@link Widgets::buildSubmitButton()}
+	 */
+	static public function buildSubmitInput($aName, $aLabel)
+	{ return widgetbuilder\InputWidget::asSubmitButton($aName, $aLabel); }
+	
+	/**
+	 * Factory convenience method for creating a submit button.
+	 * @param string $aID - the ID of the element.
+	 * @return widgetbuilder\ButtonWidget Returns the new object for chaining.
+	 */
+	static public function buildButton($aID=null)
+	{ return new widgetbuilder\ButtonWidget($aID); }
+	
+	/**
+	 * Factory convenience method for creating a submit button.
+	 * @param string $aID - the ID of the element.
+	 * @param string $aLabel - the label the button will display.
+	 * @return widgetbuilder\ButtonWidget Returns the new object for chaining.
+	 */
+	static public function buildSubmitButton($aID, $aLabel)
+	{ return self::buildButton($aID)->setButtonType('submit')->append($aLabel); }
+	
+	/**
+	 * Factory convenience method for creating a text area widget.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @return widgetbuilder\TextAreaWidget Returns the new object for chaining.
+	 */
+	static public function buildTextArea($aName)
+	{ return new widgetbuilder\TextAreaWidget($aName); }
+	
+	/**
+	 * Factory convenience method for creating a form object.
+	 * @param string $aFormAction - the action to perform on submit.
+	 * @return widgetbuilder\FormWidget Returns the new object for chaining.
+	 */
+	static public function buildForm($aFormAction)
+	{
+		return (new widgetbuilder\FormWidget())->setAction($aFormAction)
+				//default enctype attribute is URL_ENCODED
+				->setEncoding( widgetbuilder\FormWidget::URL_ENCODED )
+				//framework prefers POST as default method (more secure)
+				->setMethod( widgetbuilder\FormWidget::METHOD_POST )
+				;
+	}
 	
 }//end class
 

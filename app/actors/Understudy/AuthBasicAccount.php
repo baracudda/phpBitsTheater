@@ -165,6 +165,7 @@ class AuthBasicAccount extends BaseActor
 	protected function processRegistrationForm() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
+		if (!empty($v->requested_by)) $this->getHomePage(); //if honeypot filled, ignore spambot
 		//make sure user/pw reg fields will not interfere with any login user/pw field in header
 		$userKey = $v->getUsernameKey().'_reg';
 		$pwKey = $v->getPwInputKey().'_reg';
@@ -442,9 +443,10 @@ class AuthBasicAccount extends BaseActor
 	 * Called by requestPasswordReset() when the action is "proc" (process a
 	 * request).
 	 */
-	private function processPasswordResetRequest()
+	protected function processPasswordResetRequest()
 	{
 		$v =& $this->scene ;
+		if (!empty($v->requested_by)) $this->getHomePage(); //if honeypot filled, ignore spambot
 		$theAddr =& $v->send_to_email ;
 		$dbAuth = $this->getProp('Auth') ;
 		$theResetUtils = AuthPasswordReset::withModel($dbAuth) ;

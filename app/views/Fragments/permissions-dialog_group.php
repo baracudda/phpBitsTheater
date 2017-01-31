@@ -13,7 +13,7 @@ use com\blackmoonit\Widgets;
   		<input type="hidden" name="group_id" id="group_id" />
   		<label style="width:10em;text-align: right">Name:</label> <?php
   			print( Widgets::buildTextBox('group_name')->setSize(30)->setRequired()
-				->setPlaceholder( $v->getRes('auth_groups/placeholder_group_name') )->renderInline() );
+				->setPlaceholder( $v->getRes('auth_groups/placeholder_group_name') )->render() );
   		?><br>
   		<!--
   		<label style="width:10em;text-align: right">Description:</label> <input style="width: 60ch" type="text" id="group_desc" name="group_desc" /><br>
@@ -23,7 +23,7 @@ use com\blackmoonit\Widgets;
   		<br>
   		<label style="width:10em;text-align: right">Registration Code:</label> <?php
   			print( Widgets::buildTextBox('group_reg_code')->setSize(40)
-  				->setPlaceholder( $v->getRes('auth_groups/placeholder_reg_code') )->renderInline() );
+  				->setPlaceholder( $v->getRes('auth_groups/placeholder_reg_code') )->render() );
   		?><br>
   		<p style="padding-left:10em">When registering, a user supplying this code will automatically be a member of this role.</p><br>
 	</div>
