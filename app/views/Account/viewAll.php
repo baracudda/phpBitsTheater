@@ -24,10 +24,12 @@ print($v->cueActor('Fragments', 'get', 'accounts-dialog_account',
 $w .= "<h2>{$v->getRes('account/title_acctlist')}</h2>\n";
 $w .= $v->renderMyUserMsgsAsString();
 
-$clsCannotCreate = ($v->isAllowed('account','create')) ? '' : 'invisible';
-$labelBtn = $v->getRes('account/label_button_add_account');
-$w .= '<button id="btn_add_account" type="button" class="btn btn-primary '.$clsCannotCreate.'">'.$labelBtn.'</button>';
-$w .= '<br />'."\n";
+$theAddButton = Widgets::buildButton('btn_add_account')->addClass('btn-primary');
+$theAddButton->append($v->getRes('account/label_button_add_account'));
+if ($v->isAllowed('account','create'))
+	$theAddButton->addClass('invisible');
+$w .= $theAddButton->render();
+$w .= '<br />' . PHP_EOL;
 
 $w .= '<div class="panel panel-default">';
 //$w .= '<div class="panel-heading">Panel heading</div>';

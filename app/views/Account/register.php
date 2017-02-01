@@ -19,7 +19,7 @@ if (isset($v->err_msg)) {
 print($w);
 
 $theForm = Widgets::createHiddenPost('post_key', $v->post_key);
-$theForm .= Widgets::buildHoneyPotInput('requested_by')->render();
+$theForm .= Widgets::buildHoneyPotInput('requested_by')->render(); //foil spambots from registering!
 $theForm .= '<table class="db-entry">';
 //make sure fields will not interfere with any login user/pw field in header
 $userKey = $v->getUsernameKey().'_reg';
@@ -27,14 +27,12 @@ $pwKey = $v->getPwInputKey().'_reg';
 $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_name').':</td>'
 		.'<td class="db-field">'
 		.Widgets::buildInputBox($userKey)->setRequired()->setSize(40)->setValue($v->$userKey)
-				->setPlaceholder($v->getRes('account/placeholder_name'))
-				->setAttr('autocomplete', 'off')->render()
+				->setPlaceholder($v->getRes('account/placeholder_name'))->render()
 		."</td></tr>\n";
 $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_email').':</td>'
 		.'<td class="db-field">'
 		.Widgets::buildEmailBox('email')->setRequired()->setSize(40)->setValue($v->$email)
-				->setPlaceholder($v->getRes('account/placeholder_email'))
-				->setAttr('autocomplete', 'off')->render()
+				->setPlaceholder($v->getRes('account/placeholder_email'))->render()
 		."</td></tr>\n";
 $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwinput').':</td>'
 		.'<td class="db-field">'
@@ -45,7 +43,8 @@ $chkpwJs = "checkPassword(document.getElementById('{$pwKey}'), this);";
 $js = "onfocus=\"{$chkpwJs}\" oninput=\"{$chkpwJs}\"";
 $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwconfirm').':</td>'
 		.'<td class="db-field">'
-		.Widgets::buildPassBox('password_confirm')->setValue($v->password_confirm)->setRequired()->setAttr('maxlength', 120)
+		.Widgets::buildPassBox('password_confirm')->setValue($v->password_confirm)
+				->setRequired()->setAttr('maxlength', 120)
 				->setPlaceholder($v->getRes('account/placeholder_pwconfirm'))->render()
 		."</td></tr>\n";
 $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_regcode').':</td>'

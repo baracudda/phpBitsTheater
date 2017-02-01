@@ -49,7 +49,7 @@ $('#btn_resetup_db').click(function(e) {
 	$("#overlay_please_stand_by").show();
 	$.post('{$v->getMyUrl('ajajResetupDb')}',{}).done(function(aData) {
 		$("#overlay_please_stand_by").hide();
-		alert('Missing tables created.');
+		alert("{$v->getRes('admin/msg_missing_tables_created')}");
 		//console.log('resetup done');
 	}).fail(function(aData, textStatus, errorThrown) {
 		$("#overlay_please_stand_by").hide();
@@ -123,10 +123,10 @@ $w .= '</div><span title=".panel" HIDDEN></span>'."\n";
 
 $w .= '<br>';
 if (count($theFeatureList)!=1) {
-	$w .= 'Once all features are up-to-date, you may want to ensure all tables exist. ';
-	$w .= 'This is usually important if restoring from a partial backup or imported data. ';
+	$w .= $v->getRes('admin/hint_create_missing_tables');
 	$w .= '<br>';
-	$w .= '<button type="button" id="btn_resetup_db" class="btn btn-warning">'.$v->getRes('admin/btn_label_resetup_db').'</button>';
+	$w .= Widgets::buildButton('btn_resetup_db')->addClass('btn-warning')
+			->append($v->getRes('admin/btn_label_resetup_db'))->render();
 }
 print($w);
 

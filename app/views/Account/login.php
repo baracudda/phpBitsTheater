@@ -19,7 +19,7 @@ $w .= '<tr><td class="db-field-label">'
     . ':</td><td class="db-field">'
     . Widgets::buildTextBox( $v->getUsernameKey() )->setValue( $v->getUsername() )
     		->setPlaceholder( $v->getRes('account/placeholder_name') )
-    		->setAttr('autocomplete', 'off')->render()
+    		->render()
     . '</td></tr>' . PHP_EOL
     ;
 $w .= '<tr><td class="db-field-label">'
@@ -27,7 +27,7 @@ $w .= '<tr><td class="db-field-label">'
     . ':</td><td class="db-field">'
     . Widgets::buildPassBox( $v->getPwInputKey() )->setValue( $v->getPwInput() )
     		->setPlaceholder( $v->getRes('account/placeholder_pwinput') )
-    		->setAttr('autocomplete', 'off')->render()
+    		->render()
     . '</td></tr>' . PHP_EOL
     ;
 $w .= '<tr><td class="db-field-label"></td><td class="db-field">' . PHP_EOL

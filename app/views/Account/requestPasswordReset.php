@@ -7,11 +7,14 @@ use \com\blackmoonit\Strings ;
 $recite->includeMyHeader() ;
 
 $w = '<h2>' . $v->getRes('account/title_request_pwd_reset') . '</h2>' . PHP_EOL;
-if( isset( $v->err_msg ) )
-{
+if (isset($v->err_msg)) {
 	$w .= '<span class="msg-error">' . $v->err_msg . '</span>' . PHP_EOL ;
 	unset( $v->err_msg ) ;
+} else {
+	$w .= $v->renderMyUserMsgsAsString();
 }
+print($w);
+
 $form = '<table class="db-entry">' . PHP_EOL
       . ' <tr>' . PHP_EOL
       . '  <td class="db-field-label">'
@@ -22,19 +25,22 @@ $form = '<table class="db-entry">' . PHP_EOL
       		->setPlaceholder( $v->getRes('account/placeholder_email') )->render()
       .   '</td>' . PHP_EOL
       . '  <td class="db-field-label">'
-      . Widgets::createSubmitButton( 'button_request_pwd_reset',
-      		$v->getRes('account/label_submit') )
+	  . Widgets::buildSubmitButton('button_request_pwd_reset', $v->getRes('account/label_submit'))
+			->addClass('btn-primary')->render()
       .   '</td>' . PHP_EOL
       . ' </tr>' . PHP_EOL
       . '</table>'
-      . Widgets::buildHoneyPotInput('requested_by')->render();
+      . Widgets::buildHoneyPotInput('requested_by')->render()
       ;
-$w .= Widgets::createHtmlForm( $v->form_name,
-		$v->action_url_requestpwreset . '/proc', $form, $v->redirect )
-   .  '<p>' . $v->getRes( 'account/help_request_pwd_reset' ) . '</p>'
-   .  Strings::eol(2)
-   ;
+$w = Widgets::buildForm($v->action_url_requestpwreset . '/proc')->setName($v->form_name)
+		->setRedirect($v->redirect)->append($form)->render();
+print( $w ) ;
 
-print($w) ;
+$w = '<span id="helpBlock" class="help-block">'
+		. $v->getRes( 'account/help_request_pwd_reset' )
+		. '</span>'
+		;
+print( $w ) ;
 
+print( str_repeat( '<br />' . PHP_EOL, 3 ) );
 $recite->includeMyFooter() ;

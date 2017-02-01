@@ -1,7 +1,9 @@
 <?php
 $dbAuth = $v->getProp('Auth');
 list( $theCsrfCookieName, $theCsrfHeaderName) = $dbAuth->getCsrfCookieHeaderNames();
-if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName)) {
+$v->returnProp($dbAuth);
+if (!empty($theCsrfCookieName) && !empty($theCsrfHeaderName))
+{
 	$jsCode = <<<EOD
 function getCookie(c) {
   if(document.cookie.length > 0) {

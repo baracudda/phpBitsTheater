@@ -14,7 +14,7 @@ var BitsRightGroups = BaseClass.extend({
 		this.mDialogGroup = $('#dialog_group');
 		$(document).on('click', '#btn_add_group', this.asCB('onAddGroupClick'));
 		$(document).on('click', '.btn_edit_group', this.asCB('onEditGroupClick'));
-		this.mDialogGroup.on('click', '#btn_save_dialog_add_group', this.asCB('onGroupSaveClick'));
+		this.mDialogGroup.on('click', '#btn_save_dialog_group', this.asCB('onGroupSaveClick'));
 		
 		if (this.mGroups) {
 			var e = $('#group_parent',this.mDialogGroup);
@@ -27,7 +27,9 @@ var BitsRightGroups = BaseClass.extend({
 });
 
 BitsRightGroups.prototype.onAddGroupClick = function(e) {
-	$('#dialog_title',this.mDialogGroup).html('Add Role');
+	e.preventDefault();
+	$('#dialog_title_add',this.mDialogGroup).show();
+	$('#dialog_title_edit',this.mDialogGroup).hide();
 
 	$('#group_id',this.mDialogGroup).val('-1');
 	$('#group_name',this.mDialogGroup).val('');
@@ -39,11 +41,13 @@ BitsRightGroups.prototype.onAddGroupClick = function(e) {
 
 	$('#group_reg_code',this.mDialogGroup).val('');
 
-	this.mDialogGroup.modal('toggle');
+	this.mDialogGroup.modal('show');
 };
 
 BitsRightGroups.prototype.onEditGroupClick = function(e) {
-	$('#dialog_title',this.mDialogGroup).html('Edit Role');
+	e.preventDefault();
+	$('#dialog_title_add',this.mDialogAccount).hide();
+	$('#dialog_title_edit',this.mDialogAccount).show();
 	
 	var id = e.currentTarget.getAttribute('data-group_id');
 	var gn = e.currentTarget.getAttribute('data-group_name');
@@ -68,7 +72,7 @@ BitsRightGroups.prototype.onEditGroupClick = function(e) {
 
 	$('#group_reg_code',this.mDialogGroup).val(rc);
 	
-	this.mDialogGroup.modal('toggle');
+	this.mDialogGroup.modal('show');
 };
 
 BitsRightGroups.prototype.onGroupSaveClick = function(e) {

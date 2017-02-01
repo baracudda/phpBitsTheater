@@ -137,25 +137,28 @@ class AuthBasicAccount extends MyScene {
 		switch ($aFieldName) {
 			case 'edit_button':
 				$w = '<td>';
-				$w .= '<button type="button" class="btn_edit_account btn btn-default btn-sm"';
-				$w .= ' data-account_id="' . $aDataRow->account_id . '"';
-				$w .= ' data-account_name="' . htmlspecialchars($aDataRow->account_name, ENT_QUOTES, 'UTF-8') . '"';
-				$w .= ' data-email="' . htmlspecialchars($aDataRow->email, ENT_QUOTES, 'UTF-8') . '"';
-				$w .= ' data-is_active="' . ( ($aDataRow->is_active) ? '1' : '0' ) . '"';
-				$w .= ' data-groups="' . htmlspecialchars(json_encode($aDataRow->groups), ENT_QUOTES, 'UTF-8') . '"';
-				$w .= '><span class="glyphicon glyphicon-pencil"></span></button> ';
+				$w .= Widgets::buildButton()->addClass('btn-sm')->addClass('btn-default')
+						->addClass('btn_edit_account')
+						->setDataAttr('account_id', $aDataRow->account_id)
+						->setDataAttr('account_name', htmlentities($aDataRow->account_name))
+						->setDataAttr('email', htmlentities($aDataRow->email))
+						->setDataAttr('is_active', ($aDataRow->is_active) ? '1' : '0' )
+						->setDataAttr('groups', htmlentities(json_encode($aDataRow->groups)))
+						->append('<span class="glyphicon glyphicon-pencil"></span>')
+						->render()
+						;
 				$w .= '</td>';
 				return $w;
 			case 'account_id':
 				return '<td style="align:center">'.$aDataRow->account_id.'</td>';
 			case 'account_name':
-				return '<td>'.$aDataRow->account_name.'</td>';
+				return '<td>'.htmlentities($aDataRow->account_name).'</td>';
 			case 'external_id':
 				return '<td>'.$aDataRow->external_id.'</td>';
 			case 'auth_id':
 				return '<td>'.$aDataRow->auth_id.'</td>';
 			case 'email':
-				return '<td>'.$aDataRow->email.'</td>';
+				return '<td>'.htmlentities($aDataRow->email).'</td>';
 			case 'verified_ts':
 				return '<td>'.$this->getLocalTimestampValue($aDataRow->verified_ts).'</td>';
 			case 'is_active':
@@ -167,11 +170,11 @@ class AuthBasicAccount extends MyScene {
 				$w .= '</td>';
 				return $w;
 			case 'created_by':
-				return '<td>'.$aDataRow->created_by.'</td>';
+				return '<td>'.htmlentities($aDataRow->created_by).'</td>';
 			case 'created_ts':
 				return '<td>'.$this->getLocalTimestampValue($aDataRow->created_ts).'</td>';
 			case 'updated_by':
-				return '<td>'.$aDataRow->updated_by.'</td>';
+				return '<td>'.htmlentities($aDataRow->updated_by).'</td>';
 			case 'updated_ts':
 				$w = '<td>';
 				if ($aDataRow->created_ts !== $aDataRow->updated_ts) {

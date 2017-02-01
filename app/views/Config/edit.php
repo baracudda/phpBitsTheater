@@ -80,47 +80,54 @@ $(document).ready(function(){
 EOD;
 
 $w .= '<img class="overlay" id="overlay_please_stand_by" src="'.BITS_RES.'/images/please_stand_by.png" >';
-$w .= "<h1 align=\"center\">Configuration Settings</h1>\n";
+$w .= '<h1>' . $v->getRes('config/title_settings_page') . "</h1>\n";
 if ($msgs = $v->getUserMsgs()) {
 	$w .= "<br />\n".$v->renderMyUserMsgsAsString()."<br />\n";
 }
-$w .= 'Use "?" to reset a setting to its default value ("\\?" to save just a question mark).'."<br />\n";
+$w .= '<p>Use "?" to reset a setting to its default value ("\\?" to save just a question mark).</p>'."<br />\n";
 $w .= "<br />\n";
 if (!empty($v->config_areas)) {
 	/* @var $theNamespaceInfo ConfigNamespaceInfo */
 	foreach ($v->config_areas as $theNamespaceInfo) {
 		$v->_rowClass = 1; //reset row counter back to 1 for each table created (resets the row formatting)
 		$w .= "<h2>{$theNamespaceInfo->label}</h2>";
-		$w .= '<table class="db-entry">'."\n";
-		$w .= '  <thead><tr class="rowh">'."\n";
-		$w .= '    <th>Setting</th><th>Value</th><th>Description</th>'."\n";
-		$w .= "  </tr></thead>\n";
-		$w .= "  <tbody>\n";
+		$w .= '<table class="db-entry">' . PHP_EOL;
+		$w .= '  <thead><tr class="rowh">' . PHP_EOL;
+		$w .=     '<th>' . $v->getRes('config/colheader_setting_name') . '</th>';
+		$w .=     '<th>' . $v->getRes('config/colheader_setting_value') . '</th>';
+		$w .=     '<th>' . $v->getRes('config/colheader_setting_desc') . '</th>' . PHP_EOL;
+		$w .= "  </tr></thead>" . PHP_EOL;
+		$w .= "  <tbody>" . PHP_EOL;
 		/* @var $theSettingInfo ConfigSettingInfo */
 		foreach ($theNamespaceInfo->settings_list as $theSettingName => $theSettingInfo) {
 			$theWidgetName = $theSettingInfo->getWidgetName();
-			$cellLabel = '<td class="db-field-label"><label for="'.$theWidgetName.'" >'.$theSettingInfo->getLabel().'</label></td>';
+			$cellLabel = '<td class="db-field-label"><label for="'.$theWidgetName.'" >'
+					. htmlentities($theSettingInfo->getLabel()) . '</label></td>';
 			$cellInput = '<td class="db-field">';
 			$cellInput .= $theSettingInfo->getInputWidget();
 			$cellInput .= '</td>';
-			$cellDesc = '<td class="">'.$theSettingInfo->getDescription().'</td>';
+			$cellDesc = '<td class="">'.htmlentities($theSettingInfo->getDescription()).'</td>';
 
-			$w .= '  <tr class="'.$v->_rowClass.' '.$theNamespaceInfo->namespace.'-'.$theSettingName.'">'.$cellLabel.$cellInput.$cellDesc."</tr>\n";
+			$w .= '  <tr class="'.$v->_rowClass.' '.$theNamespaceInfo->namespace.'-'.$theSettingName.'">'
+					.$cellLabel.$cellInput.$cellDesc
+					."</tr>" . PHP_EOL
+					;
 		}//end foreach
-		$w .= "  </tbody>\n";
-	    $w .= "</table><br/>\n";
+		$w .= "  </tbody>" . PHP_EOL;
+	    $w .= "</table><br/>" . PHP_EOL;
 	}//end foreach
-	$w .= "<br/>\n";
-	$w .= '<br/>'.Widgets::createSubmitButton('submit_save', $v->save_button_text)."\n";
+	$w .= "<br/>" . PHP_EOL;
+	$w .= '<br/>'.Widgets::createSubmitButton('submit_save', $v->save_button_text) . PHP_EOL;
+	$w .= "<br/>" . PHP_EOL;
 } else {
 	$w .= '<div id="config_data">Loading...</div>';
+	$w .= "<br/>" . PHP_EOL;
 }
-$w .= "<br/>\n";
-$w .= "<br/>\n";
 
-$form_html = Widgets::createHtmlForm($recite->form_name,$recite->next_action,$w,$v->redirect,false);
-print($form_html);
-
+$theForm = Widgets::buildForm($recite->next_action)->setName($recite->form_name)
+		->setRedirect($v->redirect)->append($w)
+		;
+print($theForm->render());
 print($v->createJsTagBlock($jsCode));
 print(str_repeat('<br />',3));
 $recite->includeMyFooter();

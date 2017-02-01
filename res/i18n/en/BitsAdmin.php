@@ -38,6 +38,7 @@ class BitsAdmin extends BaseResources {
 	public $msg_warning_backup_db = "UPDATING COULD RESULT IN DATA LOSS IF A PROBLEM ARISES!<br>\nBACKUP YOUR DATABASE BEFORE UPDATING!";
 	public $msg_update_success = 'Update successful!';
 	public $msg_copy_cfg_fail = "Cannot copy over [cfg]/%s. Please make it writeable and try again.";
+	public $msg_missing_tables_created = 'Missing tables created.';
 	
 	public $dialog_update_warning_title = 'WARNING!';
 	public $dialog_update_warning_msg = '<p class="lead">Are you SURE you want to update this feature?</p><p class="label-warning">Have you backed up the database?</p>';
@@ -45,6 +46,8 @@ class BitsAdmin extends BaseResources {
 	public $dialog_update_warning_btn_update = 'Yes, I am sure; Update already!';
 	
 	public $field_value_unknown_version = 'Unknown';
+	
+	public $hint_create_missing_tables = 'Once all features are up-to-date, you may want to ensure all tables exist. This is usually important if restoring from a partial backup or imported data.';
 	
 }//end class
 

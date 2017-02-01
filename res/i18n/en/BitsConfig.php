@@ -30,6 +30,11 @@ class BitsConfig extends BaseResources {
 	public $msg_save_applied = 'Settings saved!';
 	public $msg_save_aborted = 'Error encountered, settings not saved.';
 	public $errmsg_nothing_to_update = 'No changes detected, nothing updated.';
+	
+	public $title_settings_page = 'Configuration Settings';
+	public $colheader_setting_name = 'Setting';
+	public $colheader_setting_value = 'Value';
+	public $colheader_setting_desc = 'Description';
 
 	public $label_namespace = array(
 			'site' => 'Site Settings',

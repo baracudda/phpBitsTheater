@@ -12,10 +12,10 @@ if( $recite->isGuest() )
 	$theSeparator = '&nbsp;&nbsp;|&nbsp;&nbsp;' ;
 	$w .= Widgets::buildTextBox( $v->getUsernameKey() )->setSize( 20 )
 			->setPlaceholder( $v->getRes( 'account/placeholder_autharea_username' ) )
-			->setAttr('autocomplete', 'off')->render() . PHP_EOL
+			->render() . PHP_EOL
 	   .  Widgets::buildPassBox( $v->getPwInputKey() )->setSize( 20 )
 			->setPlaceholder( $v->getRes( 'account/placeholder_autharea_password' ) )
-			->setAttr('autocomplete', 'off')->render() . PHP_EOL
+			->render() . PHP_EOL
 	   .  Widgets::buildSubmitButton( 'button_login', $v->getRes( 'account/label_login' ) )
 	   		->addClass('btn-primary')->addClass('btn-sm')->render()
 	   .  '<br/>' . PHP_EOL
@@ -26,8 +26,8 @@ if( $recite->isGuest() )
 	   .  $v->getRes( 'account/label_requestpwreset' )
 	   .  '</a>'
 	   .  $theSeparator
-	   .  $v->getRes( 'account/label_save_cookie') . '&nbsp;'
-	   .  Widgets::createCheckBox( $v->getUseCookieKey(), false ) . PHP_EOL
+	   .  '<label>' . $v->getRes( 'account/label_save_cookie') . '&nbsp;'
+	   .  Widgets::createCheckBox( $v->getUseCookieKey(), false ) . "</label>\n"
 	   ;
 	if( empty($v->redirect) )
 	{

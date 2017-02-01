@@ -23,15 +23,12 @@ EOD;
 
 print($v->cueActor('Fragments', 'get', 'permissions-dialog_group'));
 
-$w .= "<h2>{$v->getRes('permissions/title_groups')}</h2>";
+$w .= "<h1>{$v->getRes('permissions/title_groups')}</h1>";
 
-$w .= "<br />\n";
 $w .= $v->renderMyUserMsgsAsString();
 if (isset($v->err_msg)) {
-	$w .= '<span class="msg-error">'.$v->err_msg.'</span>';
+	$w .= '<span class="msg-error">'.$v->err_msg.'</span>' . "<br />\n";
 }
-$w .= "<br />\n";
-
 
 $w .= '<div class="panel panel-default">';
 //$w .= '<div class="panel-heading">Panel heading</div>';
@@ -79,7 +76,9 @@ foreach ($v->groups as $theGroup) {
 			$theGroupDesc = $v->getRes('permissions/display_group_0_desc');
 		}
 		if (!empty($theGroup['parent_group_id'])) {
-			$s = $v->getRes('permissions/display_parent_group/'.$v->groups[$theGroup['parent_group_id']]['group_name']);
+			$s = Strings::format($v->getRes('permissions/display_parent_group'),
+					$v->groups[$theGroup['parent_group_id']]['group_name']
+			);
 			if (!empty($theGroupDesc)) {
 				$theGroupDesc .= ' ('.$s.')';
 			} else {

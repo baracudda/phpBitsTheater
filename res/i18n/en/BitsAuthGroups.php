@@ -29,6 +29,14 @@ class BitsAuthGroups extends BaseResources {
 			3=>'privileged',
 			4=>'restricted',
 	);
+	
+	public $label_dialog_title_group_add = 'Add Role';
+	public $label_dialog_title_group_edit = 'Edit Role';
+	public $label_dialog_group_name = 'Name';
+	public $label_dialog_group_parent = 'Parent';
+	public $label_dialog_group_reg_code = 'Registration Code';
+	public $hint_dialog_group_reg_code =
+		'When registering, a user supplying this code will automatically be a member of this role.';
 
 	public $errmsg_cannot_modify_titan = 'That user role cannot be modified.' ;
 	public $errmsg_cannot_copy_from_titan =

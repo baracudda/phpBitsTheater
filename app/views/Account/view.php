@@ -23,33 +23,43 @@ $w .= '<table class="db-entry">';
 $pwKeyOld = $v->getPwInputKey().'_old';
 $pwKeyNew = $v->getPwInputKey().'_new';
 //old pw (required to change anything)
-$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwinput_old').':</td><td class="db-field">'.
-		Widgets::createPassBox($pwKeyOld,$v->$pwKeyOld,true,60,120)."</td></tr>\n";
+$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwinput_old').':</td><td class="db-field">'
+		. Widgets::buildPassBox($pwKeyOld)->setValue($v->$pwKeyOld)->setRequired()->setAttr('maxlength', 120)
+				->setPlaceholder($v->getRes('account/placeholder_pwinput'))->render()
+		. "</td></tr>\n";
 //username
 $w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_name').':</td><td class="db-field">'.
 		$v->ticket_info->account_name."</td></tr>\n";
 //email
-$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_email').':</td><td class="db-field">'.
-		Widgets::createEmailBox('email',$v->ticket_info->email)."</td></tr>\n";
+$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_email').':</td><td class="db-field">'
+		. Widgets::buildEmailBox('email')->setRequired()->setSize(40)->setValue($v->ticket_info->email)
+				->setPlaceholder($v->getRes('account/placeholder_email'))->render()
+		. "</td></tr>\n";
 //pw
-$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwinput_new').':</td><td class="db-field">'.
-		Widgets::createPassBox($pwKeyNew,$v->$pwKeyNew,false,60,120)."</td></tr>\n";
+$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwinput_new').':</td><td class="db-field">'
+		. Widgets::buildPassBox($pwKeyNew)->setValue($v->$pwKeyNew)->setAttr('maxlength', 120)
+				->render()
+		. "</td></tr>\n";
 $chkpwJs = "checkPassword(document.getElementById('{$pwKeyNew}'), this);";
-$js = "onfocus=\"{$chkpwJs}\" oninput=\"{$chkpwJs}\"";
-$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwconfirm').':</td><td class="db-field">'.
-		Widgets::createPassBox('password_confirm',$recite->password_confirm,false,60,120,$js)."</td></tr>\n";
+$w .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwconfirm').':</td><td class="db-field">'
+		. Widgets::buildPassBox('password_confirm')->setValue($v->password_confirm)->setAttr('maxlength', 120)
+				->setAttr('onfocus', $chkpwJs)->setAttr('oninput', $chkpwJs)->render()
+		. "</td></tr>\n";
 
 //Submit button
-$w .= '<tr><td class="db-field-label"></td><td class="db-field">'.
-		Widgets::createSubmitButton('button_modify',$v->getRes('account/label_modify'));
-		
+$w .= '<tr><td class="db-field-label"></td><td class="db-field">'
+		. Widgets::buildSubmitButton('button_modify',$v->getRes('account/label_modify'))
+				->addClass('btn-primary')->render()
+		. "</td></tr>\n";
+
 $w .= "</table>\n";
 
 $w .= Widgets::createHiddenPost('ticket_name',$v->ticket_info->account_name);
 $w .= Widgets::createHiddenPost('ticket_email',$v->ticket_info->email);
 $w .= Widgets::createHiddenPost('post_key', $v->post_key);
 
-$form_html = Widgets::createHtmlForm($recite->form_name,$recite->action_modify,$w,$v->redirect,false);
-print($form_html);
+$theForm = Widgets::buildForm($recite->action_modify)->setName($recite->form_name)
+		->setRedirect($v->redirect)->append($w);
+print($theForm->render());
 print(str_repeat('<br />',3));
 $recite->includeMyFooter();
