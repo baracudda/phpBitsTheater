@@ -26,7 +26,7 @@ $w .= $v->renderMyUserMsgsAsString();
 
 $theAddButton = Widgets::buildButton('btn_add_account')->addClass('btn-primary');
 $theAddButton->append($v->getRes('account/label_button_add_account'));
-if ($v->isAllowed('account','create'))
+if (!$v->isAllowed('account','create'))
 	$theAddButton->addClass('invisible');
 $w .= $theAddButton->render();
 $w .= '<br />' . PHP_EOL;
