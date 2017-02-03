@@ -342,7 +342,6 @@ class AuthPermissions extends BaseModel {
 		$theSpaces = $this->getRes( 'Permissions/namespace' ) ;
 		foreach( $theSpaces as $theSpace => $theNSInfo )
 		{
-			if( $theSpace == 'monitor_surveys' ) continue ;      // don't bother
 			$theTitanPerms[$theSpace] = array() ;
 			$thePerms = $this->getRes( 'Permissions/' . $theSpace ) ;
 			foreach( $thePerms as $thePerm => $thePermInfo )
