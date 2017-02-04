@@ -650,7 +650,6 @@ class AuthBasicAccount extends BaseActor
 	 *  but already exists in the system.
 	 * * 'DB_EXCEPTION' - If another db exception occurs.
 	 * @since BitsTheater 3.6
-	 * @return APIResponse Returns the APIResponse with new account data.
 	 */
 	public function ajajCreate()
 	{
@@ -705,14 +704,16 @@ class AuthBasicAccount extends BaseActor
 						$accountGroup[] = $theID;
 					}
 				}
+				// Ensure not trying to create an account affiliated with the special TITAN group.
+				if ( array_search( $dbAuthGroups::TITAN_GROUP_ID, $accountGroup ) !== false )
+					throw AccountAdminException::toss( $this, 'CANNOT_CREATE_TITAN_ACCOUNT' );
 			} else {
 				$accountGroup = filter_var($aGroupId, FILTER_VALIDATE_INT, $filterOptions);
+				// Ensure not trying to create an account affiliated with the special TITAN group.
+				if ( $accountGroup == $dbAuthGroups::TITAN_GROUP_ID )
+					throw AccountAdminException::toss( $this, 'CANNOT_CREATE_TITAN_ACCOUNT' );
 			}
 		}
-
-		// Ensure not trying to create an account affiliated with the special TITAN group.
-		if ( $accountGroup == $dbAuthGroups::TITAN_GROUP_ID )
-			throw AccountAdminException::toss( $this, 'CANNOT_CREATE_TITAN_ACCOUNT' );
 
 		// Verify new account can be registered.
 		$canRegister = $dbAuth->canRegister( $aName, $aEmail );
@@ -1252,6 +1253,17 @@ class AuthBasicAccount extends BaseActor
 	}
 	
 	/**
+	 * Once a pairing of device to auth account succeeds, then what? Default behavior is to
+	 * delete the token for enhanced security.
+	 * @param string $aDeviceTokenFilter - the particular token prefix used.
+	 */
+	protected function afterSuccessfulRequestMobileAuthAccount($aDeviceTokenFilter)
+	{
+		//remove any lingering device tokens unless one was JUST created
+		$dbAuth->removeStaleTokens($aDeviceTokenFilter, '1 SECOND');
+	}
+	
+	/**
 	 * Mobile devices might ask the server for what account should be used
 	 * for authenticating mobile devices (which may be rooted).
 	 * @return Returns JSON encoded array[account_name, auth_id, user_token, auth_token]
@@ -1285,8 +1297,7 @@ class AuthBasicAccount extends BaseActor
 						$theAccountInfoCache, $theHttpAuthHeader
 				);
 				//$this->debugLog(__METHOD__.' results='.$this->debugStr($v->results));
-				//remove any lingering device tokens unless one was JUST created
-				$dbAuth->removeStaleTokens($theDeviceTokenFilter, '1 SECOND');
+				$this->afterSuccessfulRequestMobileAuthAccount($theDeviceTokenFilter);
 			}
 		}
 	}
@@ -1310,20 +1321,22 @@ class AuthBasicAccount extends BaseActor
 		$v->auth_groups = Arrays::array_column_as_key($dbAuth->getGroupList(), 'group_id');
 		
 		//display these fields in table
-		$v->table_cols = array(
-				'edit_button'  => array( 'fieldname' => 'edit_button',  'style' => 'width:5ch' ),
+		$v->table_cols = array();
+		if ( $this->isAllowed('accounts','modify') )
+			$v->table_cols['edit_button'] = array( 'fieldname' => 'edit_button', 'style' => 'width:5ch' );
+		$v->table_cols = array_merge($v->table_cols, array(
 				'account_id'   => array( 'fieldname' => 'account_id',   'style' => 'width:4ch' ),
 				'account_name' => array( 'fieldname' => 'account_name', 'style' => 'width:32ch' ),
 				//'external_id'  => array( 'fieldname' => 'external_id',  'style' => 'width:4ch' ),
 				//'auth_id'      => array( 'fieldname' => 'auth_id',      'style' => 'width:32ch' ),
 				'email'        => array( 'fieldname' => 'email',        'style' => 'width:40ch' ),
-				//'verified_ts'  => array( 'fieldname' => 'verified_ts',  'style' => 'width:32ch' ),
+				//everified_ts'  => array( 'fieldname' => 'verified_ts',  'style' => 'width:32ch' ),
 				'is_active'    => array( 'fieldname' => 'is_active',    'style' => 'width:5ch' ),
 				'created_by'   => array( 'fieldname' => 'created_by',   'style' => 'width:30ch' ),
 				'created_ts'   => array( 'fieldname' => 'created_ts',   'style' => 'width:32ch' ),
 				'updated_by'   => array( 'fieldname' => 'updated_by',   'style' => 'width:30ch' ),
 				'updated_ts'   => array( 'fieldname' => 'updated_ts',   'style' => 'width:32ch' ),
-		);
+		));
 	}
 
 }//end class
