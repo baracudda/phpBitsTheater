@@ -41,12 +41,19 @@ abstract class AuthBase extends BaseModel {
 		return static::ALLOW_REGISTRATION;
 	}
 	
+	/**
+	 * See if we can validate the api/page request with an account.
+	 * @param object $aScene - the Scene object associated with an Actor.
+	 * @return boolean Returns TRUE if admitted.
+	 */
 	public function checkTicket($aScene) {
 		if ($this->director->isInstalled()) {
 			if ($this->director->app_id != \BitsTheater\configs\Settings::getAppId()) {
 				$this->ripTicket();
+				return false;
 			}
 		}
+		return true;
 	}
 	
 	public function ripTicket() {

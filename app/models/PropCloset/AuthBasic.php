@@ -1321,17 +1321,19 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Check various mechanisms for authentication.
-	 * @see \BitsTheater\models\PropCloset\AuthBase::checkTicket()
+	 * See if we can validate the api/page request with an account.
+	 * @param object $aScene - the Scene object associated with an Actor.
+	 * @return boolean Returns TRUE if admitted.
+	 * @see BaseModel::checkTicket()
 	 */
 	public function checkTicket($aScene)
 	{
+		$bAuthorized = false;
 		if( $this->director->canConnectDb() )
 		{
 			$this->removeStaleAuthLockoutTokens() ;
 
 			$dbAccounts = $this->getProp('Accounts') ;
-			$bAuthorized = false;
 			$bAuthorizedViaHeaders = false;
 			$bAuthorizedViaSession = false;
 			$bAuthorizedViaWebForm = false;
@@ -1359,8 +1361,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				//if ($bAuthorizedViaCookies) $this->debugLog(__METHOD__.' cookie auth');
 				$bAuthorized = $bAuthorized || $bAuthorizedViaCookies;
 			}
-			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
-				parent::checkTicket($aScene);
 
 			if ($bAuthorized)
 			{
@@ -1370,6 +1370,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			//else $this->debugLog(__METHOD__.' not authorized');
 			$this->returnProp($dbAccounts);
 		}
+		return $bAuthorized;
 	}
 
 	/**
