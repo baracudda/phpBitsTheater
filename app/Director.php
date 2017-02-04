@@ -531,6 +531,11 @@ implements ArrayAccess, IDirected
 	//=                   LOGIN INFO                            =
 	//===========================================================
 	
+	/**
+	 * See if we can validate the api/page request with an account.
+	 * @param object $aScene - the Scene object associated with an Actor.
+	 * @return boolean Returns TRUE if admitted.
+	 */
 	public function admitAudience($aScene) {
 		if ($this->canCheckTickets()) {
 			$this->dbAuth = $this->getProp('Auth'); //director will close this on cleanup

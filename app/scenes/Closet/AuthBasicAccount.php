@@ -132,6 +132,12 @@ class AuthBasicAccount extends MyScene {
 		return '<span id="'.$theTsId.'" data-orig="'.$aTime.'">'.$aTime.'</span>';
 	}
 	
+	/**
+	 * Helper function to obtain specific field cell HTML for the display table.
+	 * @param string $aFieldName - the fieldname of the data to display.
+	 * @param object $aDataRow - the object containing the field data.
+	 * @return string Returns the HTML for the table cell inside &lt;td&gt; tags.
+	 */
 	public function getColCellValue($aFieldName, $aDataRow)
 	{
 		switch ($aFieldName) {
