@@ -32,10 +32,10 @@ BitsAuthBasicAccounts.prototype.getGroupIdArray = function() {
 BitsAuthBasicAccounts.prototype.setGroupIdArray = function(aList) {
 	if (aList) {
 		var theGroupIds = $('input:checkbox',$('#list_account_groups',this.mDialogAccount)).each(function(){
-			if ($.inArray(Number(this.value),aList))
-				$(this).prop('checked',true);
-			else
+			if ($.inArray(Number(this.value),aList)<0)
 				$(this).prop('checked',false);
+			else
+				$(this).prop('checked',true);
 	    });
 	}
 }
