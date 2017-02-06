@@ -510,7 +510,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			}
 			//if we have a query limit, we may be using a pager, get total count for pager display
 			if (!empty($theQueryLimit)) {
-				$theCount = $theSql->getQueryTotals();
+				$theCount = $theSql->getQueryTotals(array(
+						'count(*)' => 'total_rows',
+						':token' => 'ntmtl', //need to match token list
+				));
 				if (!empty($theCount)) {
 					$aScene->setPagerTotalRowCount($theCount['total_rows']);
 				}
