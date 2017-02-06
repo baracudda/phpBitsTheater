@@ -19,11 +19,12 @@ namespace com\blackmoonit\exceptions;
 use com\blackmoonit\exceptions\DebuggableExceptionTrait;
 use com\blackmoonit\exceptions\IDebuggableException;
 use \PDOException;
+use com\blackmoonit\Strings;
 {//begin namespace
 
 
 /**
- * A DB exception occured, alias for PDOException (if using a different DB abstraction layer, 
+ * A DB exception occured, alias for PDOException (if using a different DB abstraction layer,
  * descend from that DB layer's exception class instead.
  */
 class DbException extends PDOException implements IDebuggableException {
@@ -32,17 +33,19 @@ class DbException extends PDOException implements IDebuggableException {
 	public function __construct($e, $aMsg='') {
 		$this->mDebuggableExceptionTrait = new DebuggableExceptionTrait($this);
 		if (isset($e) && $e instanceof PDOException) {
-			$theArgs = self::parseSqlStateMsg($e->getMessage());
-			if ($e->getPrevious()) {
-				if (count($theArgs)<2) {
-					$theArgs[] = 0;
-				}
-				$theArgs[] = $e->getPrevious();
+			if ( !empty($e->errorInfo) && !empty($e->errorInfo[0]) ) {
+				$errCode = $e->errorInfo[0];
+				$errMsg = (!empty($e->errorInfo[2])) ? $e->errorInfo[2] : $e->getMessage();
+			} else {
+				list($errMsg, $errCode) = self::parseSqlStateMsg($e->getMessage());
 			}
-			call_user_func_array(array('parent','__construct'),$theArgs);
+			parent::__construct($errMsg, 0, $e->getPrevious());
+			$this->code = $errCode; //PDOException::code is string, but constructor is INT param
+			if ( !empty($e->errorInfo) )
+				$this->errorInfo = $e->errorInfo;
 			$this->setContextMsg($aMsg);
 		} else {
-			call_user_func_array(array('parent','__construct'),array($aMsg));
+			parent::__construct($aMsg);
 		}
 	}
 
@@ -53,6 +56,7 @@ class DbException extends PDOException implements IDebuggableException {
 			$theResult[] = ( ($matches[1]=='HT000' || $matches[1]=='HY000') ? $matches[2] : $matches[1] );
 		} else {
 			$theResult[] = $aMsg;
+			$theResult[] = '01000'; //General Warning
 		}
 		return $theResult;
 	}
@@ -104,7 +108,7 @@ class DbException extends PDOException implements IDebuggableException {
 	
 	public function debugPrint($aMsg=null) {
 		return $this->mDebuggableExceptionTrait->debugPrint($aMsg);
-	}	
+	}
 
 }//end class
 

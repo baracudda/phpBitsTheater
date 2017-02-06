@@ -43,6 +43,12 @@ class SqlBuilder extends BaseCostume {
 	 */
 	const SQLSTATE_NO_DATA = '02000';
 	/**
+	 * 5 digit ANSI SQL code meaning a table referenced in the SQL
+	 * does not exist.
+	 * @var unknown
+	 */
+	const SQLSTATE_TABLE_DOES_NOT_EXIST = '42S02';
+	/**
 	 * The SQL element meaning ascending order when sorting.
 	 * @var string
 	 */
@@ -579,9 +585,10 @@ class SqlBuilder extends BaseCostume {
 	//=================================================================
 
 	/**
-	 * Execute DML (data manipulation language - INSERT, UPDATE, DELETE) statements
+	 * Execute DML (data manipulation language - INSERT, UPDATE, DELETE) statements.
 	 * @throws DbException if there is an error.
-	 * @return Returns TRUE.
+	 * @return number|PDOStatement Returns the number of rows affected OR if using params,
+	 *     the PDOStatement.
 	 * @see \BitsTheater\Model::execDML();
 	 */
 	public function execDML() {
