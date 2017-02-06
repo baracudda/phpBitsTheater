@@ -627,10 +627,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @since BitsTheater 3.6.1
 	 */
 	public function insertAuthToken($aAuthId, $aAcctId, $aToken) {
-		if (empty($aAuthId))
-			throw new \InvalidArgumentException('invalid $aAuthId param');
-		if (empty($aAcctId))
-			throw new \InvalidArgumentException('invalid $aAcctId param');
+		if (empty($aAuthId) && empty($aAcctId))
+			throw new \InvalidArgumentException('$aAuthId & $aAcctId cannot both be empty');
 		if (empty($aToken))
 			throw new \InvalidArgumentException('invalid $aToken param');
 		$theSql = SqlBuilder::withModel($this);
