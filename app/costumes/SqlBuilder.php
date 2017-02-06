@@ -695,7 +695,13 @@ class SqlBuilder extends BaseCostume {
 		foreach ($aSqlAggragates as $theField => $theName)
 			array_push($theSqlFields, $theField . ' AS ' . $theName);
 		$theSelectFields = implode(', ', $theSqlFields);
-		return $this->cloneFrom($this)->replaceSelectFieldsWith($theSelectFields)->getAggregateResults(array_values($aSqlAggragates));
+		$sqlTotals = $this->cloneFrom($this);
+		try {
+			return $sqlTotals->replaceSelectFieldsWith($theSelectFields)
+					->getAggregateResults(array_values($aSqlAggragates))
+			;
+		} catch (\PDOException $pdoe)
+		{ throw $sqlTotals->newDbException(__METHOD__, $pdoe); }
 	}
 	
 	/**
