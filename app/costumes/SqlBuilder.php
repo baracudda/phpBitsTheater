@@ -422,6 +422,28 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
+	 * Parameter gets added to the SQL string if data key exists in data set,
+	 * regardless of empty(value).
+	 * @param string $aFieldName - field name to use.
+	 * @param string $aDataKey - array key or property name used to retrieve
+	 * data set by the setDataSet() method.
+	 * @param string $aValueIfEmpty - (optional) value to use if empty()==true.
+	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
+	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
+	 */
+	public function addFieldAndParamIfDefined($aFieldName, $aDataKey, $aValueIfEmpty=null,
+			$aParamType=PDO::PARAM_STR)
+	{
+		if ($this->isDataKeyDefined($aDataKey)) {
+			$theData = $this->getDataValue($aDataKey);
+			if (empty($theData))
+				$theData = $aValueIfEmpty;
+			$this->addingParam($aFieldName, $aDataKey, $theData, $aParamType);
+		}
+		return $this;
+	}
+
+	/**
 	 * Parameter only gets added to the SQL string if data is not NULL.
 	 * @param string $aDataKey - array key or property name used to retrieve
 	 * data set by the setDataSet() method.
@@ -602,15 +624,16 @@ class SqlBuilder extends BaseCostume {
 	 * to record defined by WHERE clause returned no data. May be a comma separated
 	 * list of codes or an array of codes to check against.
 	 * @return boolean Returns the result of the SQLSTATE check.
+	 * @link https://ib-aid.com/download/docs/firebird-language-reference-2.5/fblangref25-appx02-sqlstates.html
 	 */
-	public function execDMLandCheck($aSqlState5digitCodes=self::SQLSTATE_NO_DATA) {
+	public function execDMLandCheck($aSqlState5digitCodes=array(self::SQLSTATE_NO_DATA)) {
 		$theExecResult = $this->execDML();
 		if (!empty($aSqlState5digitCodes)) {
 			$theStatesToCheck = null;
 			if (is_string($aSqlState5digitCodes)) {
 				$theStatesToCheck = explode(',', $aSqlState5digitCodes);
 			} else if (is_array($aSqlState5digitCodes)) {
-				$theStatesToCheck = &$aSqlState5digitCodes;
+				$theStatesToCheck &= $aSqlState5digitCodes;
 			}
 			if (!empty($theStatesToCheck)) {
 				$theSqlState = $theExecResult->errorCode();
@@ -626,6 +649,8 @@ class SqlBuilder extends BaseCostume {
 	 * defaults to '02000', meaning "no data"; e.g. UPDATE/DELETE failed due
 	 * to record defined by WHERE clause returned no data.
 	 * @return boolean Returns the result of the SQLSTATE check.
+	 * @see SqlBuilder::execDMLandCheck()
+	 * @link https://ib-aid.com/download/docs/firebird-language-reference-2.5/fblangref25-appx02-sqlstates.html
 	 */
 	public function execDMLandCheckCode($aSqlState5digitCode=self::SQLSTATE_NO_DATA) {
 		return ($this->execDML()->errorCode()==$aSqlState5digitCode);
