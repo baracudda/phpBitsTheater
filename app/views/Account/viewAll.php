@@ -38,9 +38,14 @@ $w .= '<table class="db-display table">';
 
 $w .= '<thead class="rowh">';
 foreach( $v->table_cols as $theFieldname => $theColInfo) {
-	$w .= $v->getColHeaderTextForSortableField('view_all',
-			$theFieldname, $theColInfo['style']
-	);
+	if (empty($theColInfo['notsortable']))
+		$w .= $v->getColHeaderTextForSortableField('view_all',
+				$theFieldname, $theColInfo['style']
+		);
+	else
+		$w .= '<th style="' . $theColInfo['style']. '">'
+				. $v->getColHeaderLabel($theFieldname) . '</th>'
+				;
 }
 $w .= "</thead>\n";
 print($w);
