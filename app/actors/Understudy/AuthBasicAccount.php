@@ -796,8 +796,9 @@ class AuthBasicAccount extends BaseActor
 		$aPassword 	= trim ( $v->account_password );
 		$aEmail 	= trim ( $v->email );
 		$aGroupIds  = $v->account_group_ids;
-		$aIsActive  = (!empty($v->account_is_active)) ? 1 : 0;
-
+		if (isset($v->account_is_active))
+			$aIsActive  = (!empty($v->account_is_active)) ? 1 : 0;
+		
 		// Reference respective models required.
 		$dbAccounts = $this->getCanonicalModel();
 		$dbAuth = $this->getProp('Auth');
@@ -819,7 +820,7 @@ class AuthBasicAccount extends BaseActor
 				$updatedPassword = ( ( $dbAuth->cudo( $aAccountId, $aPassword ) ) ? null : $aPassword );
 			if ( !empty ( $aEmail ))
 				$updatedEmail = ( ( $aEmail === $fullAccountInfo->email ) ? null : $aEmail );
-			if ( !empty( $aIsActive ) && $this->isAllowed( 'accounts', 'activate' ) )
+			if ( isset( $aIsActive ) && $this->isAllowed( 'accounts', 'activate' ) )
 				$updatedIsActive = ( ( $aIsActive == $fullAccountInfo->is_active ) ? null : $aIsActive );
 				
 			// Update email, if applicable.
@@ -879,7 +880,7 @@ class AuthBasicAccount extends BaseActor
 			}
 			
 			//update is_active, if applicable
-			if ( !empty($updatedIsActive) )
+			if ( isset($updatedIsActive) )
 				$dbAuth->setInvitation( $aAccountId, $updatedIsActive );
 
 			// Update account group, if applicable.
