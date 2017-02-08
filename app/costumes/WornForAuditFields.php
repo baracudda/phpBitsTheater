@@ -27,32 +27,70 @@ trait WornForAuditFields
 {
 	/**
 	 * If the table contains standard audit fields, use this mechanism with
-	 * your SqlBuilder to provide a consistant way to fill them on Insert.
+	 * your SqlBuilder to provide a consistant way to fill them for INSERT.<br>
+	 * NOTE: safe to use multiple times in a query, such as a MERGE query.
 	 * @param SqlBuilder $aSqlBuilder - pass in an existing builder to fill the
 	 *   fields properly.
 	 * @return Returns the passed in SqlBuilder so chaining is possible.
 	 */
-	protected function setAuditFieldsOnInsert(SqlBuilder $aSqlBuilder) {
+	protected function addAuditFieldsForInsert(SqlBuilder $aSqlBuilder) {
 		$nowAsUTC = $aSqlBuilder->myModel->utc_now();
-		$aSqlBuilder->add('SET')->mustAddParam('created_ts', $nowAsUTC)->setParamPrefix(', ');
-		$aSqlBuilder->mustAddParam('updated_ts', $nowAsUTC);
-		$aSqlBuilder->mustAddParam('created_by', $aSqlBuilder->getDirector()->getMyUsername());
-		$aSqlBuilder->mustAddParam('updated_by'); //default is NULL
+		$fn = 'created_ts';
+		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn), $nowAsUTC);
+		$aSqlBuilder->setParamPrefix(', ');
+		$fn = 'updated_ts';
+		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn), $nowAsUTC);
+		$fn = 'created_by';
+		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn),
+				$aSqlBuilder->getDirector()->getMyUsername()
+		);
+		$fn = 'updated_by';
+		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn));
 		return $aSqlBuilder;
 	}
 	
 	/**
 	 * If the table contains standard audit fields, use this mechanism with
-	 * your SqlBuilder to provide a consistant way to fill them on Insert.
+	 * your SqlBuilder to provide a consistant way to fill them on UPDATE.<br>
+	 * NOTE: safe to use multiple times in a query, such as a MERGE query.
+	 * @param SqlBuilder $aSqlBuilder - pass in an existing builder to fill the
+	 *   fields properly.
+	 * @return Returns the passed in SqlBuilder so chaining is possible.
+	 */
+	protected function addAuditFieldsForUpdate(SqlBuilder $aSqlBuilder) {
+		$nowAsUTC = $aSqlBuilder->myModel->utc_now();
+		$fn = 'updated_ts';
+		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn), $nowAsUTC);
+		$aSqlBuilder->setParamPrefix(', ');
+		$fn = 'updated_by';
+		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn),
+				$aSqlBuilder->getDirector()->getMyUsername()
+		);
+		return $aSqlBuilder;
+	}
+	
+	/**
+	 * If the table contains standard audit fields, use this mechanism with
+	 * your SqlBuilder to provide a consistant way to fill them on Insert.<br>
+	 * NOTE: "SET" will be prepended to the audit fields in the query.
+	 * @param SqlBuilder $aSqlBuilder - pass in an existing builder to fill the
+	 *   fields properly.
+	 * @return Returns the passed in SqlBuilder so chaining is possible.
+	 */
+	protected function setAuditFieldsOnInsert(SqlBuilder $aSqlBuilder) {
+		return $this->addAuditFieldsForInsert( $aSqlBuilder->setParamPrefix(' SET ') );
+	}
+	
+	/**
+	 * If the table contains standard audit fields, use this mechanism with
+	 * your SqlBuilder to provide a consistant way to fill them on Insert.<br>
+	 * NOTE: "SET" will be prepended to the audit fields in the query.
 	 * @param SqlBuilder $aSqlBuilder - pass in an existing builder to fill the
 	 *   fields properly.
 	 * @return Returns the passed in SqlBuilder so chaining is possible.
 	 */
 	protected function setAuditFieldsOnUpdate(SqlBuilder $aSqlBuilder) {
-		$nowAsUTC = $aSqlBuilder->myModel->utc_now();
-		$aSqlBuilder->add('SET')->mustAddParam('updated_ts', $nowAsUTC)->setParamPrefix(', ');
-		$aSqlBuilder->mustAddParam('updated_by', $aSqlBuilder->getDirector()->getMyUsername());
-		return $aSqlBuilder;
+		return $this->addAuditFieldsForUpdate( $aSqlBuilder->setParamPrefix(' SET ') );
 	}
 	
 	/**
