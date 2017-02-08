@@ -829,6 +829,23 @@ class SqlBuilder extends BaseCostume {
 		return $this;
 	}
 	
+	/**
+	 * PDO requires all query parameters be unique. This poses an issue when multiple datakeys
+	 * with the same name are needed in the query (especially true for MERGE queries). This
+	 * method will check for any existing parameters named $aDataKey and will return a new
+	 * name with a number for a suffix to ensure its uniqueness.
+	 * @param string $aDataKey - the parameter/datakey name.
+	 * @return string Return the $aDataKey if already unique, else a modified version to
+	 *   ensure it is unique in the query-so-far.
+	 */
+	public function getUniqueDataKey($aDataKey) {
+		$i = 1;
+		$theDataKey = $aDataKey;
+		while (array_key_exists($theDataKey, $this->myParams))
+			$theDataKey = $aDataKey . strval(++$i);
+		return $theDataKey;
+	}
+	
 }//end class
 	
 }//end namespace
