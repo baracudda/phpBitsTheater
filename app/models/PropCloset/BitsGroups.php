@@ -157,29 +157,51 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 				throw $theSql->newDbException(__METHOD__, $pdoe);
 			}
 		
-			//set group_id 5 to 0, cannot set 0 on insert since auto-inc
-			//  columns in MySQL interpret 0 as "next id" instead of just 0.
+			// As required by buildDefaultGroupDataArray(), go back and update
+			// the group zero ID to be zero. The fake ID that we're updating is
+			// equal to the count of rows we're about to insert.
 			$theSql = SqlBuilder::withModel($this);
 			$theSql->startWith('UPDATE')->add($this->tnGroups);
 			$this->setAuditFieldsOnUpdate($theSql);
-			$theSql->mustAddParam('group_id', 0, PDO::PARAM_INT);
-			$theSql->startWhereClause()->mustAddParam('group_id', 5)->endWhereClause();
-			try {
-				$theSql->execDML();
-			} catch (PDOException $pdoe) {
-				throw $theSql->newDbException(__METHOD__, $pdoe);
+			$theSql->mustAddParam('group_id', 0, PDO::PARAM_INT)
+				->startWhereClause()
+				->mustAddFieldAndParam( 'group_id', 'fake_group_id',
+						count($theDefaultData), PDO::PARAM_INT )
+				->endWhereClause()
+				;
+			$theSql->logSqlDebug(__METHOD__) ; // DEBUG
+			try
+			{
+				$theResult = $theSql->execDML() ;
+				$this->debugLog( $theResult ) ;
 			}
+			catch (PDOException $pdoe)
+			{ throw $theSql->newDbException(__METHOD__, $pdoe) ; }
 		}
 	}
 	
 	/**
 	 * Constructs the group information for insertion into the database.
+	 * 
+	 * The group ID for "group zero" (unregistered users) will be assigned a
+	 * fake value by this function, because the group_id column is
+	 * auto-incremented and will start at 1, because a value of 0 may have a
+	 * special meaning to some database engines. The calling function will need
+	 * to retroactively update this ID back to zero. Since the "fake" value is
+	 * the count of the groups that are inserted, the calling function can
+	 * discover the fake value by simply counting the size of the returned
+	 * array.
+	 * 
 	 * @param array $aAuditFields A map of audit fields for the row.
 	 * @see BitsGroups::setupDefaultDataForGroups()
 	 */
 	protected function buildDefaultGroupDataArray( $aAuditFields )
 	{
 		$theGroupNames = $this->getRes('AuthGroups/group_names');
+		// Substitute group ID in databases where 0 is meaningful in auto-inc
+		// columns. This needs to be retro-updated in the calling function.
+		// The fake value is the count of the number of groups to be inserted.
+		$theFakeZeroID = count($theGroupNames) ;
 		$theDefaultData = array() ;
 		$theID = 0 ;
 		foreach( $theGroupNames as $theGroupName )
@@ -187,7 +209,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			array_push( $theDefaultData,
 				array_merge(
 					array(
-							'group_id' => ( $theID === 0 ? 5 : $theID ),
+							'group_id' => ( $theID === 0 ? $theFakeZeroID : $theID ),
 							'group_name' => $theGroupName
 						),
 					$aAuditFields
