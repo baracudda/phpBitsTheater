@@ -137,17 +137,18 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	protected function setupDefaultDataForGroups()
 	{
 		if ($this->isEmpty($this->tnGroups)) {
-			$theGroupNames = $this->getRes('AuthGroups/group_names');
-			$theDefaultData = array(
-					array('group_id'=>1, 'group_name'=>$theGroupNames[1],),
-					array('group_id'=>2, 'group_name'=>$theGroupNames[2],),
-					array('group_id'=>3, 'group_name'=>$theGroupNames[3],),
-					array('group_id'=>4, 'group_name'=>$theGroupNames[4],),
-					array('group_id'=>5, 'group_name'=>$theGroupNames[0],),
-			);
+			// Start building the query until we have the audit field values...
 			$theSql = SqlBuilder::withModel($this);
 			$theSql->startWith('INSERT INTO')->add($this->tnGroups);
 			$this->setAuditFieldsOnInsert($theSql);
+			
+			// Now use this to construct each of the rows of group data.
+			// This works because audit fields are the only params set in the
+			// SqlBuilder, from setAuditFieldsOnInsert().
+			$theDefaultData =
+					$this->buildDefaultGroupDataArray( $theSql->myParams ) ;
+			
+			// Now continue building the query.
 			$theSql->mustAddParam('group_id', 0, PDO::PARAM_INT);
 			$theSql->mustAddParam('group_name');
 			try {
@@ -169,6 +170,31 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 				throw $theSql->newDbException(__METHOD__, $pdoe);
 			}
 		}
+	}
+	
+	/**
+	 * Constructs the group information for insertion into the database.
+	 * @param array $aAuditFields A map of audit fields for the row.
+	 * @see BitsGroups::setupDefaultDataForGroups()
+	 */
+	protected function buildDefaultGroupDataArray( $aAuditFields )
+	{
+		$theGroupNames = $this->getRes('AuthGroups/group_names');
+		$theDefaultData = array() ;
+		$theID = 0 ;
+		foreach( $theGroupNames as $theGroupName )
+		{ // Construct value set for each row with group data and audit fields.
+			array_push( $theDefaultData,
+				array_merge(
+					array(
+							'group_id' => ( $theID === 0 ? 5 : $theID ),
+							'group_name' => $theGroupName
+						),
+					$aAuditFields
+				));
+			$theID++ ;
+		}
+		return $theDefaultData ;
 	}
 	
 	/**
