@@ -5,6 +5,7 @@ use BitsTheater\scenes\Account as MyScene;
 use com\blackmoonit\Widgets ;
 use com\blackmoonit\Strings ;
 
+print('v'.$v->getRes('website/version').'<br />');
 $w = '' ;
 
 if( $recite->isGuest() )
@@ -13,11 +14,14 @@ if( $recite->isGuest() )
 	$w .= Widgets::buildTextBox( $v->getUsernameKey() )->setSize( 20 )
 			->setPlaceholder( $v->getRes( 'account/placeholder_autharea_username' ) )
 			->render() . PHP_EOL
+	   .  '&nbsp;&nbsp;'
 	   .  Widgets::buildPassBox( $v->getPwInputKey() )->setSize( 20 )
 			->setPlaceholder( $v->getRes( 'account/placeholder_autharea_password' ) )
 			->render() . PHP_EOL
+	   .  '&nbsp;&nbsp;'
 	   .  Widgets::buildSubmitButton( 'button_login', $v->getRes( 'account/label_login' ) )
 	   		->addClass('btn-primary')->addClass('btn-sm')->render()
+	   .  '<br/>' . PHP_EOL
 	   .  '<br/>' . PHP_EOL
 	   .  '<a href="' . $v->action_url_register . '">'
 	   .  $v->getRes( 'account/label_register' ) . '</a>'
@@ -27,8 +31,10 @@ if( $recite->isGuest() )
 	   .  '</a>'
 	   .  $theSeparator
 	   .  '<label>' . $v->getRes( 'account/label_save_cookie') . '&nbsp;'
-	   .  Widgets::createCheckBox( $v->getUseCookieKey(), false ) . "</label>\n"
-	   ;
+	   .  '  <input style="vertical-align: text-bottom;" type="checkbox"'
+	   .  '   name="' . $v->getUseCookieKey() . '" checked>'
+	   .  '</label>'
+	   . PHP_EOL ;
 	if( empty($v->redirect) )
 	{
 		/*

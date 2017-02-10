@@ -1,5 +1,6 @@
 <?php
 use com\blackmoonit\Widgets;
+print( $v->createCssTagBlock('td label{margin-bottom:initial}') );
 ?>
 <div class="modal fade" id="dialog_account">
 <div class="modal-dialog "><!-- modal-lg -->
