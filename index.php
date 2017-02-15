@@ -19,7 +19,7 @@ namespace BitsTheater;
 use com\blackmoonit\Strings;
 use com\blackmoonit\exceptions\IDebuggableException;
 use com\blackmoonit\exceptions\FourOhFourExit;
-use com\blackmoonit\excpetions\SystemExit;
+use com\blackmoonit\exceptions\SystemExit;
 use Exception;
 {//namespace begin
 
