@@ -17,6 +17,7 @@ var d = new BitsAuthBasicAccounts('{$v->getSiteURL('account/ajajCreate')}','{$v-
 EOD;
 //closer of above ready function done in FinallyBlock
 
+print($v->cueActor('Fragments', 'get', 'js-dialog_error'));
 print($v->cueActor('Fragments', 'get', 'accounts-dialog_account',
 		array( 'auth_groups' => $v->auth_groups )
 ));

@@ -25,6 +25,9 @@ class BitsGeneric extends BaseResources {
 	
 	public $save_button_text = 'Save' ;
 	public $label_button_cancel = 'Cancel' ;
+	public $label_button_ok = 'Ok';
+	public $label_button_dismiss_error = '<span class="glyphicon glyphicon-alert"></span> Dismiss';
+	public $label_button_dismiss_warning = '<span class="glyphicon glyphicon-warning-sign"></span> Dismiss';
 	
 	public $msg_nothing_found = 'Nothing found.' ;
 	public $msg_permission_denied = 'Permission Denied' ;
@@ -52,6 +55,7 @@ class BitsGeneric extends BaseResources {
 
 	public $label_header_title_suffix_demo_mode = '(demo)';
 	public $label_jump_to_top = 'Jump to top';
+	public $title_dialog_error = 'Error';
 	
 }//end class
 
