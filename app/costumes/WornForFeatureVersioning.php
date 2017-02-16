@@ -160,6 +160,36 @@ trait WornForFeatureVersioning
 		}
 	}
 	
+	/**
+	 * Add a field to an existing table.
+	 * @param number|string $aVersionNum - the version number for log entries.
+	 * @param string $aField - the field name.
+	 * @param string $aTable - the fully qualified table name.
+	 * @param string $aFieldDef - the SQL field definition.
+	 * @param string $aAfterExistingFieldX - (optional) - place the audit
+	 *   fields structurally after this one.
+	 */
+	public function addFieldToTable($aVersionNum, $aField, $aTable,
+			$aFieldDef, $aAfterExistingFieldX=null)
+	{
+		$theSql = SqlBuilder::withModel($this);
+		//previous versions may have added the field already, so double check before adding it.
+		if ( !$this->isFieldExists($aField, $aTable) )
+		{
+			$theSql->startWith('ALTER TABLE')->add($aTable);
+			$theSql->add('  ADD COLUMN')->add($aFieldDef);
+			if (!empty($aAfterExistingFieldX))
+				$theSql->add('AFTER')->add($aAfterExistingFieldX);
+			try
+			{ $theSql->execDML(); }
+			catch (\Exception $e)
+			{ throw $theSql->newDbException(__METHOD__ . "[{$aTable}]", $e); }
+			$this->debugLog("v{$aVersionNum}: added [{$aField}] to [{$aTable}]");
+		} else {
+			$this->debugLog("v{$aVersionNum}: {$aTable} already updated.");
+		}
+	}
+	
 } // end trait
 
 } // end namespace
