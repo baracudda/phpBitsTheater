@@ -135,26 +135,27 @@ class BitsWebsite extends BaseResources {
 		
 		//NULL path means use default lib path path
 		$this->css_load_list = array(
-				'bootstrap/css/bootstrap.css' => null,
-				'apycom/menu.css' => null,
+				'bootstrap.css' => BITS_LIB . '/bootstrap/css',
+				'apycom/menu.css' => BITS_LIB,
 				'bits.css' => BITS_RES.'/style',
 		);
-		// external libs
+		// external libs - Numeric key or NULL path means use default lib path
 		$this->js_libs_load_list = array(
-				'jquery/jquery.min.js',
-				'bootstrap/js/bootstrap.min.js', //bootstrap needs to be after jQuery
-				'bootbox/bootbox.js',
+				'jquery.min.js' => BITS_LIB . '/jquery',
+				//bootstrap needs to be after jQuery
+				'bootstrap.min.js' => BITS_LIB . '/bootstrap/js',
+				'bootbox.js' => BITS_LIB . '/bootbox',
 				
 				//apycom menu (needs to be after jQuery, else use the jquery sublib)
 				//'apycom/jquery.js', //do not need if already using jQuery
-				'apycom/menu.js',
+				'apycom/menu.js' => BITS_LIB,
 		
 				//minification from http://www.jsmini.com/ using Basic and no jquery included.
-				'com/blackmoonit/jBits/jbits_mini.js',
+				'jbits_mini.js' => BITS_LIB . '/com/blackmoonit/jBits',
 				//  !-remove the below space and comment out the above line to debug un-minified JS code
 				/* * /
-				'com/blackmoonit/jBits/BasicObj.js',
-				'com/blackmoonit/jBits/AjaxDataUpdater.js',
+				'BasicObj.js' => BITS_LIB . '/com/blackmoonit/jBits',
+				'AjaxDataUpdater.js' => BITS_LIB . '/com/blackmoonit/jBits',
 				/* end of jBits JS */
 		);
 		
