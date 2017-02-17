@@ -41,6 +41,7 @@ class BitsAdmin extends BaseActor {
 		
 		$v->addUserMsg($v->getRes('admin/msg_warning_backup_db'),$v::USER_MSG_WARNING);
 		$dbMeta = $this->getProp('SetupDb');
+		$dbMeta->refreshFeatureTable($v);
 		$v->feature_version_list = $dbMeta->getFeatureVersionList();
 	}
 	
