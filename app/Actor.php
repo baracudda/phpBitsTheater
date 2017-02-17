@@ -549,23 +549,25 @@ implements IDirected
 	}
 	
 	/**
-	 * Gets an entity ID from a URI segment or a POST data field. The caller
-	 * decides which is the "preferred" data source or an "alternate" data
-	 * source.
-	 * @param string $aValue the value of the entity ID as a URI segment
-	 * @param string $aField the name of a field in the POST data where the ID
-	 *  might be found, if not found in the URI segment
+	 * Gets a value from an incoming request, based on a value fetched from a
+	 * URI segment, or a named field from the POST data. The caller of this
+	 * function decides which is the "preferred" data source or "alternate" data
+	 * source by the values sent in the parameters.
+	 * @param string $aValue a possible value for the field, already fetched
+	 *  from a specific source (like a URI segment); this will be checked first
+	 * @param string $aField the name of a field in the POST data where the
+	 *  value might be found, if not found in <code>$aValue</code>
 	 * @param boolean $isRequired indicates whether to throw an exception if no
-	 *  value can be found for the entity ID in either data source; this
-	 *  defaults to true (required by default)
-	 * @return NULL|string the value that was found, preferring the URI segment
-	 *  but falling back to the POST data if needed; if no field name is given,
-	 *  and no value is found, NULL is returned
+	 *  value can be found for the field in either data source; this defaults to
+	 *  <code>true</code> (required by default)
+	 * @return NULL|string the value that was found, preferring
+	 *  <code>$aValue</code> but falling back to the POST data if needed; if no
+	 *  field name is given, and no value is found, then NULL is returned
 	 * @throws BrokenLeg (MISSING_ARGUMENT) if no value was found in either data
 	 *  source, and the caller indicated that a result is required
-	 * @since BitsTheater 3.5.2
+	 * @since BitsTheater 3.5.2, 3.7.0
 	 */
-	protected function getEntityID( $aValue=null, $aField=null, $isRequired=true )
+	protected function getRequestData( $aValue=null, $aField=null, $isRequired=true )
 	{
 		$theValue = $aValue ;
 		if( empty($theValue) )
@@ -581,6 +583,30 @@ implements IDirected
 		}
 		return $theValue ;
 	}
+	
+	/**
+	 * Gets an entity ID from a URI segment or a POST data field.
+	 * This is an alias of <code>getRequestData()</code> which preserves
+	 * backward compatibility for anyone who has been using this older function
+	 * name to fetch entity IDs from requests.
+	 * 
+	 * @param string $aValue a possible value for the ID, already fetched from a
+	 *  specific source (like a URI segment); this will be checked first
+	 * @param string $aField the name of a field in the POST data where the ID
+	 *  value might be found, if not found in <code>$aValue</code> 
+	 * @param boolean $isRequired indicates whether to throw an exception if no
+	 *  value can be found for the ID in either data source; this defaults to
+	 *  <code>true</code> (required by default) 
+	 * @return NULL|string the value that was found, preferring
+	 *  <code>$aValue</code> but falling back to the POST data if needed; if no
+	 *  field name is given, and no value is found, then NULL is returned
+	 * @throws BrokenLeg (MISSING_ARGUMENT) if no value was found in either data
+	 *  source, and the caller indicated that a result is required
+	 * @see Actor::getRequestData()
+	 * @since BitsTheater 3.7.0
+	 */
+	protected function getEntityID( $aValue=null, $aField=null, $isRequired=true )
+	{ return $this->getRequestData( $aValue, $aField, $isRequired ) ; }
 
 }//end class
 
