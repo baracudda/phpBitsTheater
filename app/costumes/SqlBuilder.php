@@ -422,22 +422,17 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
-	 * Parameter gets added to the SQL string if data key exists in data set,
-	 * regardless of empty(value).
+	 * Parameter gets added to the SQL string if data key exists in data set.
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
-	 * @param string $aValueIfEmpty - (optional) value to use if empty()==true.
+	 *     data set by the setDataSet() method.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
-	public function addFieldAndParamIfDefined($aFieldName, $aDataKey, $aValueIfEmpty=null,
-			$aParamType=PDO::PARAM_STR)
+	public function addFieldAndParamIfDefined($aFieldName, $aDataKey, $aParamType=PDO::PARAM_STR)
 	{
 		if ($this->isDataKeyDefined($aDataKey)) {
 			$theData = $this->getDataValue($aDataKey);
-			if (empty($theData))
-				$theData = $aValueIfEmpty;
 			$this->addingParam($aFieldName, $aDataKey, $theData, $aParamType);
 		}
 		return $this;
@@ -460,19 +455,22 @@ class SqlBuilder extends BaseCostume {
 	}
 
 	/**
-	 * Parameter gets added to the SQL string if data key exists in data set,
-	 * regardless of empty(value).
+	 * Parameter gets added to the SQL string if data key exists in data set.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
-	 * @param string $aValueIfEmpty - (optional) value to use if empty()==true.
+	 *     data set by the setDataSet() method.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
+	 * @param $aParamTypeDeprecated - (IGNORE) defined for backward compatibility only!
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
-	public function addParamIfDefined($aDataKey, $aValueIfEmpty=null, $aParamType=PDO::PARAM_STR) {
+	public function addParamIfDefined($aDataKey, $aParamType=PDO::PARAM_STR,
+			$aParamTypeDeprecated=null)
+	{
 		if ($this->isDataKeyDefined($aDataKey)) {
 			$theData = $this->getDataValue($aDataKey);
-			if (empty($theData))
-				$theData = $aValueIfEmpty;
+			//2nd param was always ignored anyway, if older code specified a 3rd param,
+			//  just make it our 2nd param instead.
+			if (!is_null($aParamTypeDeprecated))
+				$aParamType = $aParamTypeDeprecated;
 			$this->addingParam($aDataKey, $aDataKey, $theData, $aParamType);
 		}
 		return $this;

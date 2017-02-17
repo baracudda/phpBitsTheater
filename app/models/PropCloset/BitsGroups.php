@@ -353,7 +353,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		$this->setAuditFieldsOnInsert($theSql);
 		$theSql->mustAddParam('group_name');
 		$theSql->mustAddParam('parent_group_id', null, PDO::PARAM_INT);
-		$theSql->addParamIfDefined('group_id', 0, PDO::PARAM_INT);
+		$theSql->addParamIfDefined('group_id', PDO::PARAM_INT);
 		//$theSql->logSqlDebug(__METHOD__);
 		try {
 			return $theSql->execDMLandGetParams();
