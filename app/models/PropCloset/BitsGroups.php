@@ -63,7 +63,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	/** The constant, assumed ID of the "titan" superuser group. */
 	const TITAN_GROUP_ID = 1 ;
 	/** The constant, assumed ID of the "default APP_ID reg code group. */
-	const DEFAULT_REG_GROUP_ID = 3;
+	const DEFAULT_REG_GROUP_ID = 2;
 
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
@@ -182,7 +182,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	
 	/**
 	 * Constructs the group information for insertion into the database.
-	 * 
+	 *
 	 * The group ID for "group zero" (unregistered users) will be assigned a
 	 * fake value by this function, because the group_id column is
 	 * auto-incremented and will start at 1, because a value of 0 may have a
@@ -191,7 +191,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 * the count of the groups that are inserted, the calling function can
 	 * discover the fake value by simply counting the size of the returned
 	 * array.
-	 * 
+	 *
 	 * @param array $aAuditFields A map of audit fields for the row.
 	 * @see BitsGroups::setupDefaultDataForGroups()
 	 */
