@@ -748,6 +748,14 @@ class Strings {
 		return $scheme.$user.$pass.$host.$port.$path.$query.$fragment;
 	}
 
+	/**
+	 * If NULL, returns NULL, else returns the intval().
+	 * @param string|number $aVal - a value.
+	 * @return NULL|number Returns the intval() or NULL, if NULL.
+	 */
+	static public function toInt($aVal)
+	{ return ( !is_null($aVal) && $aVal!=='' ) ? intval($aVal) : null; }
+	
 }//end class
 
 /* increase default crypto strength (04-31) based on PHP version
