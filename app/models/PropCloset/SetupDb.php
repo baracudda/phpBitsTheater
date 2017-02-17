@@ -307,10 +307,11 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	public function getFeatureVersionList($aFieldList=null) {
 		$theWebsiteFeatureId = $this->getRes('website/getFeatureId');
 		$theResultSet = null;
-		if ($this->isConnected() && $this->exists()) {
+		if ($this->getDirector()->isInstalled() && $this->exists()) {
 			try {
 				$theSql = SqlBuilder::withModel($this);
-				$theSql->startWith('SELECT')->addFieldList($aFieldList)->add('FROM')->add($this->tnSiteVersions);
+				$theSql->startWith('SELECT')->addFieldList($aFieldList);
+				$theSql->add('FROM')->add($this->tnSiteVersions);
 				//$theSql->add('ORDER BY feature_id');
 				$ps = $theSql->query();
 				if ($ps) {

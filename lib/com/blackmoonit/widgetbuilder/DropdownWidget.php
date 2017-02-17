@@ -66,7 +66,7 @@ class DropdownWidget extends BlockWidget
 	 * @param array $aOptionArray the data to be rendered as selectable options
 	 * @return \com\blackmoonit\widgetbuilder\DropdownWidget this widget
 	 */
-	public function setOptions( &$aOptionArray )
+	public function setOptions( $aOptionArray )
 	{
 		$this->myOptionData = $aOptionArray ;
 		return $this ;
