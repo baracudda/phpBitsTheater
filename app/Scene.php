@@ -994,6 +994,89 @@ implements IDirected
 		return $s;
 	}
 	
+	/**
+	 * Returns the human label used for a field.
+	 * @param string $aFieldName - one of the property names defined
+	 *     for SelectorList costume.
+	 */
+	public function getColHeaderLabel($aFieldName)
+	{
+		switch ($aFieldName) {
+			case 'record_id':  return $this->getRes('generic/colheader_record_id');
+			case 'created_by': return $this->getRes('generic/colheader_created_by');
+			case 'updated_by': return $this->getRes('generic/colheader_updated_by');
+			case 'created_ts': return $this->getRes('generic/colheader_created_ts');
+			case 'updated_ts': return $this->getRes('generic/colheader_updated_ts');
+		}//end switch
+	}
+	
+	/**
+	 * Construct the URL used for column headers that support sorting.
+	 * @param string $aViewName - the name of the view with the table.
+	 * @param string $aFieldName - the field name to sort on.
+	 * @return string Returns the URL to be used to sort on the field provided.
+	 */
+	public function getColHeaderHrefForSortableField($aViewName, $aFieldName)
+	{
+		return $this->getMyUrl($aViewName, array(
+				'orderby' => $aFieldName,
+				'orderbyrvs' => ($this->orderby != $aFieldName || $this->orderbyrvs ? 0 : 1),
+		));
+	}
+	
+	/**
+	 * Construct the HTML used for a column header for a particular field.
+	 * @param string $aViewName - the name of the view with the table.
+	 * @param string $aFieldName - the field name to sort on.
+	 * @param string $aStyle - the style for the header column.
+	 * @return string Returns the HTML to use.
+	 */
+	public function getColHeaderTextForSortableField($aViewName, $aFieldName, $aStyle)
+	{
+		return '<th style="'.$aStyle.'"><a href="'
+				. $this->getColHeaderHrefForSortableField($aViewName, $aFieldName)
+				.'">' . $this->getColHeaderLabel($aFieldName) . '</a></th>'
+						;
+	}
+	
+	/**
+	 * Construct the HTML necessary to convert a UTC timestamp into the
+	 * local-to-browser timezone value via JS code.
+	 * @param number/string $aTime - either a UTC timestamp or a MySQL datetime string.
+	 * @return string Returns the HTML needed to display local time.
+	 */
+	public function getLocalTimestampValue($aTime)
+	{
+		$theTsId = Strings::createUUID();
+		$this->jsCode .= Widgets::cnvUtcTs2LocalStr($theTsId, $aTime)."\n";
+		return '<span id="'.$theTsId.'" data-orig="'.$aTime.'">'.$aTime.'</span>';
+	}
+	
+	/**
+	 * Helper function to obtain specific field cell HTML for the display table.
+	 * @param string $aFieldName - the fieldname of the data to display.
+	 * @param object $aDataRow - the object containing the field data.
+	 * @return string Returns the HTML for the table cell inside &lt;td&gt; tags.
+	 */
+	public function getColCellValue($aFieldName, $aDataRow)
+	{
+		switch ($aFieldName) {
+			case 'created_by':
+				return htmlentities($aDataRow->created_by);
+			case 'created_ts':
+				return $this->getLocalTimestampValue($aDataRow->created_ts);
+			case 'updated_by':
+				return htmlentities($aDataRow->updated_by);
+			case 'updated_ts':
+				$w = '';
+				if ($aDataRow->created_ts !== $aDataRow->updated_ts) {
+					$w .= $this->getLocalTimestampValue($aDataRow->updated_ts);
+				}
+				return $w;
+			default:
+				return '';
+		}//end switch
+	}
 	
 }//end class
 

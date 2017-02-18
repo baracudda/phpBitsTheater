@@ -37,10 +37,6 @@ class BitsAccount extends BaseResources
 	public $colheader_verified_ts = 'Verified';
 	public $colheader_account_is_active = 'Active';
 	//public $colheader_hardware_ids;
-	public $colheader_created_by = 'Created By';
-	public $colheader_updated_by = 'Updated By';
-	public $colheader_created_ts = 'Created On';
-	public $colheader_updated_ts = 'Updated On';
 	
 	public $label_is_active_true = 'Yes';
 	public $label_is_active_false = 'No';
@@ -48,7 +44,6 @@ class BitsAccount extends BaseResources
 	public $label_dialog_title_account_add = 'Add Account';
 	public $label_dialog_title_account_edit = 'Edit Account';
 	public $label_dialog_auth_groups = 'Roles';
-	
 	
 	public $title_request_pwd_reset = 'Request Password Reset' ;
 	

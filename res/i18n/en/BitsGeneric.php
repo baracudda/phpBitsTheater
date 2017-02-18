@@ -57,6 +57,12 @@ class BitsGeneric extends BaseResources {
 	public $label_jump_to_top = 'Jump to top';
 	public $title_dialog_error = 'Error';
 	
+	public $colheader_record_id = 'ID';
+	public $colheader_created_by = 'Created By';
+	public $colheader_updated_by = 'Updated By';
+	public $colheader_created_ts = 'Created On';
+	public $colheader_updated_ts = 'Updated On';
+	
 }//end class
 
 }//end namespace
