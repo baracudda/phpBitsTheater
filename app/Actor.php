@@ -98,11 +98,7 @@ implements IDirected
 		$this->director = $aDirector;
 		$this->action = $anAction;
 		$this->setupMethodAccessControl();
-		$theSceneClass = Director::getSceneClass($this->mySimpleClassName);
-		if (!class_exists($theSceneClass)) {
-			Strings::errorLog(__METHOD__.': cannot find Scene class: '.$theSceneClass);
-		}
-		$this->scene = new $theSceneClass($this,$anAction);
+		$this->scene = $this->createMyScene($anAction);
 		if ($this->director->canConnectDb() && $this->director->isInstalled()) {
 			$this->config = $this->director->getProp('Config');
 		}
@@ -151,6 +147,23 @@ implements IDirected
 			if ($theMethod->isPublic())
 				$this->myPublicMethodsAccessControl[$theMethod->name] = false;
 		}
+	}
+	
+	/**
+	 * When the object is first setup(), a scene is created along with it. Use
+	 * this method to determine what is created. By default, a scene with the
+	 * same simple name as the Actor will be used, if found, else just the
+	 * base Scene class is used. Descendants may override this to create
+	 * something specific.
+	 * @param string $anAction - the method attempting to be called via URL.
+	 * @return Scene Returns a newly created scene descendant.
+	 */
+	protected function createMyScene($anAction)
+	{
+		$theSceneClass = Director::getSceneClass($this->mySimpleClassName);
+		if ( !class_exists($theSceneClass) )
+			Strings::errorLog(__METHOD__.': cannot find Scene class: '.$theSceneClass);
+		return new $theSceneClass($this, $anAction);
 	}
 
 	/**
@@ -589,14 +602,14 @@ implements IDirected
 	 * This is an alias of <code>getRequestData()</code> which preserves
 	 * backward compatibility for anyone who has been using this older function
 	 * name to fetch entity IDs from requests.
-	 * 
+	 *
 	 * @param string $aValue a possible value for the ID, already fetched from a
 	 *  specific source (like a URI segment); this will be checked first
 	 * @param string $aField the name of a field in the POST data where the ID
-	 *  value might be found, if not found in <code>$aValue</code> 
+	 *  value might be found, if not found in <code>$aValue</code>
 	 * @param boolean $isRequired indicates whether to throw an exception if no
 	 *  value can be found for the ID in either data source; this defaults to
-	 *  <code>true</code> (required by default) 
+	 *  <code>true</code> (required by default)
 	 * @return NULL|string the value that was found, preferring
 	 *  <code>$aValue</code> but falling back to the POST data if needed; if no
 	 *  field name is given, and no value is found, then NULL is returned
