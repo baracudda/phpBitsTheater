@@ -105,7 +105,7 @@ foreach ($theFeatureList as $theFeatureInfo) {
 		print($v->getRes('admin/hint_create_missing_tables'));
 	?></div>
 	<div class="panel-body"><?php
-		$w .= Widgets::buildButton('btn_resetup_db')->addClass('btn-warning')
+		$w = Widgets::buildButton('btn_resetup_db')->addClass('btn-warning')
 				->append($v->getRes('admin/btn_label_resetup_db'))->render();
 		print($w);
 	?></div>
