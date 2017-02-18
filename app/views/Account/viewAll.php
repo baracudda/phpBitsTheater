@@ -35,12 +35,14 @@ $w .= '<br />' . PHP_EOL;
 $w .= '<div class="panel panel-default">';
 //$w .= '<div class="panel-heading">Panel heading</div>';
 
+$thePager = $v->getPagerHtml($v->_action);
+$w .= $thePager;
 $w .= '<table class="db-display table">';
 
 $w .= '<thead class="rowh">';
 foreach( $v->table_cols as $theFieldname => $theColInfo) {
 	if (empty($theColInfo['notsortable']))
-		$w .= $v->getColHeaderTextForSortableField('view_all',
+		$w .= $v->getColHeaderTextForSortableField($v->_action,
 				$theFieldname, $theColInfo['style']
 		);
 	else
@@ -53,9 +55,9 @@ print($w);
 
 print("<tbody>\n");
 //since we can get exceptions in for loop, let us use a FinallyBlock
-$w = "</tbody>\n";
-$w .= "</table><br/>\n";
-$w .= "</div>\n";
+$w = '</tbody></table>';
+$w .= $thePager;
+$w .= '<br /></div>' . PHP_EOL;
 $theFinalEnclosure = new FinallyBlock(function($v, $w) {
 	//print anything left in our "what to print" buffer
 	print($w);
@@ -78,7 +80,7 @@ try {
 		print($r);
 	}//end foreach
 } catch (Exception $e) {
-	$v->errorLog('account/view_all failed: ' . $e->getMessage() );
+	$v->errorLog($v->_actor.'/'.$v->_action.' failed: '.$e->getMessage() );
 	throw $e;
 }
 //if the data printed out ok, place a button after the table
