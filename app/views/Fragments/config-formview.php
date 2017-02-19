@@ -20,8 +20,8 @@ if (!empty($v->results)) {
 		$theNamespaceInfo = ConfigNamespaceInfo::fromArray($v->getDirector(), $arrayNamespaceInfo);
 		//DEBUG if ($theNamespaceInfo->namespace=='site') { print($v->debugStr($theNamespaceInfo)); print('<br><br>'); }
 		$v->_rowClass = 1; //reset row counter back to 1 for each table created (resets the row formatting)
-		$w .= "<h2>{$theNamespaceInfo->label}</h2>";
-		$w .= '<table class="db-entry">' . PHP_EOL;
+		$w .= '<table class="db-entry" style="padding:10px;">' . PHP_EOL;
+		$w .= '<caption style="text-align:left">'.$theNamespaceInfo->label.'</caption>';
 		$w .= '  <thead><tr class="rowh">' . PHP_EOL;
 		$w .=     '<th>' . $v->getRes('config/colheader_setting_name') . '</th>';
 		$w .=     '<th>' . $v->getRes('config/colheader_setting_value') . '</th>';
@@ -51,8 +51,9 @@ if (!empty($v->results)) {
 			$w .= '  <tr class="'.$v->_rowClass.' '.$theNamespaceInfo->namespace.'-'.$theSettingInfo->key.'">'
 					.$cellLabel.$cellInput.$cellDesc."</tr>\n";
 		}//end foreach
-		$w .= "  </tbody>\n";
-		$w .= "</table><br/>\n";
+		$w .= "  </tbody>";
+	    $w .= '</table>';
+	    $w .= '<br />' . PHP_EOL;
 	}//end foreach
 	$w .= "<br/>\n";
 	$w .= Widgets::buildButton('btn_save_settings2')->addClass('btn-primary')

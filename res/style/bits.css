@@ -210,6 +210,16 @@ ul.user-msgs li.error {
 	color:white;
 }
 
+caption {
+	/* same color as tr.row2 */
+	background-color: #E8E8E8;
+    padding-left: 10px;
+    font-size: large;
+    color: black;
+    font-style: italic;
+    text-decoration: underline;
+}
+
 tr.rowh, thead { /*row header*/
 	background-color: Navy;
 	color: LightSteelBlue;

@@ -23,14 +23,29 @@ $w = '';
 
 $w .= '<h1>' . Strings::format($v->getRes('permissions/title_group'),htmlentities($v->group['group_name'])) . "</h1>\n";
 $w .= $v->renderMyUserMsgsAsString();
+print($w);
+
 $res = $v->getPermissionRes('right_values');
 //$v->debugLog($v->debugStr($res));
-$w .= '<table border="0">';
-$w .= '<tr><td align="right"><b>+</b> = </td><td>'.$res['allow']->label.': '.$res['allow']->desc."</td></tr>\n";
-$w .= '<tr><td align="right"><b>-</b> = </td><td>'.$res['disallow']->label.': '.$res['disallow']->desc."</td></tr>\n";
-$w .= '<tr><td align="right"><b>x</b> = </td><td>'.$res['deny']->label.': '.$res['deny']->desc."</td></tr>\n";
-$w .= "</table>\n";
-$w .= "<br/>\n";
+?>
+<div class="row">
+<div class="col-sm-6">
+	<div class="panel panel-info">
+		<div class="panel-heading">
+		<span style="font-size:larger;"><?php print($v->getRes('generic/label_note_title')); ?></span>
+		</div>
+		<div class="panel-body"><table><tbody>
+<tr><td align="right"><b>+</b> = </td><td><?php print($res['allow']->label.': '.$res['allow']->desc); ?></td></tr>
+<tr><td align="right"><b>-</b> = </td><td><?php print($res['disallow']->label.': '.$res['disallow']->desc); ?></td></tr>
+<tr><td align="right"><b>x</b> = </td><td><?php print($res['deny']->label.': '.$res['deny']->desc); ?></td></tr>
+		</tbody></table></div>
+	</div>
+</div>
+<div class="col-sm-6"></div>
+</div>
+<br />
+<?php
+$w = '';
 $w .= Widgets::createHiddenPost('group_id',$v->group['group_id']);
 $w .= Widgets::createHiddenPost('post_key', $v->post_key);
 //copy the save button so we can put it on top and bottom of the page
@@ -55,8 +70,8 @@ foreach ($v->right_groups as $ns => $nsInfo) {
 		$thePermissionRows .= '<tr class="'.$v->_rowClass.'">'.$cellLabel.$cellInput.$cellDesc."</tr>\n";
 	}//end foreach
 	if (!empty($thePermissionRows)) {
-		$w .= '<h2>' . htmlentities($nsInfo->desc) . '</h2>';
 		$w .= '<table class="db-entry">'."\n";
+		$w .= '<caption>' . htmlentities($nsInfo->desc) . '</caption>';
 		$w .= '<thead><tr class="rowh">'."\n";
 		$w .= '<th class="text-right">'.$v->getRes('permissions/colheader_right_name').'</th>';
 		$w .= '<th class="text-center">'.$v->getRes('permissions/colheader_right_value').'</th>';

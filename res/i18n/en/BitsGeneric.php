@@ -28,6 +28,7 @@ class BitsGeneric extends BaseResources {
 	public $label_button_ok = 'Ok';
 	public $label_button_dismiss_error = '<span class="glyphicon glyphicon-alert"></span> Dismiss';
 	public $label_button_dismiss_warning = '<span class="glyphicon glyphicon-warning-sign"></span> Dismiss';
+	public $label_note_title = '<span class="glyphicon glyphicon-info-sign"></span> Note';
 	
 	public $msg_nothing_found = 'Nothing found.' ;
 	public $msg_permission_denied = 'Permission Denied' ;

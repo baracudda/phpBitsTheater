@@ -9,8 +9,7 @@ use com\blackmoonit\Widgets;
 $h = $v->cueActor('Fragments', 'get', 'csrf_header_jquery');
 $recite->includeMyHeader($h);
 
-$w = '';
-$jsCode = <<<EOD
+$v->jsCode = <<<EOD
 function func_save_settings(r) {
 	$("#overlay_please_stand_by").show();
 	var fdata = $('form').serialize();
@@ -79,18 +78,31 @@ $(document).ready(function(){
 
 EOD;
 
-$w .= '<img class="overlay" id="overlay_please_stand_by" src="'.BITS_RES.'/images/please_stand_by.png" >';
+$w = '<img class="overlay" id="overlay_please_stand_by" src="'.BITS_RES.'/images/please_stand_by.png" >';
 $w .= '<h1>' . $v->getRes('config/title_settings_page') . "</h1>\n";
-if ($msgs = $v->getUserMsgs()) {
-	$w .= "<br />\n".$v->renderMyUserMsgsAsString()."<br />\n";
-}
-$w .= '<p>Use "?" to reset a setting to its default value ("\\?" to save just a question mark).</p>'."<br />\n";
-$w .= "<br />\n";
+$w .= $v->renderMyUserMsgsAsString();
+print($w);
+?>
+<div class="row">
+<div class="col-sm-6">
+<div class="panel panel-info">
+	<div class="panel-heading">
+		<span style="font-size:larger;"><?php print($v->getRes('generic/label_note_title')); ?></span>
+	</div>
+	<div class="panel-body"><?php print($v->getRes('config/note_default_setting')); ?></div>
+</div>
+</div>
+<div class="col-sm-6"></div>
+</div>
+<br />
+<br />
+<?php
 if (!empty($v->config_areas)) {
+	$w = '';
 	/* @var $theNamespaceInfo ConfigNamespaceInfo */
 	foreach ($v->config_areas as $theNamespaceInfo) {
 		$v->_rowClass = 1; //reset row counter back to 1 for each table created (resets the row formatting)
-		$w .= "<h2>{$theNamespaceInfo->label}</h2>";
+		$w .= '<h2>'.$theNamespaceInfo->label.'</h2>';
 		$w .= '<table class="db-entry">' . PHP_EOL;
 		$w .= '  <thead><tr class="rowh">' . PHP_EOL;
 		$w .=     '<th>' . $v->getRes('config/colheader_setting_name') . '</th>';
@@ -113,21 +125,22 @@ if (!empty($v->config_areas)) {
 					."</tr>" . PHP_EOL
 					;
 		}//end foreach
-		$w .= "  </tbody>" . PHP_EOL;
-	    $w .= "</table><br/>" . PHP_EOL;
+		$w .= "  </tbody>";
+	    $w .= '</table>';
+	    $w .= '<br />' . PHP_EOL;
 	}//end foreach
 	$w .= "<br/>" . PHP_EOL;
 	$w .= '<br/>'.Widgets::createSubmitButton('submit_save', $v->save_button_text) . PHP_EOL;
 	$w .= "<br/>" . PHP_EOL;
 } else {
-	$w .= '<div id="config_data">Loading...</div>';
+	$w = '<div id="config_data">' . $v->getRes('config/msg_loading') . '</div>';
 	$w .= "<br/>" . PHP_EOL;
 }
 
-$theForm = Widgets::buildForm($recite->next_action)->setName($recite->form_name)
+$theForm = Widgets::buildForm($v->next_action)->setName($v->form_name)
 		->setRedirect($v->redirect)->append($w)
 		;
 print($theForm->render());
-print($v->createJsTagBlock($jsCode));
+print($v->createJsTagBlock($v->jsCode));
 print(str_repeat('<br />',3));
 $recite->includeMyFooter();
