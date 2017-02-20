@@ -756,6 +756,30 @@ class Strings {
 	static public function toInt($aVal)
 	{ return ( !is_null($aVal) && $aVal!=='' ) ? intval($aVal) : null; }
 	
+	/**
+	 * Sometimes we wish to create a file whose name is based on user input.
+	 * Sanitizing user input for use in _any_ file system is trick, so do our best.
+	 * @param string $aFilename - the user input filename to sanitize.
+	 * @param string $aDefaultName - the string to use if we end up with nothing.
+	 * @return string Returns the sanitized string which should be filename-safe.
+	 * @link http://stackoverflow.com/a/2021729/429728
+	 */
+	static public function sanitizeFilename($aFilename, $aDefaultName='file')
+	{
+		// Remove anything which isn't a word, whitespace, number
+		// or any of the following caracters -_~,;[]().
+		// If you don't need to handle multi-byte characters
+		// you can use preg_replace rather than mb_ereg_replace
+		// Thanks @Łukasz Rysiak!
+		$theName = mb_ereg_replace("([^\w\s\d\-_~,;\[\]\(\).])", '', $aFilename);
+		// Remove any runs of periods (thanks falstro!)
+		if ($theName!==false)
+			$theName = mb_ereg_replace("([\.]{2,})", '', $theName);
+		if (empty($theName))
+			$theName = $aDefaultName;
+		return $theName;
+	}
+	
 }//end class
 
 /* increase default crypto strength (04-31) based on PHP version

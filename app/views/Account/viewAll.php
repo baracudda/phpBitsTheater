@@ -80,7 +80,7 @@ try {
 		print($r);
 	}//end foreach
 } catch (Exception $e) {
-	$v->errorLog($v->_actor.'/'.$v->_action.' failed: '.$e->getMessage() );
+	$v->errorLog($v->_actor->myClassName.'::'.$v->_action.' failed: '.$e->getMessage() );
 	throw $e;
 }
 //if the data printed out ok, place a button after the table
