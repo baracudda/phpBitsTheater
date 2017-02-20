@@ -25,7 +25,14 @@ if (!headers_sent()) {
 }
 if ($v->results) {
 	$theCSV = OutputToCSV::newInstance()->setInput($v->results);
-	$theCSV->useInputForHeaderRow(true);
+	//default to "true" for backward compatibility
+	$bGenerateHeaderRow = (isset($v->bUseResultsForHeaderRow))
+			? $v->bUseResultsForHeaderRow
+			: true
+			;
+	$theCSV->useInputForHeaderRow($bGenerateHeaderRow);
+	if (isset($v->bUseUserAgentToDetermineLineEnding))
+		$theCSV->determineClientLineEnding($v->bUseUserAgentToDetermineLineEnding);
 	//TODO set all the various CSV options
 	$theCSV->setOutputStream(fopen('php://output', 'w'));
 	$theCSV->generateCSV();

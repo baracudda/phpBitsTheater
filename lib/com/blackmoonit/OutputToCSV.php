@@ -295,6 +295,9 @@ class OutputToCSV {
 			}
 		}
 		while (!empty($theRow)) {
+			//row data may be just 1 value column with no actual column name
+			if (is_string($theRow))
+				$theRow = array($theRow);
 			//generate output row
 			foreach ($theRow as $theColName => $theColValue) {
 				if (!empty($this->mCallbacks[$theColName])) {
@@ -369,6 +372,25 @@ class OutputToCSV {
 		}
 		fclose($theFileHandle);
 		return $bSuccess;
+	}
+	
+	/**
+	 * Downloading a generated CSV might require a "best guess" as to what
+	 * the client expects for each line ending. If Windows, use \r\n, else \n.
+	 * @param boolean $bCheckUserAgent - should we use the client's User Agent
+	 *     string to determine the line ending? default is false.
+	 */
+	public function determineClientLineEnding($bCheckUserAgent=false)
+	{
+		//if TRUE, we want the mLineDelimiter to be based on the Client, not the Server.
+		if ($bCheckUserAgent) {
+			if (preg_match('~Windows |Win(?:NT|98|95|32|16)~', $_SERVER['HTTP_USER_AGENT'])) {
+				//$platform = 'MS Windows';
+				$this->mLineDelimiter = "\r\n";
+			} else {
+				$this->mLineDelimiter = "\n";
+			}
+		}
 	}
 
 }//end class
