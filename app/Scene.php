@@ -995,6 +995,24 @@ implements IDirected
 	}
 	
 	/**
+	 * Returns TRUE if the fieldname specified is sortable.
+	 * @param string $aFieldName - the field name to check.
+	 * @return boolean Returns TRUE if sortable, else FALSE.
+	 */
+	public function isFieldSortable($aFieldName)
+	{
+		switch ($aFieldName) {
+			case 'created_by':
+			case 'updated_by':
+			case 'created_ts':
+			case 'updated_ts':
+				return true;
+			default:
+				return false;
+		}//end switch
+	}
+	
+	/**
 	 * Returns the human label used for a field.
 	 * @param string $aFieldName - one of the property names defined
 	 *     for SelectorList costume.
@@ -1025,18 +1043,38 @@ implements IDirected
 	}
 	
 	/**
-	 * Construct the HTML used for a column header for a particular field.
+	 * Construct the HTML used for a column header for a particular sortable field.
 	 * @param string $aViewName - the name of the view with the table.
 	 * @param string $aFieldName - the field name to sort on.
-	 * @param string $aStyle - the style for the header column.
+	 * @param string $aStyle - (optional) the style for the header column.
 	 * @return string Returns the HTML to use.
 	 */
-	public function getColHeaderTextForSortableField($aViewName, $aFieldName, $aStyle)
+	public function getColHeaderTextForSortableField($aViewName, $aFieldName, $aStyle=null)
 	{
-		return '<th style="'.$aStyle.'"><a href="'
+		$theStyle = (!empty($aStyle)) ? ' style="' . $aStyle . '"' : null;
+		return '<th'.$theStyle.'><a href="'
 				. $this->getColHeaderHrefForSortableField($aViewName, $aFieldName)
 				.'">' . $this->getColHeaderLabel($aFieldName) . '</a></th>'
-						;
+				;
+	}
+	
+	/**
+	 * Construct the HTML used for a column header for a particular sortable field.
+	 * @param string $aFieldName - the field name to determine label/sorting.
+	 * @param string $aStyle - (optional) the style for the header column.
+	 * @return string Returns the HTML to use.
+	 */
+	public function getColHeaderHTML($aFieldName, $aStyle=null)
+	{
+		if ( $this->isFieldSortable($aFieldName) )
+			return $this->getColHeaderTextForSortableField(
+					$this->_action, $aFieldName, $aStyle
+			);
+		else
+		{
+			$theStyle = (!empty($aStyle)) ? ' style="' . $aStyle . '"' : null;
+			return '<th'.$theStyle.'>'.$this->getColHeaderLabel($aFieldName).'</th>';
+		}
 	}
 	
 	/**
