@@ -844,6 +844,47 @@ class SqlBuilder extends BaseCostume {
 		return $theDataKey;
 	}
 	
+	/**
+	 * Providing click-able headers in tables to easily sort them by a particular field
+	 * is a great UI feature. However, in order to prevent SQL injection attacks, we
+	 * must double-check that a supplied field name to order the query by is something
+	 * we can sort on; this method makes use of the <code>Scene::isFieldSortable()</code>
+	 * method to determine if the browser supplied field name is one of our possible
+	 * headers that can be clicked on for sorting purposes. The Scene's properties called
+	 * <code>orderby</code> and <code>orderbyrvs</code> are used to determine the result.
+	 * @param object $aScene - the object, typically a Scene decendant, which is used
+	 *     to call <code>isFieldSortable()</code> and access the properties
+	 *     <code>orderby</code> and <code>orderbyrvs</code>.
+	 * @param array $aDefaultOrderByList - (optional) default to use if no proper
+	 *     <code>orderby</code> field was defined.
+	 */
+	public function sanitizeOrderByList($aScene, $aDefaultOrderByList=null)
+	{
+		$theOrderByList = $aDefaultOrderByList;
+		if (!empty($aScene) && !empty($aScene->orderby))
+		{
+			//does the object passed in even define our validation method?
+			$theHeaderLabel = (method_exists($aScene, 'isFieldSortable'))
+					? $aScene->isFieldSortable($aScene->orderby)
+					: null
+					;
+			//only valid columns we are able to sort on will define a header label
+			if (!empty($theHeaderLabel))
+			{
+				$theSortDirection = null;
+				if (isset($aScene->orderbyrvs))
+				{
+					$theSortDirection = ($aScene->orderbyrvs)
+							? self::ORDER_BY_DESCENDING
+							: self::ORDER_BY_ASCENDING
+							;
+				}
+				$theOrderByList = array( $aScene->orderby => $theSortDirection );
+			}
+		}
+		return $theOrderByList;
+	}
+	
 }//end class
 	
 }//end namespace
