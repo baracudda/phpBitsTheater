@@ -69,6 +69,27 @@ class AuthBasicAccount extends MyScene {
 	}
 	
 	/**
+	 * Returns TRUE if the fieldname specified is sortable.
+	 * @param string $aFieldName - the field name to check.
+	 * @return boolean Returns TRUE if sortable, else FALSE.
+	 */
+	public function isFieldSortable($aFieldName)
+	{
+		switch ($aFieldName) {
+			case 'account_id':
+			case 'account_name':
+			case 'external_id':
+			case 'auth_id':
+			case 'email':
+			case 'verified_ts':
+			case 'is_active':
+				return true;
+			default:
+				return parent::isFieldSortable($aFieldName);
+		}//end switch
+	}
+	
+	/**
 	 * Returns the human label used for a field.
 	 * @param string $aFieldName - one of the property names defined
 	 *     for AuthAccount costume.

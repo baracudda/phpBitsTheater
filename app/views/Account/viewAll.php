@@ -40,15 +40,8 @@ $w .= $thePager;
 $w .= '<table class="db-display table">';
 
 $w .= '<thead class="rowh">';
-foreach( $v->table_cols as $theFieldname => $theColInfo) {
-	if (empty($theColInfo['notsortable']))
-		$w .= $v->getColHeaderTextForSortableField($v->_action,
-				$theFieldname, $theColInfo['style']
-		);
-	else
-		$w .= '<th style="' . $theColInfo['style']. '">'
-				. $v->getColHeaderLabel($theFieldname) . '</th>'
-				;
+foreach ($v->table_cols as $theFieldName => $theColInfo) {
+	$w .= $v->getColHeaderHTML($theFieldName, $theColInfo['style']);
 }
 $w .= "</thead>\n";
 print($w);
