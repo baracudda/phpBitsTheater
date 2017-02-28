@@ -63,7 +63,7 @@ $theFinalEnclosure = new FinallyBlock(function($v, $w) {
 
 //results have *not* been fetched yet, so place inside a TRY block
 //  just in case we run into a problem
-try {
+if (!empty($v->results)) try {
 	for ( $theRow = $v->results->fetch(); ($theRow !== false); $theRow = $v->results->fetch() ) {
 		$r = '<tr class="'.$v->_rowClass.'">';
 		foreach( $v->table_cols as $theFieldname => $theColInfo) {
@@ -74,7 +74,7 @@ try {
 	}//end foreach
 } catch (Exception $e) {
 	$v->errorLog($v->_actor->myClassName.'::'.$v->_action.' failed: '.$e->getMessage() );
-	throw $e;
+	$v->addUserMsg($e->getMessage(), $v::USER_MSG_ERROR);
 }
 //if the data printed out ok, place a button after the table
 print($w); //close the table
