@@ -14,38 +14,22 @@ if (!headers_sent()) {
 	header("Cache-Control: max-age=0, no-cache, must-revalidate, proxy-revalidate");
 	header("Last-Modified: {$theModDate} GMT");
 
-	// force download
-	header("Content-Type: application/force-download");
-	header("Content-Type: application/octet-stream");
-	header("Content-Type: application/download");
+	header("Content-Type: text/text; charset=utf-8");
 
 	// disposition / encoding on response body
 	header("Content-Disposition: attachment;filename={$v->output_filename}");
-	header("Content-Transfer-Encoding: binary");
+	header("Content-Transfer-Encoding: text");
 }
 if ($v->results) {
 	$theCSV = OutputToCSV::newInstance()->setInput($v->results);
-	//default to "true" for backward compatibility
-	$bGenerateHeaderRow = (isset($v->bUseResultsForHeaderRow))
-			? $v->bUseResultsForHeaderRow
-			: true
-			;
-	$theCSV->useInputForHeaderRow($bGenerateHeaderRow);
+	$theCSV->useInputForHeaderRow(false);
 	if (isset($v->bUseUserAgentToDetermineLineEnding))
 		$theCSV->determineClientLineEnding($v->bUseUserAgentToDetermineLineEnding);
-	if (isset($v->csv_opt_delimiter))
-		$theCSV->setDelimiter($v->csv_opt_delimiter);
-	if (isset($v->csv_opt_enclosure))
-		$theCSV->setEnclosure($v->csv_opt_enclosure);
-	if (isset($v->csv_opt_enclosure_left) && isset($v->csv_opt_enclosure_right))
-		$theCSV->setEnclosure($v->csv_opt_enclosure_left, $v->csv_opt_enclosure_right);
-	if (isset($v->csv_opt_enclosure_replacement))
-		$theCSV->setEnclosureReplacement($v->csv_opt_enclosure_replacement);
-	if (isset($v->csv_opt_enclosure_replacement_left)
-			&& isset($v->csv_opt_enclosure_replacement_right))
-		$theCSV->setEnclosureReplacement( $v->csv_opt_enclosure_replacement_left,
-				$v->csv_opt_enclosure_replacement_right
-		);
+	else
+		$theCSV->determineClientLineEnding(true);
+	$theCSV->setDelimiter(' ');
+	$theCSV->setEnclosure('');
+	$theCSV->setEnclosureReplacement('');
 	if (!empty($v->csv_callbacks) && is_array($v->csv_callbacks))
 		foreach ($v->csv_callbacks as $theColName => $theCallback)
 			$theCSV->setCallback($theColName, $theCallback);
