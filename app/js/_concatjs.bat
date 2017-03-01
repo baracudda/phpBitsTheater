@@ -39,6 +39,7 @@ del _concat_js.txt
 
 copy /A webapp.js _concat_js.txt /B /Y
 copy /A _concat_js.txt+BitsRightGroups.js _concat_js.txt /B /Y
+copy /A _concat_js.txt+BitsAuthBasicAccounts.js _concat_js.txt /B /Y
 
 ::copy /A _concat_js.txt+blah1.js _concat_js.txt /B /Y
 ::copy /A _concat_js.txt+blah2.js _concat_js.txt /B /Y
