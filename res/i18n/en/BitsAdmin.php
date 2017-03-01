@@ -39,6 +39,7 @@ class BitsAdmin extends BaseResources {
 	public $msg_update_success = 'Update successful!';
 	public $msg_copy_cfg_fail = "Cannot copy over [cfg]/%s. Please make it writeable and try again.";
 	public $msg_missing_tables_created = 'Missing tables created.';
+	public $msg_cli_feature_up_to_date = 'Feature %s is already up to date.';
 	
 	public $dialog_update_warning_title = 'WARNING!';
 	public $dialog_update_warning_msg = 'Are you <i>SURE</i> you want to update this feature?';

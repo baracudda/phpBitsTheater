@@ -420,6 +420,23 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
+	 * User feedback is important and might be a HTML message or CLI output.
+	 * @param Scene $aDataObject - the scene object.
+	 * @param string $aMsg - the message.
+	 * @param string $aMsgType - the kind of message (notice, error, warning).
+	 */
+	protected function outputUserMsg($aDataObject, $aMsg, $aMsgType='notice')
+	{
+		if ($this->isRunningUnderCLI())
+			print($aMsg . PHP_EOL);
+		else if (is_object($aDataObject) &&
+				is_callable(array($aDataObject,'addUserMsg'),true))
+		{
+			$aDataObject->addUserMsg($aMsg, $aMsgType);
+		}
+	}
+	
+	/**
 	 * Using the data given, update the feature described.
 	 * @param $aDataObject - object containing data to be used.
 	 */
@@ -448,14 +465,12 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					//if no exception occurs, all went well
 					$this->updateFeature($dbModel->getCurrentFeatureVersion($theFeatureData['feature_id']));
 					
-					if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'),true)) {
-						$aDataObject->addUserMsg($this->getRes('admin/msg_update_success'));
-					}
+					$theMsg = $this->getRes('admin/msg_update_success');
+					$this->outputUserMsg($aDataObject, $theMsg, $aDataObject::USER_MSG_NOTICE);
 				} catch (Exception $e) {
-					$this->errorLog($e->getMessage());
-					if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'),true)) {
-						$aDataObject->addUserMsg($e->getMessage(), $aDataObject::USER_MSG_ERROR);
-					}
+					$theMsg = $e->getMessage();
+					$this->errorLog($theMsg);
+					$this->outputUserMsg($aDataObject, $theMsg, $aDataObject::USER_MSG_ERROR);
 				}
 			}
 		} else if (!empty($aDataObject)) {
@@ -466,14 +481,12 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 				
 				$this->refreshFeatureTable($aDataObject);
 				
-				if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'))) {
-					$aDataObject->addUserMsg($this->getRes('admin/msg_update_success'));
-				}
+				$theMsg = $this->getRes('admin/msg_update_success');
+				$this->outputUserMsg($aDataObject, $theMsg, $aDataObject::USER_MSG_NOTICE);
 			} catch (Exception $e) {
-				$this->errorLog($e->getMessage());
-				if (is_object($aDataObject) && is_callable(array($aDataObject,'addUserMsg'))) {
-					$aDataObject->addUserMsg($e->getMessage(), $aDataObject::USER_MSG_ERROR);
-				}
+				$theMsg = $e->getMessage();
+				$this->errorLog($theMsg);
+				$this->outputUserMsg($aDataObject, $theMsg, $aDataObject::USER_MSG_ERROR);
 			}
 		}
 	}
