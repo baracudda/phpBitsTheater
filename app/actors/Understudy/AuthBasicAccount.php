@@ -588,20 +588,24 @@ class AuthBasicAccount extends BaseActor
 		$v =& $this->scene;
 		$this->renderThisView = 'results_as_json';
 		if (empty($aPing)) {
+			//$this->debugLog(__METHOD__.$v->debugStr($v->auth_header_data));
 			$theAuthHeader = HttpAuthHeader::fromHttpAuthHeader($this->getDirector(),
 					(!empty($v->auth_header_data)) ? $v->auth_header_data : null
 			);
 			$dbAuth = $this->getProp('Auth');
 			if (!$this->isGuest()) {
+				//$this->debugLog(__METHOD__.' login account found.');
 				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
 						$this->director->account_info, $theAuthHeader
 				);
 			} else {
+				//$this->debugLog(__METHOD__.' login using broadway auth unsuccessful');
 				$v->results = $dbAuth->requestMobileAuthAutomatedByTokens(
 						$v->auth_id, $v->user_token, $theAuthHeader
 				);
 			}
 			if (empty($v->results)) {
+				//$this->debugLog(__METHOD__.' mobile auth fail; logging out');
 				$this->director->logout();
 			}
 		} else if ($aPing===static::MAGIC_PING_TOKEN) {
@@ -1254,14 +1258,29 @@ class AuthBasicAccount extends BaseActor
 	}
 	
 	/**
+	 * Before a pairing of device to auth account is attempted, what should occur?
+	 * Default behavior is to delete stale tokens for enhanced security.
+	 * @param string $aDeviceTokenFilter - the particular token prefix used.
+	 */
+	protected function beforeRequestMobileAuthAccount($aDeviceTokenFilter)
+	{
+		$dbAuth = $this->getProp('Auth');
+		//remove any stale device tokens
+		$dbAuth->removeStaleTokens($aDeviceTokenFilter, '3 MONTH');
+		$this->returnProp($dbAuth);
+	}
+	
+	/**
 	 * Once a pairing of device to auth account succeeds, then what? Default behavior is to
 	 * delete the token for enhanced security.
 	 * @param string $aDeviceTokenFilter - the particular token prefix used.
 	 */
 	protected function afterSuccessfulRequestMobileAuthAccount($aDeviceTokenFilter)
 	{
+		$dbAuth = $this->getProp('Auth');
 		//remove any lingering device tokens unless one was JUST created
 		$dbAuth->removeStaleTokens($aDeviceTokenFilter, '1 SECOND');
+		$this->returnProp($dbAuth);
 	}
 	
 	/**
@@ -1281,11 +1300,10 @@ class AuthBasicAccount extends BaseActor
 					$this->getDirector(), $v->auth_header_data
 			);
 			$dbAuth = $this->getProp('Auth');
-			
 			$theDeviceTokenFilter = $dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':';
-			//ensure our tokens are not stale
-			$dbAuth->removeStaleTokens($theDeviceTokenFilter.'%', '3 MONTH');
 			$theDeviceTokenFilter .= $theHttpAuthHeader->device_id . ':%';
+			$this->beforeRequestMobileAuthAccount($theDeviceTokenFilter);
+			
 			$theTokenRows = $dbAuth->getAuthTokens(null, null, $theDeviceTokenFilter, true);
 			//$this->debugLog(__METHOD__.' rows='.$this->debugStr($theTokenRows));
 			if (!empty($theTokenRows)) {

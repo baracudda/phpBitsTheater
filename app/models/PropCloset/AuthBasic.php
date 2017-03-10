@@ -471,12 +471,12 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 
 	/**
 	 * Gets the set of all account records.
-	 * @param Scene $aScene - scene being used in case we need user-defined query limits.
+	 * @param Scene $aScene - (optional) Scene object in case we need user-defined query limits.
 	 * @param number $aGroupId - (optional) the group id to filter on
 	 * @return PDOStatement - the iterable result of the SELECT query
 	 * @throws DbException if something goes wrong
 	 */
-	public function getAccountsToDisplay($aScene, $aGroupId=null) {
+	public function getAccountsToDisplay($aScene=null, $aGroupId=null) {
 		$theQueryLimit = (!empty($aScene)) ? $aScene->getQueryLimit($this->dbType()) : null;
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 				'group_id' => $aGroupId,
@@ -484,10 +484,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		));
 		try {
 			//determine OrderBy (so can report on it in case of exception)
-			if (empty($aScene->orderby))
-				$aScene->orderby = 'acct.account_name';
-			$theOrderByList = array( $aScene->orderby =>
-					($aScene->orderbyrvs ? $theSql::ORDER_BY_DESCENDING : $theSql::ORDER_BY_ASCENDING)
+			$theOrderByList = $theSql->sanitizeOrderByList($aScene,
+					array( 'acct.account_name' => null )
 			);
 			//query field list
 			$dbAccounts = $this->getProp('Accounts');
@@ -509,7 +507,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				$theSql->startWhereClause()->mustAddParam('group_id')->endWhereClause();
 			}
 			//if we have a query limit, we may be using a pager, get total count for pager display
-			if (!empty($theQueryLimit)) {
+			if (!empty($aScene) && !empty($theQueryLimit)) {
 				$theCount = $theSql->getQueryTotals(array(
 						'count(*)' => 'total_rows',
 						':token' => 'ntmtl', //need to match token list
@@ -1753,7 +1751,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$theAuthRow = $this->getAuthByAuthId($aAuthId);
 		$theAcctRow = (!empty($theAuthRow)) ? $dbAccounts->getAccount($theAuthRow['account_id']) : null;
 		if (!empty($theAcctRow) && !empty($theAuthRow) && !empty($aHttpAuthHeader)) {
-			//$this->debugLog(__METHOD__.' AH='.$this->debugStr($aHttpAuthHeader));
+			//$this->debugLog(__METHOD__.' AH='.$this->debugStr($aHttpAuthHeader)); //DEBUG
 			//they must have a mobile auth row already
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 					'account_id' => $theAcctRow['account_id'],
@@ -1778,9 +1776,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 								'auth_token' => $theAuthToken,
 								'api_version_seq' => $this->getRes('website/api_version_seq'),
 						);
-						//$this->debugLog(__METHOD__.' r='.$this->debugStr($theResults));
+						//$this->debugLog(__METHOD__.' r='.$this->debugStr($theResults)); //DEBUG
 						break;
 					}
+					//else $this->debugLog(__METHOD__.' :cry:'); //DEBUG
 				}
 			}
 		}

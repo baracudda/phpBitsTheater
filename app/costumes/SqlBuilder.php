@@ -422,22 +422,17 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
-	 * Parameter gets added to the SQL string if data key exists in data set,
-	 * regardless of empty(value).
+	 * Parameter gets added to the SQL string if data key exists in data set.
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
-	 * @param string $aValueIfEmpty - (optional) value to use if empty()==true.
+	 *     data set by the setDataSet() method.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
-	public function addFieldAndParamIfDefined($aFieldName, $aDataKey, $aValueIfEmpty=null,
-			$aParamType=PDO::PARAM_STR)
+	public function addFieldAndParamIfDefined($aFieldName, $aDataKey, $aParamType=PDO::PARAM_STR)
 	{
 		if ($this->isDataKeyDefined($aDataKey)) {
 			$theData = $this->getDataValue($aDataKey);
-			if (empty($theData))
-				$theData = $aValueIfEmpty;
 			$this->addingParam($aFieldName, $aDataKey, $theData, $aParamType);
 		}
 		return $this;
@@ -460,19 +455,22 @@ class SqlBuilder extends BaseCostume {
 	}
 
 	/**
-	 * Parameter gets added to the SQL string if data key exists in data set,
-	 * regardless of empty(value).
+	 * Parameter gets added to the SQL string if data key exists in data set.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
-	 * @param string $aValueIfEmpty - (optional) value to use if empty()==true.
+	 *     data set by the setDataSet() method.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
+	 * @param $aParamTypeDeprecated - (IGNORE) defined for backward compatibility only!
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
-	public function addParamIfDefined($aDataKey, $aValueIfEmpty=null, $aParamType=PDO::PARAM_STR) {
+	public function addParamIfDefined($aDataKey, $aParamType=PDO::PARAM_STR,
+			$aParamTypeDeprecated=null)
+	{
 		if ($this->isDataKeyDefined($aDataKey)) {
 			$theData = $this->getDataValue($aDataKey);
-			if (empty($theData))
-				$theData = $aValueIfEmpty;
+			//2nd param was always ignored anyway, if older code specified a 3rd param,
+			//  just make it our 2nd param instead.
+			if (!is_null($aParamTypeDeprecated))
+				$aParamType = $aParamTypeDeprecated;
 			$this->addingParam($aDataKey, $aDataKey, $theData, $aParamType);
 		}
 		return $this;
@@ -844,6 +842,47 @@ class SqlBuilder extends BaseCostume {
 		while (array_key_exists($theDataKey, $this->myParams))
 			$theDataKey = $aDataKey . strval(++$i);
 		return $theDataKey;
+	}
+	
+	/**
+	 * Providing click-able headers in tables to easily sort them by a particular field
+	 * is a great UI feature. However, in order to prevent SQL injection attacks, we
+	 * must double-check that a supplied field name to order the query by is something
+	 * we can sort on; this method makes use of the <code>Scene::isFieldSortable()</code>
+	 * method to determine if the browser supplied field name is one of our possible
+	 * headers that can be clicked on for sorting purposes. The Scene's properties called
+	 * <code>orderby</code> and <code>orderbyrvs</code> are used to determine the result.
+	 * @param object $aScene - the object, typically a Scene decendant, which is used
+	 *     to call <code>isFieldSortable()</code> and access the properties
+	 *     <code>orderby</code> and <code>orderbyrvs</code>.
+	 * @param array $aDefaultOrderByList - (optional) default to use if no proper
+	 *     <code>orderby</code> field was defined.
+	 */
+	public function sanitizeOrderByList($aScene, $aDefaultOrderByList=null)
+	{
+		$theOrderByList = $aDefaultOrderByList;
+		if (!empty($aScene) && !empty($aScene->orderby))
+		{
+			//does the object passed in even define our validation method?
+			$theHeaderLabel = (method_exists($aScene, 'isFieldSortable'))
+					? $aScene->isFieldSortable($aScene->orderby)
+					: null
+					;
+			//only valid columns we are able to sort on will define a header label
+			if (!empty($theHeaderLabel))
+			{
+				$theSortDirection = null;
+				if (isset($aScene->orderbyrvs))
+				{
+					$theSortDirection = ($aScene->orderbyrvs)
+							? self::ORDER_BY_DESCENDING
+							: self::ORDER_BY_ASCENDING
+							;
+				}
+				$theOrderByList = array( $aScene->orderby => $theSortDirection );
+			}
+		}
+		return $theOrderByList;
 	}
 	
 }//end class

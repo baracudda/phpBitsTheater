@@ -37,6 +37,7 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 	 */
 	const FEATURE_ID = 'BitsTheater/config';
 	const FEATURE_VERSION_SEQ = 2; //always ++ when making db schema changes
+	//v2 - corrected column name for static::MAPKEY_NAME
 
 	const TABLE_NAME = 'config';
 	const MAPKEY_NAME = 'setting';
@@ -62,7 +63,7 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 						'ns' => 'namespace',
 						'key' => $theNamespaceInfo->namespace,
 						'value' => null,
-						'default' => null, 
+						'default' => null,
 				));
 				/* @var $theSettingInfo ConfigSettingInfo */
 				foreach ($theNamespaceInfo->settings_list as $theSettingName => $theSettingInfo) {
@@ -130,9 +131,10 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 	 */
 	public function upgradeFeatureVersion($aFeatureMetaData, $aScene) {
 		$theSeq = $aFeatureMetaData['version_seq'];
+		$this->debugLog('Running '.__METHOD__.' v'.$theSeq.'->v'.self::FEATURE_VERSION_SEQ);
 		switch (true) {
 			//cases should always be lo->hi, never use break; so all changes are done in order.
-			case ($theSeq<=1):
+			case ($theSeq<2):
 				//NOTE: this change needed to happen manually since you cannot login to even get to the update page as the
 				//  login mechanism relies strongly on reading several config settings.
 				//realized that Config model should have a different mapkey name from what KeyValueModel defined.
@@ -153,7 +155,7 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 	/**
 	 * Overrides default behavior to grab Resource definition if not found
 	 * inside the config table.
-	 * @param array|string $aNsKey - array with 'ns' and 'key' keys or an "ns/key" string. 
+	 * @param array|string $aNsKey - array with 'ns' and 'key' keys or an "ns/key" string.
 	 * @throws DbException only if the table already exists.
 	 * @see \BitsTheater\models\PropCloset\KeyValueModel::getMapData()
 	 */
@@ -190,7 +192,7 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 	
 	/**
 	 * Returns the static definition of a setting.<br>
-	 * NOTE: $aConfigSetting param may be left out and the $aNamespace 
+	 * NOTE: $aConfigSetting param may be left out and the $aNamespace
 	 * param could be the combined form of "ns/setting" instead. Also, since
 	 * other function params accept the array['ns' & 'key'] form for the first
 	 * param, this function does as well.

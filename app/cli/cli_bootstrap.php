@@ -20,7 +20,7 @@ Strings::debugPrefix( '[local-cli-dbg] ');
 $director = new Director();
 //define some generic functions
 function dumpvar($x)
-{ print "\n".Strings::debugStr($x,null); }
+{ print( PHP_EOL . Strings::debugStr($x,null) ); }
 
 
 /************************************************

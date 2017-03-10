@@ -17,6 +17,7 @@ var d = new BitsAuthBasicAccounts('{$v->getSiteURL('account/ajajCreate')}','{$v-
 EOD;
 //closer of above ready function done in FinallyBlock
 
+print($v->cueActor('Fragments', 'get', 'js-dialog_error'));
 print($v->cueActor('Fragments', 'get', 'accounts-dialog_account',
 		array( 'auth_groups' => $v->auth_groups )
 ));
@@ -34,27 +35,22 @@ $w .= '<br />' . PHP_EOL;
 $w .= '<div class="panel panel-default">';
 //$w .= '<div class="panel-heading">Panel heading</div>';
 
+$thePager = $v->getPagerHtml($v->_action);
+$w .= $thePager;
 $w .= '<table class="db-display table">';
 
 $w .= '<thead class="rowh">';
-foreach( $v->table_cols as $theFieldname => $theColInfo) {
-	if (empty($theColInfo['notsortable']))
-		$w .= $v->getColHeaderTextForSortableField('view_all',
-				$theFieldname, $theColInfo['style']
-		);
-	else
-		$w .= '<th style="' . $theColInfo['style']. '">'
-				. $v->getColHeaderLabel($theFieldname) . '</th>'
-				;
+foreach ($v->table_cols as $theFieldName => $theColInfo) {
+	$w .= $v->getColHeaderHTML($theFieldName, $theColInfo['style']);
 }
 $w .= "</thead>\n";
 print($w);
 
 print("<tbody>\n");
 //since we can get exceptions in for loop, let us use a FinallyBlock
-$w = "</tbody>\n";
-$w .= "</table><br/>\n";
-$w .= "</div>\n";
+$w = '</tbody></table>';
+$w .= $thePager;
+$w .= '<br /></div>' . PHP_EOL;
 $theFinalEnclosure = new FinallyBlock(function($v, $w) {
 	//print anything left in our "what to print" buffer
 	print($w);
@@ -67,7 +63,7 @@ $theFinalEnclosure = new FinallyBlock(function($v, $w) {
 
 //results have *not* been fetched yet, so place inside a TRY block
 //  just in case we run into a problem
-try {
+if (!empty($v->results)) try {
 	for ( $theRow = $v->results->fetch(); ($theRow !== false); $theRow = $v->results->fetch() ) {
 		$r = '<tr class="'.$v->_rowClass.'">';
 		foreach( $v->table_cols as $theFieldname => $theColInfo) {
@@ -77,8 +73,8 @@ try {
 		print($r);
 	}//end foreach
 } catch (Exception $e) {
-	$v->errorLog('account/view_all failed: ' . $e->getMessage() );
-	throw $e;
+	$v->errorLog($v->_actor->myClassName.'::'.$v->_action.' failed: '.$e->getMessage() );
+	$v->addUserMsg($e->getMessage(), $v::USER_MSG_ERROR);
 }
 //if the data printed out ok, place a button after the table
 print($w); //close the table

@@ -64,7 +64,7 @@ class AuthAccountSet extends BaseCostume
 	/**
 	 * Creates an iterated set based on an already-obtained PDOStatement.
 	 * @param Director $aContext the context in which to create the object
-	 * @return ContactSet
+	 * @return AuthAccountSet
 	 */
 	static public function create(Director $aContext)
 	{

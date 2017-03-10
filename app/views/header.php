@@ -25,8 +25,11 @@ if (!empty($theCssList)) {
 
 $theLibsJsList = $v->getRes('website/js_libs_load_list');
 if (!empty($theLibsJsList)) {
-	foreach ($theLibsJsList as $theJsFile) {
-		$v->loadScript($theJsFile);
+	foreach ($theLibsJsList as $theJsFile => $theJsPath) {
+		if (is_int($theJsFile))
+			$v->loadScript($theJsPath);
+		else
+			$v->loadScript($theJsFile,$theJsPath);
 	}//foreach
 } else {
 	$v->loadScript('com/blackmoonit/jBits/jbits_mini.js');

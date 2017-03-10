@@ -18,6 +18,7 @@
 namespace BitsTheater;
 use com\blackmoonit\database\GenericDb as BaseModel;
 use BitsTheater\costumes\IDirected;
+use BitsTheater\costumes\WornForCLI;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\OutputToCSV;
@@ -35,6 +36,8 @@ use BitsTheater\DbConnInfo;
 class Model extends BaseModel
 implements IDirected
 {
+	use WornForCLI;
+	
 	/**
 	 * The number of args required to call the setup() method.
 	 * @var number
@@ -607,6 +610,34 @@ implements IDirected
 		}
 	}
 
+	/**
+	 * Send string out to the debug log (or std log as [dbg]).
+	 * @param $s - parameter to print out (non-strings converted with debugStr()).
+	 * @see Strings::debugLog()
+	 * @see AdamEve::debugStr()
+	 */
+	public function debugLog($s) {
+		parent::debugLog($s);
+		if ($this->isRunningUnderCLI()) {
+			print( (is_string($s)) ? $s : $this->debugStr($s) );
+			print(PHP_EOL);
+		}
+	}
+	
+	/**
+	 * Send string out to the error log prepended with the defined error prefix.
+	 * @param $s - parameter to print out (non-strings converted with debugStr()).
+	 * @see Strings::errorLog($s)
+	 * @see AdamEve::debugStr()
+	 */
+	public function errorLog($s) {
+		parent::errorLog($s);
+		if ($this->isRunningUnderCLI()) {
+			print( (is_string($s)) ? $s : $this->debugStr($s) );
+			print(PHP_EOL);
+		}
+	}
+	
 }//end class
 
 }//end namespace

@@ -795,6 +795,19 @@ class Widgets
 				;
 	}
 	
+	/**
+	 * Factory convenience method for creating a dropdown widget.
+	 * @param string $aName - the Name and default ID of the element.
+	 * @return widgetbuilder\DropdownWidget Returns the new object for chaining.
+	 */
+	static public function buildDropDown($aName)
+	{
+		return (new widgetbuilder\DropdownWidget($aName))
+			->addClass('field')->addClass('form-control')
+			->setAttr( 'name', $aName )
+			;
+	}
+	
 }//end class
 
 }//end namespace

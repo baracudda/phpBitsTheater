@@ -69,6 +69,27 @@ class AuthBasicAccount extends MyScene {
 	}
 	
 	/**
+	 * Returns TRUE if the fieldname specified is sortable.
+	 * @param string $aFieldName - the field name to check.
+	 * @return boolean Returns TRUE if sortable, else FALSE.
+	 */
+	public function isFieldSortable($aFieldName)
+	{
+		switch ($aFieldName) {
+			case 'account_id':
+			case 'account_name':
+			case 'external_id':
+			case 'auth_id':
+			case 'email':
+			case 'verified_ts':
+			case 'is_active':
+				return true;
+			default:
+				return parent::isFieldSortable($aFieldName);
+		}//end switch
+	}
+	
+	/**
 	 * Returns the human label used for a field.
 	 * @param string $aFieldName - one of the property names defined
 	 *     for AuthAccount costume.
@@ -83,53 +104,8 @@ class AuthBasicAccount extends MyScene {
 			case 'email':        return $this->getRes('account/colheader_email');
 			case 'verified_ts':  return $this->getRes('account/colheader_verified_ts');
 			case 'is_active':    return $this->getRes('account/colheader_account_is_active');
-			case 'created_by':   return $this->getRes('account/colheader_created_by');
-			case 'updated_by':   return $this->getRes('account/colheader_updated_by');
-			case 'created_ts':   return $this->getRes('account/colheader_created_ts');
-			case 'updated_ts':   return $this->getRes('account/colheader_updated_ts');
+			default:             return parent::getColHeaderLabel($aFieldName);
 		}//end switch
-	}
-	
-	/**
-	 * Construct the URL used for column headers that support sorting.
-	 * @param string $aViewName - the name of the view with the table.
-	 * @param string $aFieldName - the field name to sort on.
-	 * @return string Returns the URL to be used to sort on the field provided.
-	 */
-	public function getColHeaderHrefForSortableField($aViewName, $aFieldName)
-	{
-		return $this->getMyUrl($aViewName, array(
-				'orderby' => $aFieldName,
-				'orderbyrvs' => ($this->orderby != $aFieldName || $this->orderbyrvs ? 0 : 1),
-		));
-	}
-
-	/**
-	 * Construct the HTML used for a column header for a particular field.
-	 * @param string $aViewName - the name of the view with the table.
-	 * @param string $aFieldName - the field name to sort on.
-	 * @param string $aStyle - the style for the header column.
-	 * @return string Returns the HTML to use.
-	 */
-	public function getColHeaderTextForSortableField($aViewName, $aFieldName, $aStyle)
-	{
-		return '<th style="'.$aStyle.'"><a href="'
-				. $this->getColHeaderHrefForSortableField($aViewName, $aFieldName)
-				.'">' . $this->getColHeaderLabel($aFieldName) . '</a></th>'
-				;
-	}
-	
-	/**
-	 * Construct the HTML necessary to convert a UTC timestamp into the
-	 * local-to-browser timezone value via JS code.
-	 * @param number/string $aTime - either a UTC timestamp or a MySQL datetime string.
-	 * @return string Returns the HTML needed to display local time.
-	 */
-	public function getLocalTimestampValue($aTime)
-	{
-		$theTsId = Strings::createUUID();
-		$this->jsCode .= Widgets::cnvUtcTs2LocalStr($theTsId, $aTime)."\n";
-		return '<span id="'.$theTsId.'" data-orig="'.$aTime.'">'.$aTime.'</span>';
 	}
 	
 	/**
@@ -175,21 +151,8 @@ class AuthBasicAccount extends MyScene {
 				;
 				$w .= '</td>';
 				return $w;
-			case 'created_by':
-				return '<td>'.htmlentities($aDataRow->created_by).'</td>';
-			case 'created_ts':
-				return '<td>'.$this->getLocalTimestampValue($aDataRow->created_ts).'</td>';
-			case 'updated_by':
-				return '<td>'.htmlentities($aDataRow->updated_by).'</td>';
-			case 'updated_ts':
-				$w = '<td>';
-				if ($aDataRow->created_ts !== $aDataRow->updated_ts) {
-					$w .= $this->getLocalTimestampValue($aDataRow->updated_ts);
-				}
-				$w .= '</td>';
-				return $w;
 			default:
-				return '<td></td>';
+				return '<td>'.parent::getColCellValue($aFieldName, $aDataRow).'</td>';
 		}//end switch
 	}
 

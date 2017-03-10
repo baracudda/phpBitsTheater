@@ -7,6 +7,8 @@ var BitsAuthBasicAccounts = BaseClass.extend({
 	,
 	mUrlToUse: null
 	,
+	mAlertErrorDialog: null
+	,
 	onCreate: function(aUrlCreateAccount, aUrlUpdateAccount) {
 		this.mUrlCreateAccount = aUrlCreateAccount;
 		this.mUrlUpdateAccount = aUrlUpdateAccount;
@@ -17,6 +19,7 @@ var BitsAuthBasicAccounts = BaseClass.extend({
 		$(document).on('click', '#btn_add_account', this.asCB('onAddClick'));
 		$(document).on('click', '.btn_edit_account', this.asCB('onEditClick'));
 		this.mDialogAccount.on('click', '#btn_save_dialog_account', this.asCB('onSaveClick'));
+		this.mAlertErrorDialog = $('meta[itemprop=js-dialog_error]').data('bootbox_dialog_argument');
 	}
 });
 
@@ -120,7 +123,18 @@ BitsAuthBasicAccounts.prototype.onSaveClick = function(e) {
 			,
 			account_group_ids: theGroupIds
 		})
-		.then (function (data) {
+		.fail (	function(jqXHR, textStatus, errorMsg) {
+			if (jqXHR.responseJSON.error) {
+				var theErr = jqXHR.responseJSON.error;
+				errorMsg = '[' + theErr.cause + ']<br>' + theErr.message;
+				if (this.mAlertErrorDialog) {
+					this.mAlertErrorDialog.message = errorMsg;
+					bootbox.dialog(this.mAlertErrorDialog);
+				} else bootbox.alert(errorMsg);
+			} else bootbox.alert(errorMsg);
+			console.log(textStatus, errorMsg);
+		})
+		.done (function (data) {
 			window.location.reload();
 		});
 	}

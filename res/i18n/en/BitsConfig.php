@@ -35,7 +35,10 @@ class BitsConfig extends BaseResources {
 	public $colheader_setting_name = 'Setting';
 	public $colheader_setting_value = 'Value';
 	public $colheader_setting_desc = 'Description';
-
+	
+	public $note_default_setting = 'Use "?" to reset a setting to its default value ("\\?" to save just a question mark).';
+	public $msg_loading = 'Loading...';
+	
 	public $label_namespace = array(
 			'site' => 'Site Settings',
 			'auth' => 'Authorization',

@@ -25,6 +25,10 @@ class BitsGeneric extends BaseResources {
 	
 	public $save_button_text = 'Save' ;
 	public $label_button_cancel = 'Cancel' ;
+	public $label_button_ok = 'Ok';
+	public $label_button_dismiss_error = '<span class="glyphicon glyphicon-alert"></span> Dismiss';
+	public $label_button_dismiss_warning = '<span class="glyphicon glyphicon-warning-sign"></span> Dismiss';
+	public $label_note_title = '<span class="glyphicon glyphicon-info-sign"></span> Note';
 	
 	public $msg_nothing_found = 'Nothing found.' ;
 	public $msg_permission_denied = 'Permission Denied' ;
@@ -49,9 +53,17 @@ class BitsGeneric extends BaseResources {
 	public $errmsg_too_many_requests = 'Too many requests at this time.';
 	public $errmsg_deprecated =
 		'That feature has been deprecated and is no longer supported by this service.' ;
-
+	public $errmsg_cli_not_authed = "Double-check your user/pw and/or the -h parameter.\n";
+	
 	public $label_header_title_suffix_demo_mode = '(demo)';
 	public $label_jump_to_top = 'Jump to top';
+	public $title_dialog_error = 'Error';
+	
+	public $colheader_record_id = 'ID';
+	public $colheader_created_by = 'Created By';
+	public $colheader_updated_by = 'Updated By';
+	public $colheader_created_ts = 'Created On';
+	public $colheader_updated_ts = 'Updated On';
 	
 }//end class
 
