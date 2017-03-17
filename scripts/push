@@ -1,0 +1,98 @@
+#!/bin/bash
+# This script will copy all of the BitsTheater files to a remote server, given
+# a local path for the BitsTheater code view, a set of SSH login credentials,
+# and a remote path on the server. It can use environment variables for these,
+# and in absence of those values, will prompt the user interactively.
+# See the init-bits-env script, which can be used to set these variables.
+
+function DiscoverLocalBitsPath
+{
+	if [[ ! -d $BITS_LOCAL_PATH ]] ; then
+		if [[ ! -z $BITS_LOCAL_PATH ]] ; then
+			echo "Invalid local BitsTheater path [$BITS_LOCAL_PATH]."
+			export BITS_LOCAL_PATH=
+		fi
+	fi
+	while [[ -z $BITS_LOCAL_PATH ]] ; do
+		read -e -p "Enter local path of BitsTheater code: " MAYBE_BITS_PATH
+		MAYBE_BITS_EXPANDED=${MAYBE_BITS_PATH/#\~/$HOME}
+		if [[ -d $MAYBE_BITS_EXPANDED ]] ; then
+			export BITS_LOCAL_PATH=$MAYBE_BITS_EXPANDED
+		fi
+	done
+	echo "Local codebase path:    [$BITS_LOCAL_PATH]"
+}
+
+function DiscoverHostLogin
+{
+	while [[ -z $BITS_SSH_HOST_LOGIN ]] ; do
+		read -e -p "Enter SSH login (user@host): " BITS_SSH_HOST_LOGIN
+		export BITS_SSH_HOST_LOGIN
+	done
+	echo "SSH user/host:          [$BITS_SSH_HOST_LOGIN]"
+}
+
+function DiscoverRemotePath
+{
+	while [[ -z $BITS_REMOTE_PATH ]] ; do
+		read -e -p "Enter remote path for deployment: " BITS_REMOTE_PATH
+		export BITS_REMOTE_PATH
+	done
+	echo "Target deployment path: [$BITS_REMOTE_PATH]"
+}
+
+# Start main script
+
+if [[ -z $1 ]] ; then
+	echo "No target specified."
+	echo "Supply a list of files to transfer, or use \"all\" to push all files."
+	exit 1
+fi
+DiscoverLocalBitsPath
+DiscoverHostLogin
+DiscoverRemotePath
+echo "NOTE: If you are installing on a custom site based on BitsTheater, then"
+echo "this operation might overwrite your custom files where paths and file"
+echo "names collide. Be sure to deploy your custom site's code after doing this"
+echo "if there are any such name collisions."
+read -s -n 1 -p "Proceed? [Y/n] "
+if [[ $REPLY =~ ^[Nn]$ ]] ; then
+	exit 2
+fi
+echo -e "\n"
+if [[ "$1" == "all" ]] ; then
+	echo "Pushing EVERYTHING to remote server..."
+	for f in $(ls -1 $BITS_LOCAL_PATH | grep -v scripts) ; do
+		if [[ -d $f ]] ; then
+			scp -r $BITS_LOCAL_PATH/$f $BITS_SSH_HOST_LOGIN:$BITS_REMOTE_PATH/$(dirname $f)
+		else
+			scp $BITS_LOCAL_PATH/$f $BITS_SSH_HOST_LOGIN:$BITS_REMOTE_PATH/
+		fi
+	done
+	scp $BITS_LOCAL_PATH/.htaccess $BITS_SSH_HOST_LOGIN:$BITS_REMOTE_PATH/
+	exit 0
+fi
+echo "Pushing specific files to remote server..."
+for p in $@ ; do # Process parameters as filenames or patterns.
+	files=""
+	if [[ $p =~ ^.*\/.*$ ]] ; then # It is an absolute/qualified path and file.
+		echo "Exact file path:   [$p]"
+		files=$(find $BITS_LOCAL_PATH -path "$p" -printf "%P\n")
+	else # It's a filename pattern to be sought and matched under the root path.
+		echo "File name pattern: [$p]"
+		files=$(find $BITS_LOCAL_PATH -name "$p" -printf "%P\n")
+	fi
+	for f in $files ; do # Push each matched entity to the remote server.
+		if [[ $f =~ ^scripts.*$ ]] ; then
+			echo "Skipped:           [$f]"
+			echo "    The /scripts/ directory should not be pushed to the server!"
+		elif [[ -d $BITS_LOCAL_PATH/$f ]] ; then # Copy the entire directory.
+			echo "Matched directory: [$f]"
+			scp -r $BITS_LOCAL_PATH/$f $BITS_SSH_HOST_LOGIN:$BITS_REMOTE_PATH/$(dirname $f)
+		else # Copy a single file.
+			echo "Matched file:      [$f]"
+			scp $BITS_LOCAL_PATH/$f $BITS_SSH_HOST_LOGIN:$BITS_REMOTE_PATH/$f
+		fi
+	done
+done
+exit 0
