@@ -88,6 +88,11 @@ Strings::errorPrefix( (defined('VIRTUAL_HOST_NAME') && VIRTUAL_HOST_NAME) ? '['.
 removeMagicQuotes();
 unregisterGlobals();
 global $director; //exposed as a Global Var so legacy systems can interface with us
-$director = new Director();
+$theAppDirectorName = WEBAPP_NAMESPACE . 'AppDirector' ;
+if( class_exists( $theAppDirectorName ) )
+	$director = new $theAppDirectorName() ;
+else
+	$director = new Director() ;
+unset( $theAppDirectorName ) ;
 route_request($director, REQUEST_URL);
 }//end namespace

@@ -113,6 +113,8 @@ if (file_exists($theCustomDefinesFile)) {
 	include_once($theCustomDefinesFile);
 	unset($theCustomDefinesFile);
 }
+if ( !defined('WEBAPP_NAMESPACE') )
+	define('WEBAPP_NAMESPACE', BITS_NAMESPACE);
 
 /**********************************
  * load required modules
