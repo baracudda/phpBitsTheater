@@ -1340,24 +1340,24 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$bCsrfTokenWasBaked = false;
 
 			$bAuthorizedViaHeaders = $this->checkHeadersForTicket($dbAccounts, $aScene);
-			//if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth');
+//			if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth');
 			$bAuthorized = $bAuthorized || $bAuthorizedViaHeaders;
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 			{
 				$bAuthorizedViaSession = $this->checkSessionForTicket($dbAccounts, $aScene);
-				//if ($bAuthorizedViaSession) $this->debugLog(__METHOD__.' session auth');
+//				if ($bAuthorizedViaSession) $this->debugLog(__METHOD__.' session auth');
 				$bAuthorized = $bAuthorized || $bAuthorizedViaSession;
 			}
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 			{
 				$bAuthorizedViaWebForm = $this->checkWebFormForTicket($dbAccounts, $aScene);
-				//if ($bAuthorizedViaWebForm) $this->debugLog(__METHOD__.' webform auth');
+//				if ($bAuthorizedViaWebForm) $this->debugLog(__METHOD__.' webform auth');
 				$bAuthorized = $bAuthorized || $bAuthorizedViaWebForm;
 			}
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 			{
 				$bAuthorizedViaCookies = $this->checkCookiesForTicket($dbAccounts, $_COOKIE);
-				//if ($bAuthorizedViaCookies) $this->debugLog(__METHOD__.' cookie auth');
+//				if ($bAuthorizedViaCookies) $this->debugLog(__METHOD__.' cookie auth');
 				$bAuthorized = $bAuthorized || $bAuthorizedViaCookies;
 			}
 
@@ -1366,7 +1366,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				if ($bAuthorizedViaSession || $bAuthorizedViaWebForm || $bAuthorizedViaCookies)
 					$bCsrfTokenWasBaked = $this->setCsrfTokenCookie();
 			}
-			//else $this->debugLog(__METHOD__.' not authorized');
+//			else $this->debugLog(__METHOD__.' not authorized');
 			$this->returnProp($dbAccounts);
 		}
 		return $bAuthorized;
@@ -1526,7 +1526,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 						'account_id' => intval($aUserData['account_id']),
 						'pwhash' => Strings::hasher($aUserData[self::KEY_pwinput]),
 						'verified_ts' => $theVerifiedTS,
-						'is_active' => $aUserData['account_is_active'],
+						'is_active' => (isset($aUserData['account_is_active']))
+								? empty($aUserData['account_is_active']) ? 0 : 1
+								: null,
 				));
 				$theSql->startWith('INSERT INTO')->add($this->tnAuth);
 				// created_by, created_ts, updated_by, updated_ts
