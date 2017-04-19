@@ -360,13 +360,15 @@ implements ArrayAccess, IDirected
 					);
 				} catch (Exception $e) {
 					$this->errorLog(__METHOD__.' '.$e->getMessage());
-					return;
+					throw $e ;
 				}
 			}
 			$this->_propMaster[$theModelClass]['ref_count'] += 1;
 			return $this->_propMaster[$theModelClass]['model'];
 		} else {
-			$this->errorLog(__METHOD__.' cannot find Model class: '.$theModelClass);
+			$theError = __METHOD__.' cannot find Model class: '.$theModelClass ;
+			$this->errorLog( $theError ) ;
+			throw new Exception( $theError ) ;
 		}
 	}
 	
@@ -591,6 +593,7 @@ implements ArrayAccess, IDirected
 	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
 	 * equating to path segments.
 	 * @return string - returns the site relative path URL.
+	 * @see Director::getFullUrl()
 	 */
 	public function getSiteUrl($aRelativeURL='', $_=null) {
 		$theResult = BITS_URL;
@@ -607,6 +610,7 @@ implements ArrayAccess, IDirected
 	 * Returns the URL for this site appended with relative path info.
 	 * @param string $aRelativeURL - site path relative to site root.
 	 * @return string - returns the http scheme + site domain + relative path URL.
+	 * @see Director::getSiteUrl()
 	 */
 	public function getFullUrl($aRelativeURL='') {
 		$theResult = SERVER_URL.'/';
