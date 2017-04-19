@@ -63,7 +63,7 @@ class AuthPermissions extends BaseModel {
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-						"( namespace CHAR(40) NULL".
+						"( namespace CHAR(40) NOT NULL".
 						", permission CHAR(40) NOT NULL".
 						", group_id INT NOT NULL".
 						", value CHAR(1) CHARACTER SET ascii COLLATE ascii_bin NOT NULL".

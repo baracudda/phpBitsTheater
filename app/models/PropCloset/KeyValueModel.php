@@ -85,7 +85,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 		switch ($this->dbType()) {
 		case 'mysql': default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->getTableName()} ".
-				"( namespace CHAR(40) NULL".
+				"( namespace CHAR(40) NOT NULL".
 				", ".static::MAPKEY_NAME." CHAR(40) NOT NULL".
 				", value NVARCHAR(250) NULL".
 				", val_def NVARCHAR(250) NULL".
