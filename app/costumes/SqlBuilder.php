@@ -631,7 +631,7 @@ class SqlBuilder extends BaseCostume {
 			if (is_string($aSqlState5digitCodes)) {
 				$theStatesToCheck = explode(',', $aSqlState5digitCodes);
 			} else if (is_array($aSqlState5digitCodes)) {
-				$theStatesToCheck &= $aSqlState5digitCodes;
+				$theStatesToCheck = $aSqlState5digitCodes;
 			}
 			if (!empty($theStatesToCheck)) {
 				$theSqlState = $theExecResult->errorCode();
