@@ -666,7 +666,7 @@ class AuthBasicAccount extends BaseActor
 		$aName 		= trim ( $v->account_name );
 		$aPassword 	= trim ( $v->account_password );
 		$aEmail 	= trim ( $v->email );
-		$aGroupId 	= $v->account_group_ids ;
+		$aGroupId 	= $v->account_group_id ;
 		$aRegCode 	= trim ( $v->account_registration_code );
 
 		// Ensure required parameters are specified.
