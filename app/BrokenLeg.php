@@ -38,6 +38,7 @@ class BrokenLeg extends \Exception
 	// https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 	const HTTP_OK = 200 ;
 	const HTTP_NO_CONTENT = 204 ;
+	const HTTP_MULTISTATUS = 207 ; // In particular, reflects a "partial" success.
 	const HTTP_MULTIPLE_CHOICES = 300 ;
 	const HTTP_MOVED_PERMANENTLY = 301 ;                 // Deprecated? see 308.
 	const HTTP_SEE_OTHER = 303 ;
