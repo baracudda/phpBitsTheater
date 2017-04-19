@@ -16,6 +16,7 @@ if (!empty($theOptions['h']))
 //after command line options are checked, Bootstrap time
 require_once(__DIR__.DIRECTORY_SEPARATOR.'../../bootstrap.php');
 Strings::debugPrefix( '[local-cli-dbg] ');
+Strings::errorPrefix( '[local-cli-err] ');
 //start the Director
 $director = new Director();
 //define some generic functions
