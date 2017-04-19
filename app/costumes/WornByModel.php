@@ -25,14 +25,17 @@ use BitsTheater\Model ;
  */
 trait WornByModel
 {
-	/** The model instance to which this costume is bound. */
+	/**
+	 * The model instance to which this costume is bound.
+	 * @var Model
+	 */
 	protected $model = null ;
 	
 	/**
 	 * Static builder method to return an instance of the costume pre-bound to a
 	 * model instance.
 	 * @param Model $aModel the model instance to bind
-	 * @return \BitsTheater\costumes\ABitsCostume an instance of the costume
+	 * @return static Returns an instance of the costume
 	 */
 	public static function withModel( Model $aModel )
 	{
@@ -40,14 +43,17 @@ trait WornByModel
 		return (new $theClassName($aModel->director))->setModel($aModel) ;
 	}
 	
-	/** Accessor. */
+	/**
+	 * Accessor.
+	 * @return Model Returns the model object.
+	 */
 	public function getModel()
 	{ return $this->model ; }
 	
 	/**
 	 * Binds the costume instance to an instance of a model.
 	 * @param Model $aModel the model to bind
-	 * @return \BitsTheater\costumes\ABitsCostume the updated costume
+	 * @return static Returns the updated costume
 	 */
 	public function setModel( Model $aModel )
 	{ $this->model = $aModel ; return $this ; }
