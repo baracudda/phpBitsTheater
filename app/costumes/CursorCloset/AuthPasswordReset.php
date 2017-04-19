@@ -14,12 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-namespace BitsTheater\costumes ;
-use BitsTheater\BrokenLeg ;
+namespace BitsTheater\costumes\CursorCloset ;
 use BitsTheater\costumes\ABitsCostume as BaseCostume ;
+use BitsTheater\costumes\WornByModel ;
 use BitsTheater\costumes\SqlBuilder ;
-use BitsTheater\models\PropCloset\AuthBasic ;
 use BitsTheater\outtakes\PasswordResetException ;
+use BitsTheater\BrokenLeg ;
 use com\blackmoonit\DbException ;
 use com\blackmoonit\database\DbUtils ;
 use com\blackmoonit\Strings ;
@@ -187,6 +187,7 @@ class AuthPasswordReset extends BaseCostume
 		 */
 //		$theNow = new DateTime( 'now', new DateTimeZone('UTC') ) ;
 		$theNow = strtotime('now') ;
+		//TODO: use this maybe? $theNow = $this->getModel()->utc_now();
 		$theExpirationInterval = 60 * 60 * 24 ;              // a day of seconds
 		$theAuthFilter = $this->chooseIdentifierForSearch() ;
 		foreach( $this->myTokens as $theToken )
@@ -215,7 +216,7 @@ class AuthPasswordReset extends BaseCostume
 			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_ID' ) ;
 		if( empty( $this->myAuthID ) )
 			throw PasswordResetException::toss( $this, 'NO_AUTH_ID' ) ;
-		$theToken = AuthBasic::generatePrefixedAuthToken( self::TOKEN_PREFIX ) ;
+		$theToken = $this->model::generatePrefixedAuthToken( self::TOKEN_PREFIX ) ;
 		$theSql = SqlBuilder::withModel($this->model)
 			->startWith( 'INSERT INTO ' )->add( $this->model->tnAuthTokens )
 			->add( 'SET ' )
