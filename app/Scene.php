@@ -1025,6 +1025,7 @@ implements IDirected
 			case 'updated_by': return $this->getRes('generic/colheader_updated_by');
 			case 'created_ts': return $this->getRes('generic/colheader_created_ts');
 			case 'updated_ts': return $this->getRes('generic/colheader_updated_ts');
+			default:           return $aFieldName;
 		}//end switch
 	}
 	
