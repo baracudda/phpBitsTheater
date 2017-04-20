@@ -16,11 +16,7 @@
  */
 
 namespace BitsTheater\costumes\CursorCloset;
-use BitsTheater\costumes\colspecs\IteratedSet as BaseCostume;
-use BitsTheater\models\AuthGroups as MyModel;
-use BitsTheater\Director;
-use com\blackmoonit\FinallyBlock;
-use Exception;
+use BitsTheater\costumes\CursorCloset\ARecordSet as BaseCostume;
 {//namespace begin
 
 /**
@@ -34,15 +30,6 @@ use Exception;
  */
 class AuthGroupSet extends BaseCostume
 {
-	public $filter = null;
-	public $total_count = 0;
-	
-	/**
-	 * The model I need to access to.
-	 * @var MyModel
-	 */
-	protected $dbModel = null;
-
 	/**
 	 * The name of the class that will be used by default to contain items of
 	 * the set.
@@ -51,40 +38,20 @@ class AuthGroupSet extends BaseCostume
 	const DEFAULT_ITEM_CLASS = 'AuthGroup';
 
 	/**
-	 * Costume classes know about the Director.
-	 * @param Director $aDirector - site director object
+	 * Return the Model class or name to use in a getProp() call.
+	 * @return class|string
+	 * @see Director::getProp()
 	 */
-	public function setup(Director $aDirector) {
-		$this->dbModel = $aDirector->getProp(MyModel::MODEL_NAME);
-		$this->mItemClassArgs = array($this->dbModel);
-		parent::setup($aDirector);
+	protected function getModelClassToUse() {
+		return 'AuthGroups';
 	}
 	
 	/**
-	 * Prints the entire data set to the output stream, item by item.
-	 * @param string $aEncodeOptions options for `json_encode()`
-	 * @return IteratedSet $this
+	 * Return the property name the JSON export should use for the array of records.
+	 * @return string "records" is used unless overridden by a descendant.
 	 */
-	public function printAsJson( $aEncodeOptions=null )
-	{
-		print( '{' ) ;
-		$theFinalEnclosure = new FinallyBlock(function($me) {
-			print( ',"count":' . $me->mFetchedCount );
-			print( '}' ) ;
-		}, $this);
-		try
-		{
-			print( '"filter":"' . $this->filter . '"');
-			print( ',"total_count":' . $this->total_count );
-			print( ',"authgroups":');
-			parent::printAsJson( $aEncodeOptions );
-		}
-		catch( Exception $x )
-		{
-			$this->errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
-			throw $x ;
-		}
-		return $this ;
+	protected function getJsonPropertyName() {
+		return 'authgroups';
 	}
 
 }//end class

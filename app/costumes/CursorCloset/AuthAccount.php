@@ -16,10 +16,9 @@
  */
 
 namespace BitsTheater\costumes\CursorCloset;
-use BitsTheater\costumes\ASimpleCostume as BaseCostume;
+use BitsTheater\costumes\CursorCloset\ARecord as BaseCostume;
 use BitsTheater\models\Auth as MyModel;
 use BitsTheater\costumes\colspecs\CommonMySql;
-use BitsTheater\costumes\SimpleCostume;
 {//namespace begin
 
 /**
@@ -33,16 +32,6 @@ class AuthAccount extends BaseCostume
 	 * @var string
 	 */
 	const ITEM_CLASS = __CLASS__;
-	/**
-	 * The model I need to access to.
-	 * @var MyModel
-	 */
-	protected $dbModel = null;
-	/**
-	 * Export only these fields. All fields, if NULL.
-	 * @var string[]
-	 */
-	protected $mExportTheseFields = null;
 	
 	public $account_id;
 	public $account_name;
@@ -61,11 +50,6 @@ class AuthAccount extends BaseCostume
 	//extended info (optional - must be explicitly asked for via mExportTheseFields)
 	public $groups;
 	
-	public function __construct($aDbModel=null, $aFieldList=null) {
-		$this->dbModel = $aDbModel;
-		$this->mExportTheseFields = $aFieldList;
-	}
-	
 	/**
 	 * Return the fields that should be exported.
 	 * @param object $aExportData - the data to export.
@@ -73,11 +57,7 @@ class AuthAccount extends BaseCostume
 	 */
 	protected function exportFilter($aExportData) {
 		if (!empty($aExportData) && !empty($this->mExportTheseFields)) {
-			$o = new SimpleCostume();
-			foreach ($this->mExportTheseFields as $theField) {
-				$o->{$theField} = $aExportData->{$theField};
-			}
-			return $o;
+			return parent::exportFilter($aExportData);
 		} else {
 			unset($aExportData->groups);
 			return $aExportData;
@@ -85,11 +65,13 @@ class AuthAccount extends BaseCostume
 	}
 	
 	/**
-	 * Return this payload data as a simple class, minus any metadata this class might have.
-	 * @return string Return self encoded as a standard class.
+	 * Construct the standard object with all data fields worth exporting defined.
+	 * @return object Returns a standard object with the properties to export defined.
 	 */
-	public function exportData() {
-		$o = parent::exportData();
+	protected function constructExportObject()
+	{
+		$o = parent::constructExportObject();
+		unset($o->pwhash); //never export this value
 		$o->is_active = ($o->is_active === '1') ? true : false;
 		if ($this->dbModel->dbType()===MyModel::DB_TYPE_MYSQL)
 		{
@@ -97,7 +79,7 @@ class AuthAccount extends BaseCostume
 			$o->created_ts = CommonMySql::convertSQLTimestampToISOFormat($o->created_ts);
 			$o->updated_ts = CommonMySql::convertSQLTimestampToISOFormat($o->updated_ts);
 		}
-		return $this->exportFilter($o);
+		return $o;
 	}
 
 }//end class
