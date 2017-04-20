@@ -31,7 +31,7 @@ use BitsTheater\Director;
  *     ;
  * </pre>
  *
- * @since BitsTheater 3.7.1
+ * @since BitsTheater 3.8.0
  */
 abstract class ARecordList extends BaseCostume
 {

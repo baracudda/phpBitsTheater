@@ -19,6 +19,7 @@ use BitsTheater\costumes\ABitsCostume as BaseCostume ;
 use BitsTheater\costumes\WornByModel ;
 use BitsTheater\costumes\SqlBuilder ;
 use BitsTheater\outtakes\PasswordResetException ;
+use BitsTheater\models\PropCloset\AuthBasic as AuthDB ;
 use BitsTheater\BrokenLeg ;
 use com\blackmoonit\DbException ;
 use com\blackmoonit\database\DbUtils ;
@@ -216,7 +217,7 @@ class AuthPasswordReset extends BaseCostume
 			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_ID' ) ;
 		if( empty( $this->myAuthID ) )
 			throw PasswordResetException::toss( $this, 'NO_AUTH_ID' ) ;
-		$theToken = $this->model::generatePrefixedAuthToken( self::TOKEN_PREFIX ) ;
+		$theToken = AuthDB::generatePrefixedAuthToken( self::TOKEN_PREFIX ) ;
 		$theSql = SqlBuilder::withModel($this->model)
 			->startWith( 'INSERT INTO ' )->add( $this->model->tnAuthTokens )
 			->add( 'SET ' )

@@ -32,7 +32,7 @@ use Exception;
  *     ;
  * </pre>
  *
- * @since BitsTheater 3.7.1
+ * @since BitsTheater 3.8.0
  */
 abstract class ARecordSet extends BaseCostume
 {

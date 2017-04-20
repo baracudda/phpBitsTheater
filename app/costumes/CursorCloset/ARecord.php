@@ -24,6 +24,7 @@ use com\blackmoonit\Strings;
 
 /**
  * PDO statements can fetch data directly into this class.
+ * @since BitsTheater 3.8.0
  */
 class ARecord extends BaseCostume
 {
