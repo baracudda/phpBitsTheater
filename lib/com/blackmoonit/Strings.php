@@ -780,6 +780,19 @@ class Strings {
 		return $theName;
 	}
 	
+	/**
+	 * Given an array or single value, return stripslashes() on it. Recursive function.
+	 */
+	static public function stripSlashesDeep( &$aValue ) {
+		if ( is_array($aValue) )
+		{
+			foreach ($aValue as &$theValue)
+				self::stripSlashesDeep($theValue);
+		}
+		else
+			$aValue = stripslashes($aValue);
+	}
+	
 }//end class
 
 /* increase default crypto strength (04-31) based on PHP version
