@@ -19,8 +19,10 @@ namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
+use com\blackmoonit\Strings;
 use BitsTheater\costumes\SqlBuilder ;
 use PDOException;
+use PDO;
 {//begin namespace
 
 class BitsAccounts extends BaseModel {
@@ -122,7 +124,7 @@ class BitsAccounts extends BaseModel {
 	 * @return array Returns the account ID passed in.
 	 */
 	public function del($aAccountId) {
-		$theAcctId = intval($aAccountId);
+		$theAcctId = Strings::toInt($aAccountId);
 		if (empty($theAcctId))
 			throw new \InvalidArgumentException('invalid $aAccountId param');
 		$theSql = SqlBuilder::withModel($this);
