@@ -21,6 +21,18 @@ namespace BitsTheater;
 class Regisseur
 {
 	/**
+	 * If $_SERVER['SERVER_NAME'] is empty, use this value: 'localhost'.
+	 * @var string
+	 */
+	const DEFAULT_SERVER_NAME = 'localhost';
+	/**
+	 * If the installer does not want different configs for each domain pointing to their
+	 * website, use this folder name: 'anyhost'.
+	 * @var string
+	 */
+	const CATCH_ALL_HOST_NAME = 'anyhost';
+	
+	/**
 	 * Determine which Regisseur to create for the job.
 	 * @return BitsTheater\Regisseur
 	 */
@@ -70,7 +82,7 @@ class Regisseur
 	protected function defineFilePathConstants()
 	{
 		define('¦', DIRECTORY_SEPARATOR);
-		define('BITS_ROOT', dirname(dirname(__FILE__)));
+		define('BITS_ROOT', dirname(__DIR__));
 		define('BITS_PATH', BITS_ROOT . ¦);
 		define('BITS_LIB_PATH', BITS_PATH . 'lib' . ¦);
 		define('BITS_RES_PATH', BITS_PATH . 'res' . ¦);
@@ -80,15 +92,16 @@ class Regisseur
 				: BITS_PATH.'configs'
 		);
 		define('WEBAPP_PATH', BITS_APP_PATH);
-		if ( !empty($_SERVER['SERVER_NAME']) && !$this->isRunningUnderCLI() )
+		if ( !empty($_SERVER['SERVER_NAME']))
 		{ return $this->defineConfigPath($_SERVER['SERVER_NAME']); }
 		else
 		{
 			$theFolderList = glob(BITS_CONFIG_DIR.¦.'*', GLOB_ONLYDIR);
-			foreach ($theFolderList as $theFolderName)
-				if ($theFolderName!='localhost')
+			foreach ($theFolderList as $theFolderName) {
+				if ($theFolderName!='localhost' || count($theFolderList)==1)
 					return $this->defineConfigPath($theFolderName);
-			//if CLI and no config path available, that action needs to define it.
+			}
+			return $this->defineConfigPath( static::DEFAULT_SERVER_NAME );
 		}
 		return $this;
 	}
@@ -107,8 +120,8 @@ class Regisseur
 		//  setup as a part of a Docker container which frequently changes its domain.
 		define('BITS_CFG_PATH',
 				( !file_exists(BITS_CONFIG_DIR.¦.$thePossibleFolder)
-						&& file_exists(BITS_CONFIG_DIR.¦.'anyhost'))
-				? BITS_CONFIG_DIR.¦.'anyhost'.¦
+						&& file_exists( BITS_CONFIG_DIR.¦.static::CATCH_ALL_HOST_NAME ))
+				? BITS_CONFIG_DIR.¦.static::CATCH_ALL_HOST_NAME.¦
 				: BITS_CONFIG_DIR.¦.$thePossibleFolder.¦
 		);
 		return $this;
@@ -120,11 +133,11 @@ class Regisseur
 	 */
 	protected function defineWebsiteConstants()
 	{
-		define('BITS_SERVER_NAME',
-				(!empty($_SERVER['SERVER_NAME'])) ? $_SERVER['SERVER_NAME'] : 'localhost'
+		define('BITS_SERVER_NAME', (!empty($_SERVER['SERVER_NAME']))
+				? $_SERVER['SERVER_NAME'] : static::DEFAULT_SERVER_NAME;
 		);
-		define('BITS_SERVER_PORT',
-				(!empty($_SERVER['SERVER_PORT'])) ? $_SERVER['SERVER_PORT'] : 80
+		define('BITS_SERVER_PORT', (!empty($_SERVER['SERVER_PORT']))
+				? $_SERVER['SERVER_PORT'] : 80
 		);
 		define('SERVER_URL',
 				( (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']=='on') ? 'https' : 'http' )
@@ -143,19 +156,12 @@ class Regisseur
 						? str_replace(DIRECTORY_SEPARATOR, '/', $theScriptFolder) : '';
 			}
 			else
-				$theScriptFolder = dirname(dirname(__FILE__));
+				$theScriptFolder = BITS_ROOT;
 			define('BITS_URL', $theScriptFolder);
 		}
 		//Virtual Host folder name, if exists.
 		if (!defined('VIRTUAL_HOST_NAME'))
-		{
-			if ( !$this->isRunningUnderCLI() )
-				$theVirtualHostName = (strlen(BITS_URL)>0 &&
-						count($urlsegs=explode('/', BITS_URL))>1) ? $urlsegs[1] : '';
-			else
-				$theVirtualHostName = dirname(BITS_URL);
-			define('VIRTUAL_HOST_NAME', $theVirtualHostName);
-		}
+			define('VIRTUAL_HOST_NAME', basename(BITS_URL));
 		//Resource URL that does not end in a /.
 		define('BITS_RES',BITS_URL.'/res');
 		//Library URL that does not end in a /.
@@ -206,46 +212,6 @@ class Regisseur
 	}
 	
 	/**
-	 * @param string $aClassName
-	 * 		Class or Interface name automatically passed to this function by the PHP Interpreter.
-	 */
-	function BitsTheater_autoloader($aClassName) {
-		//Strings::debugLog('al1: '.$aClassName);
-		if (Strings::beginsWith($aClassName,BITS_NAMESPACE_CFGS)) {
-			//cfg_path incorporates $_SERVER['SERVER_NAME'] so that live config and localhost sandbox can coexist and avoids
-			//  getting overwritten accidentally if checked into a source code control mechanism
-			$theClassNamePath = BITS_CFG_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName,BITS_NAMESPACE_CFGS)).'.php';
-		} elseif (Strings::beginsWith($aClassName,BITS_NAMESPACE_RES)) {
-			//convert namespace format ns\sub-ns\classname into folder paths
-			$theClassFile = str_replace('\\', ¦, Strings::strstr_after($aClassName,BITS_NAMESPACE_RES)).'.php';
-			if ($theClassFile{2}==¦) //en, de, es, etc. 2 letter language codes get directed to the i18n folder
-				$theClassNamePath = BITS_RES_PATH.'i18n'.¦.$theClassFile;
-			else
-				$theClassNamePath = BITS_RES_PATH.$theClassFile;
-/*		} elseif (Strings::beginsWith($aClassName,BITS_NAMESPACE)) {
-			//convert namespace format ns\sub-ns\classname into folder paths
-			$theClassNamePath = BITS_APP_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName,BITS_NAMESPACE)).'.php';
-*/		} elseif (defined('WEBAPP_NAMESPACE') && Strings::beginsWith($aClassName, WEBAPP_NAMESPACE . 'res\\')) {
-			//convert namespace format ns\sub-ns\classname into folder paths
-			$theClassFile = str_replace('\\', ¦, Strings::strstr_after($aClassName, WEBAPP_NAMESPACE . 'res\\')).'.php';
-			if ($theClassFile{2}==¦) //en, de, es, etc. 2 letter language codes get directed to the i18n folder
-				$theClassNamePath = BITS_RES_PATH.'i18n'.¦.$theClassFile;
-			else
-				$theClassNamePath = BITS_RES_PATH.$theClassFile;
-/*		} elseif (defined('WEBAPP_NAMESPACE') && Strings::beginsWith($aClassName, WEBAPP_NAMESPACE)) {
-			//convert namespace format ns\sub-ns\classname into folder paths, starting from the BITS APP namespace.
-			$theClassNamePath = BITS_APP_PATH.str_replace('\\', ¦, Strings::strstr_after($aClassName, WEBAPP_NAMESPACE)).'.php';
-*/		} else {
-			$theClassNamePath = $aClassName;
-		}
-		
-		//Strings::debugLog('al: '.$theClassNamePath);
-		if (is_file($theClassNamePath)) {
-			return include_once($theClassNamePath);
-		}
-	}
-	
-	/**
 	 * Generic classname to full file path converter.
 	 * @param string $aClassName - the full namespaced class name.
 	 * @param string $aNamespace - the namespace to compare against.
@@ -260,6 +226,28 @@ class Regisseur
 			return $aRootPath . str_replace('\\', DIRECTORY_SEPARATOR,
 					Strings::strstr_after( $aClassName, $aNamespace )
 			) . '.php';
+		}
+	}
+	
+	/**
+	 * Generic classname to full file path converter.
+	 * @param string $aClassName - the full namespaced class name.
+	 * @param string $aNamespace - the namespace to compare against.
+	 * @return string|NULL Returns the full file path if namespace matches class name.
+	 */
+	protected function classNameToResPath( $aClassName, $aNamespace )
+	{
+		if ( Strings::beginsWith( $aClassName, $aNamespace ) )
+		{
+			//convert namespace format ns\sub-ns\classname into folder paths
+			$theClassFile = str_replace( '\\', DIRECTORY_SEPARATOR,
+					Strings::strstr_after( $aClassName ,$aNamespace)
+			) . '.php';
+			//en, de, es, etc. 2 letter language codes get directed to the i18n folder
+			if ( $theClassFile{2}==DIRECTORY_SEPARATOR )
+				$theClassNamePath = BITS_RES_PATH . 'i18n' . ¦ . $theClassFile;
+			else
+				$theClassNamePath = BITS_RES_PATH . $theClassFile;
 		}
 	}
 	
@@ -280,7 +268,7 @@ class Regisseur
 	 * Load classes from the <code>[site]/app/*</code> paths.
 	 * @param string $aClassName - Class or Interface name to load.
 	 */
-	protected function appLoaderForBITS($aClassName)
+	protected function appLoaderForBITS( $aClassName )
 	{
 		return $this->loadClass(
 				$this->classNameToPath( $aClassName, BITS_NAMESPACE, BITS_APP_PATH )
@@ -291,7 +279,7 @@ class Regisseur
 	 * Load classes from the <code>[site]/app/*</code> paths.
 	 * @param string $aClassName - Class or Interface name to load.
 	 */
-	protected function appLoaderForWebApp($aClassName)
+	protected function appLoaderForWebApp( $aClassName )
 	{
 		return $this->loadClass(
 				$this->classNameToPath( $aClassName, WEBAPP_NAMESPACE, BITS_APP_PATH )
@@ -299,9 +287,54 @@ class Regisseur
 	}
 	
 	/**
+	 * Load classes from the <code>[site]/configs/<domain>/*</code> paths.
+	 * NOTE: website domain is included so that live config and localhost sandbox
+	 * can coexist and avoids getting overwritten accidentally if checked into a
+	 * source code control mechanism.
+	 * @param string $aClassName - Class or Interface name to load.
+	 */
+	protected function configLoader( $aClassName )
+	{
+		return $this->loadClass(
+				$this->classNameToPath( $aClassName, BITS_NAMESPACE_CFGS, BITS_CFG_PATH )
+		);
+	}
+	
+	/**
+	 * Load BITS_NAMESPACE_RES classes from the <code>[site]/res/*</code> paths.
+	 * @param string $aClassName - Class or Interface name to load.
+	 */
+	protected function resLoaderForBITS( $aClassName )
+	{
+		return $this->loadClass(
+				$this->classNameToResPath( $aClassName, BITS_NAMESPACE_RES )
+		);
+	}
+
+	/**
+	 * Load WEBAPP_NAMESPACE resource classes from the <code>[site]/res/*</code> paths.
+	 * @param string $aClassName - Class or Interface name to load.
+	 */
+	protected function resLoaderForWebApp( $aClassName )
+	{
+		return $this->loadClass(
+				$this->classNameToResPath( $aClassName, WEBAPP_NAMESPACE . 'res\\' )
+		);
+	}
+	
+	/**
+	 * Register the <code>[site]/res/*</code> class autoloader(s).
+	 */
+	public function registerResLoaders()
+	{
+		spl_autoload_register( array($this, 'resLoaderForBITS') );
+		spl_autoload_register( array($this, 'resLoaderForWebApp') );
+	}
+	
+	/**
 	 * Register the <code>[site]/app/*</code> class autoloader(s).
 	 */
-	protected function registerAppLoader()
+	public function registerAppLoaders()
 	{
 		spl_autoload_register( array($this, 'appLoaderForBITS') );
 		spl_autoload_register( array($this, 'appLoaderForWebApp') );
@@ -310,7 +343,7 @@ class Regisseur
 	/**
 	 * Register the <code>[site]/lib/*</code> class autoloader(s).
 	 */
-	protected function registerLibLoader()
+	public function registerLibLoaders()
 	{
 		require_once( BITS_LIB_PATH .'autoloader.php' );
 		//phpmailer autoloader
@@ -319,13 +352,37 @@ class Regisseur
 	}
 	
 	/**
+	 * Register the <code>[site]/configs/<domain>/*</code> class autoloader(s).
+	 */
+	public function registerConfigLoaders()
+	{
+		spl_autoload_register( array($this, 'configLoader') );
+	}
+	
+	/**
+	 * Register the <code>[site]/app/*</code> class autoloader(s).
+	 */
+	public function registerCatchAllLoaders()
+	{
+		spl_autoload_register( array($this, 'loadClass') );
+	}
+	
+	/**
 	 * Register the <code>[site]/lib/*</code> class autoloader(s).
 	 * @return $this Returns $this for chaining.
 	 */
 	public function registerClassLoaders()
 	{
-		$this->registerAppLoader();
-		$this->registerLibLoader();
+		//lib/* loaders first (so we can use Strings class easily)
+		$this->registerLibLoaders();
+		//configs/* loaders next so we can get Settings and DB connections
+		$this->registerConfigLoaders();
+		//res/* loaders next for strings and resources, and because is subset of app namespace
+		$this->registerResLoaders();
+		//app/* loaders next for the main website app classes
+		$this->registerAppLoaders();
+		//miscellaneous loaders
+		$this->registerCatchAllLoaders();
 		return $this;
 	}
 	

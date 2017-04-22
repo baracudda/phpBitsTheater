@@ -4,10 +4,23 @@ use BitsTheater\Director;
 use com\blackmoonit\Strings;
 
 //initial defines before command line options are checked
-$theSitePath = dirname(dirname(dirname(__FILE__)));
-require_once( $theSitePath . DIRECTORY_SEPARATOR . 'bootstrap.php');
+$theAppPath = dirname(__DIR__);
+global $theStageManager;
+require_once( $theAppPath . DIRECTORY_SEPARATOR . 'Regisseur.php' );
+$theStageManager = \BitsTheater\Regisseur::requisition();
+$theStageManager->defineConstants();
 
-//NOTE: at this point, classes can now be autoloaded.
+//check for standard command line options - can be done at any time
+//  NOTE: you can still check for more options in your action script!
+$theOptions = getopt('u:p:h:');
+if (!empty($theOptions['u']))
+	$_SERVER['PHP_AUTH_USER'] = $theOptions['u'];
+if (!empty($theOptions['p']))
+	$_SERVER['PHP_AUTH_PW'] = $theOptions['p'];
+//optional as it guesses based on non-localhost folders in configs folder.
+if (!empty($theOptions['h']))
+	$theStageManager->defineConfigPath($theOptions['h']);
+$theStageManager->registerClassLoaders();
 
 //start the Director
 $director = Director::requisition();
@@ -15,23 +28,6 @@ $director = Director::requisition();
 //define some generic functions
 function dumpvar($x)
 { print( PHP_EOL . Strings::debugStr($x,null) ); }
-
-/* EXAMPLE CLI OPTIONS
-
-//check for command line options - can be done at any time
-$theOptions = getopt('u:p:h:');
-if (!empty($theOptions['u']))
-	$_SERVER['PHP_AUTH_USER'] = $theOptions['u'];
-if (!empty($theOptions['p']))
-	$_SERVER['PHP_AUTH_PW'] = $theOptions['p'];
-//probably not needed anymore as it guesses based on non-localhost folders in configs folder.
-if (!empty($theOptions['h']))
-{
-	global $theStageManager;
-	$theStageManager->defineConfigPath($theOptions['h']);
-}
-
- */
 
 
 
