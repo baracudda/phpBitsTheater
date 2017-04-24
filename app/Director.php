@@ -116,11 +116,6 @@ implements ArrayAccess, IDirected
 	 * Check for Magic Quotes and remove them.
 	 */
 	static public function removeMagicQuotes() {
-		//DEBUG test strip slashes deep
-		$arr = array( '1', "\'2\'", array("\'3.1\'", array('3.2.1', '\\3.\\2.\\2'), '3.3'), "\'4\'");
-		Strings::stripSlashesDeep($arr);
-		$this->debugLog($arr);
-		
 		if ( get_magic_quotes_gpc() )
 		{
 			Strings::stripSlashesDeep($_GET);

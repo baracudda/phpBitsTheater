@@ -3,24 +3,14 @@ use BitsTheater\Regisseur; /* @var $theStageManager Rigisseur */
 use BitsTheater\Director;
 use com\blackmoonit\Strings;
 
-//initial defines before command line options are checked
+//start the State Manager which sets up our run-time environment
 $theAppPath = dirname(__DIR__);
 global $theStageManager;
 require_once( $theAppPath . DIRECTORY_SEPARATOR . 'Regisseur.php' );
-$theStageManager = \BitsTheater\Regisseur::requisition();
-$theStageManager->defineConstants();
-
-//check for standard command line options - can be done at any time
-//  NOTE: you can still check for more options in your action script!
-$theOptions = getopt('u:p:h:');
-if (!empty($theOptions['u']))
-	$_SERVER['PHP_AUTH_USER'] = $theOptions['u'];
-if (!empty($theOptions['p']))
-	$_SERVER['PHP_AUTH_PW'] = $theOptions['p'];
-//optional as it guesses based on non-localhost folders in configs folder.
-if (!empty($theOptions['h']))
-	$theStageManager->defineConfigPath($theOptions['h']);
-$theStageManager->registerClassLoaders();
+$theStageManager = Regisseur::requisition();
+if (function_exists('process_cli_options'))
+	$theCliOptions = process_cli_options($theStageManager);
+$theStageManager->defineConstants()->registerClassLoaders();
 
 //start the Director
 $director = Director::requisition();
@@ -29,7 +19,10 @@ $director = Director::requisition();
 function dumpvar($x)
 { print( PHP_EOL . Strings::debugStr($x,null) ); }
 
-
+//IMPORTANT!!!
+//  returns the processed CLI options
+//  @see http://www.php.net/manual/en/function.getopt.php
+return $theCliOptions;
 
 /************************************************
 

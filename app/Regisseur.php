@@ -16,8 +16,22 @@
  */
 
 namespace BitsTheater;
+use com\blackmoonit\Strings;
 {//begin namespace
 
+/**
+ * A Regisseur is a theater term for the Stage Manager, as this class is meant
+ * to handle all the global defines as well as register all of the class
+ * loaders being used by the system. If websites need to descend from this
+ * class, you will need to use the BitsTheater namespace and save it in the
+ * same folder as this class since the WEBAPP_NAMESPACE definition will not
+ * exist until after this class had been loaded and defineConstants() has
+ * been called. Also, it is safe to extend from this class as it will have
+ * already been loaded and usable by the time your class will be instantiated.
+ *
+ * @see Regisseur::defineConstants()
+ *
+ */
 class Regisseur
 {
 	/**
@@ -31,6 +45,24 @@ class Regisseur
 	 * @var string
 	 */
 	const CATCH_ALL_HOST_NAME = 'anyhost';
+	/**
+	 * If running under CLI, default short options to check for:<pre>
+	 * -u"username"  username in case CLI action requires credentials
+	 * -p"password"  password in case CLI action requires credentials
+	 * -h"host name" (DEPRECATED, use "--host" long option instead)
+	 * </pre>
+	 * @var string
+	 */
+	const DEFAULT_CLI_SHORT_OPTIONS = 'u:p:h:';
+	/**
+	 * If running under CLI, default long options to check for:<pre>
+	 * --host"host.name.com"  forces which folder under `[site]/configs` to use
+	 * </pre>
+	 * @var string[]
+	 * @const
+	 */
+	static public $DEFAULT_CLI_LONG_OPTIONS = array('host');
+	
 	
 	/**
 	 * Determine which Regisseur to create for the job.
@@ -38,13 +70,13 @@ class Regisseur
 	 */
 	static public function requisition()
 	{
-		$theAppRegisseurFile = BITS_APP_PATH . 'AppRegisseur.php' ;
+		$theAppRegisseurFile = __DIR__ . DIRECTORY_SEPARATOR . 'AppRegisseur.php' ;
 		if ( is_file($theAppRegisseurFile) && include_once($theAppRegisseurFile) )
 		{
-			$theClassName = WEBAPP_NAMESPACE . 'AppRegisseur';
+			$theClassName = __NAMESPACE__ . '\AppRegisseur';
 			if ( class_exists($theClassName) )
 				return new $theClassName() ;
-			$theClassName = BITS_NAMESPACE . 'AppRegisseur';
+			$theClassName = '\AppRegisseur';
 			if ( class_exists($theClassName) )
 				return new $theClassName() ;
 		}
@@ -58,6 +90,35 @@ class Regisseur
 	protected function isRunningUnderCLI()
 	{
 		return (php_sapi_name() === 'cli' OR defined('STDIN'));
+	}
+	
+	/**
+	 * If running under CLI, some additional information might be needed to initialize
+	 * some constants and/or class loaders. Use this method to process the CLI options.
+	 * @param string $aShortOptions - short command line options.
+	 * @param string[] $aLongOptions - array of long command line options.
+	 * @return array Returns the processed CLI options.
+	 * @link http://www.php.net/manual/en/function.getopt.php
+	 */
+	public function processOptionsForCLI($aShortOptions=null, $aLongOptions=null)
+	{
+		$theShortOps = ( !is_null($aShortOptions) )
+				? $aShortOptions : static::DEFAULT_CLI_SHORT_OPTIONS;
+		$theLongOps = ( !is_null($aLongOptions))
+				? $aLongOptions : static::$DEFAULT_CLI_LONG_OPTIONS;
+		$theOptions = getopt( $theShortOps, $theLongOps );
+		if ( !empty($theOptions['u']) )
+			$_SERVER['PHP_AUTH_USER'] = $theOptions['u'];
+		if ( !empty( $theOptions['p']) )
+			$_SERVER['PHP_AUTH_PW'] = $theOptions['p'] ;
+		//optional as we perform a best-guess based on folders in [site]/configs.
+		if ( !empty($theOptions['host']) )
+			$_SERVER['SERVER_NAME'] = $theOptions['host'];
+		//only check for -h if we are using default CLI short options and --host was not found.
+		else if ( is_null($aShortOptions) && !empty($theOptions['h']) )
+			$_SERVER['SERVER_NAME'] = $theOptions['h'];
+
+		return $theOptions;
 	}
 
 	/**
@@ -97,8 +158,10 @@ class Regisseur
 		else
 		{
 			$theFolderList = glob(BITS_CONFIG_DIR.¦.'*', GLOB_ONLYDIR);
-			foreach ($theFolderList as $theFolderName) {
-				if ($theFolderName!='localhost' || count($theFolderList)==1)
+			$bIsOnlyOneFolder = (count($theFolderList)==1);
+			foreach ($theFolderList as $theFolderPath) {
+				$theFolderName = basename($theFolderPath);
+				if ($theFolderName!='localhost' || $bIsOnlyOneFolder)
 					return $this->defineConfigPath($theFolderName);
 			}
 			return $this->defineConfigPath( static::DEFAULT_SERVER_NAME );
@@ -134,7 +197,7 @@ class Regisseur
 	protected function defineWebsiteConstants()
 	{
 		define('BITS_SERVER_NAME', (!empty($_SERVER['SERVER_NAME']))
-				? $_SERVER['SERVER_NAME'] : static::DEFAULT_SERVER_NAME;
+				? $_SERVER['SERVER_NAME'] : static::DEFAULT_SERVER_NAME
 		);
 		define('BITS_SERVER_PORT', (!empty($_SERVER['SERVER_PORT']))
 				? $_SERVER['SERVER_PORT'] : 80
@@ -245,9 +308,9 @@ class Regisseur
 			) . '.php';
 			//en, de, es, etc. 2 letter language codes get directed to the i18n folder
 			if ( $theClassFile{2}==DIRECTORY_SEPARATOR )
-				$theClassNamePath = BITS_RES_PATH . 'i18n' . ¦ . $theClassFile;
+				return BITS_RES_PATH . 'i18n' . ¦ . $theClassFile;
 			else
-				$theClassNamePath = BITS_RES_PATH . $theClassFile;
+				return BITS_RES_PATH . $theClassFile;
 		}
 	}
 	
