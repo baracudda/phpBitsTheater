@@ -857,6 +857,7 @@ class SqlBuilder extends BaseCostume {
 	 *     <code>orderby</code> and <code>orderbyrvs</code>.
 	 * @param array $aDefaultOrderByList - (optional) default to use if no proper
 	 *     <code>orderby</code> field was defined.
+	 * @return array Returns the sanitized OrderBy list.
 	 */
 	public function sanitizeOrderByList($aScene, $aDefaultOrderByList=null)
 	{
