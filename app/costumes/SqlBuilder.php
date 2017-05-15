@@ -159,10 +159,10 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Mainly used internally to get param data.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
+	 * data set by the obtainParamsFrom() method.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @return mixed Returns the data value.
-	 * @see \BitsTheater\costumes\SqlBuilder::setDataSet()
+	 * @see \BitsTheater\costumes\SqlBuilder::obtainParamsFrom()
 	 */
 	public function getDataValue($aDataKey, $aDefaultValue=null) {
 		$theData = $aDefaultValue;
@@ -190,9 +190,9 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Mainly used internally by addParamIfDefined to determine if data param exists.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
+	 * data set by the obtainParamsFrom() method.
 	 * @return boolean Returns TRUE if data key is defined (or param function exists).
-	 * @see \BitsTheater\costumes\SqlBuilder::setDataSet()
+	 * @see \BitsTheater\costumes\SqlBuilder::obtainParamsFrom()
 	 */
 	public function isDataKeyDefined($aDataKey) {
 		//see if there is a data processing function
@@ -315,7 +315,7 @@ class SqlBuilder extends BaseCostume {
 	 * Honors the ParamPrefix and ParamOperator properties.
 	 * @param string $aFieldName - the field name.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method; NOTE: $aDataKeys will have _$i from 1..count() appended.
+	 * data set by the obtainParamsFrom() method; NOTE: $aDataKeys will have _$i from 1..count() appended.
 	 * @param array $aDataValuesList - the value list to use as param values.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -376,7 +376,7 @@ class SqlBuilder extends BaseCostume {
 	 * Parameter must go into the SQL string regardless of NULL status of data.
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
+	 * data set by the obtainParamsFrom() method.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -390,7 +390,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Parameter must go into the SQL string regardless of NULL status of data.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method; this doubles as the field name.
+	 * data set by the obtainParamsFrom() method; this doubles as the field name.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -408,7 +408,7 @@ class SqlBuilder extends BaseCostume {
 	 * e.g. <code>UPDATE myIDfield=:new_myIDfield_data WHERE myIDfield=:myIDfield</code>
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
+	 * data set by the obtainParamsFrom() method.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -425,7 +425,7 @@ class SqlBuilder extends BaseCostume {
 	 * Parameter gets added to the SQL string if data key exists in data set.
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 *     data set by the setDataSet() method.
+	 *     data set by the obtainParamsFrom() method.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
@@ -441,7 +441,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Parameter only gets added to the SQL string if data is not NULL.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
+	 * data set by the obtainParamsFrom() method.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -457,7 +457,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Parameter gets added to the SQL string if data key exists in data set.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 *     data set by the setDataSet() method.
+	 *     data set by the obtainParamsFrom() method.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @param $aParamTypeDeprecated - (IGNORE) defined for backward compatibility only!
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
