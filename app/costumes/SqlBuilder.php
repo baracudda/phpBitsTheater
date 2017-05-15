@@ -19,6 +19,7 @@ namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\Director;
 use BitsTheater\Model;
+use BitsTheater\costumes\ISqlSanitizer;
 use com\blackmoonit\exceptions\DbException;
 use PDO;
 use PDOStatement;
@@ -58,12 +59,32 @@ class SqlBuilder extends BaseCostume {
 	 */
 	const ORDER_BY_DESCENDING = 'DESC';
 	/**
+	 * Sometimes we have a nested query in field list. So in order for
+	 * {@link SqlBuilder::getQueryTotals()} to work automatically, we need to
+	 * supply a comment hint to start the field list.
+	 * @var string
+	 */
+	const FIELD_LIST_HINT_START = '/* FIELDLIST */';
+	/**
+	 * Sometimes we have a nested query in field list. So in order for
+	 * {@link SqlBuilder::getQueryTotals()} to work automatically, we need to
+	 * supply a comment hint to end the field list.
+	 * @var string
+	 */
+	const FIELD_LIST_HINT_END = '/* /FIELDLIST */';
+	/**
 	 * The model class, so we can pass-thru some method calls like query.
 	 * Also useful for auto-determining database quirks like the char used
 	 * around field names.
 	 * @var \BitsTheater\Model
 	 */
 	public $myModel = null;
+	/**
+	 * The object used to sanitize field/orderby lists to help prevent
+	 * SQL injection attacks.
+	 * @var ISqlSanitizer
+	 */
+	public $mySqlSanitizer = null;
 	
 	public $mySql = '';
 	public $myParams = array();
@@ -103,6 +124,7 @@ class SqlBuilder extends BaseCostume {
 	public function __debugInfo() {
 		$vars = parent::__debugInfo();
 		unset($vars['myModel']);
+		unset($vars['mySqlSanitizer']);
 		unset($vars['myParamPrefix']);
 		unset($vars['myParamOperator']);
 		return $vars;
@@ -152,6 +174,17 @@ class SqlBuilder extends BaseCostume {
 	 */
 	public function obtainParamsFrom($aDataSet) {
 		$this->myDataSet = $aDataSet;
+		return $this;
+	}
+	
+	/**
+	 * Set the object used for sanitizing SQL to help prevent SQL Injection attacks.
+	 * @param ISqlSanitizer $aSqlSanitizer - the object used to sanitize field/orderby lists.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setSanitizer( ISqlSanitizer $aSanitizer )
+	{
+		$this->mySqlSanitizer = $aSanitizer;
 		return $this;
 	}
 	
@@ -344,15 +377,21 @@ class SqlBuilder extends BaseCostume {
 	protected function addingParam($aFieldName, $aParamKey, $aParamValue, $aParamType) {
 		if (!is_array($aParamValue) || empty($aParamValue)) {
 			if (!is_null($aParamValue) || !$this->bUseIsNull) {
-				$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.$this->myParamOperator.':'.$aParamKey;
+				$this->mySql .= $this->myParamPrefix .
+						$this->field_quotes . $aFieldName . $this->field_quotes .
+						$this->myParamOperator . ':' . $aParamKey ;
 				$this->setParam($aParamKey,$aParamValue,$aParamType);
 			} else {
 				switch (trim($this->myParamOperator)) {
 					case '=':
-						$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.' IS NULL';
+						$this->mySql .= $this->myParamPrefix .
+								$this->field_quotes . $aFieldName . $this->field_quotes .
+								' IS NULL' ;
 						break;
 					case '<>':
-						$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.' IS NOT NULL';
+						$this->mySql .= $this->myParamPrefix .
+								$this->field_quotes . $aFieldName . $this->field_quotes .
+								' IS NOT NULL' ;
 						break;
 				}//switch
 			}
@@ -537,7 +576,9 @@ class SqlBuilder extends BaseCostume {
 			}
 			if (!empty($aFilter->myParams)) {
 				foreach ($aFilter->myParams as $theFilterParamKey => $theFilterParamValue) {
-					$this->setParam($theFilterParamKey, $theFilterParamValue, $aFilter->myParamTypes[$theFilterParamKey]);
+					$this->setParam( $theFilterParamKey, $theFilterParamValue,
+							$aFilter->myParamTypes[$theFilterParamKey]
+					);
 				}
 			}
 		}
@@ -562,7 +603,8 @@ class SqlBuilder extends BaseCostume {
 	 * @param array $aOrderByList - keys are the fields => values are 'ASC' or 'DESC' with null='ASC'.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
-	public function applyOrderByList($aOrderByList) {
+	public function applyOrderByList($aOrderByList)
+	{
 		if (!empty($aOrderByList)) {
 			$theSortKeyword = 'ORDER BY';
 			//other db types may use a diff reserved keyword, set that here
@@ -570,16 +612,31 @@ class SqlBuilder extends BaseCostume {
 			$this->add($theSortKeyword);
 			
 			$theOrderByList = $aOrderByList;
+			//if plain string[] implying all ASC order, skip processing step
 			if (!isset($theOrderByList[0])) {
 				$theOrderByList = array();
 				foreach ($aOrderByList as $theField => $theSortOrder) {
-					$theOrderByList[] = $theField.((!empty($theSortOrder)) ? ' '.$theSortOrder : '');
+					$theEntry = $theField . ' ';
+					if (is_bool($theSortOrder))
+						$theEntry .= ($theSortOrder) ? self::ORDER_BY_ASCENDING : self::ORDER_BY_DESCENDING;
+					else if (strtoupper(trim($theSortOrder))==self::ORDER_BY_DESCENDING)
+						$theEntry .= self::ORDER_BY_DESCENDING;
+					else
+						$theEntry .= self::ORDER_BY_ASCENDING;
+					$theOrderByList[] = $theEntry;
 				}
 			}
 			$this->add(implode(',', $theOrderByList));
 		}
 		return $this;
 	}
+	
+	/**
+	 * Retrieve the order by list from the sanitizer which might be from the UI or a default.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function applyOrderByListFromSanitizer()
+	{ return $this->applyOrderByList( $this->mySqlSanitizer->getSanitizedOrderByList() ) ; }
 	
 	/**
 	 * Some operators require alternate handling during WHERE clauses (e.g. "=" with NULLs).
@@ -755,9 +812,15 @@ class SqlBuilder extends BaseCostume {
 			$theSelectFields = '*';
 		$theSelectFields = 'SELECT '.$theSelectFields.' FROM';
 		//nested queries can mess us up, so check for hints first
-		if (strpos($this->mySql, '/* FIELDLIST */')>0 && strpos($this->mySql, '/* /FIELDLIST */')>0) {
-			$this->mySql = preg_replace('|SELECT /\* FIELDLIST \*/ .+? /\* /FIELDLIST \*/ FROM|i', $theSelectFields, $this->mySql, 1);
-		} else {
+		if (strpos($this->mySql, self::FIELD_LIST_HINT_START)>0 &&
+				strpos($this->mySql, self::FIELD_LIST_HINT_END)>0)
+		{
+			$this->mySql = preg_replace('|SELECT /\* FIELDLIST \*/ .+? /\* /FIELDLIST \*/ FROM|i',
+					$theSelectFields, $this->mySql, 1
+			);
+		}
+		else
+		{
 			//we want a "non-greedy" match so that it stops at the first "FROM" it finds: ".+?"
 			$this->mySql = preg_replace('|SELECT .+? FROM|i', $theSelectFields, $this->mySql, 1);
 		}
@@ -857,6 +920,7 @@ class SqlBuilder extends BaseCostume {
 	 * @param array $aDefaultOrderByList - (optional) default to use if no proper
 	 *     <code>orderby</code> field was defined.
 	 * @return array Returns the sanitized OrderBy list.
+	 * @deprecated Please use SqlBuilder::applyOrderByListFromSanitizer()
 	 */
 	public function sanitizeOrderByList($aScene, $aDefaultOrderByList=null)
 	{

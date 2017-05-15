@@ -18,11 +18,17 @@
 namespace BitsTheater\scenes\Closet;
 use BitsTheater\Scene as MyScene;
 use BitsTheater\models\Auth as AuthModel;
+use BitsTheater\costumes\ISqlSanitizer;
+use BitsTheater\costumes\WornForSqlSanitize;
+use BitsTheater\costumes\AuthAccount;
 use com\blackmoonit\Widgets;
 use ReflectionClass;
 {//namespace begin
 
-class AuthBasicAccount extends MyScene {
+class AuthBasicAccount extends MyScene implements ISqlSanitizer
+{
+	use WornForSqlSanitize;
+	
 	protected $KEY_userinfo = '';
 	protected $KEY_pwinput = '';
 	protected $KEY_cookie = '';
@@ -68,6 +74,12 @@ class AuthBasicAccount extends MyScene {
 	}
 	
 	/**
+	 * @return string[] Returns the array of defined fields available.
+	 */
+	public function getDefinedFields()
+	{ return AuthAccount::getDefinedFields() ; }
+	
+	/**
 	 * Returns TRUE if the fieldname specified is sortable.
 	 * @param string $aFieldName - the field name to check.
 	 * @return boolean Returns TRUE if sortable, else FALSE.
@@ -87,6 +99,13 @@ class AuthBasicAccount extends MyScene {
 				return parent::isFieldSortable($aFieldName);
 		}//end switch
 	}
+	
+	/**
+	 * Return the default columns to sort by and whether or not they should be ascending.
+	 * @return array Returns <code>array[fieldname => ascending=true]</code>.
+	 */
+	public function getDefaultSortColumns()
+	{ return array( 'account_name' => true ) ; }
 	
 	/**
 	 * Returns the human label used for a field.

@@ -18,7 +18,7 @@
 namespace BitsTheater\costumes;
 {//begin namespace
 
-trait SqlSanitizer
+trait WornForSqlSanitize
 {
 	/**
 	 * @return string[] Returns the array of defined fields available.
