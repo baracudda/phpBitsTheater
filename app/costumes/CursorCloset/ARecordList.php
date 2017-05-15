@@ -111,7 +111,7 @@ abstract class ARecordList extends BaseCostume
 	 */
 	public function addListOfKeysAsIds($aList)
 	{
-		$this->mIdList = $this->mIdList + $aList;
+		$this->mIdList = array_merge($this->mIdList, $aList);
 		return $this;
 	}
 	
