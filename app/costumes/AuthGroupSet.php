@@ -2,7 +2,6 @@
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\CursorCloset\AuthGroupSet as BaseCostume;
 use BitsTheater\costumes\AuthGroup;
-use Exception;
 {//namespace begin
 
 class AuthGroupSet extends BaseCostume

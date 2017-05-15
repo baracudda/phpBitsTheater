@@ -18,7 +18,6 @@
 namespace BitsTheater\scenes\Closet;
 use BitsTheater\Scene as MyScene;
 use BitsTheater\models\Auth as AuthModel;
-use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use ReflectionClass;
 {//namespace begin

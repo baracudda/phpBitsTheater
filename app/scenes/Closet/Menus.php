@@ -18,7 +18,6 @@
 namespace BitsTheater\scenes\Closet;
 use BitsTheater\Scene as MyScene;
 use BitsTheater\costumes\MenuItemResEntry;
-use com\blackmoonit\Strings;
 {//namespace begin
 
 class Menus extends MyScene {

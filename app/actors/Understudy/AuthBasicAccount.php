@@ -37,7 +37,6 @@ use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\WornForAuditFields;
 use Exception;
 use PDOStatement ;
-use PDOException ;
 {//namespace begin
 
 class AuthBasicAccount extends BaseActor

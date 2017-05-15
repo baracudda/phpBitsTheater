@@ -19,7 +19,6 @@ namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\ASimpleCostume as BaseCostume;
 use BitsTheater\costumes\SimpleCostume;
 use BitsTheater\Model as MyModel;
-use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
@@ -75,7 +74,7 @@ class ARecord extends BaseCostume
 	
 	/**
 	 * Return this payload data as a simple class, minus any metadata this class might have.
-	 * @return string Return self encoded as a standard class.
+	 * @return object Returns the data to be exported.
 	 */
 	public function exportData()
 	{

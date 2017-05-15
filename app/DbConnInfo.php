@@ -18,9 +18,8 @@
 namespace BitsTheater;
 use com\blackmoonit\database\DbConnInfo as BaseDbConnInfo;
 use com\blackmoonit\Strings;
-use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\exceptions\DbException;
-use \PDO;
+use PDO;
 {//begin namespace
 
 class DbConnInfo extends BaseDbConnInfo {
@@ -57,7 +56,7 @@ class DbConnInfo extends BaseDbConnInfo {
 	
 	/**
 	 * Checks for config file existance.
-	 * @return boolean Returns TRUE if there is a db config file for our dbConnName. 
+	 * @return boolean Returns TRUE if there is a db config file for our dbConnName.
 	 */
 	public function canAttemptConnectDb() {
 		return file_exists($this->getConfigFilePath());

@@ -22,7 +22,6 @@ use BitsTheater\Director;
 use BitsTheater\Actor;
 use BitsTheater\Model;
 use BitsTheater\models\Config;
-use BitsTheater\models\PropCloset\AuthBase;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;

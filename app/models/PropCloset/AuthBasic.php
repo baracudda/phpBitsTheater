@@ -17,7 +17,6 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\AuthBase as BaseModel;
-use BitsTheater\models\SetupDb as MetaModel;
 use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use BitsTheater\models\AuthGroups; /* @var $dbAuthGroups AuthGroups */
 use BitsTheater\Scene;
@@ -27,10 +26,8 @@ use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\outtakes\PasswordResetException ;
-use com\blackmoonit\database\FinallyCursor;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
-use com\blackmoonit\Arrays;
 use PDO;
 use PDOException;
 use Exception;

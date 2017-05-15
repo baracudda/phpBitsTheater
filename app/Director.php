@@ -25,14 +25,12 @@ use BitsTheater\res\ResException;
 use com\blackmoonit\AdamEve as BaseDirector;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
-use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\FileUtils;
 use ArrayAccess;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionException;
 use Exception;
-use com\blackmoonit\exceptions\DebuggableExceptionTrait;
 {//begin namespace
 
 class Director extends BaseDirector

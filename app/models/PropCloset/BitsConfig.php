@@ -17,16 +17,11 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\KeyValueModel as BaseModel;
-use BitsTheater\models\SetupDb as MetaModel;
 use BitsTheater\costumes\IFeatureVersioning;
-use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\ConfigNamespaceInfo;
 use BitsTheater\costumes\ConfigSettingInfo;
 use BitsTheater\costumes\ConfigResEntry;
-use com\blackmoonit\Arrays;
-use com\blackmoonit\Strings;
-use \PDO;
-use \PDOException;
+use PDOException;
 {//namespace begin
 
 class BitsConfig extends BaseModel implements IFeatureVersioning {
@@ -105,7 +100,6 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 	 * @param Scene $aScene - (optional) extra data may be supplied
 	 */
 	public function setupFeatureVersion($aScene) {
-		/* @var $dbMeta MetaModel */
 		$dbMeta = $this->getProp('SetupDb');
 		$theFeatureData = $dbMeta->getFeature(self::FEATURE_ID);
 		if (empty($theFeatureData)) {

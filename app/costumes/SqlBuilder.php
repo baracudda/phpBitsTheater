@@ -20,7 +20,6 @@ use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\Director;
 use BitsTheater\Model;
 use com\blackmoonit\exceptions\DbException;
-use com\blackmoonit\Strings;
 use PDO;
 use PDOStatement;
 use PDOException;
