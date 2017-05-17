@@ -182,7 +182,7 @@ class SqlBuilder extends BaseCostume {
 	 * @param ISqlSanitizer $aSqlSanitizer - the object used to sanitize field/orderby lists.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function setSanitizer( ISqlSanitizer $aSanitizer )
+	public function setSanitizer( ISqlSanitizer $aSanitizer=null )
 	{
 		$this->mySqlSanitizer = $aSanitizer;
 		return $this;
@@ -636,7 +636,12 @@ class SqlBuilder extends BaseCostume {
 	 * @return $this Returns $this for chaining.
 	 */
 	public function applyOrderByListFromSanitizer()
-	{ return $this->applyOrderByList( $this->mySqlSanitizer->getSanitizedOrderByList() ) ; }
+	{
+		if (!empty($this->mySqlSanitizer))
+			return $this->applyOrderByList( $this->mySqlSanitizer->getSanitizedOrderByList() ) ;
+		else
+			return $this;
+	}
 	
 	/**
 	 * Some operators require alternate handling during WHERE clauses (e.g. "=" with NULLs).
