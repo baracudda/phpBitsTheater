@@ -1,5 +1,5 @@
 <?php
-use BitsTheater\Regisseur; /* @var $theStageManager Rigisseur */
+use BitsTheater\Regisseur; /* @var $theStageManager Regisseur */
 use BitsTheater\Director;
 use com\blackmoonit\Strings;
 

@@ -281,7 +281,7 @@ class Regisseur
 	 * @param string $aRootPath - the root path for the namespace.
 	 * @return string|NULL Returns the full file path if namespace matches class name.
 	 */
-	protected function classNameToPath( $aClassName, $aNamespace, $aRootPath )
+	public function classNameToPath( $aClassName, $aNamespace, $aRootPath )
 	{
 		if ( Strings::beginsWith( $aClassName, $aNamespace ) )
 		{
@@ -298,7 +298,7 @@ class Regisseur
 	 * @param string $aNamespace - the namespace to compare against.
 	 * @return string|NULL Returns the full file path if namespace matches class name.
 	 */
-	protected function classNameToResPath( $aClassName, $aNamespace )
+	public function classNameToResPath( $aClassName, $aNamespace )
 	{
 		if ( Strings::beginsWith( $aClassName, $aNamespace ) )
 		{
@@ -319,7 +319,7 @@ class Regisseur
 	 * @param string $aClassWithFullPath - the full file path.
 	 * @return boolean Returns TRUE if file was included.
 	 */
-	protected function loadClass( $aClassWithFullPath )
+	public function loadClass( $aClassWithFullPath )
 	{
 		if ( is_file( $aClassWithFullPath ) )
 			return include_once( $aClassWithFullPath );
