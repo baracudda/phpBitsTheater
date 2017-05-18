@@ -198,12 +198,12 @@ class BrokenLeg extends \Exception
 	/** Stores the original condition code that was passed into toss(). */
 	protected $myCondition ;
 	
-	/** Accessor */
+	/** Accessor for the condition token. */
 	public function getCondition()
 	{ return $this->myCondition ; }
 	
 	/**
-	 * Mutator; accessible to toss()
+	 * Mutator for the condition token; accessible to toss()
 	 * @return BrokenLeg Returns $this for chaining.
 	 */
 	protected function setCondition( $aCondition )

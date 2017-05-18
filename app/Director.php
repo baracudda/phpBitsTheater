@@ -6,7 +6,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *	  http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -340,7 +340,7 @@ implements ArrayAccess, IDirected
 	
 	
 	//===========================================================
-	//=					 Actor methods					   		=
+	//=                     Actor methods                       =
 	//===========================================================
 	/**
 	 * Given the simple actor name, determine the full namespace path.
@@ -430,7 +430,7 @@ implements ArrayAccess, IDirected
 	
 	
 	//===========================================================
-	//=				   Model methods						 =
+	//=                   Model methods                         =
 	//===========================================================
 	/**
 	 * Returns the correct namespace associated with the model name/ReflectionClass.
@@ -530,7 +530,7 @@ implements ArrayAccess, IDirected
 	
 	
 	//===========================================================
-	//=				  Scene methods						  =
+	//=                  Scene methods                          =
 	//===========================================================
 	
 	static public function getSceneClass($anActorName) {
@@ -545,7 +545,7 @@ implements ArrayAccess, IDirected
 	
 	
 	//===========================================================
-	//=			   RESOURCE management					   =
+	//=               RESOURCE management                       =
 	//===========================================================
 	
 	public function getResManager() {
@@ -642,7 +642,7 @@ implements ArrayAccess, IDirected
 	}
 
 	//===========================================================
-	//=				   LOGIN INFO								=
+	//=                   LOGIN INFO                            =
 	//===========================================================
 	
 	/**
