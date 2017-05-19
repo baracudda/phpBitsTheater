@@ -16,7 +16,6 @@
  */
 
 namespace BitsTheater;
-use com\blackmoonit\Strings;
 {//begin namespace
 
 /**
@@ -76,9 +75,9 @@ class Regisseur
 			$theClassName = __NAMESPACE__ . '\AppRegisseur';
 			if ( class_exists($theClassName) )
 				return new $theClassName() ;
-			$theClassName = '\AppRegisseur';
-			if ( class_exists($theClassName) )
-				return new $theClassName() ;
+				$theClassName = '\AppRegisseur';
+				if ( class_exists($theClassName) )
+					return new $theClassName() ;
 		}
 		return new Regisseur() ;
 	}
@@ -103,24 +102,24 @@ class Regisseur
 	public function processOptionsForCLI($aShortOptions=null, $aLongOptions=null)
 	{
 		$theShortOps = ( !is_null($aShortOptions) )
-				? $aShortOptions : static::DEFAULT_CLI_SHORT_OPTIONS;
+		? $aShortOptions : static::DEFAULT_CLI_SHORT_OPTIONS;
 		$theLongOps = ( !is_null($aLongOptions))
-				? $aLongOptions : static::$DEFAULT_CLI_LONG_OPTIONS;
+		? $aLongOptions : static::$DEFAULT_CLI_LONG_OPTIONS;
 		$theOptions = getopt( $theShortOps, $theLongOps );
 		if ( !empty($theOptions['u']) )
 			$_SERVER['PHP_AUTH_USER'] = $theOptions['u'];
-		if ( !empty( $theOptions['p']) )
-			$_SERVER['PHP_AUTH_PW'] = $theOptions['p'] ;
-		//optional as we perform a best-guess based on folders in [site]/configs.
-		if ( !empty($theOptions['host']) )
-			$_SERVER['SERVER_NAME'] = $theOptions['host'];
-		//only check for -h if we are using default CLI short options and --host was not found.
-		else if ( is_null($aShortOptions) && !empty($theOptions['h']) )
-			$_SERVER['SERVER_NAME'] = $theOptions['h'];
-
-		return $theOptions;
+			if ( !empty( $theOptions['p']) )
+				$_SERVER['PHP_AUTH_PW'] = $theOptions['p'] ;
+				//optional as we perform a best-guess based on folders in [site]/configs.
+				if ( !empty($theOptions['host']) )
+					$_SERVER['SERVER_NAME'] = $theOptions['host'];
+					//only check for -h if we are using default CLI short options and --host was not found.
+					else if ( is_null($aShortOptions) && !empty($theOptions['h']) )
+						$_SERVER['SERVER_NAME'] = $theOptions['h'];
+						
+						return $theOptions;
 	}
-
+	
 	/**
 	 * Define Namespace constants that can be used throughout the site.
 	 * @return $this Returns $this for chaining.
@@ -151,7 +150,7 @@ class Regisseur
 		define('BITS_CONFIG_DIR', (file_exists(BITS_APP_PATH.'configs'))
 				? BITS_APP_PATH.'configs'
 				: BITS_PATH.'configs'
-		);
+				);
 		define('WEBAPP_PATH', BITS_APP_PATH);
 		if ( !empty($_SERVER['SERVER_NAME']))
 		{ return $this->defineConfigPath($_SERVER['SERVER_NAME']); }
@@ -168,7 +167,7 @@ class Regisseur
 		}
 		return $this;
 	}
-
+	
 	/**
 	 * The website config path is special since it could be one of several.
 	 * @param string $aDefaultConfigPath
@@ -186,7 +185,7 @@ class Regisseur
 						&& file_exists( BITS_CONFIG_DIR.¦.static::CATCH_ALL_HOST_NAME ))
 				? BITS_CONFIG_DIR.¦.static::CATCH_ALL_HOST_NAME.¦
 				: BITS_CONFIG_DIR.¦.$thePossibleFolder.¦
-		);
+				);
 		return $this;
 	}
 	
@@ -198,15 +197,15 @@ class Regisseur
 	{
 		define('BITS_SERVER_NAME', (!empty($_SERVER['SERVER_NAME']))
 				? $_SERVER['SERVER_NAME'] : static::DEFAULT_SERVER_NAME
-		);
+				);
 		define('BITS_SERVER_PORT', (!empty($_SERVER['SERVER_PORT']))
 				? $_SERVER['SERVER_PORT'] : 80
-		);
+				);
 		define('SERVER_URL',
 				( (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']=='on') ? 'https' : 'http' )
 				. '://' . BITS_SERVER_NAME
 				. ((BITS_SERVER_PORT==80 || BITS_SERVER_PORT==443) ? '' : ':'.BITS_SERVER_PORT)
-		);
+				);
 		//relative url
 		define( 'REQUEST_URL', array_key_exists('url', $_GET) ? $_GET['url'] : '' );
 		//non-domain site URL that does not end in a /.
@@ -216,27 +215,27 @@ class Regisseur
 			{
 				$theScriptFolder = dirname($_SERVER['SCRIPT_NAME']);
 				$theScriptFolder = ($theScriptFolder!='.' && $theScriptFolder!='/')
-						? str_replace(DIRECTORY_SEPARATOR, '/', $theScriptFolder) : '';
+				? str_replace(DIRECTORY_SEPARATOR, '/', $theScriptFolder) : '';
 			}
 			else
 				$theScriptFolder = BITS_ROOT;
-			define('BITS_URL', $theScriptFolder);
+				define('BITS_URL', $theScriptFolder);
 		}
 		//Virtual Host folder name, if exists.
 		if (!defined('VIRTUAL_HOST_NAME'))
 			define('VIRTUAL_HOST_NAME', basename(BITS_URL));
-		//Resource URL that does not end in a /.
-		define('BITS_RES',BITS_URL.'/res');
-		//Library URL that does not end in a /.
-		define('BITS_LIB',BITS_URL.'/lib');
-		//no need for app url as that is where all the urls normally get routed towards.
-		
-		//Non-library JavaScript content for the website that does not end in a /.
-		define('WEBAPP_JS_URL', BITS_URL.'/app/js');
-		
-		return $this;
+			//Resource URL that does not end in a /.
+			define('BITS_RES',BITS_URL.'/res');
+			//Library URL that does not end in a /.
+			define('BITS_LIB',BITS_URL.'/lib');
+			//no need for app url as that is where all the urls normally get routed towards.
+			
+			//Non-library JavaScript content for the website that does not end in a /.
+			define('WEBAPP_JS_URL', BITS_URL.'/app/js');
+			
+			return $this;
 	}
-
+	
 	/**
 	 * NOTE: Backwards compatibility with websites that did not have Regisseur class.
 	 * If a website wants to define custom constants, load up <code>appdefines.php</code>
@@ -258,7 +257,7 @@ class Regisseur
 		//if a custom WEBAPP_NAMESPACE was not defined, ensure the constant has meaning.
 		if ( !defined('WEBAPP_NAMESPACE') )
 			define('WEBAPP_NAMESPACE', BITS_NAMESPACE);
-		return $this;
+			return $this;
 	}
 	
 	/**
@@ -277,41 +276,47 @@ class Regisseur
 	/**
 	 * Generic classname to full file path converter.
 	 * @param string $aClassName - the full namespaced class name.
-	 * @param string $aNamespace - the namespace to compare against.
-	 * @param string $aRootPath - the root path for the namespace.
+	 * @param string $aRootNamespace - (optional) the root namespace to compare against.
+	 * @param string $aRootPath - (optional) the root path for the namespace -- the
+	 *     default path is the folder that contains this class.
 	 * @return string|NULL Returns the full file path if namespace matches class name.
 	 */
-	public function classNameToPath( $aClassName, $aNamespace, $aRootPath )
+	public function classNameToPath( $aClassName, $aRootNamespace=null, $aRootPath=null )
 	{
-		if ( Strings::beginsWith( $aClassName, $aNamespace ) )
+		$theRootNamespaceLen = strlen($aRootNamespace);
+		//if root namespace does not end in \, ensure it does.
+		if ( $theRootNamespaceLen>0 && $aRootNamespace{$theRootNamespaceLen-1}!='\\')
 		{
-			//convert namespace format ns\sub-ns\classname into folder paths
-			return $aRootPath . str_replace('\\', DIRECTORY_SEPARATOR,
-					Strings::strstr_after( $aClassName, $aNamespace )
-			) . '.php';
+			$aRootNamespace .= '\\';
+			$theRootNamespaceLen += 1;
 		}
+		//if class name begins with $aRootNamespace, strip that part off the path
+		$theClassPath = ( substr($aClassName, 0, $theRootNamespaceLen) == $aRootNamespace )
+		? substr( $aClassName, $theRootNamespaceLen) : $aClassName;
+		//use __DIR__ if no root path specified
+		if ( is_null($aRootPath) )
+			$aRootPath = __DIR__ . DIRECTORY_SEPARATOR ;
+			//convert namespace format ns\sub-ns\classname into folder paths
+			return $aRootPath . str_replace('\\', DIRECTORY_SEPARATOR, $theClassPath) . '.php';
 	}
 	
 	/**
 	 * Generic classname to full file path converter.
 	 * @param string $aClassName - the full namespaced class name.
-	 * @param string $aNamespace - the namespace to compare against.
+	 * @param string $aRootNamespace - the namespace to compare against.
 	 * @return string|NULL Returns the full file path if namespace matches class name.
 	 */
-	public function classNameToResPath( $aClassName, $aNamespace )
+	public function classNameToResPath( $aClassName, $aRootNamespace=null )
 	{
-		if ( Strings::beginsWith( $aClassName, $aNamespace ) )
-		{
-			//convert namespace format ns\sub-ns\classname into folder paths
-			$theClassFile = str_replace( '\\', DIRECTORY_SEPARATOR,
-					Strings::strstr_after( $aClassName ,$aNamespace)
-			) . '.php';
+		$theRootPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'res' . DIRECTORY_SEPARATOR ;
+		if ( is_null($aRootNamespace) )
+			$aRootNamespace = 'res\\' ;
+			//is translated resource file?
+			$theResPos = strpos( $aClassName, $aRootNamespace ) ;
 			//en, de, es, etc. 2 letter language codes get directed to the i18n folder
-			if ( $theClassFile{2}==DIRECTORY_SEPARATOR )
-				return BITS_RES_PATH . 'i18n' . ¦ . $theClassFile;
-			else
-				return BITS_RES_PATH . $theClassFile;
-		}
+			if ( $theResPos===0 && $aClassName{strlen($aRootNamespace)+2}=='\\' )
+				$theRootPath .= 'i18n' . DIRECTORY_SEPARATOR ;
+				return $this->classNameToPath( $aClassName, $aRootNamespace, $theRootPath ) ;
 	}
 	
 	/**
@@ -323,8 +328,8 @@ class Regisseur
 	{
 		if ( is_file( $aClassWithFullPath ) )
 			return include_once( $aClassWithFullPath );
-		else
-			return false;
+			else
+				return false;
 	}
 	
 	/**
@@ -335,7 +340,7 @@ class Regisseur
 	{
 		return $this->loadClass(
 				$this->classNameToPath( $aClassName, BITS_NAMESPACE, BITS_APP_PATH )
-		);
+				);
 	}
 	
 	/**
@@ -346,7 +351,7 @@ class Regisseur
 	{
 		return $this->loadClass(
 				$this->classNameToPath( $aClassName, WEBAPP_NAMESPACE, BITS_APP_PATH )
-		);
+				);
 	}
 	
 	/**
@@ -360,7 +365,7 @@ class Regisseur
 	{
 		return $this->loadClass(
 				$this->classNameToPath( $aClassName, BITS_NAMESPACE_CFGS, BITS_CFG_PATH )
-		);
+				);
 	}
 	
 	/**
@@ -371,9 +376,9 @@ class Regisseur
 	{
 		return $this->loadClass(
 				$this->classNameToResPath( $aClassName, BITS_NAMESPACE_RES )
-		);
+				);
 	}
-
+	
 	/**
 	 * Load WEBAPP_NAMESPACE resource classes from the <code>[site]/res/*</code> paths.
 	 * @param string $aClassName - Class or Interface name to load.
@@ -382,7 +387,7 @@ class Regisseur
 	{
 		return $this->loadClass(
 				$this->classNameToResPath( $aClassName, WEBAPP_NAMESPACE . 'res\\' )
-		);
+				);
 	}
 	
 	/**
@@ -436,7 +441,7 @@ class Regisseur
 	 */
 	public function registerClassLoaders()
 	{
-		//lib/* loaders first (so we can use Strings class easily)
+		//lib/* loaders first
 		$this->registerLibLoaders();
 		//configs/* loaders next so we can get Settings and DB connections
 		$this->registerConfigLoaders();
