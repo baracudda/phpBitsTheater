@@ -316,7 +316,8 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					$theFeatures = $ps->fetchAll();
 					foreach($theFeatures as &$theFeatureRow) {
 						$theFeatureRow['version_seq'] += 0;
-						$dbModel = $this->getProp($theFeatureRow['model_class']);
+						try { $dbModel = $this->getProp($theFeatureRow['model_class']); }
+						catch (\Exception $x) { $dbModel = null; }
 						if (empty($dbModel)) {
 							$this->removeFeature($theFeatureRow['feature_id']);
 							continue;
