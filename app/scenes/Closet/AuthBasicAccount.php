@@ -122,6 +122,7 @@ class AuthBasicAccount extends MyScene implements ISqlSanitizer
 			case 'email':        return $this->getRes('account/colheader_email');
 			case 'verified_ts':  return $this->getRes('account/colheader_verified_ts');
 			case 'is_active':    return $this->getRes('account/colheader_account_is_active');
+			case 'edit_button':  return '';
 			default:             return parent::getColHeaderLabel($aFieldName);
 		}//end switch
 	}
