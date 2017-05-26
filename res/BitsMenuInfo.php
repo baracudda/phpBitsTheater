@@ -93,7 +93,7 @@ class BitsMenuInfo extends Resources {
 		$this->menu_item_accounts = MenuItemResEntry::makeEntry($aDirector, 'accounts')
 				->label('&res@account/menu_acctlist_label')
 				->link(BITS_URL.'/account/view_all')
-				->filter('&right@account/view')
+				->filter('&right@accounts/view')
 				->subtext('&res@account/menu_acctlist_subtext')
 		;
 		

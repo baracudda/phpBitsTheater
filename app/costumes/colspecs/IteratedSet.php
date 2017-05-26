@@ -79,6 +79,13 @@ class IteratedSet extends BaseCostume
 	public $mItemClassArgs = null ;
 	
 	/**
+	 * Optional print out as associative array vs. standard array by using
+	 * this field name as the key.
+	 * @var string
+	 */
+	public $mPrintAsJsonObjectWithIdKey = null;
+	
+	/**
 	 * Magic PHP method to limit what var_dump() shows.
 	 */
 	public function __debugInfo() {
@@ -273,7 +280,10 @@ class IteratedSet extends BaseCostume
 	public function printAsJson( $aEncodeOptions=null )
 	{
 		if( ! empty($this->mDataSet) )
-			$this->printAsJsonArray($aEncodeOptions);
+			if ( empty($this->mPrintAsJsonObjectWithIdKey ) )
+				$this->printAsJsonArray($aEncodeOptions);
+			else
+				$this->printAsJsonObjectWithIdKey( $this->mPrintAsJsonObjectWithIdKey, $aEncodeOptions );
 		return $this ;
 	}
 

@@ -16,6 +16,11 @@ var d = new BitsAuthBasicAccounts('{$v->getSiteURL('account/ajajCreate')}','{$v-
 
 EOD;
 //closer of above ready function done in FinallyBlock
+?>
+<!-- fake fields are a workaround for chrome autofill finding the dialog fields -->
+<input style="display:none" type="email" name="fakeemailautofill"/>
+<input style="display:none" type="password" name="fakepasswordautofill"/>
+<?php
 
 print($v->cueActor('Fragments', 'get', 'js-dialog_error'));
 print($v->cueActor('Fragments', 'get', 'accounts-dialog_account',

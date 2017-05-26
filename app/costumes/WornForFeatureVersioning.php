@@ -17,12 +17,11 @@
 
 namespace BitsTheater\costumes ;
 use BitsTheater\costumes\SqlBuilder;
-use BitsTheater\models\SetupDb as MetaModel;
+use BitsTheater\costumes\colspecs\CommonMySql;
+use com\blackmoonit\exceptions\DbException;
+use com\blackmoonit\Strings;
 use Exception;
 use PDOException;
-use com\blackmoonit\exceptions\DbException;
-use BitsTheater\costumes\colspecs\CommonMySql;
-use com\blackmoonit\Strings;
 { // begin namespace
 
 /**

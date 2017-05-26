@@ -1,6 +1,11 @@
 <?php
 use com\blackmoonit\Widgets;
-print( $v->createCssTagBlock('td label{margin-bottom:initial}') );
+//fix bootstrap button location on dialog
+print( $v->createCssTagBlock('td label{margin-bottom:initial;}') );
+//fix checkbox label that is not truely a label (bootstrap override)
+print( $v->createCssTagBlock('label.for-checkbox{font-weight:normal;}') );
+//prevent new account pw input from pw keepers
+print( $v->createCssTagBlock('#account_password{background-image:none !important;}') );
 ?>
 <div class="modal fade" id="dialog_account">
 <div class="modal-dialog "><!-- modal-lg -->
@@ -19,7 +24,10 @@ print( $v->createCssTagBlock('td label{margin-bottom:initial}') );
   				<label><?php print($v->getRes('account/colheader_account_name'));?>:</label>
   			</td>
   			<td style="padding:1em"><?php
-  				print( Widgets::buildTextBox('account_name')->setRequired()->setSize(40)->render() );
+  				print( Widgets::buildTextBox('account_name')->setRequired()->setSize(40)
+  						->setAttr('autocomplete', 'off')
+  						->render()
+  				);
   			?></td>
   		</tr>
   		<tr>
@@ -27,15 +35,21 @@ print( $v->createCssTagBlock('td label{margin-bottom:initial}') );
 	  			<label><?php print($v->getRes('account/colheader_email'));?>:</label>
 	  		</td>
 	  		<td style="padding:1em"><?php
-  				print( Widgets::buildEmailBox('email')->setRequired()->setSize(40)->render() );
+  				print( Widgets::buildEmailBox('email')->setRequired()->setSize(40)
+  						->setAttr('autocomplete', 'off')
+  						->render()
+  				);
 	  		?></td>
   		</tr>
   		<tr id="row_account_password">
   			<td style="padding:1em;width:5em;text-align:right">
   				<label><?php print($v->getRes('account/label_pwinput'));?>:</label>
   			</td>
-  			<td style="padding:1em"><?php
-  				print( Widgets::buildPassBox('account_password')->setSize(40)->render() );
+  			<td style="padding:1em;"><?php
+  				print( Widgets::buildPassBox('account_password')->setSize(40)
+  						->setAttr('autocomplete', 'new-password')
+  						->render()
+  				);
 	  		?></td>
   		</tr>
   		<tr>
@@ -54,8 +68,10 @@ print( $v->createCssTagBlock('td label{margin-bottom:initial}') );
   		  	<?php
 		  		foreach ($v->auth_groups as $gid => $row) {
 					if ($gid>1) {
-						print('<input type="checkbox" name="account_group_ids[]" value="'.$gid.'" /> '.
-								htmlentities($row['group_name'])." <br />\n"
+						print('<label class="for-checkbox">'
+								. '<input type="checkbox" name="account_group_ids[]" value="'
+								. $gid . '" /> '
+								. htmlentities($row['group_name']) . '</label><br />' . PHP_EOL
 						);
 					}
 				}

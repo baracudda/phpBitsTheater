@@ -18,7 +18,6 @@
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
 use BitsTheater\costumes\AccountInfoCache;
-use com\blackmoonit\Strings;
 use com\blackmoonit\exceptions\DbException ;
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;

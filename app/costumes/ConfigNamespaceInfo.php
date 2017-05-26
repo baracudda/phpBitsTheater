@@ -19,7 +19,6 @@ namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\costumes\ConfigSettingInfo;
 use BitsTheater\Director;
-use com\blackmoonit\Strings;
 use stdClass as StandardClass;
 {//namespace begin
 

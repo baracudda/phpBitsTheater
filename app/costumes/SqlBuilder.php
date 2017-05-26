@@ -19,8 +19,8 @@ namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\Director;
 use BitsTheater\Model;
+use BitsTheater\costumes\ISqlSanitizer;
 use com\blackmoonit\exceptions\DbException;
-use com\blackmoonit\Strings;
 use PDO;
 use PDOStatement;
 use PDOException;
@@ -59,12 +59,32 @@ class SqlBuilder extends BaseCostume {
 	 */
 	const ORDER_BY_DESCENDING = 'DESC';
 	/**
+	 * Sometimes we have a nested query in field list. So in order for
+	 * {@link SqlBuilder::getQueryTotals()} to work automatically, we need to
+	 * supply a comment hint to start the field list.
+	 * @var string
+	 */
+	const FIELD_LIST_HINT_START = '/* FIELDLIST */';
+	/**
+	 * Sometimes we have a nested query in field list. So in order for
+	 * {@link SqlBuilder::getQueryTotals()} to work automatically, we need to
+	 * supply a comment hint to end the field list.
+	 * @var string
+	 */
+	const FIELD_LIST_HINT_END = '/* /FIELDLIST */';
+	/**
 	 * The model class, so we can pass-thru some method calls like query.
 	 * Also useful for auto-determining database quirks like the char used
 	 * around field names.
 	 * @var \BitsTheater\Model
 	 */
 	public $myModel = null;
+	/**
+	 * The object used to sanitize field/orderby lists to help prevent
+	 * SQL injection attacks.
+	 * @var ISqlSanitizer
+	 */
+	public $mySqlSanitizer = null;
 	
 	public $mySql = '';
 	public $myParams = array();
@@ -104,6 +124,7 @@ class SqlBuilder extends BaseCostume {
 	public function __debugInfo() {
 		$vars = parent::__debugInfo();
 		unset($vars['myModel']);
+		unset($vars['mySqlSanitizer']);
 		unset($vars['myParamPrefix']);
 		unset($vars['myParamOperator']);
 		return $vars;
@@ -157,12 +178,23 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
+	 * Set the object used for sanitizing SQL to help prevent SQL Injection attacks.
+	 * @param ISqlSanitizer $aSqlSanitizer - the object used to sanitize field/orderby lists.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setSanitizer( ISqlSanitizer $aSanitizer=null )
+	{
+		$this->mySqlSanitizer = $aSanitizer;
+		return $this;
+	}
+	
+	/**
 	 * Mainly used internally to get param data.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
+	 * data set by the obtainParamsFrom() method.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @return mixed Returns the data value.
-	 * @see \BitsTheater\costumes\SqlBuilder::setDataSet()
+	 * @see \BitsTheater\costumes\SqlBuilder::obtainParamsFrom()
 	 */
 	public function getDataValue($aDataKey, $aDefaultValue=null) {
 		$theData = $aDefaultValue;
@@ -190,9 +222,9 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Mainly used internally by addParamIfDefined to determine if data param exists.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
+	 * data set by the obtainParamsFrom() method.
 	 * @return boolean Returns TRUE if data key is defined (or param function exists).
-	 * @see \BitsTheater\costumes\SqlBuilder::setDataSet()
+	 * @see \BitsTheater\costumes\SqlBuilder::obtainParamsFrom()
 	 */
 	public function isDataKeyDefined($aDataKey) {
 		//see if there is a data processing function
@@ -315,7 +347,7 @@ class SqlBuilder extends BaseCostume {
 	 * Honors the ParamPrefix and ParamOperator properties.
 	 * @param string $aFieldName - the field name.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method; NOTE: $aDataKeys will have _$i from 1..count() appended.
+	 * data set by the obtainParamsFrom() method; NOTE: $aDataKeys will have _$i from 1..count() appended.
 	 * @param array $aDataValuesList - the value list to use as param values.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -345,15 +377,21 @@ class SqlBuilder extends BaseCostume {
 	protected function addingParam($aFieldName, $aParamKey, $aParamValue, $aParamType) {
 		if (!is_array($aParamValue) || empty($aParamValue)) {
 			if (!is_null($aParamValue) || !$this->bUseIsNull) {
-				$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.$this->myParamOperator.':'.$aParamKey;
+				$this->mySql .= $this->myParamPrefix .
+						$this->field_quotes . $aFieldName . $this->field_quotes .
+						$this->myParamOperator . ':' . $aParamKey ;
 				$this->setParam($aParamKey,$aParamValue,$aParamType);
 			} else {
 				switch (trim($this->myParamOperator)) {
 					case '=':
-						$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.' IS NULL';
+						$this->mySql .= $this->myParamPrefix .
+								$this->field_quotes . $aFieldName . $this->field_quotes .
+								' IS NULL' ;
 						break;
 					case '<>':
-						$this->mySql .= $this->myParamPrefix.$this->field_quotes.$aFieldName.$this->field_quotes.' IS NOT NULL';
+						$this->mySql .= $this->myParamPrefix .
+								$this->field_quotes . $aFieldName . $this->field_quotes .
+								' IS NOT NULL' ;
 						break;
 				}//switch
 			}
@@ -376,7 +414,7 @@ class SqlBuilder extends BaseCostume {
 	 * Parameter must go into the SQL string regardless of NULL status of data.
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
+	 * data set by the obtainParamsFrom() method.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -390,7 +428,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Parameter must go into the SQL string regardless of NULL status of data.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method; this doubles as the field name.
+	 * data set by the obtainParamsFrom() method; this doubles as the field name.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -408,7 +446,7 @@ class SqlBuilder extends BaseCostume {
 	 * e.g. <code>UPDATE myIDfield=:new_myIDfield_data WHERE myIDfield=:myIDfield</code>
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
+	 * data set by the obtainParamsFrom() method.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -425,7 +463,7 @@ class SqlBuilder extends BaseCostume {
 	 * Parameter gets added to the SQL string if data key exists in data set.
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 *     data set by the setDataSet() method.
+	 *     data set by the obtainParamsFrom() method.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
@@ -441,7 +479,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Parameter only gets added to the SQL string if data is not NULL.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the setDataSet() method.
+	 * data set by the obtainParamsFrom() method.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -457,7 +495,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Parameter gets added to the SQL string if data key exists in data set.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 *     data set by the setDataSet() method.
+	 *     data set by the obtainParamsFrom() method.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @param $aParamTypeDeprecated - (IGNORE) defined for backward compatibility only!
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -538,7 +576,9 @@ class SqlBuilder extends BaseCostume {
 			}
 			if (!empty($aFilter->myParams)) {
 				foreach ($aFilter->myParams as $theFilterParamKey => $theFilterParamValue) {
-					$this->setParam($theFilterParamKey, $theFilterParamValue, $aFilter->myParamTypes[$theFilterParamKey]);
+					$this->setParam( $theFilterParamKey, $theFilterParamValue,
+							$aFilter->myParamTypes[$theFilterParamKey]
+					);
 				}
 			}
 		}
@@ -563,7 +603,8 @@ class SqlBuilder extends BaseCostume {
 	 * @param array $aOrderByList - keys are the fields => values are 'ASC' or 'DESC' with null='ASC'.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
-	public function applyOrderByList($aOrderByList) {
+	public function applyOrderByList($aOrderByList)
+	{
 		if (!empty($aOrderByList)) {
 			$theSortKeyword = 'ORDER BY';
 			//other db types may use a diff reserved keyword, set that here
@@ -571,15 +612,35 @@ class SqlBuilder extends BaseCostume {
 			$this->add($theSortKeyword);
 			
 			$theOrderByList = $aOrderByList;
+			//if plain string[] implying all ASC order, skip processing step
 			if (!isset($theOrderByList[0])) {
 				$theOrderByList = array();
 				foreach ($aOrderByList as $theField => $theSortOrder) {
-					$theOrderByList[] = $theField.((!empty($theSortOrder)) ? ' '.$theSortOrder : '');
+					$theEntry = $theField . ' ';
+					if (is_bool($theSortOrder))
+						$theEntry .= ($theSortOrder) ? self::ORDER_BY_ASCENDING : self::ORDER_BY_DESCENDING;
+					else if (strtoupper(trim($theSortOrder))==self::ORDER_BY_DESCENDING)
+						$theEntry .= self::ORDER_BY_DESCENDING;
+					else
+						$theEntry .= self::ORDER_BY_ASCENDING;
+					$theOrderByList[] = $theEntry;
 				}
 			}
 			$this->add(implode(',', $theOrderByList));
 		}
 		return $this;
+	}
+	
+	/**
+	 * Retrieve the order by list from the sanitizer which might be from the UI or a default.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function applyOrderByListFromSanitizer()
+	{
+		if (!empty($this->mySqlSanitizer))
+			return $this->applyOrderByList( $this->mySqlSanitizer->getSanitizedOrderByList() ) ;
+		else
+			return $this;
 	}
 	
 	/**
@@ -631,7 +692,7 @@ class SqlBuilder extends BaseCostume {
 			if (is_string($aSqlState5digitCodes)) {
 				$theStatesToCheck = explode(',', $aSqlState5digitCodes);
 			} else if (is_array($aSqlState5digitCodes)) {
-				$theStatesToCheck &= $aSqlState5digitCodes;
+				$theStatesToCheck = $aSqlState5digitCodes;
 			}
 			if (!empty($theStatesToCheck)) {
 				$theSqlState = $theExecResult->errorCode();
@@ -756,9 +817,15 @@ class SqlBuilder extends BaseCostume {
 			$theSelectFields = '*';
 		$theSelectFields = 'SELECT '.$theSelectFields.' FROM';
 		//nested queries can mess us up, so check for hints first
-		if (strpos($this->mySql, '/* FIELDLIST */')>0 && strpos($this->mySql, '/* /FIELDLIST */')>0) {
-			$this->mySql = preg_replace('|SELECT /\* FIELDLIST \*/ .+? /\* /FIELDLIST \*/ FROM|i', $theSelectFields, $this->mySql, 1);
-		} else {
+		if (strpos($this->mySql, self::FIELD_LIST_HINT_START)>0 &&
+				strpos($this->mySql, self::FIELD_LIST_HINT_END)>0)
+		{
+			$this->mySql = preg_replace('|SELECT /\* FIELDLIST \*/ .+? /\* /FIELDLIST \*/ FROM|i',
+					$theSelectFields, $this->mySql, 1
+			);
+		}
+		else
+		{
 			//we want a "non-greedy" match so that it stops at the first "FROM" it finds: ".+?"
 			$this->mySql = preg_replace('|SELECT .+? FROM|i', $theSelectFields, $this->mySql, 1);
 		}
@@ -857,6 +924,8 @@ class SqlBuilder extends BaseCostume {
 	 *     <code>orderby</code> and <code>orderbyrvs</code>.
 	 * @param array $aDefaultOrderByList - (optional) default to use if no proper
 	 *     <code>orderby</code> field was defined.
+	 * @return array Returns the sanitized OrderBy list.
+	 * @deprecated Please use SqlBuilder::applyOrderByListFromSanitizer()
 	 */
 	public function sanitizeOrderByList($aScene, $aDefaultOrderByList=null)
 	{

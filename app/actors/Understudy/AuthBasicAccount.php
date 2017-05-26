@@ -37,7 +37,6 @@ use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\WornForAuditFields;
 use Exception;
 use PDOStatement ;
-use PDOException ;
 {//namespace begin
 
 class AuthBasicAccount extends BaseActor
@@ -666,7 +665,7 @@ class AuthBasicAccount extends BaseActor
 		$aName 		= trim ( $v->account_name );
 		$aPassword 	= trim ( $v->account_password );
 		$aEmail 	= trim ( $v->email );
-		$aGroupId 	= $v->account_group_ids ;
+		$aGroupId 	= (isset($v->account_group_id)) ? $v->account_group_id : $v->account_group_ids ;
 		$aRegCode 	= trim ( $v->account_registration_code );
 
 		// Ensure required parameters are specified.
@@ -802,7 +801,7 @@ class AuthBasicAccount extends BaseActor
 		$aGroupIds  = $v->account_group_ids;
 		if (isset($v->account_is_active))
 			$aIsActive  = (!empty($v->account_is_active)) ? 1 : 0;
-		
+
 		// Reference respective models required.
 		$dbAccounts = $this->getCanonicalModel();
 		$dbAuth = $this->getProp('Auth');
@@ -826,7 +825,7 @@ class AuthBasicAccount extends BaseActor
 				$updatedEmail = ( ( $aEmail === $fullAccountInfo->email ) ? null : $aEmail );
 			if ( isset( $aIsActive ) && $this->isAllowed( 'accounts', 'activate' ) )
 				$updatedIsActive = ( ( $aIsActive == $fullAccountInfo->is_active ) ? null : $aIsActive );
-				
+
 			// Update email, if applicable.
 			if ( !empty ( $updatedEmail ))
 			{
@@ -882,7 +881,7 @@ class AuthBasicAccount extends BaseActor
 				$theSql->startWhereClause()->mustAddParam( 'account_id' )->endWhereClause();
 				$theSql->execDML();
 			}
-			
+
 			//update is_active, if applicable
 			if ( isset($updatedIsActive) )
 				$dbAuth->setInvitation( $aAccountId, $updatedIsActive );
@@ -1127,7 +1126,7 @@ class AuthBasicAccount extends BaseActor
 		catch (Exception $x)
 		{ throw BrokenLeg::tossException( $this, $x ) ; }
 	}
-	
+
 	/**
 	 * Allows a site administrator to activate an existing account on behalf of
 	 * another user, device, or agent.
@@ -1197,12 +1196,35 @@ class AuthBasicAccount extends BaseActor
 	public function ajajDelete( $aAccountID=null )
 	{
 		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
-		$this->checkCanDeleteAccount($theAccountID) ;
-
+		$this->checkCanDeleteAccount( $theAccountID ) ;
+		$this->deletePermissionData( $theAccountID ) ;
 		$this->deleteAuthData( $theAccountID ) ;           // This the override.
-
 		$this->deleteAccountData( $theAccountID ) ;  // Happens only on success.
 		$this->scene->results = APIResponse::noContentResponse() ;
+	}
+
+	/**
+	 * Deletes the permission data associated with an account ID.
+	 * Consumed by ajajDelete().
+	 * @param integer $aAccountID the account ID
+	 * @throws BrokenLeg
+	 * @since BitsTheater 3.8
+	 */
+	protected function deletePermissionData( $aAccountID )
+	{
+		$this->debugLog( __METHOD__ . ' - Deleting auth group map for account [' . $aAccountID . ']...' ) ;
+		$dbAuthGroups = $this->getProp( 'AuthGroups' ) ;
+		$theGroups = $dbAuthGroups->getAcctGroups( $aAccountID );
+		if ( !empty($theGroups) )
+		{
+			try {
+				foreach ($theGroups as $theGroupID)
+					$dbAuthGroups->delAcctMap( $theGroupID, $aAccountID ) ;
+			}
+			catch( Exception $x )
+			{ throw BrokenLeg::tossException( $this, $x ) ; }
+		}
+		return $this ;
 	}
 
 	/**

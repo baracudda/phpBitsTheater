@@ -25,7 +25,6 @@ use BitsTheater\res\ResException;
 use com\blackmoonit\AdamEve as BaseDirector;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
-use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\FileUtils;
 use ArrayAccess;
 use ReflectionClass;
@@ -97,11 +96,73 @@ implements ArrayAccess, IDirected
 	 * @var Config
 	 */
 	protected $dbConfig = null;
+	
+	/**
+	 * Determine which Director to create for the job.
+	 * @return BitsTheater\Director
+	 */
+	static public function requisition()
+	{
+		$theAppDirectorName = WEBAPP_NAMESPACE . 'AppDirector' ;
+		if( class_exists( $theAppDirectorName ) )
+			return new $theAppDirectorName() ;
+		else
+			return new Director() ;
+	}
+	
+	/**
+	 * Check for Magic Quotes and remove them.
+	 */
+	static public function removeMagicQuotes() {
+		if ( get_magic_quotes_gpc() )
+		{
+			Strings::stripSlashesDeep($_GET);
+			Strings::stripSlashesDeep($_POST);
+			Strings::stripSlashesDeep($_COOKIE);
+		}
+	}
+
+	/**
+	 * Check register globals and remove them since they are copies of the
+	 * PHP global vars and are security risks to PHP Injection attacks.
+	 */
+	static public function unregisterGlobals() {
+		if (ini_get('register_globals'))
+		{
+			$theVars = array( '_SESSION', '_POST', '_GET', '_COOKIE',
+					'_REQUEST', '_SERVER', '_ENV', '_FILES' );
+			foreach ($theVars as $theVarName) {
+				foreach ($GLOBALS[$theVarName] as $key => $var) {
+					if ($var === $GLOBALS[$key]) {
+						unset($GLOBALS[$key]);
+					}
+				}
+			}
+		}
+	}
+	
+	/**
+	 * debugLog() and errorLog() can have a prefix so each website will "stand out"
+	 * in the server logs; typically set to some variation of VIRTUAL_HOST_NAME.
+	 * @see Strings::debugPrefix()
+	 * @see Strings::errorPrefix()
+	 */
+	static public function setupLogPrefix()
+	{
+		if (defined('VIRTUAL_HOST_NAME') && VIRTUAL_HOST_NAME)
+		{
+			Strings::debugPrefix( '['.VIRTUAL_HOST_NAME.'-dbg] ' );
+			Strings::errorPrefix( '['.VIRTUAL_HOST_NAME.'-err] ' );
+		}
+	}
 
 	/**
 	 * Initialization method called during class construction.
 	 */
 	public function setup() {
+		static::setupLogPrefix();
+		static::removeMagicQuotes();
+		static::unregisterGlobals();
 		register_shutdown_function(array($this, 'onShutdown'));
 		try {
 			if (!$this->check_session_start()) {
@@ -246,10 +307,46 @@ implements ArrayAccess, IDirected
 		return $this;
 	}
 	
+	/**
+	 * Route the URL requested to the approprate actor.
+	 * @param string $aUrl - the URL to act upon.
+	 * @throws FourOhFourExit - 404 if $aUrl is not found.
+	 */
+	public function routeRequest( $aUrl )
+	{
+//		if ($this->isDebugging()) $this->debugLog('aUrl='.$aUrl);  //DEBUG
+//		if ($this->isDebugging() && $aUrl=='phpinfo') { print(phpinfo()); return; } //DEBUG
+		if (!empty($aUrl)) {
+			$urlPathList = explode('/',$aUrl);
+			$theActorName = Strings::getClassName(array_shift($urlPathList));
+			$theAction = array_shift($urlPathList);
+			$theQuery = $urlPathList; //whatever is left
+		}
+		if (!empty($theActorName)) {
+			$theAction = Strings::getMethodName($theAction);
+			if (!$this->raiseCurtain($theActorName,$theAction,$theQuery)) {
+				throw new FourOhFourExit($aUrl);
+			}
+		} elseif (!$this->isInstalled() && class_exists(BITS_NAMESPACE_ACTORS.'Install')) {
+			if (!$this->raiseCurtain('Install', 'install')) {
+				throw new FourOhFourExit($aUrl);
+			}
+		} elseif ($this->isInstalled() && empty($aUrl)) {
+			header('Location: ' . configs\Settings::getLandingPage());
+		} else {
+			throw new FourOhFourExit($aUrl);
+		}
+	}
+	
 	
 	//===========================================================
 	//=                     Actor methods                       =
 	//===========================================================
+	/**
+	 * Given the simple actor name, determine the full namespace path.
+	 * @param string $anActorName - Actor name typically from the URL.
+	 * @return string Returns the fully qualified namespace\actor.
+	 */
 	static public function getActorClass($anActorName) {
 		$theActorName = Strings::getClassName($anActorName);
 		$theActorClass = BITS_NAMESPACE_ACTORS.$theActorName;
@@ -258,9 +355,16 @@ implements ArrayAccess, IDirected
 		}
 		return $theActorClass;
 	}
-
+	
+	/**
+	 * Start the show! Renders the defined view for the given Actor::method.
+	 * @param string $anActorName - Actor name typically from the URL.
+	 * @param string $anAction - the method to call on the Actor.
+	 * @param array $aQuery - (optional) additional parameters for the method.
+	 * @return boolean Return FALSE if a 404 should be thrown.
+	 */
 	public function raiseCurtain($anActorName, $anAction=null, $aQuery=array()) {
-		$theActorClass = self::getActorClass($anActorName);
+		$theActorClass = static::getActorClass($anActorName);
 		//Strings::debugLog('rC: class='.$theActorClass.', exist?='.class_exists($theActorClass));
 		if (class_exists($theActorClass)) {
 			$theAction = $theActorClass::getDefaultAction($anAction);
@@ -268,7 +372,7 @@ implements ArrayAccess, IDirected
 			if ($theActor->isActionUrlAllowed($theAction)) {
 				return $theActor->perform($theAction, $aQuery);
 			} else {
-        	    return false;
+				return false;
 			}
 		} else {
 			//Strings::debugLog(__METHOD__.' cannot find Actor class: '.$theActorClass.' url='.$_GET['url']);
@@ -276,8 +380,16 @@ implements ArrayAccess, IDirected
 		}
 	}
 	
+	/**
+	 * Actors might need to call methods from other actors.
+	 * @param Scene $aScene - the Scene being used by the calling Actor.
+	 * @param string $anActorName - the simple actor name being called upon.
+	 * @param string $anAction - the method being called.
+	 * @param mixed $_ - (optional additional params, denotes 1..n params)
+	 * @return string Returns the contents of the output buffer.
+	 */
 	public function cue($aScene, $anActorName, $anAction, $_=null) {
-		$theActorClass = self::getActorClass($anActorName);
+		$theActorClass = static::getActorClass($anActorName);
 		//Strings::debugLog('rC: class='.$theActorClass.', exist?='.class_exists($theActorClass));
 		if (class_exists($theActorClass)) {
 			$theAction = $theActorClass::getDefaultAction($anAction);
@@ -350,7 +462,7 @@ implements ArrayAccess, IDirected
 	}
 	
 	public function getModel($aModelClass) {
-		$theModelClass = self::getModelClass($aModelClass);
+		$theModelClass = static::getModelClass($aModelClass);
 		if (class_exists($theModelClass)) {
 			if (empty($this->_propMaster[$theModelClass])) {
 				try {
@@ -360,13 +472,15 @@ implements ArrayAccess, IDirected
 					);
 				} catch (Exception $e) {
 					$this->errorLog(__METHOD__.' '.$e->getMessage());
-					return;
+					throw $e ;
 				}
 			}
 			$this->_propMaster[$theModelClass]['ref_count'] += 1;
 			return $this->_propMaster[$theModelClass]['model'];
 		} else {
-			$this->errorLog(__METHOD__.' cannot find Model class: '.$theModelClass);
+			$theError = __METHOD__.' cannot find Model class: '.$theModelClass ;
+			$this->errorLog( $theError ) ;
+			throw new Exception( $theError ) ;
 		}
 	}
 	
@@ -591,6 +705,7 @@ implements ArrayAccess, IDirected
 	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
 	 * equating to path segments.
 	 * @return string - returns the site relative path URL.
+	 * @see Director::getFullUrl()
 	 */
 	public function getSiteUrl($aRelativeURL='', $_=null) {
 		$theResult = BITS_URL;
@@ -607,6 +722,7 @@ implements ArrayAccess, IDirected
 	 * Returns the URL for this site appended with relative path info.
 	 * @param string $aRelativeURL - site path relative to site root.
 	 * @return string - returns the http scheme + site domain + relative path URL.
+	 * @see Director::getSiteUrl()
 	 */
 	public function getFullUrl($aRelativeURL='') {
 		$theResult = SERVER_URL.'/';
@@ -651,7 +767,7 @@ implements ArrayAccess, IDirected
 		try {
 			return $this->getConfigSetting('site/mode');
 		} catch (Exception $e) {
-			return self::SITE_MODE_NORMAL;
+			return static::SITE_MODE_NORMAL;
 		}
 	}
 	

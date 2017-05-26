@@ -140,6 +140,34 @@ class FileUtils {
 		return rtrim($aExistingPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . ltrim($aPathSegment, DIRECTORY_SEPARATOR);
 	}
 	
+	/**
+	 * Indicates whether a row returned by the standard PHP function
+	 * <code>fgetcsv()</code> could be considered "empty". This includes the
+	 * following four return values:
+	 * <ul>
+	 * <li><code>null</code></li>
+	 * <li>an empty array/object</li>
+	 * <li><code>false</code> (returned under certain error conditions)</li>
+	 * <li>an array containing a single <code>null</code> element</li>
+	 * </ul>
+	 * Any of these four distinct return values might have special significance
+	 * individually, but all indicate that the line is generally unusable/empty
+	 * and should be skipped by any looping algorithm that is processing all
+	 * lines of a CSV file.
+	 * @param unknown $aInput the value returned by a call to
+	 *  <code>fgetcsv()</code>
+	 * @return boolean <code>true</code> if the return value can be considered
+	 *  "empty" in terms of CSV input
+	 * @link http://www.php.net/manual/en/function.fgetcsv.php
+	 */
+	static public function isEmptyCSV( $aInput )
+	{
+		return( $aInput == null || empty($aInput) || $aInput === false
+		     || $aInput == array(null) ) ;
+	}
+	
+	
+	
 }//end class FileUtils
 
 }//end namespace com\blackmoonit

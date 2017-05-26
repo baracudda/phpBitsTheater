@@ -19,11 +19,8 @@ namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\costumes\ConfigNamespaceInfo;
 use BitsTheater\costumes\ConfigResEntry;
-use BitsTheater\Director;
-use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use com\blackmoonit\widgetbuilder\TextAreaWidget ;
-use com\blackmoonit\Arrays;
 use BitsTheater\models\Config;
 use stdClass as StandardClass;
 {//namespace begin

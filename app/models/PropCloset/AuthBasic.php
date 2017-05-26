@@ -17,7 +17,6 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\AuthBase as BaseModel;
-use BitsTheater\models\SetupDb as MetaModel;
 use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use BitsTheater\models\AuthGroups; /* @var $dbAuthGroups AuthGroups */
 use BitsTheater\Scene;
@@ -27,10 +26,8 @@ use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\outtakes\PasswordResetException ;
-use com\blackmoonit\database\FinallyCursor;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
-use com\blackmoonit\Arrays;
 use PDO;
 use PDOException;
 use Exception;
@@ -478,19 +475,16 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 */
 	public function getAccountsToDisplay($aScene=null, $aGroupId=null) {
 		$theQueryLimit = (!empty($aScene)) ? $aScene->getQueryLimit($this->dbType()) : null;
-		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+		$theSql = SqlBuilder::withModel($this)->setSanitizer($aScene)->obtainParamsFrom(array(
 				'group_id' => $aGroupId,
 				'token' => self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%',
 		));
 		try {
-			//determine OrderBy (so can report on it in case of exception)
-			$theOrderByList = $theSql->sanitizeOrderByList($aScene,
-					array( 'acct.account_name' => null )
-			);
 			//query field list
 			$dbAccounts = $this->getProp('Accounts');
 			//NOTE: since we have a nested query in field list, must add HINT for getQueryTotals()
-			$theSql->startWith('SELECT /* FIELDLIST */')->add('auth.*, acct.account_name');
+			$theSql->startWith('SELECT')->add(SqlBuilder::FIELD_LIST_HINT_START);
+			$theSql->add('auth.*, acct.account_name');
 			//find mapped hardware ids, if any (AuthAccount costume will convert this field into appropriate string)
 			$theSql->add(', (')
 					->add("SELECT GROUP_CONCAT(`token` SEPARATOR ', ') FROM")->add($this->tnAuthTokens)
@@ -498,8 +492,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 					->setParamOperator(' LIKE ')->mustAddParam('token')->setParamOperator('=')
 					->add(') AS hardware_ids')
 					;
-			//done with fields, now for rest of query
-			$theSql->add('/* /FIELDLIST */ FROM')->add($this->tnAuth)->add('AS auth');
+			//done with fields
+			$theSql->add(SqlBuilder::FIELD_LIST_HINT_END);
+			//now for rest of query
+			$theSql->add('FROM')->add($this->tnAuth)->add('AS auth');
 			$theSql->add('JOIN')->add($dbAccounts->tnAccounts)->add('AS acct ON auth.account_id=acct.account_id');
 			if (!is_null($aGroupId)) {
 				$dbAuthGroups = $this->getProp('AuthGroups');
@@ -517,15 +513,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				}
 			}
 			//if we have not caused an exception yet, apply OrderBy and set QueryLimit
-			$theSql->applyOrderByList($theOrderByList);
+			$theSql->applyOrderByListFromSanitizer();
 			if (!empty($theQueryLimit)) {
 				$theSql->add($theQueryLimit);
 			}
 			//return the executed query result
 			return $theSql->query();
 		} catch (PDOException $pdoe) {
-			//also log the sort specification.
-			$this->errorLog( __METHOD__ . ' Sort: ' . $this->debugStr($theOrderByList) );
 			throw $theSql->newDbException(__METHOD__, $pdoe);
 		}
 	}
@@ -1340,24 +1334,24 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$bCsrfTokenWasBaked = false;
 
 			$bAuthorizedViaHeaders = $this->checkHeadersForTicket($dbAccounts, $aScene);
-			//if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth');
+//			if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth');
 			$bAuthorized = $bAuthorized || $bAuthorizedViaHeaders;
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 			{
 				$bAuthorizedViaSession = $this->checkSessionForTicket($dbAccounts, $aScene);
-				//if ($bAuthorizedViaSession) $this->debugLog(__METHOD__.' session auth');
+//				if ($bAuthorizedViaSession) $this->debugLog(__METHOD__.' session auth');
 				$bAuthorized = $bAuthorized || $bAuthorizedViaSession;
 			}
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 			{
 				$bAuthorizedViaWebForm = $this->checkWebFormForTicket($dbAccounts, $aScene);
-				//if ($bAuthorizedViaWebForm) $this->debugLog(__METHOD__.' webform auth');
+//				if ($bAuthorizedViaWebForm) $this->debugLog(__METHOD__.' webform auth');
 				$bAuthorized = $bAuthorized || $bAuthorizedViaWebForm;
 			}
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 			{
 				$bAuthorizedViaCookies = $this->checkCookiesForTicket($dbAccounts, $_COOKIE);
-				//if ($bAuthorizedViaCookies) $this->debugLog(__METHOD__.' cookie auth');
+//				if ($bAuthorizedViaCookies) $this->debugLog(__METHOD__.' cookie auth');
 				$bAuthorized = $bAuthorized || $bAuthorizedViaCookies;
 			}
 
@@ -1366,7 +1360,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				if ($bAuthorizedViaSession || $bAuthorizedViaWebForm || $bAuthorizedViaCookies)
 					$bCsrfTokenWasBaked = $this->setCsrfTokenCookie();
 			}
-			//else $this->debugLog(__METHOD__.' not authorized');
+//			else $this->debugLog(__METHOD__.' not authorized');
 			$this->returnProp($dbAccounts);
 		}
 		return $bAuthorized;
@@ -1526,7 +1520,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 						'account_id' => intval($aUserData['account_id']),
 						'pwhash' => Strings::hasher($aUserData[self::KEY_pwinput]),
 						'verified_ts' => $theVerifiedTS,
-						'is_active' => $aUserData['account_is_active'],
+						'is_active' => (isset($aUserData['account_is_active']))
+								? empty($aUserData['account_is_active']) ? 0 : 1
+								: null,
 				));
 				$theSql->startWith('INSERT INTO')->add($this->tnAuth);
 				// created_by, created_ts, updated_by, updated_ts

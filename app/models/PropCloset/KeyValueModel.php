@@ -20,9 +20,7 @@ use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\FinallyBlock;
-use com\blackmoonit\Strings;
-use \ArrayAccess;
-use \PDOExeption;
+use ArrayAccess;
 {//namespace begin
 
 abstract class KeyValueModel extends BaseModel implements ArrayAccess {
@@ -85,7 +83,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 		switch ($this->dbType()) {
 		case 'mysql': default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->getTableName()} ".
-				"( namespace CHAR(40) NULL".
+				"( namespace CHAR(40) NOT NULL".
 				", ".static::MAPKEY_NAME." CHAR(40) NOT NULL".
 				", value NVARCHAR(250) NULL".
 				", val_def NVARCHAR(250) NULL".
@@ -192,7 +190,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	
 	/**
 	 * Set up a ns/key for the first time.
-	 * @param array|string $aMapInfo - array with 'ns' and 'key' keys or an "ns/key" string; 
+	 * @param array|string $aMapInfo - array with 'ns' and 'key' keys or an "ns/key" string;
 	 * typcially, this should be array[ns, key, value, default].
 	 * @throws DbException only if the table already exists.
 	 * @return boolean|NULL Returns TRUE if inserted, FALSE if already exists, NULL when cache-only.
@@ -231,7 +229,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	
 	/**
 	 * Get map data from the db table.
-	 * @param array|string $aNsKey - array with 'ns' and 'key' keys or an "ns/key" string. 
+	 * @param array|string $aNsKey - array with 'ns' and 'key' keys or an "ns/key" string.
 	 * @throws DbException only if the table already exists.
 	 * @return array|NULL Returns the table data or NULL if not found.
 	 */
@@ -255,7 +253,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	
 	/**
 	 * Get map data by first checking cached value, then get from db.
-	 * @param array|string $aNsKey - array with 'ns' and 'key' keys or an "ns/key" string. 
+	 * @param array|string $aNsKey - array with 'ns' and 'key' keys or an "ns/key" string.
 	 * @throws DbException only if the table already exists.
 	 * @return string Returns the value.
 	 */
@@ -268,13 +266,13 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 			$this->_mapdata[$theNsKeyStr] = (isset($row['value'])) ? $row['value'] : null;
 			$this->_mapdefault[$theNsKeyStr] = (isset($row['val_def'])) ? $row['val_def'] : null;
 		}
-		//Strings::debugLog('key='.$aKey.' val='.$this->_mapdata[$aKey]);
+		//$this->debugLog('key='.$aKey.' val='.$this->_mapdata[$aKey]);
 		return $this->_mapdata[$theNsKeyStr];
 	}
 	
 	/**
 	 * Get the default value for a particular ns/key.
-	 * @param array|string $aNsKey - array with 'ns' and 'key' keys or an "ns/key" string. 
+	 * @param array|string $aNsKey - array with 'ns' and 'key' keys or an "ns/key" string.
 	 * @throws DbException only if the table already exists.
 	 * @return string Returns the default value.
 	 */
@@ -286,7 +284,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	
 	/**
 	 * Sets the value for the ns/key and saves it in the db.
-	 * @param array|string $aNsKey - array with 'ns' and 'key' keys or an "ns/key" string. 
+	 * @param array|string $aNsKey - array with 'ns' and 'key' keys or an "ns/key" string.
 	 * @param string $aNewValue - the value to save.
 	 * @throws DbException only if the table already exists.
 	 */

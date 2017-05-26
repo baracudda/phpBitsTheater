@@ -16,8 +16,10 @@
  */
 
 namespace BitsTheater\costumes ;
+use BitsTheater\BrokenLeg ;
 use BitsTheater\Director ;
 use BitsTheater\Model ;
+use com\blackmoonit\Strings ;
 { // begin namespace
 
 /**
@@ -66,6 +68,38 @@ trait WornForCLI
 	protected function strWithCliEffect($aStr, $aCliEffect)
 	{
 		return $this->startCliEffect($aCliEffect) . $aStr . $this->endCliEffect();
+	}
+	
+	/**
+	 * Writes a message to the appropriate output stream. If the costume is
+	 * running under CLI, then the message will appear on standard output or
+	 * standard error; otherwise, it will be logged to the PHP logs.
+	 * @param string $aMessage the message to be logged
+	 * @param boolean $isError indicates that the message represents an error
+	 * @param boolean $isFatal indicates that the message represents a fatal
+	 *  error which should kill the script (trumps $isError)
+	 * @return the object, for fluid invocations
+	 * @throws BrokenLeg if not running under CLI and the message is a fatal
+	 *  error
+	 */
+	protected function writeLog( $aMessage, $isError=false, $isFatal=false )
+	{
+		if( $this->isRunningUnderCLI() )
+		{
+			if( $isFatal ) self::printErrorAndDie($aMessage) ;
+			else if( $isError ) self::printError($aMessage) ;
+			else print( $aMessage . PHP_EOL ) ;
+		}
+		else
+		{
+			if( $isError )
+				Strings::errorLog( $aMessage ) ;
+			else
+				Strings::debugLog( $aMessage ) ;
+			if( $isFatal )
+				throw BrokenLeg::toss( $this, 'DEFAULT' ) ;
+		}
+		return $this ;
 	}
 	
 	/**

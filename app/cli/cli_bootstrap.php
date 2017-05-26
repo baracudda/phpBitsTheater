@@ -1,27 +1,29 @@
 <?php
-use com\blackmoonit\Strings;
+use BitsTheater\Regisseur; /* @var $theStageManager Regisseur */
 use BitsTheater\Director;
-//initial defines before command line options are checked
-$theSitePath = dirname(dirname(dirname(__FILE__)));
-define('BITS_URL', str_replace(DIRECTORY_SEPARATOR, '/', $theSitePath) );
-define('VIRTUAL_HOST_NAME', 'local-cli');
-//now check for command line options
-$theOptions = getopt('u:p:h:');
-if (!empty($theOptions['u']))
-	$_SERVER['PHP_AUTH_USER'] = $theOptions['u'];
-if (!empty($theOptions['p']))
-	$_SERVER['PHP_AUTH_PW'] = $theOptions['p'];
-if (!empty($theOptions['h']))
-	$_SERVER['SERVER_NAME'] = $theOptions['h'];
-//after command line options are checked, Bootstrap time
-require_once(__DIR__.DIRECTORY_SEPARATOR.'../../bootstrap.php');
-Strings::debugPrefix( '[local-cli-dbg] ');
+use com\blackmoonit\Strings;
+
+//start the State Manager which sets up our run-time environment
+$theAppPath = dirname(__DIR__);
+global $theStageManager;
+require_once( $theAppPath . DIRECTORY_SEPARATOR . 'Regisseur.php' );
+$theStageManager = Regisseur::requisition();
+$theCliOptions = (function_exists('process_cli_options'))
+	? process_cli_options($theStageManager)
+	: $theStageManager->processOptionsForCLI();
+$theStageManager->defineConstants()->registerClassLoaders();
+
 //start the Director
-$director = new Director();
+$director = Director::requisition();
+
 //define some generic functions
 function dumpvar($x)
 { print( PHP_EOL . Strings::debugStr($x,null) ); }
 
+//IMPORTANT!!!
+//  returns the processed CLI options
+//  @see http://www.php.net/manual/en/function.getopt.php
+return $theCliOptions;
 
 /************************************************
 
@@ -35,20 +37,20 @@ $ sudo paste -s -d "\n" /Applications/mampstack-5.6.20-0/php/etc/php.ini /usr/lo
 
 ************************************************/
 /************************************************
-EXAMPLE CLI ACTION FILE NAMED: someCliAction.php
-
-<?php
-require_once('cli_bootstrap.php');
-$director->raiseCurtain('Actor', 'method');
-
-************************************************/
+ EXAMPLE CLI ACTION FILE NAMED: someCliAction.php
+ 
+ <?php
+ require_once('cli_bootstrap.php');
+ $director->raiseCurtain('Actor', 'method');
+ 
+ ************************************************/
 /************************************************
-IF YOUR Actor::method() REQUIRES AUTHENTICATION, CALL WITH ARGUMENTS:
-
-$ someCliAction -uUser -pMyPassword
-
-************************************************/
+ IF YOUR Actor::method() REQUIRES AUTHENTICATION, CALL WITH ARGUMENTS:
+ 
+ $ someCliAction -uUser -pMyPassword
+ 
+ ************************************************/
 /************************************************
-BitsTheaters\costumes\WornForCLI trait may contain useful methods for your
-classes that need to operate in CLI mode.
-************************************************/
+ BitsTheaters\costumes\WornForCLI trait may contain useful methods for your
+ classes that need to operate in CLI mode.
+ ************************************************/

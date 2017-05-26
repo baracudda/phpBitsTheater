@@ -37,7 +37,9 @@ class BrokenLeg extends \Exception
 	// Constants for a subset of standard HTTP error codes.
 	// https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 	const HTTP_OK = 200 ;
+	const HTTP_CREATED = 201 ;
 	const HTTP_NO_CONTENT = 204 ;
+	const HTTP_MULTISTATUS = 207 ; // In particular, reflects a "partial" success.
 	const HTTP_MULTIPLE_CHOICES = 300 ;
 	const HTTP_MOVED_PERMANENTLY = 301 ;                 // Deprecated? see 308.
 	const HTTP_SEE_OTHER = 303 ;
@@ -197,12 +199,12 @@ class BrokenLeg extends \Exception
 	/** Stores the original condition code that was passed into toss(). */
 	protected $myCondition ;
 	
-	/** Accessor */
+	/** Accessor for the condition token. */
 	public function getCondition()
 	{ return $this->myCondition ; }
 	
 	/**
-	 * Mutator; accessible to toss()
+	 * Mutator for the condition token; accessible to toss()
 	 * @return BrokenLeg Returns $this for chaining.
 	 */
 	protected function setCondition( $aCondition )

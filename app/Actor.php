@@ -256,8 +256,11 @@ implements IDirected
 	}
 	
 	/**
-	 * Used for partial page renders so sections can be compartmentalized and/or reused by View designers.
-	 * @param aViewName - renders app/view/%name%.php, defaults to currently running action if name is empty.
+	 * Used for partial page renders so sections can be compartmentalized and/or
+	 * reused by View designers.
+	 * @param aViewName - renders app/view/%name%.php, defaults to currently running
+	 *     action if name is empty.
+	 * @return string Returns the contents of the output buffer.
 	 */
 	public function renderFragment($aViewName=null) {
 		if (!$this->bHasBeenSetup) throw new BadMethodCallException(__CLASS__.'::setup() must be called first.');

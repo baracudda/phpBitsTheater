@@ -2,9 +2,6 @@
 
 namespace BitsTheater\models;
 use BitsTheater\models\PropCloset\SetupDb as BaseModel;
-use BitsTheater\costumes\SqlBuilder;
-use com\blackmoonit\exceptions\DbException;
-use PDOException;
 {//begin namespace
 
 class SetupDb extends BaseModel

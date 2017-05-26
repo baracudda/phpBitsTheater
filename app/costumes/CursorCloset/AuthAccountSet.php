@@ -16,12 +16,8 @@
  */
 
 namespace BitsTheater\costumes\CursorCloset;
-use BitsTheater\costumes\colspecs\IteratedSet as BaseCostume;
-use BitsTheater\models\Accounts as MyModel;
-use BitsTheater\models\AuthGroups;
+use BitsTheater\costumes\CursorCloset\ARecordSet as BaseCostume;
 use BitsTheater\Director;
-use com\blackmoonit\FinallyBlock;
-use Exception;
 {//namespace begin
 
 /**
@@ -35,14 +31,6 @@ use Exception;
  */
 class AuthAccountSet extends BaseCostume
 {
-	public $filter = null;
-	public $total_count = 0;
-	
-	/**
-	 * The model I need to access to.
-	 * @var MyModel
-	 */
-	protected $dbModel = null;
 	/**
 	 * The auth model I might need.
 	 * @var AuthGroups
@@ -62,17 +50,29 @@ class AuthAccountSet extends BaseCostume
 	const DEFAULT_ITEM_CLASS = 'AuthAccount';
 
 	/**
-	 * Creates an iterated set based on an already-obtained PDOStatement.
-	 * @param Director $aContext the context in which to create the object
-	 * @return AuthAccountSet
+	 * Return the Model class or name to use in a getProp() call.
+	 * @return class|string
+	 * @see Director::getProp()
 	 */
-	static public function create(Director $aContext)
-	{
-		$o = parent::create($aContext);
-		$o->dbModel = $aContext->getProp(MyModel::MODEL_NAME);
-		$o->dbAuthGroups = $aContext->getProp(AuthGroups::MODEL_NAME);
-		$o->mItemClassArgs = array($o->dbModel);
-		return $o;
+	protected function getModelClassToUse() {
+		return 'Accounts';
+	}
+	
+	/**
+	 * Return the property name the JSON export should use for the array of records.
+	 * @return string "records" is used unless overridden by a descendant.
+	 */
+	protected function getJsonPropertyName() {
+		return 'accounts';
+	}
+	
+	/**
+	 * Costume classes know about the Director.
+	 * @param Director $aDirector - site director object
+	 */
+	public function setup(Director $aDirector) {
+		parent::setup($aDirector);
+		$this->dbAuthGroups = $aDirector->getProp( 'AuthGroups' );
 	}
 	
 	/**
@@ -104,10 +104,21 @@ class AuthAccountSet extends BaseCostume
 				if (count($aRow->hardware_ids)==1)
 					$aRow->hardware_ids = $aRow->hardware_ids[0];
 			}
-		} catch (Exception $e) {
+		} catch (\Exception $e) {
 			$this->errorLog(__METHOD__ . $e->getMessage());
 		}
 		return parent::onFetch($aRow);
+	}
+	
+	/**
+	 * print() out extra properties besides the set of records here, if any.
+	 * @param string $aEncodeOptions options for `json_encode()`
+	 */
+	protected function printExtraJsonProperties( $aEncodeOptions ) {
+		if (!empty($this->mGroupList)) {
+			print( ',"authgroups":');
+			$this->mGroupList->printAsJson( $aEncodeOptions );
+		}
 	}
 	
 	/**
@@ -117,29 +128,7 @@ class AuthAccountSet extends BaseCostume
 	 */
 	public function printAsJson( $aEncodeOptions=null )
 	{
-		print( '{' ) ;
-		$theFinalEnclosure = new FinallyBlock(function($me) {
-			print( ',"count":' . $me->mFetchedCount );
-			print( '}' ) ;
-		}, $this);
-		try
-		{
-			print( '"filter":"' . $this->filter . '"');
-			print( ',"total_count":' . $this->total_count );
-			print( ',"accounts":');
-			//use JSON_FORCE_OBJECT to ensure the group_id keys get encoded
-			parent::printAsJson( $aEncodeOptions | JSON_FORCE_OBJECT );
-			if (!empty($this->mGroupList)) {
-				print( ',"authgroups":');
-				$this->mGroupList->printAsJson( $aEncodeOptions | JSON_FORCE_OBJECT );
-			}
-		}
-		catch( Exception $x )
-		{
-			$this->errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
-			throw $x ;
-		}
-		return $this ;
+		return parent::printAsJson( $aEncodeOptions | JSON_FORCE_OBJECT );
 	}
 
 }//end class

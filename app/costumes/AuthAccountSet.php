@@ -2,7 +2,6 @@
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\CursorCloset\AuthAccountSet as BaseCostume;
 use BitsTheater\costumes\AuthAccount;
-use Exception;
 {//namespace begin
 
 class AuthAccountSet extends BaseCostume

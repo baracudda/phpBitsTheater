@@ -22,7 +22,6 @@ use BitsTheater\Director;
 use BitsTheater\Actor;
 use BitsTheater\Model;
 use BitsTheater\models\Config;
-use BitsTheater\models\PropCloset\AuthBase;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
@@ -1025,6 +1024,7 @@ implements IDirected
 			case 'updated_by': return $this->getRes('generic/colheader_updated_by');
 			case 'created_ts': return $this->getRes('generic/colheader_created_ts');
 			case 'updated_ts': return $this->getRes('generic/colheader_updated_ts');
+			default:           return $aFieldName;
 		}//end switch
 	}
 	

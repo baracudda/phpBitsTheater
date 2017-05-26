@@ -16,9 +16,8 @@
  */
 
 namespace BitsTheater\costumes\CursorCloset;
-use BitsTheater\costumes\ASimpleCostume as BaseCostume;
-use BitsTheater\models\AuthGroups as MyModel;
-use BitsTheater\costumes\SimpleCostume;
+use BitsTheater\costumes\CursorCloset\ARecord as BaseCostume;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
@@ -32,51 +31,21 @@ class AuthGroup extends BaseCostume
 	 * @var string
 	 */
 	const ITEM_CLASS = __CLASS__;
-	/**
-	 * The model I need to access to.
-	 * @var MyModel
-	 */
-	protected $dbModel = null;
-	/**
-	 * Export only these fields. All fields, if NULL.
-	 * @var string[]
-	 */
-	protected $mExportTheseFields = null;
 	
 	public $group_id;
 	public $group_name;
 	public $parent_group_id;
 	
-	public function __construct($aDbModel=null, $aFieldList=null) {
-		$this->dbModel = $aDbModel;
-		$this->mExportTheseFields = $aFieldList;
-	}
-	
 	/**
-	 * Return the fields that should be exported.
-	 * @param object $aExportData - the data to export.
-	 * @return object Returns the data to be exported.
+	 * Construct the standard object with all data fields worth exporting defined.
+	 * @return object Returns a standard object with the properties to export defined.
 	 */
-	protected function exportFilter($aExportData) {
-		if (!empty($aExportData) && !empty($this->mExportTheseFields)) {
-			$o = new SimpleCostume();
-			foreach ($this->mExportTheseFields as $theField) {
-				$o->{$theField} = $aExportData->{$theField};
-			}
-			return $o;
-		} else
-			return $aExportData;
-	}
-	
-	/**
-	 * Return this payload data as a simple class, minus any metadata this class might have.
-	 * @return string Return self encoded as a standard class.
-	 */
-	public function exportData() {
-		$o = parent::exportData();
+	protected function constructExportObject()
+	{
+		$o = parent::constructExportObject();
 		//$o->group_id = intval($o->group_id); leave as string
-		$o->parent_group_id = (!is_null($o->parent_group_id)) ? intval($o->parent_group_id) : null;
-		return $this->exportFilter($o);
+		$o->parent_group_id = Strings::toInt($o->parent_group_id);
+		return $o;
 	}
 
 }//end class

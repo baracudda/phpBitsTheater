@@ -22,7 +22,6 @@ use BitsTheater\Director;
 use BitsTheater\Model;
 use stdClass as StandardClass;
 use com\blackmoonit\exceptions\IllegalArgumentException;
-use com\blackmoonit\Strings;
 {//namespace begin
 
 abstract class ABitsCostume extends BaseCostume
@@ -250,9 +249,9 @@ implements IDirected
 	 * @return \BitsTheater\costumes\mixed Returns the converted class.
 	 */
 	static public function fromStdClass(Director $aDirector, StandardClass $aStdClass) {
-		//Strings::debugLog('costume stdcls: '.Strings::debugStr($aStdClass));
+		//$aDirector->debugLog('costume stdcls: '.$aDirector->debugStr($aStdClass));
 		$o = self::cnvStdClassToXClass($aStdClass, get_called_class());
-		//Strings::debugLog('costume cls: '.Strings::debugStr($o));
+		//$aDirector->debugLog('costume cls: '.$aDirector->debugStr($o));
 		$o->director = $aDirector;
 		return $o;
 	}

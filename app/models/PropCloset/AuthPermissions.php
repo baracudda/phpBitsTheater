@@ -22,7 +22,6 @@ use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\models\Auth;
 use BitsTheater\models\PropCloset\BitsGroups ;
 use com\blackmoonit\exceptions\DbException;
-use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
 use PDO;
 use PDOStatement;
@@ -63,7 +62,7 @@ class AuthPermissions extends BaseModel {
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-						"( namespace CHAR(40) NULL".
+						"( namespace CHAR(40) NOT NULL".
 						", permission CHAR(40) NOT NULL".
 						", group_id INT NOT NULL".
 						", value CHAR(1) CHARACTER SET ascii COLLATE ascii_bin NOT NULL".
@@ -118,7 +117,7 @@ class AuthPermissions extends BaseModel {
 		if (empty($acctInfo)) {
 			$acctInfo = new AccountInfoCache();
 		}
-		//Strings::debugLog('acctinfo:'.Strings::debugStr($acctInfo));
+		//$this->debugLog('acctinfo:'.$this->debugStr($acctInfo));
 		if (!empty($acctInfo->groups) && (array_search(1,$acctInfo->groups,true)!==false)) {
 			return true; //group 1 is always allowed everything
 		}
@@ -377,7 +376,7 @@ class AuthPermissions extends BaseModel {
 			foreach ($aScene->getPermissionRes($ns) as $theRight => $theRightInfo) {
 				$varName = $ns.'__'.$theRight;
 				$theAssignment = $aScene->$varName;
-				//Strings::debugLog($varName.'='.$theAssignment);
+				//$this->debugLog($varName.'='.$theAssignment);
 				if ($theAssignment==self::FORM_VALUE_Allow) {
 					array_push($theRightsList, array('ns'=>$ns, 'perm'=>$theRight, 'group_id'=>$aScene->group_id, 'value'=>self::VALUE_Allow) );
 				} else if ($theAssignment==self::FORM_VALUE_Deny) {

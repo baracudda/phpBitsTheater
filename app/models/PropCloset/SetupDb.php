@@ -22,8 +22,6 @@ use BitsTheater\costumes\colspecs\CommonMySql ;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\WornForFeatureVersioning;
 use com\blackmoonit\exceptions\DbException;
-use com\blackmoonit\Arrays;
-use com\blackmoonit\Strings;
 use com\blackmoonit\FileUtils;
 use PDO;
 use PDOException;
@@ -248,7 +246,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 		
 		$models = self::getAllModelClassInfo();
 		
-		//Strings::debugLog('SetupModels: '.Strings::debugStr($models));
+		//$this->debugLog('SetupModels: '.$this->debugStr($models));
 
 		$this->callModelMethod($this->director, $models,'setupModel',$aScene);
 		$this->callModelMethod($this->director, $models,'setupDefaultData',$aScene);
@@ -318,7 +316,8 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					$theFeatures = $ps->fetchAll();
 					foreach($theFeatures as &$theFeatureRow) {
 						$theFeatureRow['version_seq'] += 0;
-						$dbModel = $this->getProp($theFeatureRow['model_class']);
+						try { $dbModel = $this->getProp($theFeatureRow['model_class']); }
+						catch (\Exception $x) { $dbModel = null; }
 						if (empty($dbModel)) {
 							$this->removeFeature($theFeatureRow['feature_id']);
 							continue;
