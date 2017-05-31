@@ -92,6 +92,18 @@ use com\blackmoonit\Strings;
 		const VERSION_REPLACED_BY_SPEC =
 				"`replaced_by` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL" ;
 
+		/**
+		 * A regular expression which will recognize SQL date strings when used
+		 * as the pattern in <code>preg_match()</code>. This is used when
+		 * discovering SQL datetime fields to be converted to ISO 8601 format.
+		 * @var string
+		 * @see \BitsTheater\costumes\colspecs\CommonMySql::deepConvertSQLTimestampsToISOFormat()
+		 * @link https://stackoverflow.com/a/11510391
+		 * @since BitsTheater 3.8.1
+		 */
+		const SQL_DATETIME_REGEX =
+				"/^\d\d\d\d-(\d)?\d-(\d)?\d \d\d:\d\d:\d\d$/" ;
+		
 
 		/**
 		 * Insert standard audit fields into a table definition.
@@ -138,6 +150,8 @@ use com\blackmoonit\Strings;
 		 * @param array $objectArray PHP array object with keys and values. Can be a "deep array".
 		 * @return array The modified $objectArray object. In case passed in $objectArray is not an array at all,
 		 * simply returns back $objectArray.
+		 * @deprecated (3.8.1) replaced by deepConvertSQLTimestampsToISOFormat()
+		 * @see \BitsTheater\costumes\colspecs\CommonMySql::deepConvertSQLTimestampsToISOFormat()
 		 */
 		static public function convertTimestampsToISO($objectArray) {
 			// Check to ensure passed-in array object is indeed an array.
@@ -168,6 +182,45 @@ use com\blackmoonit\Strings;
 			return $objectArray;
 		}
 
+		/**
+		 * Searches an object for fields that look like timestamps, and updates
+		 * them to ISO 8601 format.
+		 * @param array|object|string $aData the data to be converted; may be
+		 *  an array, object, or scalar
+		 * @return array|object|string the same object, with all SQL datetime
+		 *  values replaced by ISO 8601 datetime values.
+		 * @see \BitsTheater\costumes\colspecs\CommonMySql::SQL_DATETIME_REGEX
+		 * @since BitsTheater 3.8.1
+		 */
+		static public function deepConvertSQLTimestampsToISOFormat( $aData )
+		{
+			if( is_object($aData) || is_array($aData) )
+			{ // Treat it as an object or array.
+				foreach( $aData as $theKey => $theValue )
+				{
+					if( is_object($theValue) || is_array($theValue) )
+						static::deepConvertSQLTimestampsToISOFormat($theValue) ;
+					else if( preg_match( '/_ts$/', $theKey ) == 1
+					 || preg_match( static::SQL_DATETIME_REGEX, $theValue ) == 1
+					 )
+					{ // Key has timestamp suffix, or value matches SQL datetime
+						$theConverted =
+						static::convertSQLTimestampToISOFormat($theValue) ;
+						if( is_object($aData) )
+							$aData->$theKey = $theConverted ;
+						else if( is_array($aData) )
+							$aData[$theKey] = $theConverted ;
+						// There should be no other possibilities... right...?
+					}
+				}
+				return $aData ;
+			}
+			else
+			{ // Treat it as a scalar value.
+				return static::convertSQLTimestampToISOFormat($aData) ;
+			}
+		}
+		
 		/**
 		 * Takes a MySQL timestamp and converts it to a ISO 8601 compliant format.
 		 * @param string $sqlTimestamp The timestamp from MySQL.
