@@ -53,7 +53,7 @@ class BitsAdmin extends BaseActor
 	 */
 	public function ajajUpdateFeature() {
 		$v =& $this->scene;
-		if ($this->isAllowed('config', 'modify')) {
+		if ($this->checkAllowed('config', 'modify')) {
 			$dbMeta = $this->getProp('SetupDb');
 			try {
 				$v->results = APIResponse::resultsWithData($dbMeta->upgradeFeature($v));
@@ -61,8 +61,6 @@ class BitsAdmin extends BaseActor
 				$v->addUserMsg($e->getMessage(), $v::USER_MSG_ERROR);
 				throw BrokenLeg::tossException($this, $e);
 			}
-		} else {
-			throw BrokenLeg::toss($this, 'FORBIDDEN');
 		}
 	}
 	
@@ -85,7 +83,7 @@ class BitsAdmin extends BaseActor
 				throw BrokenLeg::tossException($this, $e);
 			}
 		} else
-			throw BrokenLeg::toss($this, 'FORBIDDEN');
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_PERMISSION_DENIED);
 	}
 	
 	/**
@@ -93,15 +91,14 @@ class BitsAdmin extends BaseActor
 	 */
 	public function ajajGetFeatureVersionList() {
 		$v =& $this->scene;
-		if ($this->isAllowed('config', 'modify')) {
+		if ($this->checkAllowed('config', 'modify')) {
 			$dbMeta = $this->getProp('SetupDb');
 			try {
 				$v->results = APIResponse::resultsWithData($dbMeta->getFeatureVersionList());
 			} catch (Exception $e) {
 				throw BrokenLeg::tossException($this, $e);
 			}
-		} else
-			throw BrokenLeg::toss($this, 'FORBIDDEN');
+		}
 	}
 	
 	/**
@@ -113,7 +110,7 @@ class BitsAdmin extends BaseActor
 			$myAcctID = $this->getMyAccountID();
 			if ($this->isRunningUnderCLI() && empty($myAcctID))
 				print($this->getRes('generic/errmsg_cli_not_authed') . PHP_EOL);
-			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+			$this->checkAllowed( 'config', 'modify' ) ; //fail 403/401 as appropriate
 		}
 		try {
 			//if ($this->isRunningUnderCLI())

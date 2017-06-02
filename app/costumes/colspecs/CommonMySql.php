@@ -102,7 +102,7 @@ use com\blackmoonit\Strings;
 		 * @since BitsTheater 3.8.1
 		 */
 		const SQL_DATETIME_REGEX =
-				"/^\d\d\d\d-(\d)?\d-(\d)?\d \d\d:\d\d:\d\d$/" ;
+			"/^\d\d\d\d-(\d)?\d-(\d)?\d \d\d:\d\d:\d\d$/" ;
 		
 
 		/**
@@ -205,7 +205,7 @@ use com\blackmoonit\Strings;
 					 )
 					{ // Key has timestamp suffix, or value matches SQL datetime
 						$theConverted =
-						static::convertSQLTimestampToISOFormat($theValue) ;
+							static::convertSQLTimestampToISOFormat($theValue) ;
 						if( is_object($aData) )
 							$aData->$theKey = $theConverted ;
 						else if( is_array($aData) )

@@ -77,7 +77,7 @@ class BitsConfig extends BaseActor {
 	 */
 	public function ajajGetSettings() {
 		$v =& $this->scene;
-		if ($this->isAllowed('config','modify')) {
+		if ($this->checkAllowed('config','modify')) {
 			try {
 				$dbConfig = $this->getProp('Config');
 				$theConfigAreas = $dbConfig->getConfigAreas();
@@ -92,8 +92,7 @@ class BitsConfig extends BaseActor {
 			} catch (Exception $e) {
 				throw BrokenLeg::tossException($this, $e);
 			}
-		} else
-			throw BrokenLeg::toss($this, 'FORBIDDEN');
+		}
 	}
 
 	/**
@@ -102,7 +101,7 @@ class BitsConfig extends BaseActor {
 	 */
 	public function ajajModify() {
 		$v =& $this->scene;
-		if ($this->isAllowed('config','modify')) {
+		if ($this->checkAllowed('config','modify')) {
 			$theResults = array();
 			$bSaved = false;
 			try {
@@ -145,8 +144,7 @@ class BitsConfig extends BaseActor {
 			} else {
 				throw BrokenLeg::pratfallRes($this, 'NO_UPDATES', 400, 'config/errmsg_nothing_to_update');
 			}
-		} else
-			throw BrokenLeg::toss($this, 'FORBIDDEN');
+		}
 	}
 
 }//end class

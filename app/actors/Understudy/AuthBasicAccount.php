@@ -269,7 +269,7 @@ class AuthBasicAccount extends BaseActor
 					$this->ajajGetAccountInfo();
 					break;
 				case $dbAuth::REGISTRATION_REG_CODE_FAIL :
-					throw BrokenLeg::toss($this, 'FORBIDDEN');
+					throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
 				case $dbAuth::REGISTRATION_EMAIL_TAKEN :
 					throw BrokenLeg::pratfallRes($this, 'EMAIL_EXISTS', 400,
 							'account/msg_acctexists/'.$this->getRes('account/label_email')
@@ -279,12 +279,12 @@ class AuthBasicAccount extends BaseActor
 							'account/msg_acctexists/'.$this->getRes('account/label_name')
 					);
 				case $dbAuth::REGISTRATION_CAP_EXCEEDED :
-					throw BrokenLeg::toss($this, 'TOO_MANY_REQUESTS');
+					throw BrokenLeg::toss($this, BrokenLeg::ACT_TOO_MANY_REQUESTS);
 				default :
-					throw BrokenLeg::toss($this, 'DEFAULT');
+					throw BrokenLeg::toss($this, BrokenLeg::ACT_DEFAULT);
 			}//switch
 		} else {
-			throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED');
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED);
 		}
 	}
 
@@ -360,7 +360,7 @@ class AuthBasicAccount extends BaseActor
 		//do not use the form vars being used for the modify() endpoint, treat like login().
 		$v =& $this->scene;
 		if ($this->isGuest())
-			throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED');
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED);
 		
 		$dbAccounts = $this->getProp('Accounts');
 		$dbAuth = $this->getProp('Auth');
@@ -370,7 +370,7 @@ class AuthBasicAccount extends BaseActor
 		if (!empty($theAcctInfo))
 			$theAcctId = $theAcctInfo['account_id'];
 		else
-			throw BrokenLeg::toss($this, 'FORBIDDEN');
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
 		
 		//check pw
 		$pwKeyOld = $v->getPwInputKey().'_old';
@@ -435,12 +435,11 @@ class AuthBasicAccount extends BaseActor
 				throw BrokenLeg::tossException($this, $e);
 			}
 		} else
-			throw BrokenLeg::toss($this, 'FORBIDDEN');
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
 	}
 
 	/**
-	 * Called by requestPasswordReset() when the action is "proc" (process a
-	 * request).
+	 * Called by requestPasswordReset() when the action is "proc" (process a request).
 	 */
 	protected function processPasswordResetRequest()
 	{
@@ -587,25 +586,26 @@ class AuthBasicAccount extends BaseActor
 		$v =& $this->scene;
 		$this->renderThisView = 'results_as_json';
 		if (empty($aPing)) {
-			//$this->debugLog(__METHOD__.$v->debugStr($v->auth_header_data));
+//			$this->debugLog(__METHOD__.$v->debugStr($v->auth_header_data)); //DEBUG
 			$theAuthHeader = HttpAuthHeader::fromHttpAuthHeader($this->getDirector(),
 					(!empty($v->auth_header_data)) ? $v->auth_header_data : null
 			);
 			$dbAuth = $this->getProp('Auth');
 			if (!$this->isGuest()) {
-				//$this->debugLog(__METHOD__.' login account found.');
+//				$this->debugLog(__METHOD__.' login account found.'); //DEBUG
 				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
 						$this->director->account_info, $theAuthHeader
 				);
 			} else {
-				//$this->debugLog(__METHOD__.' login using broadway auth unsuccessful');
+//				$this->debugLog(__METHOD__.' login using broadway auth unsuccessful'); //DEBUG
 				$v->results = $dbAuth->requestMobileAuthAutomatedByTokens(
 						$v->auth_id, $v->user_token, $theAuthHeader
 				);
 			}
 			if (empty($v->results)) {
-				//$this->debugLog(__METHOD__.' mobile auth fail; logging out');
+//				$this->debugLog(__METHOD__.' mobile auth fail; logging out'); //DEBUG
 				$this->director->logout();
+				throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED);
 			}
 		} else if ($aPing===static::MAGIC_PING_TOKEN) {
 			$v->results = array(
@@ -646,8 +646,7 @@ class AuthBasicAccount extends BaseActor
 	 * whitespace will be trimmed. If aGroupId is specified, this parameter
 	 * is ignored.
 	 * @throws BrokenLeg
-	 * * 'FORBIDDEN' - if user doesn't have accounts/create and accounts/view
-	 * access.
+	 * * 'PERMISSION_DENIED' - if user doesn't have accounts/create and accounts/view access.
 	 * * 'MISSING_ARGUMENT' - if the account name is not specified.
 	 * * 'UNIQUE_FIELD_ALREADY_EXISTS' - if unique field is specified to update,
 	 *  but already exists in the system.
@@ -657,8 +656,8 @@ class AuthBasicAccount extends BaseActor
 	public function ajajCreate()
 	{
 		// Check Permissions.
-		if( !$this->isAllowed( 'accounts', 'create' ) || !$this->isAllowed( 'accounts', 'view' ))
-			throw BrokenLeg::toss( $this, 'FORBIDDEN' );
+		$this->checkAllowed( 'accounts', 'create' );
+		$this->checkAllowed( 'accounts', 'view' );
 
 		// Retrieve our passed-in values.
 		$v =& $this->scene;
@@ -780,7 +779,7 @@ class AuthBasicAccount extends BaseActor
 	 * @throws BrokenLeg
 	 *  * 'MISSING_ARGUMENT' - if the account ID is not specified
 	 *  * 'ENTITY_NOT_FOUND' - if no account with that ID exists
-	 *  * 'FORBIDDEN' - if user doesn't have accounts/modify.
+	 *  * 'PERMISSION_DENIED' - if user doesn't have accounts/modify.
 	 *  * 'UNIQUE_FIELD_ALREADY_EXISTS' - if unique field is specified to update,
 	 *  but already exists in the system.
 	 *  * 'CANNOT_UPDATE_TO_TITAN' - if group_id of the TITAN group is specified.
@@ -789,8 +788,7 @@ class AuthBasicAccount extends BaseActor
 	public function ajajUpdate( $aAccountId = null )
 	{
 		// Check Permissions.
-		if( ! $this->isAllowed( 'accounts', 'modify' ) )
-			throw BrokenLeg::toss( $this, 'FORBIDDEN' );
+		$this->checkAllowed( 'accounts', 'modify' );
 
 		// Retrieve our passed-in values.
 		$v =& $this->scene;
@@ -920,16 +918,15 @@ class AuthBasicAccount extends BaseActor
 	 * @param integer $aAccountID the account ID (if null, fetch from POST var
 	 *  'account_id' instead)
 	 * @throws BrokenLeg
-	 *  * 'FORBIDDEN' - if user doesn't have accounts/view access
+	 *  * 'PERMISSION_DENIED' - if user doesn't have accounts/view access
 	 *  * 'MISSING_ARGUMENT' - if the account ID is not specified
 	 *  * 'ENTITY_NOT_FOUND' - if no account with that ID exists
 	 * @since BitsTheater 3.6
 	 */
 	public function ajajGet( $aAccountID=null )
 	{
+		$this->checkAllowed( 'accounts', 'view' );
 		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
-		if( ! $this->isAllowed( 'accounts', 'view' ) )
-			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
 		$dbAccounts = $this->getCanonicalModel() ;
 		try
 		{
@@ -1111,8 +1108,7 @@ class AuthBasicAccount extends BaseActor
 	 */
 	public function ajajGetAll( $aGroupID=null )
 	{
-		if( ! $this->isAllowed( 'accounts', 'view' ) )
-			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+		$this->checkAllowed( 'accounts', 'view' );
 		$theGroupID = $this->getEntityID( $aGroupID, 'group_id', false ) ;
 		if( ! empty($theGroupID) )
 			return $this->getAllInGroup( $theGroupID ) ; // instead of "get all"
@@ -1169,8 +1165,7 @@ class AuthBasicAccount extends BaseActor
 	 */
 	protected function setActiveStatus( $aAccountID, $bActive )
 	{
-		if( ! $this->isAllowed( 'accounts', 'activate' ) )
-			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+		$this->checkAllowed( 'accounts', 'activate' );
 		$dbAuth = $this->getProp( 'Auth' ) ;
 		$theAuth = null ;
 		try { $theAuth = $dbAuth->getAuthByAccountId($aAccountID) ; }

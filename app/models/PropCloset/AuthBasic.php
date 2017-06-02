@@ -1334,24 +1334,24 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$bCsrfTokenWasBaked = false;
 
 			$bAuthorizedViaHeaders = $this->checkHeadersForTicket($dbAccounts, $aScene);
-//			if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth');
+//			if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth'); //DEBUG
 			$bAuthorized = $bAuthorized || $bAuthorizedViaHeaders;
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 			{
 				$bAuthorizedViaSession = $this->checkSessionForTicket($dbAccounts, $aScene);
-//				if ($bAuthorizedViaSession) $this->debugLog(__METHOD__.' session auth');
+//				if ($bAuthorizedViaSession) $this->debugLog(__METHOD__.' session auth'); //DEBUG
 				$bAuthorized = $bAuthorized || $bAuthorizedViaSession;
 			}
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 			{
 				$bAuthorizedViaWebForm = $this->checkWebFormForTicket($dbAccounts, $aScene);
-//				if ($bAuthorizedViaWebForm) $this->debugLog(__METHOD__.' webform auth');
+//				if ($bAuthorizedViaWebForm) $this->debugLog(__METHOD__.' webform auth'); //DEBUG
 				$bAuthorized = $bAuthorized || $bAuthorizedViaWebForm;
 			}
 			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
 			{
 				$bAuthorizedViaCookies = $this->checkCookiesForTicket($dbAccounts, $_COOKIE);
-//				if ($bAuthorizedViaCookies) $this->debugLog(__METHOD__.' cookie auth');
+//				if ($bAuthorizedViaCookies) $this->debugLog(__METHOD__.' cookie auth'); //DEBUG
 				$bAuthorized = $bAuthorized || $bAuthorizedViaCookies;
 			}
 
@@ -1360,7 +1360,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				if ($bAuthorizedViaSession || $bAuthorizedViaWebForm || $bAuthorizedViaCookies)
 					$bCsrfTokenWasBaked = $this->setCsrfTokenCookie();
 			}
-//			else $this->debugLog(__METHOD__.' not authorized');
+//			else $this->debugLog(__METHOD__.' not authorized'); //DEBUG
 			$this->returnProp($dbAccounts);
 		}
 		return $bAuthorized;
@@ -1747,7 +1747,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$theAuthRow = $this->getAuthByAuthId($aAuthId);
 		$theAcctRow = (!empty($theAuthRow)) ? $dbAccounts->getAccount($theAuthRow['account_id']) : null;
 		if (!empty($theAcctRow) && !empty($theAuthRow) && !empty($aHttpAuthHeader)) {
-			//$this->debugLog(__METHOD__.' AH='.$this->debugStr($aHttpAuthHeader)); //DEBUG
+//			$this->debugLog(__METHOD__.' AH='.$this->debugStr($aHttpAuthHeader)); //DEBUG
 			//they must have a mobile auth row already
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 					'account_id' => $theAcctRow['account_id'],
@@ -1757,12 +1757,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$theSql->startWhereClause()->mustAddParam('account_id');
 			$theSql->setParamPrefix(' AND ')->mustAddParam('account_token');
 			$theSql->endWhereClause();
+//			$theSql->logSqlDebug(__METHOD__); //DEBUG
 			$theAuthMobileRows = $theSql->query();
 			if (!empty($theAuthMobileRows)) {
 				//see if fingerprints match any of the existing records and return that user_token if so
 				foreach ($theAuthMobileRows as $theAuthMobileRow) {
 					if (Strings::hasher($aHttpAuthHeader->fingerprints, $theAuthMobileRow['fingerprint_hash'])) {
-						//$this->debugLog(__METHOD__.' \o/');
+//						$this->debugLog(__METHOD__.' \o/'); //DEBUG
 						$theAuthToken = $this->generateAuthTokenForMobile($theAcctRow['account_id'],
 								$theAuthRow['auth_id'], $aHttpAuthHeader
 						);
@@ -1772,10 +1773,10 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 								'auth_token' => $theAuthToken,
 								'api_version_seq' => $this->getRes('website/api_version_seq'),
 						);
-						//$this->debugLog(__METHOD__.' r='.$this->debugStr($theResults)); //DEBUG
+//						$this->debugLog(__METHOD__.' r='.$this->debugStr($theResults)); //DEBUG
 						break;
 					}
-					//else $this->debugLog(__METHOD__.' :cry:'); //DEBUG
+//					else $this->debugLog(__METHOD__.' :cry:'); //DEBUG
 				}
 			}
 		}

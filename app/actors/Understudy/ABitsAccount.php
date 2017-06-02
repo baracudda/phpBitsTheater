@@ -145,7 +145,7 @@ abstract class ABitsAccount extends BaseActor {
 			$v->results = APIResponse::resultsWithData($theData) ;
 		}
 		else
-		{ throw BrokenLeg::toss($this, 'NOT_AUTHENTICATED') ; }
+		{ throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED) ; }
 	}
 	
 	/**
@@ -184,8 +184,7 @@ abstract class ABitsAccount extends BaseActor {
 	 */
 	protected function checkCanDeleteAccount( $aAccountID )
 	{
-		if( ! $this->isAllowed( 'accounts', 'delete' ) )
-			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+		$this->checkAllowed( 'accounts', 'delete' );
 
 		if( $aAccountID == $this->getMyAccountID() )
 			throw AccountAdminException::toss( $this, 'CANNOT_DELETE_YOURSELF' ) ;
@@ -194,15 +193,15 @@ abstract class ABitsAccount extends BaseActor {
 		$theAccount = null ;
 		try { $theAccount = $dbAccounts->getAccount($aAccountID) ; }
 		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
+		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_EXCEPTION, $dbx->getMessage() ) ; }
 		if( empty($theAccount) )
-			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aAccountID ) ;
+			throw BrokenLeg::toss( $this, BrokenLeg::ACT_ENTITY_NOT_FOUND, $aAccountID ) ;
 
 		$dbGroups = $this->getProp( 'AuthGroups' ) ;
 		$theGroups = null ;
 		try { $theGroups = $dbGroups->getAcctGroups( $aAccountID ) ; }
 		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
+		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_EXCEPTION, $dbx->getMessage() ) ; }
 		if( in_array( $dbGroups::TITAN_GROUP_ID, $theGroups ) )
 			throw AccountAdminException::toss( $this, 'CANNOT_DELETE_TITAN' ) ;
 		$this->returnProp( $dbGroups ) ;
@@ -228,7 +227,7 @@ abstract class ABitsAccount extends BaseActor {
 		$dbAccounts = $this->getProp( 'Accounts' ) ;
 		try { $dbAccounts->del($aAccountID) ; }
 		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
+		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_EXCEPTION, $dbx->getMessage() ) ; }
 
 		return $this ;
 	}

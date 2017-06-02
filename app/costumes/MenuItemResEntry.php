@@ -224,10 +224,10 @@ class MenuItemResEntry extends BaseCostume {
 		return ( empty($this->_url) || $this->hasSubmenu() ) && !empty($this->_submenu);
 	}
 	
-	protected function checkPermission($aPermissionString) {
+	protected function checkPermissionString($aPermissionString) {
 		$sa = explode('/',$aPermissionString,2);
 		if (count($sa)>=2)
-			return call_user_func_array(array($this->_director,'isAllowed'),$sa);
+			return call_user_func_array(array($this->getDirector(), 'isAllowed'), $sa);
 		else
 			return false;
 	}
@@ -239,19 +239,19 @@ class MenuItemResEntry extends BaseCostume {
 			$sa = explode('@',$aFilterSegment,2);
 			switch ($sa[0]) {
 				case '&right':
-					return $this->checkPermission($sa[1]);
+					return $this->checkPermissionString($sa[1]);
 				case '&method':
 					list($s, $result) = explode('=', $sa[1]);
 					$theResultCompare = (!empty($result)) ? (strtolower($result)!=='false') : true;
 					$args = explode('/',$s);
 					$theMethodName = array_shift($args);
-					//$this->debugLog(__METHOD__.' m='.$theMethodName.' a='.$this->debugStr($args).' r='.($theResultCompare ? 'true' : 'false'));
+//					$this->debugLog(__METHOD__.' m='.$theMethodName.' a='.$this->debugStr($args).' r='.($theResultCompare ? 'true' : 'false')); //DEBUG
 					return call_user_func_array(array($this->_scene,$theMethodName),$args)==$theResultCompare;
 				case '&false': //always disable
 					return false;
 			}//switch
 		} else {
-			return $this->checkPermission($aFilterSegment);
+			return $this->checkPermissionString($aFilterSegment);
 		}
 	}
 	

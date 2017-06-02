@@ -97,7 +97,7 @@ trait WornForCLI
 			else
 				Strings::debugLog( $aMessage ) ;
 			if( $isFatal )
-				throw BrokenLeg::toss( $this, 'DEFAULT' ) ;
+				throw BrokenLeg::toss( $this, BrokenLeg::ACT_DEFAULT ) ;
 		}
 		return $this ;
 	}

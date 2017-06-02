@@ -125,7 +125,7 @@ trait WornForRestService
 	{
 		$theResult = new APIResponse() ;
 		if (empty($aPostURL))
-			throw BrokenLeg::toss( $this, 'SERVICE_UNAVAILABLE' ) ;
+			throw BrokenLeg::toss( $this, BrokenLeg::ACT_SERVICE_UNAVAILABLE ) ;
 		
 		$thePostURL = (Strings::endsWith($aPostURL, '/')) ? $aPostURL : $aPostURL . '/';
 		$thePostURL .= $aAction ;

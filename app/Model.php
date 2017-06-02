@@ -508,22 +508,38 @@ implements IDirected
 	}
 	
 	/**
-	 * Determine if the current logged in user has a permission.
-	 * @param string $aNamespace - namespace of the permission to check.
-	 * @param string $aPermission - permission name to check.
-	 * @param array|NULL $acctInfo - (optional) check specified account instead of
-	 * currently logged in user.
+	 * {@inheritDoc}
+	 * @see \BitsTheater\costumes\IDirected::isAllowed()
 	 */
-	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
-		return $this->getDirector()->isAllowed($aNamespace,$aPermission,$acctInfo);
+	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
+		return $this->getDirector()->isAllowed($aNamespace, $aPermission, $aAcctInfo);
 	}
 
 	/**
-	 * Determine if there is even a user logged into the system or not.
-	 * @return boolean Returns TRUE if no user is logged in.
+	 * {@inheritDoc}
+	 * @see \BitsTheater\costumes\IDirected::isGuest()
 	 */
 	public function isGuest() {
 		return $this->getDirector()->isGuest();
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @see \BitsTheater\costumes\IDirected::checkAllowed()
+	 */
+	public function checkAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
+		return $this->getDirector()->checkAllowed($aNamespace, $aPermission, $aAcctInfo);
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @return $this
+	 * @see \BitsTheater\costumes\IDirected::checkPermission()
+	 */
+	public function checkPermission($aNamespace, $aPermission, $aAcctInfo=null)
+	{
+		$this->getDirector()->checkPermission($aNamespace, $aPermission, $aAcctInfo);
+		return $this;
 	}
 	
 	/**

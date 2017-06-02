@@ -16,16 +16,18 @@
  */
 
 namespace BitsTheater;
+use com\blackmoonit\AdamEve as BaseDirector;
 use BitsTheater\costumes\IDirected;
+use BitsTheater\BrokenLeg;
 use BitsTheater\Model;
 use BitsTheater\DbConnInfo;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\models\Auth;
 use BitsTheater\res\ResException;
-use com\blackmoonit\AdamEve as BaseDirector;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\FileUtils;
+use com\blackmoonit\exceptions\FourOhFourExit;
 use ArrayAccess;
 use ReflectionClass;
 use ReflectionMethod;
@@ -669,9 +671,9 @@ implements ArrayAccess, IDirected
 	 * @param array|NULL $acctInfo - (optional) check specified account instead of
 	 * currently logged in user.
 	 */
-	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
+	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
 		if (isset($this->dbAuth))
-			return $this->dbAuth->isPermissionAllowed($aNamespace, $aPermission, $acctInfo);
+			return $this->dbAuth->isPermissionAllowed($aNamespace, $aPermission, $aAcctInfo);
 		else
 			return false;
 	}
@@ -692,6 +694,34 @@ implements ArrayAccess, IDirected
 		}
 	}
 	
+	/**
+	 * {@inheritDoc}
+	 * @see \BitsTheater\costumes\IDirected::checkAllowed()
+	 */
+	public function checkAllowed($aNamespace, $aPermission, $aAcctInfo=null)
+	{
+		if ( $this->isAllowed($aNamespace, $aPermission, $aAcctInfo) )
+			return true;
+		else
+			throw BrokenLeg::toss( $this, BrokenLeg::ACT_PERMISSION_DENIED );
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @return $this
+	 * @see \BitsTheater\costumes\IDirected::checkPermission()
+	 */
+	public function checkPermission($aNamespace, $aPermission, $aAcctInfo=null)
+	{
+		if ( ! $this->isAllowed($aNamespace, $aPermission, $aAcctInfo) )
+			throw BrokenLeg::toss( $this, BrokenLeg::ACT_PERMISSION_DENIED );
+		return $this;
+	}
+	
+	/**
+	 * Rips up a user's ticket and unsets the account info cache.
+	 * @return string Returns the site URL.
+	 */
 	public function logout() {
 		if (!$this->isGuest() && isset($this->dbAuth)) {
 			$this->dbAuth->ripTicket();

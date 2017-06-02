@@ -1,4 +1,20 @@
 <?php
+/*
+ * Copyright (C) 2015 Blackmoon Info Tech Services
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 namespace BitsTheater ;
 use BitsTheater\costumes\IDirected;
 use com\blackmoonit\exceptions\IDebuggableException;
@@ -85,11 +101,11 @@ class BrokenLeg extends \Exception
 	const HTTP_NOT_EXTENDED = 510 ;
 
 	// The default codes here all roughly correspond to HTTP response codes.
+	const ERR_DEFAULT =              self::HTTP_INTERNAL_SERVER_ERROR ;
 	const ERR_MISSING_ARGUMENT =     self::HTTP_BAD_REQUEST ;
 	const ERR_MISSING_VALUE =        self::HTTP_BAD_REQUEST ;
 	const ERR_FILE_NOT_FOUND =       self::HTTP_NOT_FOUND ;
 	const ERR_FORBIDDEN =            self::HTTP_FORBIDDEN ;
-	const ERR_DEFAULT =              self::HTTP_INTERNAL_SERVER_ERROR ;
 	const ERR_DB_EXCEPTION =         self::HTTP_INTERNAL_SERVER_ERROR ;
 	const ERR_ENTITY_NOT_FOUND =     self::HTTP_NOT_FOUND ;
 	const ERR_NOT_DONE_YET =         self::HTTP_NOT_IMPLEMENTED ;
@@ -100,11 +116,11 @@ class BrokenLeg extends \Exception
 	const ERR_DEPRECATED_FUNCTION =  self::HTTP_GONE ;
 	
 	// General-purpose messages should be defined in the BitsGeneric resource.
+	const MSG_DEFAULT = 'generic/errmsg_default' ;
 	const MSG_MISSING_ARGUMENT = 'generic/errmsg_arg_is_empty' ;
 	const MSG_MISSING_VALUE = 'generic/errmsg_var_is_empty' ;
 	const MSG_FILE_NOT_FOUND = 'generic/errmsg_file_not_found';
 	const MSG_FORBIDDEN = 'generic/msg_permission_denied' ;
-	const MSG_DEFAULT = 'generic/errmsg_default' ;
 	const MSG_DB_EXCEPTION = 'generic/errmsg_db_exception' ;
 	const MSG_ENTITY_NOT_FOUND = 'generic/errmsg_entity_not_found' ;
 	const MSG_NOT_DONE_YET = 'generic/errmsg_not_done_yet' ;
@@ -114,6 +130,23 @@ class BrokenLeg extends \Exception
 	const MSG_TOO_MANY_REQUESTS = 'generic/errmsg_too_many_requests';
 	const MSG_DEPRECATED_FUNCTION = 'generic/errmsg_deprecated' ;
 
+	// Condition constants if you like to use them rather than remember strings to use.
+	const ACT_DEFAULT =              'DEFAULT';
+	const ACT_MISSING_ARGUMENT =     'MISSING_ARGUMENT';
+	const ACT_MISSING_VALUE =        'MISSING_VALUE';
+	const ACT_FILE_NOT_FOUND =       'FILE_NOT_FOUND';
+	const ACT_FORBIDDEN =            'FORBIDDEN';
+	const ACT_DB_EXCEPTION =         'DB_EXCEPTION';
+	const ACT_ENTITY_NOT_FOUND =     'ENTITY_NOT_FOUND';
+	const ACT_NOT_DONE_YET =         'NOT_DONE_YET';
+	const ACT_DB_CONNECTION_FAILED = 'DB_CONNECTION_FAILED';
+	const ACT_NOT_AUTHENTICATED =    'NOT_AUTHENTICATED';
+	const ACT_SERVICE_UNAVAILABLE =  'SERVICE_UNAVAILABLE';
+	const ACT_TOO_MANY_REQUESTS =    'TOO_MANY_REQUESTS';
+	const ACT_DEPRECATED_FUNCTION =  'DEPRECATED_FUNCTION';
+	// Virtual Conditions that map to other conditions based on certain criteria
+	const ACT_PERMISSION_DENIED =    'PERMISSION_DENIED'; //FORBIDDEN or NOT_AUTH
+	
 	/**
 	 * Provides an instance of the exception.
 	 * @param IDirected $aContext some BitsTheater object that can provide context
@@ -128,16 +161,24 @@ class BrokenLeg extends \Exception
 	 *  automatically before being used in getRes()
 	 * @return \BitsTheater\BrokenLeg an instance of the exception class
 	 */
-	public static function toss( IDirected &$aContext, $aCondition, $aResourceData=null )
+	public static function toss( IDirected $aContext, $aCondition, $aResourceData=null )
 	{
 		$theClass = get_called_class() ;
-		$theCode = self::ERR_DEFAULT ;
+		//$aContext cannot be null since we gave it a type hint of IDirected
+		if ($aCondition==static::ACT_PERMISSION_DENIED)
+		{
+			$aCondition = ($aContext->isGuest())
+					? static::ACT_NOT_AUTHENTICATED
+					: static::ACT_FORBIDDEN
+					;
+		}
+		$theCode = static::ERR_DEFAULT ;
 		$theCodeID = $theClass . '::ERR_' . $aCondition ;
 		if( defined( $theCodeID ) )
 			$theCode = constant( $theCodeID ) ;
-		$theMessage = self::MSG_DEFAULT ;
+		$theMessage = static::MSG_DEFAULT ;
 		$theMessageID = $theClass . '::MSG_' . $aCondition ;
-		if( defined( $theMessageID ) && isset($aContext) )
+		if( defined( $theMessageID ) )
 		{
 			$theMessage = static::getMessageFromResource(
 					$aContext, constant($theMessageID), $aResourceData
@@ -177,18 +218,18 @@ class BrokenLeg extends \Exception
 		{
 			$aDbCode = intval($aException->getCode());
 			$theErr = ($aDbCode>2000 && $aDbCode<2030)
-					? 'DB_CONNECTION_FAILED'
-					: 'DB_EXCEPTION'
+					? static::ACT_DB_CONNECTION_FAILED
+					: static::ACT_DB_EXCEPTION
 					;
 			throw static::toss($aContext, $theErr, $aException->getErrorMsg());
 		}
 		else if(isset($aException->code) && isset($aException->message))
 		{
-			throw static::pratfall("DEFAULT", $aException->code, $aException->message);
+			throw static::pratfall(static::ACT_DEFAULT, $aException->code, $aException->message);
 		}
 		else
 		{
-			$o = static::toss( $aContext, 'DEFAULT' ) ;
+			$o = static::toss( $aContext, static::ACT_DEFAULT ) ;
 			$theErrMsg = $aException->getMessage();
 			if (!empty($theErrMsg))
 				$o->message = $theErrMsg;
@@ -318,7 +359,7 @@ class BrokenLeg extends \Exception
 			$aMessageResource, $aResourceData=null )
 	{
 		return static::pratfall( $aCondition, $aCode,
-				self::getMessageFromResource($aContext,
+				static::getMessageFromResource($aContext,
 						 $aMessageResource, $aResourceData
 				)
 		);
