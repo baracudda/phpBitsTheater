@@ -233,7 +233,6 @@ implements ArrayAccess, IDirected
 //			);
 //			Strings::debugLog(Strings::debugStr(static::$lastClassLoaded1));
 		}
-		exit();
 	}
 	
 	//----- methods required for various IMPLEMENTS interfaces
