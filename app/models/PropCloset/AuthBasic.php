@@ -923,8 +923,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @param Accounts $dbAccounts an Accounts prop
 	 * @param AuthPasswordReset $aResetUtils an AuthPasswordReset costume
 	 */
-	public function setPasswordResetCreds( Accounts &$dbAccounts,
-			AuthPasswordReset &$aResetUtils )
+	public function setPasswordResetCreds( Accounts $dbAccounts,
+			AuthPasswordReset $aResetUtils )
 	{
 		if( !isset($dbAccounts) || !isset($aResetUtils) )
 		{
@@ -1793,7 +1793,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 *  left null
 	 * @return boolean true only if the request should be granted
 	 */
-	public function isPasswordResetAllowedFor( $aEmailAddr, &$aResetUtils=null )
+	public function isPasswordResetAllowedFor( $aEmailAddr, $aResetUtils=null )
 	{
 		if( empty($aEmailAddr) ) return false ;
 
@@ -1836,7 +1836,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 *  populated
 	 * @return boolean true if successful, or an exception otherwise
 	 */
-	public function generatePasswordRequestFor( AuthPasswordReset &$aResetUtils )
+	public function generatePasswordRequestFor( AuthPasswordReset $aResetUtils )
 	{
 		if( ! isset( $aResetUtils ) )
 			throw PasswordResetException::toss( $this, 'EMPERORS_NEW_COSTUME' );
