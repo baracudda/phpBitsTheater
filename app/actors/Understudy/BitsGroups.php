@@ -175,7 +175,7 @@ class BitsGroups extends BaseActor {
 		$this->checkAllowed( 'auth', 'modify' ) ;
 		try
 		{
-			$theProc = RightsMatrixProcessor::withActor($this) ;
+			$theProc = new RightsMatrixProcessor($this->getDirector()) ;
 			$v->results = APIResponse::
 				resultsWithData( $theProc->process($bIncludeSystemGroups) ) ;
 		}
