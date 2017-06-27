@@ -27,6 +27,11 @@ use BitsTheater\costumes\APIResponse;
 trait WornForRestService
 {
 	
+	protected $mConfigNameForURL = 'host_list';
+	protected $mConfigNameForPort = 'port';
+	protected $mConfigNameForUsername = 'username';
+	protected $mConfigNameForPassword = 'password';
+	
 	/**
 	 * Given a base host name, add on the user/pw and port parts.
 	 */
@@ -44,13 +49,13 @@ trait WornForRestService
 					$theUrlParts['path'] = '/'.$theUrlParts['path'];
 			}
 			$theUrlParts['port'] = $aDefaultPort;
-			$theConfigPort = $this->getConfigSetting($aConfigNamespace.'/port');
+			$theConfigPort = $this->getConfigSetting($aConfigNamespace.'/'.$this->mConfigNameForPort);
 			if ( !empty($theConfigPort) )
 			{
 				$theUrlParts['port'] = $theConfigPort;
 			}
-			$theConfigUser = $this->getConfigSetting($aConfigNamespace.'/username');
-			$theConfigPw = $this->getConfigSetting($aConfigNamespace.'/password');
+			$theConfigUser = $this->getConfigSetting($aConfigNamespace.'/'.$this->mConfigNameForUsername);
+			$theConfigPw = $this->getConfigSetting($aConfigNamespace.'/'.$this->mConfigNameForPassword);
 			if ( !empty($theConfigUser) &&
 					!empty($theConfigPw) )
 			{
@@ -71,7 +76,7 @@ trait WornForRestService
 	public function generateHostList($aConfigNamespace, $aDefaultPort=null)
 	{
 		$theResults = array();
-		$theConfigValue = $this->getConfigSetting($aConfigNamespace.'/host_list');
+		$theConfigValue = $this->getConfigSetting($aConfigNamespace.'/'.$this->mConfigNameForURL);
 		if (!empty($theConfigValue)) {
 			$theHosts = explode(',', $theConfigValue);
 			if (!empty($theHosts)) {
