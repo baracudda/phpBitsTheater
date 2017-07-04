@@ -2,7 +2,6 @@
 
 namespace BitsTheater\costumes ;
 use BitsTheater\Model ;
-use BitsTheater\costumes\WornByActor ;
 use BitsTheater\costumes\ABitsCostume as BaseCostume ;
 use BitsTheater\models\AuthGroups ; /* @var $dbGroups AuthGroups */
 use BitsTheater\models\Permissions ; /* @var $dbPerms Permissions */
@@ -19,8 +18,6 @@ use BitsTheater\models\Permissions ; /* @var $dbPerms Permissions */
 class RightsMatrixProcessor
 extends BaseCostume
 {
-	use WornByActor ;
-
 	/** A dictionary that is built up by the class's algorithm. */
 	protected $myMatrix ;
 	/** A cache of all user group information, fetched from the DB . */
@@ -57,8 +54,7 @@ extends BaseCostume
 
 		$this->myMatrix['namespaces'] = array() ;
 
-		$theNamespaces =
-			$this->getDirector()->getRes( 'permissions/namespace' ) ;
+		$theNamespaces = $this->getRes( 'permissions/namespace' ) ;
 
 		foreach( $theNamespaces as $theNSName => $theNSInfo )
 		{
@@ -89,8 +85,8 @@ extends BaseCostume
 	 */
 	protected function cacheGroupData( $bIncludeSystemGroups=false )
 	{
-		$dbGroups = $this->getDirector()->getProp( 'AuthGroups' ) ;
-		$dbPerms = $this->getDirector()->getProp( 'Permissions' ) ;
+		$dbGroups = $this->getProp( 'AuthGroups' ) ;
+		$dbPerms = $this->getProp( 'Permissions' ) ;
 
 		$this->myGroups = $dbGroups->getAllGroups( $bIncludeSystemGroups ) ;
 
@@ -136,8 +132,7 @@ extends BaseCostume
 	{
 		$thePermissionList = array() ;
 
-		$thePermissions =
-			$this->getDirector()->getRes( 'Permissions/' . $aNSName ) ;
+		$thePermissions = $this->getRes( 'Permissions/' . $aNSName ) ;
 
 		foreach( $thePermissions as $thePermName => $thePermInfo )
 		{

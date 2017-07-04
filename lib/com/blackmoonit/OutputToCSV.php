@@ -309,7 +309,7 @@ class OutputToCSV {
 				// Carriage Return and/or New Line converted to the literal '\n'
 				$theColValue = str_replace(array("\r\n", "\n", "\r"),'\n',$theColValue);
 				//to prevent Excel from converting value to formula, prepend with '=' before enclosure.
-				if (Strings::beginsWith($theColValue, '+'))
+				if (Strings::beginsWith($theColValue, '+') || Strings::beginsWith($theColValue, '0'))
 					$this->csv .= '=';
 				$this->csv .= $this->mEnclosureLeft.$theColValue.$this->mEnclosureRight.$this->mValueDelimiter;
 			}

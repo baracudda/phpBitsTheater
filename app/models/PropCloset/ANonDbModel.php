@@ -25,13 +25,13 @@ abstract class ANonDbModel extends BaseModel
 	public function connect($aDbConnName=null)
 	{
 		//do not call parent::connect() since we are not connecting to a db.
-		$this->setupModel();
+		$this->setupNonDbModel();
 	}
 	
 	/**
 	 * Generic setup method for non-Db Models
 	 */
-	public function setupModel()
+	public function setupNonDbModel()
 	{
 		//setup code would go in a descendant
 	}

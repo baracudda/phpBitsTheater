@@ -174,7 +174,13 @@ implements IDirected
 	 * @return string|null (OPTIONAL) Return a URL to redirect to.
 	 */
 	protected function performAct($aAction, $aQuery) {
-		return call_user_func_array(array($this, $aAction), $aQuery);
+		$theThingToCall = array($this, $aAction);
+		if (is_callable($theThingToCall))
+			return call_user_func_array($theThingToCall, $aQuery);
+		else
+			throw new FourOhFourExit(BITS_URL . '/' . $this->mySimpleClassName
+					. '/' . $aAction . '/' . implode('/', $aQuery)
+			);
 	}
 
 	/**
@@ -386,7 +392,7 @@ implements IDirected
 			return true;
 		else {
 			$this->scene->addUserMsg($this->getRes('generic/msg_permission_denied'), MyScene::USER_MSG_ERROR);
-			throw BrokenLeg::toss($this, 'FORBIDDEN');
+			throw BrokenLeg::toss( $this, BrokenLeg::ACT_PERMISSION_DENIED );
 		}
 	}
 	
@@ -423,22 +429,38 @@ implements IDirected
 	}
 	
 	/**
-	 * Determine if the current logged in user has a permission.
-	 * @param string $aNamespace - namespace of the permission to check.
-	 * @param string $aPermission - permission name to check.
-	 * @param array|NULL $acctInfo - (optional) check specified account instead of
-	 * currently logged in user.
+	 * {@inheritDoc}
+	 * @see \BitsTheater\costumes\IDirected::isAllowed()
 	 */
-	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
-		return $this->getDirector()->isAllowed($aNamespace,$aPermission,$acctInfo);
+	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
+		return $this->getDirector()->isAllowed($aNamespace, $aPermission, $aAcctInfo);
 	}
 
 	/**
-	 * Determine if there is even a user logged into the system or not.
-	 * @return boolean Returns TRUE if no user is logged in.
+	 * {@inheritDoc}
+	 * @see \BitsTheater\costumes\IDirected::isGuest()
 	 */
 	public function isGuest() {
 		return $this->getDirector()->isGuest();
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @see \BitsTheater\costumes\IDirected::checkAllowed()
+	 */
+	public function checkAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
+		return $this->getDirector()->checkAllowed($aNamespace, $aPermission, $aAcctInfo);
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @return $this
+	 * @see \BitsTheater\costumes\IDirected::checkPermission()
+	 */
+	public function checkPermission($aNamespace, $aPermission, $aAcctInfo=null)
+	{
+		$this->getDirector()->checkPermission($aNamespace, $aPermission, $aAcctInfo);
+		return $this;
 	}
 	
 	/**
@@ -593,7 +615,7 @@ implements IDirected
 			else if( ! empty( $this->scene->$aField ) )
 				$theValue = $this->scene->$aField ;
 			else if( $isRequired )
-				throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', $aField ) ;
+				throw BrokenLeg::toss( $this, BrokenLeg::ACT_MISSING_ARGUMENT, $aField ) ;
 			else
 				return null ;
 		}

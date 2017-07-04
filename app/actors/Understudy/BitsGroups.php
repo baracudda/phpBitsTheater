@@ -134,8 +134,7 @@ class BitsGroups extends BaseActor {
 
 			if( isset( $v->group_id ) && $v->group_id >= AuthGroups::UNREG_GROUP_ID )
 			{ // Update an existing group.
-				if( ! $this->isAllowed( 'auth', 'modify' ) )
-					throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+				$this->checkAllowed( 'auth', 'modify' ) ;
 				if( $v->group_id == AuthGroups::TITAN_GROUP_ID )
 					throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' );
 
@@ -145,8 +144,7 @@ class BitsGroups extends BaseActor {
 			}
 			else
 			{ // Create a new group.
-				if( ! $this->isAllowed( 'auth', 'create' ) )
-					throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+				$this->checkAllowed( 'auth', 'create' ) ;
 				if( $v->group_id == AuthGroups::TITAN_GROUP_ID )
 					throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' );
 
@@ -174,11 +172,10 @@ class BitsGroups extends BaseActor {
 			$bIncludeSystemGroups = true ;
 
 		$this->viewToRender('results_as_json') ;
-		if( ! $this->isAllowed( 'auth', 'modify' ) )
-			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+		$this->checkAllowed( 'auth', 'modify' ) ;
 		try
 		{
-			$theProc = RightsMatrixProcessor::withActor($this) ;
+			$theProc = new RightsMatrixProcessor($this->getDirector()) ;
 			$v->results = APIResponse::
 				resultsWithData( $theProc->process($bIncludeSystemGroups) ) ;
 		}
@@ -203,9 +200,7 @@ class BitsGroups extends BaseActor {
 	{
 		$v =& $this->scene ;
 		$this->viewToRender('results_as_json') ;
-		if( ! $this->isAllowed( 'auth', 'modify' ) )
-			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
-
+		$this->checkAllowed( 'auth', 'modify' ) ;
 		try
 		{
 			$dbPerms = $this->getProp( 'Permissions' ) ;
@@ -226,11 +221,10 @@ class BitsGroups extends BaseActor {
 	{
 		$v =& $this->scene ;
 		$this->viewToRender('results_as_json') ;
-		if( ! $this->isAllowed( 'auth', 'modify' ) )
-			throw BrokenLeg::toss( $this, 'FORBIDDEN' ) ;
+		$this->checkAllowed( 'auth', 'modify' ) ;
 
 		if( empty( $aGroupID ) )
-			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'group_id' ) ;
+			throw BrokenLeg::toss( $this, BrokenLeg::ACT_MISSING_ARGUMENT, 'group_id' ) ;
 
 		try
 		{

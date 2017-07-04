@@ -488,7 +488,7 @@ class BitsInstall extends BaseActor {
 						)
 				);
 		} catch (DbException $dbe) {
-			throw BrokenLeg::toss($this, 'DB_EXCEPTION', $dbe->getErrorMsg());
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_DB_EXCEPTION, $dbe->getErrorMsg());
 		}
 	}
 	
@@ -501,7 +501,7 @@ class BitsInstall extends BaseActor {
 		if (filter_var($v->install_database, FILTER_VALIDATE_BOOLEAN))
 		{
 			if (!$this->getDirector()->canConnectDb())
-				throw BrokenLeg::toss($this, 'DB_CONNECTION_FAILED');
+				throw BrokenLeg::toss($this, BrokenLeg::ACT_DB_CONNECTION_FAILED);
 			
 			$theSetupDb = $this->getProp('SetupDb');
 			$theSetupDb->setupModels($v);
@@ -564,7 +564,7 @@ class BitsInstall extends BaseActor {
 		if (filter_var($v->install_config_settings, FILTER_VALIDATE_BOOLEAN))
 		{
 			if (!$this->getDirector()->canConnectDb())
-				throw BrokenLeg::toss($this, 'DB_CONNECTION_FAILED');
+				throw BrokenLeg::toss($this, BrokenLeg::ACT_DB_CONNECTION_FAILED);
 				
 			$dbConfig = $this->getProp('Config');
 			foreach ((array)$v->config_settings as $theConfigName => $theConfigValue) {
@@ -613,7 +613,7 @@ class BitsInstall extends BaseActor {
 				}
 			}
 			else {
-				throw BrokenLeg::toss($this, 'FORBIDDEN');
+				throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
 			}
 		} catch (BrokenLeg $bl) {
 			//API calls need to eat the exception and give a sane HTTP Response

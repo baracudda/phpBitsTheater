@@ -26,11 +26,12 @@ interface IDirected {
 	public function getDirector();
 	
 	/**
-	 * Determine if the current logged in user has a permission.
+	 * Determine if the current logged in user or guest has a permission.
 	 * @param string $aNamespace - namespace of the permission to check.
 	 * @param string $aPermission - permission name to check.
 	 * @param array|NULL $acctInfo - (optional) check specified account instead of
-	 * currently logged in user.
+	 *     currently logged in user.
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 */
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null);
 
@@ -39,6 +40,28 @@ interface IDirected {
 	 * @return boolean Returns TRUE if no user is logged in.
 	 */
 	public function isGuest();
+	
+	/**
+	 * Determine if the current logged in user or guest has a permission.
+	 * @param string $aNamespace - namespace of the permission to check.
+	 * @param string $aPermission - permission name to check.
+	 * @param array|NULL $acctInfo - (optional) check specified account instead of
+	 *     currently logged in user.
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
+	 * @throws BrokenLeg 403 if not allowed and logged in or 401 if not allowed and guest.
+	 */
+	public function checkAllowed($aNamespace, $aPermission, $acctInfo=null);
+	
+	/**
+	 * Determine if the current logged in user or guest has a permission.
+	 * @param string $aNamespace - namespace of the permission to check.
+	 * @param string $aPermission - permission name to check.
+	 * @param array|NULL $acctInfo - (optional) check specified account instead of
+	 *     currently logged in user.
+	 * @return $this Returns $this for chaining purposes.
+	 * @throws BrokenLeg 403 if not allowed and logged in or 401 if not allowed and guest.
+	 */
+	public function checkPermission($aNamespace, $aPermission, $acctInfo=null);
 	
 	/**
 	 * Return a Model object, creating it if necessary.

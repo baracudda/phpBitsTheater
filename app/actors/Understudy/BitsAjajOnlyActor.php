@@ -17,6 +17,7 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
+use BitsTheater\BrokenLeg;
 use com\blackmoonit\exceptions\FourOhFourExit;
 use com\blackmoonit\Strings;
 {//namespace begin
@@ -30,7 +31,7 @@ class BitsAjajOnlyActor extends BaseActor {
 	public function usherAudienceToSeat($aAction) {
 		$theResult = parent::usherAudienceToSeat($aAction);
 		if ($theResult && !$this->usherCheckCsrfProtection($aAction))
-			throw BrokenLeg::toss($this, 'FORBIDDEN');
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
 		return $theResult;
 	}
 	
