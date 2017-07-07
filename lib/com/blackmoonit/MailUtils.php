@@ -1,24 +1,24 @@
 <?php
 /*
  * Copyright (C) 2015 Blackmoon Info Tech Services
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 namespace com\blackmoonit ;
 //require_once( 'PHPMailerAutoload.php' ) ; // for outgoing mail features
-use com\blackmoonit\BrokenLeg ;
-use com\blackmoonit\Strings ;
+// ^^^ will be done via Regisseur::registerLibLoaders()
+use PHPMailer;
 {//begin namespace
 
 /**
@@ -29,8 +29,8 @@ use com\blackmoonit\Strings ;
 class MailUtils
 {
 	private function __construct() {} // static invocation only
-
-	/** 
+	
+	/**
 	 * PCRE regex pattern to recognize an email address. This is actually a
 	 * narrowing of http://tools.ietf.org/html/rfc5322#section-3.4 which limits
 	 * the final segment to one of the recognized ICANN top-level domains and/or
@@ -57,72 +57,56 @@ class MailUtils
 	 * @param array $aConfigArray an array of settings
 	 * @return array an array containing only the mailer config settings
 	 */
-	static protected function validateMailerConfig( &$aConfigArray )
+	static protected function validateMailerConfig( $aConfigArray )
 	{
 		$theValidated = array() ;
 		foreach( self::$REQUIRED_CONFIGS as $theSetting )
 		{
-			if( configInArray( $aConfigArray, $theSetting ) )
+			if( ! empty( $aConfigArray[$theSetting] ) )
 				$theValidated[$theSetting] = $aConfigArray[$theSetting] ;
-			else
-				throw MailUtilsException::exceptMissingConfig( $theSetting ) ;
+				else
+					throw MailUtilsException::exceptMissingConfig( $theSetting ) ;
 		}
 		foreach( self::$OPTIONAL_CONFIGS as $theSetting => $theDefault )
 		{
-			if( self::configInArray( $aConfigArray, $theSetting ) )
+			if( ! empty( $aConfigArray[$theSetting] ) )
 				$theValidated[$theSetting] = $aConfigArray[$theSetting] ;
-			else
-				$theValidated[$theSetting] = $theDefault ;
+				else
+					$theValidated[$theSetting] = $theDefault ;
 		}
 		return $theValidated ;
-	}
-
-	/** Consumed by validateMailerConfig() */
-	private static function configInArray( &$aConfigArray, $aSetting )
-	{
-		return( array_key_exists( $aSetting, $aConfigArray )
-				&& isset( $aConfigArray[$aSetting] )
-				&& ! empty( $aConfigArray[$aSetting] ) ) ;
 	}
 	
 	/**
 	 * Converts a config settings object into an array for internal use.
 	 * @param object $aConfigObject an object containing fields "host", "port",
-	 *  "user", and "pwd". 
+	 *   "user", and "pwd".
 	 * @return array a config settings array
 	 */
-	static protected function objectToArray( &$aConfigObject )
+	static protected function objectToArray( $aConfigObject )
 	{
 		$theConfigArray = array() ;
 		foreach( self::$REQUIRED_CONFIGS as $theSetting )
 		{
-			if( self::configInObject( $aConfigObject, $theSetting ) )
+			if( ! empty( $aConfigObject->$theSetting ) )
 				$theConfigArray[$theSetting] = $aConfigObject->$theSetting ;
-			else
-				throw MailUtilsException::exceptMissingConfig( $theSetting ) ;
+				else
+					throw MailUtilsException::exceptMissingConfig( $theSetting ) ;
 		}
 		foreach( self::$OPTIONAL_CONFIGS as $theSetting => $theDefault )
 		{
-			if( self::configInObject( $aConfigObject, $theSetting ) )
+			if( ! empty( $aConfigObject->$theSetting ) )
 				$theConfigArray[$theSetting] = $aConfigObject->$theSetting ;
-			else
-				$theConfigArray[$theSetting] = $theDefault ;
+				else
+					$theConfigArray[$theSetting] = $theDefault ;
 		}
 		return $theConfigArray ;
-	}
-	
-	/** Consumed by objectToArray() */
-	private static function configInObject( &$aConfigObject, $aSetting )
-	{
-		return( property_exists( $aConfigObject, $aSetting )
-				&& isset( $aConfigObject->$aSetting )
-				&& ! empty( $aConfigObject->aSetting ) ) ;
 	}
 	
 	/**
 	 * Extracts config settings from a BitsTheater config array in which the
 	 * elements are addressed at the specified config setting path.
-	 * @param ArrayAccess $aBitsConfig a BitsTheater config
+	 * @param array $aBitsConfig a BitsTheater config
 	 * @param string $aPath a path to the email settings
 	 * @return array a config settings array
 	 */
@@ -134,26 +118,26 @@ class MailUtils
 			$theConfigPath = $aPath . '/' . $theSetting ;
 			if( self::canAssignFromBitsConfig( $aBitsConfig, $theConfigPath ) )
 				$theConfigArray[$theSetting] = $aBitsConfig[$theConfigPath] ;
-			else
-				throw MailUtilsException::exceptMissingConfig($theSetting) ;
+				else
+					throw MailUtilsException::exceptMissingConfig($theSetting) ;
 		}
 		foreach( self::$OPTIONAL_CONFIGS as $theSetting => $theDefault )
 		{
 			$theConfigPath = $aPath . '/' . $theSetting ;
 			if( self::canAssignFromBitsConfig( $aBitsConfig, $theConfigPath ) )
 				$theConfigArray[$theSetting] = $aBitsConfig[$theConfigPath] ;
-			else
-				$theConfigArray[$theSetting] = $theDefault ;
+				else
+					$theConfigArray[$theSetting] = $theDefault ;
 		}
 		return $theConfigArray ;
 	}
 	
 	/** Consumed by bitsConfigToArray() */
-	private static function canAssignFromBitsConfig($aBitsConfig,$aSettingPath)
+	private static function canAssignFromBitsConfig($aBitsConfig, $aSettingPath)
 	{
 		$theValue = null ;
 		try { $theValue = $aBitsConfig[$aSettingPath] ; }
-		catch( Exception $x ) { return false ; }
+		catch( \Exception $x ) { return false ; }
 		
 		return( isset($theValue) && !empty($theValue) ) ;
 	}
@@ -162,11 +146,11 @@ class MailUtils
 	 * Returns a PHP mailer object to the public method that asked for it.
 	 * @param array $aValidatedArray a validated array of config settings, which
 	 *  has been processed by either validateMailerConfig() or objectToArray().
-	 * @return object a PHPMailer object
+	 * @return PHPMailer Returns the newly constructed and initialized object.
 	 */
-	static protected function buildMailer( &$aValidatedArray )
+	static protected function buildMailer( $aValidatedArray )
 	{
-		$theMailer = new \PHPMailer ;
+		$theMailer = new PHPMailer ;
 		$theMailer->isSMTP() ;
 		$theMailer->SMTPDebug = 0 ;
 		$theMailer->SMTPAuth = true ;
@@ -180,39 +164,39 @@ class MailUtils
 	
 	/**
 	 * Builds and returns a PHPMailer object using the host, port, user, and
-	 * password settings passed in from the specified array. 
+	 * password settings passed in from the specified array.
 	 * @param array $aConfigArray an associative array containing the settings
-	 *  "host", "port", "user", and "pwd".
-	 * @return object a PHPMailer object, or null if it can't be configured
+	 *   "host", "port", "user", and "pwd".
+	 * @return PHPMailer|null Returns NULL if PHPMailer cannot be configured.
 	 */
-	static public function buildMailerFromArray( &$aConfigArray )
+	static public function buildMailerFromArray( $aConfigArray )
 	{
 		$theConfigArray = self::validateMailerConfig($aConfigArray) ;
-		return self::buildMailer($aConfigArray) ;
+		return self::buildMailer($theConfigArray) ;
 	}
 	
 	/**
 	 * Builds and returns a PHPMailer object using the host, port, user, and
 	 * password settings passed in from the specified object.
-	 * @param unknown $aConfigObject an object containing the fields "host",
-	 *  "port", "user", and "pwd".
-	 * @return object a PHPMailer object, or null if it can't be configured
+	 * @param object $aConfigObject - an object containing the fields "host",
+	 *   "port", "user", and "pwd".
+	 * @return PHPMailer|null Returns NULL if PHPMailer cannot be configured.
 	 */
-	static public function buildMailerFromObject( &$aConfigObject )
+	static public function buildMailerFromObject( $aConfigObject )
 	{
 		$theConfigArray = self::objectToArray($aConfigObject) ;
 		return self::buildMailer($theConfigArray) ;
 	}
 	
 	/**
-	 * Because of the wacky way that IDs are programmatically generated as paths
+	 * Because of the way that IDs are programmatically generated as paths
 	 * in BitsTheater config settings, this function is specially designed to
 	 * extract those settings from a particular config group.
-	 * @param ArrayAccess $aBitsConfig the configuration
-	 *  settings; this is the whole array for the whole app, not just a section
-	 * @param unknown $aPath the path to be prepended to the name of every
-	 *  email host configuration setting
-	 * @return object a PHPMailer object, or null if it can't be configured
+	 * @param array $aBitsConfig the configuration
+	 *   settings; this is the whole array for the whole app, not just a section
+	 * @param string $aPath the path to be prepended to the name of every
+	 *   email host configuration setting
+	 * @return PHPMailer|null Returns NULL if PHPMailer cannot be configured.
 	 */
 	static public function buildMailerFromBitsConfig( $aBitsConfig, $aPath )
 	{
@@ -230,8 +214,8 @@ class MailUtilsException extends \Exception
 	{
 		$theMessage = 'Mailer was not given the required setting ['
 				. $aSetting . '].'
-				;
-		return new MailUtilsException( $theMessage, self::ERR_MISSING_SETTING );
+						;
+						return new MailUtilsException( $theMessage, self::ERR_MISSING_SETTING );
 	}
 } // end MailUtilsException class
 
