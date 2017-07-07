@@ -55,12 +55,12 @@ class Regisseur
 	const DEFAULT_CLI_SHORT_OPTIONS = 'u:p:h:';
 	/**
 	 * If running under CLI, default long options to check for:<pre>
-	 * --host"host.name.com"  forces which folder under `[site]/configs` to use
+	 * --host "host.name.com" forces which folder under `[site]/configs` to use
 	 * </pre>
 	 * @var string[]
 	 * @const
 	 */
-	static public $DEFAULT_CLI_LONG_OPTIONS = array('host');
+	static public $DEFAULT_CLI_LONG_OPTIONS = array('host:');
 	
 	
 	/**
