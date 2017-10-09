@@ -36,7 +36,7 @@ SetEnvIf x-forwarded-proto https HTTPS=on
 	RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 	RewriteCond %{REQUEST_FILENAME} !-f
 	RewriteCond %{REQUEST_FILENAME} !-d
-	RewriteRule ^(.*)$ index.php?url=$1 [PT,QSA,L]	
+	RewriteRule ^(.*)$ index.php?url=$1 [B,PT,QSA,L]	
 </IfModule>
 
 #Please consider moving the contents of this file into 
