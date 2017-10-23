@@ -205,6 +205,12 @@ implements IDirected
 					return $this->db->query($aSql);
 				} else {
 					$thePdoStatement = $this->bindParamValues($aSql,$aParamValues,$aParamTypes);
+					if ( ! $thePdoStatement instanceof PDOStatement ) {
+						$this->errorLog(__METHOD__ . ' Bad query: SQL=' . $aSql
+								. ' params=' . $this->debugStr($aParamValues)
+								);
+						$this->errorLog((new \Exception)->getTraceAsString());
+					}
 					$thePdoStatement->execute();
 					return $thePdoStatement;
 				}
