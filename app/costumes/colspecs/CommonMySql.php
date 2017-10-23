@@ -44,7 +44,15 @@ use com\blackmoonit\Strings;
 		 */
 		const TYPE_BOOLEAN_1 = 'TINYINT(1) NOT NULL DEFAULT 1' ;
 
+		/**
+		 * SQL text for programmatically limited/enumerated string values.
+		 * @param integer $aCharLength - the string length of the column.
+		 * @return string Returns the SQL used for Char(x) with ASCII binary sorting.
+		 */
+		static public function TYPE_ASCII_CHAR( $aCharLength )
+		{ return 'CHAR(' . $aCharLength . ') CHARACTER SET ascii COLLATE ascii_bin'; }
 
+		
 		/**
 		 * Dummy time to use for non-null timestamp columns.
 		 * @var string
@@ -253,6 +261,45 @@ use com\blackmoonit\Strings;
 			return $sqlTimestamp;
 		}
 
+		/**
+		 * The SQL, when executed, results in rows with useful columns like
+		 *   'Non_unique' (0/1), 'Key_name' (index name),
+		 *   'Seq_in_index' (col order), 'Column_name', and 'Null' ('YES'/'NO')
+		 * @param string $aTableName - the table name (database prefix is optional).
+		 * @param string $aFieldName - the field (column) name.
+		 * @return string Returns the SQL necessary to get the index
+		 *   definition record(s).
+		 */
+		static public function getFieldIndexesSql($aTableName, $aFieldName)
+		{
+			/* Another possibility, but SHOW KEYS is easier to work with.
+			SELECT * FROM information_schema.statistics
+			WHERE table_schema = [DATABASE NAME]
+			AND table_name = [TABLE NAME] AND column_name = [COLUMN NAME]
+			*/
+			$theSql = 'SHOW KEYS FROM ' . $aTableName;
+			$theSql += " WHERE Column_name='" . $aFieldName. "'";
+			return $theSql;
+		}
+		
+		/**
+		 * The SQL, when executed, results in rows with useful columns like
+		 *   'Non_unique' (0/1), 'Key_name' (index name),
+		 *   'Seq_in_index' (col order), 'Column_name', and 'Null' ('YES'/'NO')
+		 * @param string $aTableName - the table name (database prefix is optional).
+		 * @param string $aIndexName - (optional) the index name,
+		 *   NULL for all of them (default)
+		 * @return string Returns the SQL necessary to get the index
+		 *   definition record(s).
+		 */
+		static public function getIndexDefinitionSql($aTableName, $aIndexName=null)
+		{
+			$theSql = 'SHOW KEYS FROM ' . $aTableName;
+			if ( !empty($aIndexName) )
+				$theSql .= " WHERE Key_name='" . $aIndexName. "'";
+			return $theSql;
+		}
+		
 	}//end class
 
 }//end namespace
