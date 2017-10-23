@@ -792,6 +792,41 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 
+	/**
+	 * Returns a dictionary of all permission groups IDs and names.
+	 * @param $bIncludeSystemGroups boolean indicates whether to include the
+	 *   "unregistered" and "titan" groups that are defined by default when the
+	 *   system is installed
+	 * @param string[]|string $aFieldList - (optional) which fields to return,
+	 *   the default is all of them.
+	 * @param bool[] $aSortList - (optional) how to sort the data, use array
+	 *   format of <code>array[fieldname => ascending=true]</code>.
+	 * @throws DbException if an error happens in the query itself
+	 */
+	public function getListForPicker( $bIncludeSystemGroups=false,
+			$aFieldList=null, $aSortList=null )
+	{
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('SELECT')->addFieldList($aFieldList)
+			->add('FROM')->add($this->tnGroups)
+		;
+		if ( !$bIncludeSystemGroups ) {
+			$theSql->startWhereClause();
+			$theSql->setParamOperator( '<>' );
+			$theSql->addFieldAndParam( 'group_id', 'unreg_group_id',
+					self::UNREG_GROUP_ID, PDO::PARAM_INT );
+			$theSql->setParamPrefix( ' AND ' );
+			$theSql->addFieldAndParam( 'group_id', 'titan_group_id',
+					self::TITAN_GROUP_ID, PDO::PARAM_INT );
+			$theSql->endWhereClause();
+		}
+		$theSql->applyOrderByList( $aSortList ) ;
+		//$theSql->logSqlDebug(__METHOD__);
+		try { return $theSql->query() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
+	}
+	
 }//end class
 
 }//end namespace
