@@ -87,6 +87,25 @@ trait WornForSqlSanitize
 		return array_intersect( $this->getDefinedFields() , $aFieldList ) ;
 	}
 	
+	/**
+	 * Check for what fields to return by API request, allowing for default if
+	 * not supplied.
+	 * @param array $aDefaultFieldList - (optional) a default field list.
+	 * @return NULL|string[] Returns the array of fields to select.
+	 */
+	public function getRequestedFieldList( $aDefaultFieldList=null )
+	{
+		$theFieldList = null;
+		if (!empty($this->field_list))
+			$theFieldList = $this->getSanitizedFieldList( $this->field_list );
+		if (empty($theFieldList))
+			$theFieldList = $this->getSanitizedFieldList( $aDefaultFieldList );
+		//if we are still at a loss for fields, just return NULL
+		if (empty($theFieldList))
+			$theFieldList = null;
+		return $theFieldList;
+	}
+	
 }//end trait
 
 }//end namespace
