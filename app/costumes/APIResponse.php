@@ -40,14 +40,19 @@ class APIResponse extends BaseCostume {
 	 * Everything went OK, respond with data attached to the standard
 	 * API response object.
 	 * @param unknown $aData - the data to return.
+	 * @param integer $aRespCode (optional) an HTTP response code to be set; if
+	 *  omitted, then the current response code will be retained
 	 * @return \BitsTheater\costumes\APIResponse Returns the created
 	 * object with the data attached to it appropriately.
 	 */
-	static public function resultsWithData($aData) {
-		$theClassName = get_called_class();
-		$o = new $theClassName();
-		$o->data = $aData;
-		return $o;
+	static public function resultsWithData( $aData, $aRespCode=null )
+	{
+		$theClassName = get_called_class() ;
+		$o = new $theClassName() ;
+		$o->data = $aData ;
+		if( ! empty( $aRespCode ) )
+			http_response_code( intval($aRespCode) ) ;
+		return $o ;
 	}
 	
 	/**
