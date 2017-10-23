@@ -715,7 +715,6 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 * @param $bIncludeSystemGroups boolean indicates whether to include the
 	 *  "unregistered" and "titan" groups that are defined by default when the
 	 *  system is installed
-	 * @throws BrokenLeg if a DB connection can't be established
 	 * @throws DbException if an error happens in the query itself
 	 */
 	public function getAllGroups( $bIncludeSystemGroups=false )
