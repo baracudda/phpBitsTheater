@@ -64,15 +64,15 @@ class MailUtils
 		{
 			if( ! empty( $aConfigArray[$theSetting] ) )
 				$theValidated[$theSetting] = $aConfigArray[$theSetting] ;
-				else
-					throw MailUtilsException::exceptMissingConfig( $theSetting ) ;
+			else
+				throw MailUtilsException::exceptMissingConfig( $theSetting ) ;
 		}
 		foreach( self::$OPTIONAL_CONFIGS as $theSetting => $theDefault )
 		{
 			if( ! empty( $aConfigArray[$theSetting] ) )
 				$theValidated[$theSetting] = $aConfigArray[$theSetting] ;
-				else
-					$theValidated[$theSetting] = $theDefault ;
+			else
+				$theValidated[$theSetting] = $theDefault ;
 		}
 		return $theValidated ;
 	}
@@ -90,15 +90,15 @@ class MailUtils
 		{
 			if( ! empty( $aConfigObject->$theSetting ) )
 				$theConfigArray[$theSetting] = $aConfigObject->$theSetting ;
-				else
-					throw MailUtilsException::exceptMissingConfig( $theSetting ) ;
+			else
+				throw MailUtilsException::exceptMissingConfig( $theSetting ) ;
 		}
 		foreach( self::$OPTIONAL_CONFIGS as $theSetting => $theDefault )
 		{
 			if( ! empty( $aConfigObject->$theSetting ) )
 				$theConfigArray[$theSetting] = $aConfigObject->$theSetting ;
-				else
-					$theConfigArray[$theSetting] = $theDefault ;
+			else
+				$theConfigArray[$theSetting] = $theDefault ;
 		}
 		return $theConfigArray ;
 	}
@@ -106,7 +106,7 @@ class MailUtils
 	/**
 	 * Extracts config settings from a BitsTheater config array in which the
 	 * elements are addressed at the specified config setting path.
-	 * @param array $aBitsConfig a BitsTheater config
+	 * @param ArrayAccess $aBitsConfig a BitsTheater config
 	 * @param string $aPath a path to the email settings
 	 * @return array a config settings array
 	 */
@@ -118,16 +118,16 @@ class MailUtils
 			$theConfigPath = $aPath . '/' . $theSetting ;
 			if( self::canAssignFromBitsConfig( $aBitsConfig, $theConfigPath ) )
 				$theConfigArray[$theSetting] = $aBitsConfig[$theConfigPath] ;
-				else
-					throw MailUtilsException::exceptMissingConfig($theSetting) ;
+			else
+				throw MailUtilsException::exceptMissingConfig($theSetting) ;
 		}
 		foreach( self::$OPTIONAL_CONFIGS as $theSetting => $theDefault )
 		{
 			$theConfigPath = $aPath . '/' . $theSetting ;
 			if( self::canAssignFromBitsConfig( $aBitsConfig, $theConfigPath ) )
 				$theConfigArray[$theSetting] = $aBitsConfig[$theConfigPath] ;
-				else
-					$theConfigArray[$theSetting] = $theDefault ;
+			else
+				$theConfigArray[$theSetting] = $theDefault ;
 		}
 		return $theConfigArray ;
 	}
@@ -192,7 +192,7 @@ class MailUtils
 	 * Because of the way that IDs are programmatically generated as paths
 	 * in BitsTheater config settings, this function is specially designed to
 	 * extract those settings from a particular config group.
-	 * @param array $aBitsConfig the configuration
+	 * @param ArrayAccess $aBitsConfig the configuration
 	 *   settings; this is the whole array for the whole app, not just a section
 	 * @param string $aPath the path to be prepended to the name of every
 	 *   email host configuration setting
@@ -214,8 +214,8 @@ class MailUtilsException extends \Exception
 	{
 		$theMessage = 'Mailer was not given the required setting ['
 				. $aSetting . '].'
-						;
-						return new MailUtilsException( $theMessage, self::ERR_MISSING_SETTING );
+				;
+		return new MailUtilsException( $theMessage, self::ERR_MISSING_SETTING );
 	}
 } // end MailUtilsException class
 
