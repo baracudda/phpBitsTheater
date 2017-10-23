@@ -16,7 +16,7 @@
  */
 namespace BitsTheater\costumes\colspecs ;
 use BitsTheater\costumes\ABitsCostume as BaseCostume ;
-use BitsTheater\Director ;
+use BitsTheater\costumes\IDirected ;
 use com\blackmoonit\FinallyBlock ;
 use Exception ;
 use PDO ;
@@ -107,11 +107,11 @@ class IteratedSet extends BaseCostume
 
 	/**
 	 * Costume classes know about the Director.
-	 * @param Director $aDirector - site director object
+	 * @param IDirected $aContext - used to get the Director object.
 	 */
-	public function setup(Director $aDirector) {
+	public function setup(IDirected $aContext) {
 		$this->mItemClass = static::DEFAULT_ITEM_CLASS;
-		parent::setup($aDirector);
+		parent::setup($aContext);
 	}
 
 	/**
@@ -160,10 +160,10 @@ class IteratedSet extends BaseCostume
 
 	/**
 	 * Creates an iterated set based on an already-obtained PDOStatement.
-	 * @param Director $aContext the context in which to create the object
+	 * @param IDirected $aContext the context in which to create the object
 	 * @return \BitsTheater\costumes\colspecs\IteratedSet an instance
 	 */
-	public static function create( Director $aContext )
+	public static function create( IDirected $aContext )
 	{
 		$theClassName = get_called_class() ;
 		return new $theClassName($aContext) ;
