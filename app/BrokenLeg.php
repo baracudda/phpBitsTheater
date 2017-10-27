@@ -240,6 +240,13 @@ class BrokenLeg extends \Exception
 	/** Stores the original condition code that was passed into toss(). */
 	protected $myCondition ;
 	
+	/**
+	 * Stores any additional data that should be returned with the exception.
+	 * @var NULL|object
+	 * @since phpBitsTheater 3.8.2
+	 */
+	protected $myExtras = null ;
+
 	/** Accessor for the condition token. */
 	public function getCondition()
 	{ return $this->myCondition ; }
@@ -268,6 +275,48 @@ class BrokenLeg extends \Exception
 	{ return $this->code ; }
 
 	/**
+	 * Writes an "extra" property into the exception, which will be returned as
+	 * part of a <code>data</code> property.
+	 * @param string $aKey the data key
+	 * @param unknown $aValue the data value
+	 * @return \BitsTheater\BrokenLeg $this
+	 * @since phpBitsTheater 3.8.2
+	 */
+	public function putExtra( $aKey, $aValue )
+	{
+		if( $this->myExtras == null )
+			$this->myExtras = new \stdClass() ;
+		$this->myExtras->$aKey = $aValue ;
+		return $this ;
+	}
+	
+	/**
+	 * Writes a set of "extra" properties into the exception, which will be
+	 * returned as part of a <code>data</code> property.
+	 * @param array|object $aDataSet a dictionary of extra data &mdash; either
+	 *  as an associative array or an object
+	 * @return \BitsTheater\BrokenLeg $this
+	 */
+	public function putExtras( $aDataSet )
+	{
+		if( is_array($aDataSet) || is_object($aDataSet) )
+		{ // If we can iterate over its properties, then do so.
+			foreach( $aDataSet as $aKey => $aValue )
+				$this->putExtra( $aKey, $aValue ) ;
+		}
+		return $this ;
+	}
+	
+	/**
+	 * Used to protect special string values, like URIs, from the URI resolution
+	 * algorithm in IDirected::getRes().
+	 * @var string
+	 * @see BrokenLeg::getMessageFromResource()
+	 * @since phpBitsTheater 3.8.2
+	 */
+	const SLASH_REPLACEMENT = '|SLASH|' ;
+
+	/**
 	 * Retrives the resourced message substituting extra data where appropriate.
 	 * @param IDirected $aContext some BitsTheater object that can provide context
 	 *  for the website, so that text resources can be retrieved; this can be an
@@ -282,10 +331,21 @@ class BrokenLeg extends \Exception
 	{
 		$theResource = $aMessageResource;
 		if (is_string($aResourceData))
-			$theResource .= '/' . $aResourceData ;
+		{
+			$theResource .= '/'
+					. str_replace('/', self::SLASH_REPLACEMENT, $aResourceData);
+		}
 		else if (is_array($aResourceData))
-			$theResource .= '/' . implode('/', $aResourceData);
-		return $aContext->getRes( $theResource ) ;
+		{
+			$theResource .= '/' . implode('/', array_map(
+					function($value)
+					{
+						return str_replace('/', self::SLASH_REPLACEMENT, $value) ;
+					}, $aResourceData)
+			);
+		}
+		return str_replace( self::SLASH_REPLACEMENT, '/',
+					$aContext->getRes( $theResource ) ) ;
 	}
 	
 	/**
@@ -309,7 +369,11 @@ class BrokenLeg extends \Exception
 					$aContext->results = new APIResponse() ;
 
 				if( $aContext->results instanceof APIResponse )
+				{
 					$aContext->results->setError( $this ) ;
+					if ( !empty($this->data) && empty($aContext->results->data) )
+						$aContext->results->data = $this->data;
+				}
 				else if( is_object( $aContext->results ) )
 					$aContext->results->error = $theResults ;
 				else if( is_array( $aContext->results ) )
@@ -375,6 +439,8 @@ class BrokenLeg extends \Exception
 		$theError = new \stdClass() ;
 		$theError->cause = $this->myCondition ;
 		$theError->message = $this->message ;
+		if( ! empty($this->myExtras) )
+			$theError->data = $this->myExtras ;
 		return $theError ;
 	}
 

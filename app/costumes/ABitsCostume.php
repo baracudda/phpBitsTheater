@@ -44,10 +44,10 @@ implements IDirected
 	
 	/**
 	 * Costume classes know about the Director.
-	 * @param Director $aDirector - site director object
+	 * @param IDirected $aContext - context used to get the Director object
 	 */
-	public function setup(Director $aDirector) {
-		$this->_director = $aDirector;
+	public function setup(IDirected $aContext) {
+		$this->setDirector($aContext->getDirector());
 		$this->bHasBeenSetup = true;
 	}
 	
@@ -183,13 +183,13 @@ implements IDirected
 	 * is called from (MyClass::fromArray() makes a MyClass
 	 * instance) and sets its properties to the values of the
 	 * array param.
-	 * @param Director $aDirector - site director object
+	 * @param IDirected $aContext - used to get Director object.
 	 * @param array $anArray - associative array of data
 	 * @return ABitsCostume Returns the new instance.
 	 */
-	static public function fromArray(Director $aDirector, $anArray) {
+	static public function fromArray(IDirected $aContext, $anArray) {
 		$theClassName = get_called_class();
-		$o = new $theClassName($aDirector);
+		$o = new $theClassName($aContext);
 		return $o->setDataFrom($anArray);
 	}
 	
@@ -198,13 +198,13 @@ implements IDirected
 	 * is called from (MyClass::fromObj() makes a MyClass
 	 * instance) and sets its properties to the values of the
 	 * object param.
-	 * @param Director $aDirector - site director object
+	 * @param IDirected $aContext - used to get the Director object.
 	 * @param object $anObj - object to copy data from.
 	 * @return ABitsCostume Returns the new instance.
 	 */
-	static public function fromObj(Director $aDirector, $anObj) {
+	static public function fromObj(IDirected $aContext, $anObj) {
 		$theClassName = get_called_class();
-		$o = new $theClassName($aDirector);
+		$o = new $theClassName($aContext);
 		return $o->setDataFrom($anObj);
 	}
 	
@@ -213,12 +213,12 @@ implements IDirected
 	 * is called from (MyClass::fromJson() makes a MyClass
 	 * instance) and sets its properties to the values of the
 	 * JSON param.
-	 * @param Director $aDirector - site director object
+	 * @param IDirected $aContext - used to get the Director object.
 	 * @param string $asJson - JSON encoded string
 	 * @return ABitsCostume Returns the new instance.
 	 */
-	static public function fromJson(Director $aDirector, &$asJson) {
-		$o = self::fromArray($aDirector, json_decode($asJson,true));
+	static public function fromJson(IDirected $aContext, &$asJson) {
+		$o = self::fromArray($aContext, json_decode($asJson,true));
 		return $o;
 	}
 	
@@ -260,15 +260,28 @@ implements IDirected
 	
 	/**
 	 * Convert an instance of StdClass to this class.
-	 * @param Director $aDirector - site director object
+	 * @param IDirected $aContext - used to get the Director object.
 	 * @param StandardClass $aStdClass - the StdClass instance to convert from.
 	 * @return \BitsTheater\costumes\mixed Returns the converted class.
 	 */
-	static public function fromStdClass(Director $aDirector, StandardClass $aStdClass) {
-		//$aDirector->debugLog('costume stdcls: '.$aDirector->debugStr($aStdClass));
+	static public function fromStdClass(IDirected $aContext, StandardClass $aStdClass) {
+		//$aContext->debugLog('costume stdcls: '.$aContext->debugStr($aStdClass));
 		$o = self::cnvStdClassToXClass($aStdClass, get_called_class());
-		//$aDirector->debugLog('costume cls: '.$aDirector->debugStr($o));
-		$o->director = $aDirector;
+		//$aContext->debugLog('costume cls: '.$aContext->debugStr($o));
+		$o->director = $aContext->getDirector();
+		return $o;
+	}
+
+	/**
+	 * Construct a standard object with all data fields worth exporting defined.
+	 * @return object Returns a standard object with the properties to export defined.
+	 */
+	protected function constructExportObject()
+	{
+		$o = (object) call_user_func('get_object_vars', $this);
+		unset($o->myClassName);
+		unset($o->mySimpleClassName);
+		unset($o->myNamespaceName);
 		return $o;
 	}
 	

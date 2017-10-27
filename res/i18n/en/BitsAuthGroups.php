@@ -48,6 +48,10 @@ class BitsAuthGroups extends BaseResources {
 	public $placeholder_group_name = '    role name';
 	public $placeholder_reg_code = '    map-to-role phrase';
 
+	public $colheader_group_id = '#';
+	public $colheader_group_name = 'Name';
+	public $colheader_parent_group_id = 'Parent #';
+
 }//end class
 
 }//end namespace

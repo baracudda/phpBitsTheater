@@ -189,6 +189,28 @@ trait WornForFeatureVersioning
 		}
 	}
 	
+	/**
+	 * Return true/false if an index has been defined or not with a given name.
+	 * @param string $aTableName - the table name.
+	 * @param string $aIndexName - the index name.
+	 * @return boolean Returns TRUE if the index name exists.
+	 */
+	protected function isIndexDefined($aTableName, $aIndexName) {
+		$theSql = SqlBuilder::withModel($this);
+		switch( $this->dbType() )
+		{
+			case self::DB_TYPE_MYSQL:
+			default:
+				$theSql->startWith(CommonMySql::getIndexDefinitionSql(
+						$aTableName, $aIndexName
+				));
+		}
+		//$theSql->logSqlDebug(__METHOD__);
+		$ps = $theSql->query();
+		//$this->debugLog($ps->rowCount());
+		return ($ps->rowCount()>0);
+	}
+	
 } // end trait
 
 } // end namespace

@@ -17,6 +17,7 @@
 
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\colspecs\IteratedSet as BaseCostume;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornByModel;
 use BitsTheater\Director;
@@ -82,13 +83,13 @@ abstract class ARecordList extends BaseCostume
 	
 	/**
 	 * Costume classes know about the Director.
-	 * @param Director $aDirector - site director object
+	 * @param IDirected $aContext - used to get the Director object.
 	 */
-	public function setup(Director $aDirector)
+	public function setup(IDirected $aContext)
 	{
-		$this->setModel( $aDirector->getProp( $this->getModelClassToUse() ) );
+		$this->setModel( $aContext->getProp( $this->getModelClassToUse() ) );
 		$this->mItemClassArgs = array( $this->getModel() );
-		parent::setup( $aDirector );
+		parent::setup( $aContext);
 	}
 	
 	/**

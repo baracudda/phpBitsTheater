@@ -4,7 +4,7 @@
 
 Copyright 2012 Blackmoon Info Tech Services
 
-Blackmoon Info Tech Serivces licenses these files to you under the Apache License,
+Blackmoon Info Tech Services licenses these files to you under the Apache License,
 version 2.0 (the "License"); you may not use these files except in compliance
 with the License. You may obtain a copy of the License at:
 

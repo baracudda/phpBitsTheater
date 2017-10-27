@@ -17,6 +17,7 @@
 
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\ARecordSet as BaseCostume;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\Director;
 {//namespace begin
 
@@ -68,11 +69,11 @@ class AuthAccountSet extends BaseCostume
 	
 	/**
 	 * Costume classes know about the Director.
-	 * @param Director $aDirector - site director object
+	 * @param IDirected $aContext - used to get the Director object.
 	 */
-	public function setup(Director $aDirector) {
-		parent::setup($aDirector);
-		$this->dbAuthGroups = $aDirector->getProp( 'AuthGroups' );
+	public function setup(IDirected $aContext) {
+		parent::setup($aContext);
+		$this->dbAuthGroups = $aContext->getProp( 'AuthGroups' );
 	}
 	
 	/**

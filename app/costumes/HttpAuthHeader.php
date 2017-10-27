@@ -17,6 +17,7 @@
 
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\WornForHttpAuthBasic;
 use BitsTheater\costumes\WornForHttpAuthBroadway;
 use BitsTheater\Director;
@@ -43,22 +44,22 @@ class HttpAuthHeader extends BaseCostume
 	
 	/**
 	 * Called during object construction.
-	 * @param Director $aDirector - site director object
+	 * @param IDirected $aContext - used to get the Director object.
 	 */
-	public function setup(Director $aDirector) {
-		parent::setup($aDirector);
+	public function setup(IDirected $aContext) {
+		parent::setup($aContext);
 		$this->setHttpAuthHeader($_SERVER['HTTP_AUTHORIZATION']);
 	}
 
 	/**
 	 * Construct a new object with an optional HTTP Auth parameter.
-	 * @param Director $aDirector - site director object.
+	 * @param IDirected $aContext - used to get the Director object.
 	 * @param string $aHttpAuthHeader - (optional) HTTP Auth header.
 	 * @return HttpAuthHeader Returns the newly constructed object.
 	 */
-	static public function fromHttpAuthHeader(Director $aDirector, $aHttpAuthHeader=null) {
+	static public function fromHttpAuthHeader(IDirected $aContext, $aHttpAuthHeader=null) {
 		$theClassName = get_called_class();
-		$o = new $theClassName($aDirector);
+		$o = new $theClassName($aContext);
 		return $o->setHttpAuthHeader($aHttpAuthHeader);
 	}
 

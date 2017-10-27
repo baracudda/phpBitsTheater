@@ -718,6 +718,24 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
+	 * Convenience method for checking if any of a set of permissions is allowed.
+	 * @param string[] $aPermList - array of "namespace/permission" strings to check.
+	 * @param array|NULL $acctInfo - (optional) check specified account instead of
+	 *     currently logged in user.
+	 * @return $this Returns $this for chaining purposes.
+	 * @throws BrokenLeg 403 if not allowed and logged in or 401 if not allowed and guest.
+	 */
+	public function checkIfAnyAllowed($aPermList, $aAcctInfo=null)
+	{
+		foreach ($aPermList as $thePerm) {
+			list($theNamespace, $thePermission) = explode('/', $thePerm, 2);
+			if ( $this->isAllowed($theNamespace, $thePermission, $aAcctInfo) )
+				return true;
+		}
+		throw BrokenLeg::toss( $this, BrokenLeg::ACT_PERMISSION_DENIED );
+	}
+	
+	/**
 	 * Rips up a user's ticket and unsets the account info cache.
 	 * @return string Returns the site URL.
 	 */

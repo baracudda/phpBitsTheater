@@ -28,6 +28,11 @@ use Exception;
 abstract class ABitsAccount extends BaseActor {
 	const DEFAULT_ACTION = 'view';
 	
+	/**
+	 * View the currently logged in account information. (page render)
+	 * @param number $aAcctId - the account to view, if allowed to see one besides the current.
+	 * @return string|null Returns a string if client is redirected to a new URL.
+	 */
 	public function view($aAcctId=null) {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -65,6 +70,10 @@ abstract class ABitsAccount extends BaseActor {
 		);
 	}
 	
+	/**
+	 * Web form based login endpoint.
+	 * @return string|null Returns a string if client is redirected to a new URL.
+	 */
 	public function login() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -84,6 +93,10 @@ abstract class ABitsAccount extends BaseActor {
 		$this->setCurrentMenuKey('account');
 	}
 	
+	/**
+	 * Disposes of any cached info about the currently logged in user for this session.
+	 * @return string|null Returns a string if client is redirected to a new URL.
+	 */
 	public function logout() {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
@@ -111,6 +124,7 @@ abstract class ABitsAccount extends BaseActor {
 	 * @return APIResponse Returns the same
 	 *   object as ajajGetAccountInfo().
 	 * @see ABitsAccount::ajajGetAccountInfo()
+	 * @return string|null Returns a string if client is redirected to a new URL.
 	 */
 	public function loginAs() {
 		return $this->ajajGetAccountInfo();
@@ -119,7 +133,8 @@ abstract class ABitsAccount extends BaseActor {
 	/**
 	 * If you are currently logged in, return the cached info about myself.
 	 * JavaScript code may need current login info, too.
-	 * @return APIResponse Returns the standard API response object with User info.
+	 * $this->scene->result is set as an APIResponse object with User info.
+	 * @return string|null Returns a string if client is redirected to a new URL.
 	 */
 	public function ajajGetAccountInfo()
 	{
@@ -160,6 +175,7 @@ abstract class ABitsAccount extends BaseActor {
 	 *  * 'FORBIDDEN' - if the requestor does not have appropriate rights
 	 *  * 'DB_CONNECTION_FAILED' - if can't connect to the DB
 	 * @since BitsTheater 3.6
+	 * @return string|null Returns a string if client is redirected to a new URL.
 	 */
 	public function ajajDelete( $aAccountID=null )
 	{
