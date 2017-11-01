@@ -1,0 +1,2 @@
+# Ignore the init script, allowing devs to change the paths locally.
+init-bits-env
