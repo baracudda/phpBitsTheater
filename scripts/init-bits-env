@@ -1,0 +1,9 @@
+#!/bin/bash
+# Initializes the environment variables used by the "push" script.
+# Edit this script locally with your own values, and un-comment the lines.
+# The script is added to the repository's .gitignore, so your changes won't
+# be pushed back to the server.
+
+# export BITS_LOCAL_PATH=/local/path/to/bitstheater/view/
+# export BITS_SSH_HOST_LOGIN=user@remotehost
+# export BITS_REMOTE_PATH=/remote/path/to/site/arena/
