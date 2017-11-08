@@ -81,6 +81,14 @@ class ARecord extends BaseCostume
 		return $this->exportFilter( $this->constructExportObject() );
 	}
 	
+	/**
+	 * Accessor for the export field list.
+	 * @return \BitsTheater\costumes\CursorCloset\string[]
+	 * @since BitsTheater 4.0.0
+	 */
+	public function getExportFieldList()
+	{ return $this->mExportTheseFields ; }
+	
 	
 }//end class
 
