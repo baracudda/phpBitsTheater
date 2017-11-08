@@ -859,13 +859,13 @@ implements ArrayAccess, IDirected
 		if (@file_put_contents($theFilename, $aMessage, FILE_APPEND | LOCK_EX)!==strlen($aMessage)) {
 			@mkdir(dirname($theFilename), 0777, true);
 			if (@file_put_contents($theFilename, $aMessage, FILE_APPEND | LOCK_EX)!==strlen($aMessage)) {
-				error_log(VIRTUAL_HOST_NAME . ": Failed to open file '{$theFilename}' for appending.");
+				$this->errorLog("Failed to open file [{$theFilename}] for appending.");
 			}
 		}
 	}
 	
 	/**
-	 * Deletes a log file. Will error_log() if specified file exists
+	 * Deletes a log file. Will errorLog() if specified file exists
 	 * but was unsuccessful in deletion attempt.
 	 * @param unknown $aCategory Filename of log file desired.
 	 */
@@ -880,7 +880,7 @@ implements ArrayAccess, IDirected
 			if (@file_exists($theFilename)) {
 				$result = @unlink($theFilename);
 				if ($result == false) {
-					error_log(VIRTUAL_HOST_NAME . ": Failed to delete file '{$theFilename}', unlink unsuccessful.");
+					$this->errorLog("Failed to delete file [{$theFilename}], unlink unsuccessful.");
 				}
 			}
 		}
