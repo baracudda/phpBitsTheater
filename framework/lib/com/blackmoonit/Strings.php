@@ -672,7 +672,7 @@ class Strings {
 		if( is_numeric($aSize) ) return $aSize ;     // numeric is already bytes
 		
 		$theSuffix = strtoupper(substr( $aSize, -1 )) ;
-		if( ! strpos( 'PTGMK', $theSuffix ) ) return -1 ;      // invalid suffix
+		if( ! strpos( 'YZEPTGMK', $theSuffix ) ) return -1 ;   // invalid suffix
 		
 		$theMantissa = substr( $aSize, 0, -1 ) ;
 		if( ! is_numeric($theMantissa) ) return -1 ;    // can't parse to number
@@ -681,6 +681,9 @@ class Strings {
 		
 		switch( $theSuffix )
 		{ // intentionally fall through orders of magnitude to multiply again
+			case 'Y' : $theValue *= 1024 ; // yottabytes
+			case 'Z' : $theValue *= 1024 ; // zettabyte
+			case 'E' : $theValue *= 1024 ; // exabyte
 			case 'P' : $theValue *= 1024 ; // petabytes
 			case 'T' : $theValue *= 1024 ; // terabytes
 			case 'G' : $theValue *= 1024 ; // gigabytes
@@ -691,6 +694,24 @@ class Strings {
 		}
 		
 		return $theValue ;
+	}
+	
+	/**
+	 * Converts absolute byte value into 1024 based 4.26G semantic size.
+	 * See http://stackoverflow.com/a/2510459/429728
+	 * @param number $aBytes - the byte size.
+	 * @param number $aPrecision - (optional) Precision to use, default is 2.
+	 * @return string Returns a short semantic size for bytes.
+	 * @since BitsTheater 4.0.0
+	 */
+	static public function bytesToSemanticSize( $aBytes, $aPrecision=2 )
+	{
+		$theUnits = 'kMGTPEZY';
+		$theBytes = max($aBytes, 0);
+		$pow = ($theBytes>0) ? floor( log($theBytes) / log(1024) ) : 0;
+		$pow = min($pow, strlen($theUnits) - 1);
+		$theBytes /= pow(1024, $pow);
+		return round($theBytes, $aPrecision) . ' ' . @$theUnits[$pow] . 'B';
 	}
 	
 	/**
