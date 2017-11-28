@@ -41,6 +41,11 @@ class FileUploadInfo extends BaseCostume {
 	 * @var string
 	 */
 	public $tmp_name;
+	/**
+	 * The file size, if known.
+	 * @var number
+	 */
+	public $size;
 	
 	/**
 	 * Check the error var for OK status or not.
