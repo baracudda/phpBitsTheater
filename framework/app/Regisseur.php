@@ -52,7 +52,7 @@ class Regisseur
 	 * </pre>
 	 * @var string
 	 */
-	const DEFAULT_CLI_SHORT_OPTIONS = 'u:p:h:';
+	const DEFAULT_CLI_SHORT_OPTIONS = 'u::p::h::';
 	/**
 	 * If running under CLI, default long options to check for:<pre>
 	 * --host "host.name.com" forces which folder under `[site]/configs` to use
@@ -60,7 +60,7 @@ class Regisseur
 	 * @var string[]
 	 * @const
 	 */
-	static public $DEFAULT_CLI_LONG_OPTIONS = array('host:');
+	static public $DEFAULT_CLI_LONG_OPTIONS = array('host::');
 	
 	
 	/**
@@ -116,7 +116,7 @@ class Regisseur
 		//only check for -h if we are using default CLI short options and --host was not found.
 		else if ( is_null($aShortOptions) && !empty($theOptions['h']) )
 			$_SERVER['SERVER_NAME'] = $theOptions['h'];
-						
+		
 		return $theOptions;
 	}
 	
@@ -229,10 +229,10 @@ class Regisseur
 		//Library URL that does not end in a /.
 		define('BITS_LIB',BITS_URL.'/lib');
 		//no need for app url as that is where all the urls normally get routed towards.
-			
+		
 		//Non-library JavaScript content for the website that does not end in a /.
 		define('WEBAPP_JS_URL', BITS_URL.'/app/js');
-			
+		
 		return $this;
 	}
 	
