@@ -16,6 +16,7 @@
 */
 
 namespace com\blackmoonit;
+use com\blackmoonit\FinallyBlock;
 {//begin namespace
 
 class FileUtils {
@@ -163,10 +164,73 @@ class FileUtils {
 	static public function isEmptyCSV( $aInput )
 	{
 		return( $aInput == null || empty($aInput) || $aInput === false
-		     || $aInput == array(null) ) ;
+			 || $aInput == array(null) ) ;
 	}
 	
+	/**
+	 * Get the size of a file, platform- and architecture-independant.
+	 * This function supports 32bit and 64bit architectures and works with large files > 2 GB.
+	 * The return value type depends on platform/architecture:
+	 *   (float) when PHP_INT_SIZE < 8 or (int) otherwise
+	 * @param resource $aFileStream - the file stream used to calculate the file size.
+	 * @return number|boolean Returns the file size on success (float|int) or FALSE
+	 *   on error (bool).
+	 * @link http://php.net/manual/en/function.filesize.php#115792
+	 */
+	static public function getFileSizeOfStream( $aFileStream )
+	{
+		if ( !is_resource($aFileStream) )
+		{ throw new \InvalidArgumentException( 'aFileStream is not a resource' ); }
+		//save off the current pointer position so we can reset it later
+		$theCurPos = ftell($aFileStream);
+		$theResult = false;
+		if ( PHP_INT_SIZE<8 )
+		{ // 32bit
+			if ( 0 === fseek($aFileStream, 0, SEEK_END) )
+			{
+				$theResult = 0.0;
+				$theStep = 0x7FFFFFFF; //max signed 32bit INT
+				while ( $theStep > 0 ) {
+					if ( 0 === fseek($aFileStream, -$theStep, SEEK_CUR) )
+					{ //success! add step's value to size
+						$theResult += floatval($theStep);
+					}
+					else
+					{ //failure! reduce step's size by half (shift will /2)
+						$theStep >>= 1;
+					}
+				}
+			}
+		}
+		else
+		{ //64bit
+			if ( 0 === fseek($aFileStream, 0, SEEK_END) )
+				$theResult = ftell($aFileStream);
+		}
+		if ( $theCurPos != ftell($aFileStream) )
+			fseek($aFileStream, 0, $theCurPos);
+		return $theResult;
+	}
 	
+	/**
+	 * Calculate the file size of the given file safely whether using 32/64 bit system.
+	 * @param string $aFilePath - the full path to the file.
+	 * @return number|boolean - a numeric value if successful, FALSE if not.
+	 * @see FileUtils::getFileSizeOfStream()
+	 */
+	static public function getFileSize( $aFilePath )
+	{
+		if ( empty($aFilePath) )
+			return 0;
+		$theFileStream = fopen( $aFilePath, 'r' );
+		if ( !empty($theFileStream) )
+		{
+			$theFinalEnclosure = new FinallyBlock(function($aStream) {
+				fclose( $aStream );
+			}, $theFileStream);
+			return self::getFileSizeOfStream( $theFileStream );
+		}
+	}
 	
 }//end class FileUtils
 
