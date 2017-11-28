@@ -40,7 +40,7 @@ class AdamEve extends BaseClass {
 	static public $lastClassLoaded1 = null;
 	static public $lastClassLoaded2 = null;
 	static public $lastClassLoaded3 = null;
-
+	
 	/**
 	 * Constructor that will call __construct%numargs%(...) if any are passed in.
 	 * If the number of args matches _SetupArgCount, then $this->setup(%args%) is called instead.
@@ -179,6 +179,32 @@ class AdamEve extends BaseClass {
 		return is_callable(array($this,$aMethodName));
 	}
 
+	/**
+	 * Send string out to the debug log (or std log as [dbg]).
+	 * Accepts any number of parameters and will convert all non-strings with debugStr().
+	 */
+	public function logStuff( $_ ) {
+		$theLogLine = '';
+		foreach (func_get_args() as $arg)
+		{
+			$theLogLine .= ( is_string($arg) ) ? $arg : $this->debugStr($arg);
+		}
+		$this->debugLog( $theLogLine );
+	}
+	
+	/**
+	 * Send string out to the debug log (or std log as [dbg]).
+	 * Accepts any number of parameters and will convert all non-strings with debugStr().
+	 */
+	public function logErrors( $_ ) {
+		$theLogLine = '';
+		foreach (func_get_args() as $arg)
+		{
+			$theLogLine .= ( is_string($arg) ) ? $arg : $this->debugStr($arg);
+		}
+		$this->errorLog( $theLogLine );
+	}
+	
 	/**
 	 * IDE helper function, Code-Complete will display defined functions even for decendants.
 	 * TEMPLATE FOR YOUR OWN CLASSES/FILES, KIND OF USELESS AS IS HERE.
