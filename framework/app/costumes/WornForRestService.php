@@ -178,7 +178,7 @@ trait WornForRestService
 		}
 		return $theResult ;
 	}
-
+	
 }//end class
 
 }//end namespace

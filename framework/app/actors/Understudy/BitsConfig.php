@@ -40,7 +40,7 @@ class BitsConfig extends BaseActor {
 		$v =& $this->scene;
 		//indicate what top menu we are currently in
 		$this->setCurrentMenuKey('admin');
-
+		
 		//in order to protect this endpoint from malicious JavaScript being executed from
 		//  another domain trying to read sensitive settings (user/pw settings), the
 		//  code that retrieved the data has been moved to a ajajGetSettings() and will
@@ -94,7 +94,7 @@ class BitsConfig extends BaseActor {
 			}
 		}
 	}
-
+	
 	/**
 	 * Return the standard API Response to indicate success/failure of saving settings.
 	 * @return APIResponse Returns the standard API response object.

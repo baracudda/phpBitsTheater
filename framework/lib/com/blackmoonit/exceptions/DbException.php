@@ -18,8 +18,7 @@
 namespace com\blackmoonit\exceptions;
 use com\blackmoonit\exceptions\DebuggableExceptionTrait;
 use com\blackmoonit\exceptions\IDebuggableException;
-use \PDOException;
-use com\blackmoonit\Strings;
+use PDOException;
 {//begin namespace
 
 
@@ -29,7 +28,7 @@ use com\blackmoonit\Strings;
  */
 class DbException extends PDOException implements IDebuggableException {
 	private $mDebuggableExceptionTrait;
-		
+	
 	public function __construct($e, $aMsg='') {
 		$this->mDebuggableExceptionTrait = new DebuggableExceptionTrait($this);
 		if (isset($e) && $e instanceof PDOException) {
@@ -48,7 +47,7 @@ class DbException extends PDOException implements IDebuggableException {
 			parent::__construct($aMsg);
 		}
 	}
-
+	
 	static public function parseSqlStateMsg($aMsg) {
 		$theResult = array();
 		if (strstr($aMsg,'SQLSTATE[') && preg_match('/SQLSTATE\[(\w+)\] \[(\w+)\] (.*)/',$aMsg,$matches)) {
@@ -69,7 +68,7 @@ class DbException extends PDOException implements IDebuggableException {
 	public function getContextMsg() {
 		return $this->mDebuggableExceptionTrait->getContextMsg();
 	}
-
+	
 	public function getErrorMsg() {
 		return $this->mDebuggableExceptionTrait->getErrorMsg();
 	}
@@ -77,7 +76,7 @@ class DbException extends PDOException implements IDebuggableException {
 	public function getDebugMsg() {
 		return 'SQL ErrCode ('.$this->getCode().')';
 	}
-
+	
 	public function getDebugDisplay($aMsg=null) {
 		return $this->mDebuggableExceptionTrait->getDebugDisplay($aMsg);
 	}
@@ -109,7 +108,7 @@ class DbException extends PDOException implements IDebuggableException {
 	public function debugPrint($aMsg=null) {
 		return $this->mDebuggableExceptionTrait->debugPrint($aMsg);
 	}
-
+	
 }//end class
 
 }//end namespace

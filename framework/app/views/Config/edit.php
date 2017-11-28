@@ -119,7 +119,7 @@ if (!empty($v->config_areas)) {
 			$cellInput .= $theSettingInfo->getInputWidget();
 			$cellInput .= '</td>';
 			$cellDesc = '<td class="">'.htmlentities($theSettingInfo->getDescription()).'</td>';
-
+			
 			$w .= '  <tr class="'.$v->_rowClass.' '.$theNamespaceInfo->namespace.'-'.$theSettingName.'">'
 					.$cellLabel.$cellInput.$cellDesc
 					."</tr>" . PHP_EOL

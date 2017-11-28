@@ -38,7 +38,7 @@ class ConfigSettingInfo extends BaseCostume
 	const INPUT_PASSWORD = 'string-pw' ;
 	const INPUT_INTEGER = 'integer' ;
 	const INPUT_ACTION = 'action' ;
-
+	
 	public $config_namespace_info;
 	public $config_key;
 
@@ -95,7 +95,7 @@ class ConfigSettingInfo extends BaseCostume
 				$o->mSettingInfo = new ConfigResEntry($aNamespaceInfo->namespace, $aSettingName);
 				$o->mSettingInfo->setDataFrom($aSettingInfo);
 			}
-
+			
 			$o->config_namespace_info = $aNamespaceInfo;
 			$o->ns = $aNamespaceInfo->namespace;
 			$o->key = $aSettingName;

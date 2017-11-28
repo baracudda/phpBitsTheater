@@ -38,17 +38,17 @@ $ sudo paste -s -d "\n" /Applications/mampstack-5.6.20-0/php/etc/php.ini /usr/lo
 ************************************************/
 /************************************************
 EXAMPLE CLI ACTION FILE NAMED: someCliAction.php
- 
+
 <?php
 require_once('cli_bootstrap.php');
 $director->raiseCurtain('Actor', 'method');
- 
+
 ************************************************/
 /************************************************
 IF YOUR Actor::method() REQUIRES AUTHENTICATION, CALL WITH ARGUMENTS:
- 
+
 $ someCliAction -uUser -pMyPassword
- 
+
 ************************************************/
 /************************************************
 BitsTheaters\costumes\WornForCLI trait may contain useful methods for your

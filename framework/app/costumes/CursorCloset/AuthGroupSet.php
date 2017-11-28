@@ -36,7 +36,7 @@ class AuthGroupSet extends BaseCostume
 	 * @var string
 	 */
 	const DEFAULT_ITEM_CLASS = 'AuthGroup';
-
+	
 	/**
 	 * Return the Model class or name to use in a getProp() call.
 	 * @return class|string
@@ -53,7 +53,7 @@ class AuthGroupSet extends BaseCostume
 	protected function getJsonPropertyName() {
 		return 'authgroups';
 	}
-
+	
 }//end class
 
 }//end namespace

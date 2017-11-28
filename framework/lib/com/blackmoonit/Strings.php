@@ -689,8 +689,6 @@ class Strings {
 			case 'G' : $theValue *= 1024 ; // gigabytes
 			case 'M' : $theValue *= 1024 ; // megabytes
 			case 'K' : $theValue *= 1024 ; // kilobytes
-				break ;
-			default : ; // Can't happen...?
 		}
 		
 		return $theValue ;
@@ -779,7 +777,7 @@ class Strings {
 	
 	/**
 	 * Sometimes we wish to create a file whose name is based on user input.
-	 * Sanitizing user input for use in _any_ file system is trick, so do our best.
+	 * Sanitizing user input for use in _any_ file system is tricky, so do our best.
 	 * @param string $aFilename - the user input filename to sanitize.
 	 * @param string $aDefaultName - the string to use if we end up with nothing.
 	 * @return string Returns the sanitized string which should be filename-safe.

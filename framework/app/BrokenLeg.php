@@ -129,7 +129,7 @@ class BrokenLeg extends \Exception
 	const MSG_SERVICE_UNAVAILABLE = 'generic/errmsg_service_unavailable';
 	const MSG_TOO_MANY_REQUESTS = 'generic/errmsg_too_many_requests';
 	const MSG_DEPRECATED_FUNCTION = 'generic/errmsg_deprecated' ;
-
+	
 	// Condition constants if you like to use them rather than remember strings to use.
 	const ACT_DEFAULT =              'DEFAULT';
 	const ACT_MISSING_ARGUMENT =     'MISSING_ARGUMENT';
@@ -273,7 +273,7 @@ class BrokenLeg extends \Exception
 	 */
 	public function getConditionCode()
 	{ return $this->code ; }
-
+	
 	/**
 	 * Writes an "extra" property into the exception, which will be returned as
 	 * part of a <code>data</code> property.
@@ -463,5 +463,5 @@ class BrokenLeg extends \Exception
 	{ return json_encode( $this->exportData(), $aEncodeOptions ) ; }
 
 } // end BrokenLeg class
-	
+
 } // end namespace BitsTheater

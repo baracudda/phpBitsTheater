@@ -134,5 +134,5 @@ class APIResponse extends BaseCostume {
 	}
 
 }//end class
-	
+
 }//end namespace

@@ -59,7 +59,7 @@ class CalendarEntry extends AdamEve {
 		}
 		//end time
 		$this->dtEnd = new DateTime('@'.$this->dtStart->getTimestamp());
-		$this->dtEnd->add($this->duration); 
+		$this->dtEnd->add($this->duration);
 
 		$this->bHasBeenSetup = true;
 	}
@@ -71,11 +71,11 @@ class CalendarEntry extends AdamEve {
 	
  	public function formatDtStart() {
 		return $this->dtStart->format('Ymd\THis\Z');
-	}	
+	}
 
 	public function formatDtEnd() {
 		return $this->dtEnd->format('Ymd\THis\Z');
-	}	
+	}
 	
 	public function formatDuration() {
 		return $this->duration->format('%H%I');

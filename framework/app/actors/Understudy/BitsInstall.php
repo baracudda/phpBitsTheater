@@ -141,7 +141,7 @@ class BitsInstall extends BaseActor {
 	
 	/**
 	 * Websites with multiple db connections would override this method
-	 * and not call parent. 
+	 * and not call parent.
 	 * @return DbConnInfo[]
 	 */
 	public function getDbConns() {
@@ -165,7 +165,7 @@ class BitsInstall extends BaseActor {
 		$v->db_types = $v->getDbTypes();
 		$v->db_conns = $this->getDbConns();
 	}
-
+	
 	protected function installDbConns() {
 		$v =& $this->scene;
 		$v->db_conns = $this->getDbConns();

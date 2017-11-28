@@ -520,7 +520,7 @@ implements IDirected
 	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
 		return $this->getDirector()->isAllowed($aNamespace, $aPermission, $aAcctInfo);
 	}
-
+	
 	/**
 	 * {@inheritDoc}
 	 * @see \BitsTheater\costumes\IDirected::isGuest()

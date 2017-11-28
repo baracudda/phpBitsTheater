@@ -5,10 +5,11 @@ use BitsTheater\Scene as MyScene; /* @var $v MyScene */
 use com\blackmoonit\Strings;
 {//namespace begin
 
-class Menus extends BaseActor {
+class Menus extends BaseActor
+{
 	
-		//nothing to override, yet
-		
+	//nothing to override, yet
+	
 }//end class
 
 }//end namespace

@@ -286,5 +286,5 @@ implements IDirected
 	}
 	
 }//end class
-	
+
 }//end namespace

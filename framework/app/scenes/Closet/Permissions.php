@@ -26,8 +26,8 @@ use com\blackmoonit\Widgets;
 class Permissions extends MyScene implements ISqlSanitizer
 {
 	use WornForSqlSanitize;
-
-
+	
+	
 	protected function setupDefaults() {
 		parent::setupDefaults();
 		$this->redirect = BITS_URL.'/rights';

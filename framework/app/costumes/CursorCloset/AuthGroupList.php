@@ -54,7 +54,7 @@ class AuthGroupList extends BaseCostume
 	 */
 	protected function getIdTableName()
 	{ return $this->getModel()->tnGroups; }
-
+	
 }//end class
 
 }//end namespace

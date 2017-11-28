@@ -199,7 +199,7 @@ class Arrays {
 	}
 	
 	/**
-	 * Convert an indexed array of 'key="value"' pairs of values into 
+	 * Convert an indexed array of 'key="value"' pairs of values into
 	 * an associative array where key => value.
 	 * @param array $aPairs - numerically indexed array.
 	 * @param string $aDelimiter - (optional) key=value delimiter (defaults to '=').
@@ -234,8 +234,8 @@ class Arrays {
 			return array();
 		
 		//anything inside the quotes that might be used to split the string into lines and fields later,
-		//  needs to be quoted. The only character we can guarantee as safe to use, because it will never 
-		//  appear in the unquoted text, is a CR. So we're going to use CR as a marker to make 
+		//  needs to be quoted. The only character we can guarantee as safe to use, because it will never
+		//  appear in the unquoted text, is a CR. So we're going to use CR as a marker to make
 		//  escape sequences for CR, LF, Quotes, and Commas.
 		$theTokens = array(
 				'to_replace' => array("\r","\n",$aEnclosure,$aDelimiter),
@@ -282,7 +282,7 @@ class Arrays {
 			}
 		}
 	}
-
+	
 	/**
 	 * Convert a CSV string of params into a true associative array.
 	 * e.g. '"param1"="value1","param2"="value2"\n"param3"="value3"' becomes

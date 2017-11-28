@@ -447,7 +447,7 @@ implements IDirected
 	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
 		return $this->getDirector()->isAllowed($aNamespace, $aPermission, $aAcctInfo);
 	}
-
+	
 	/**
 	 * {@inheritDoc}
 	 * @see \BitsTheater\costumes\IDirected::isGuest()
@@ -739,8 +739,8 @@ implements IDirected
 	}
 	
 	/**
-	 * @deprecated NO-OP<br>
-	 * If not logged in, check for "Basic HTTP Auth" header/POST var and attempt to log in with that user/pw info.
+	 * If not logged in, check for "Basic HTTP Auth" header/POST var and attempt to login with that user/pw info.
+	 * @deprecated (if called, performs a NO-OP)
 	 */
 	public function checkForBasicHttpAuth() {
 		return;

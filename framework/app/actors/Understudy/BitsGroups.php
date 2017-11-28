@@ -131,7 +131,7 @@ class BitsGroups extends BaseActor {
 			//URL segment overrides POST/Form variable
 			if( isset( $aGroupID ) )
 				$v->group_id = $aGroupID ;
-
+			
 			if( isset( $v->group_id ) && $v->group_id >= AuthGroups::UNREG_GROUP_ID )
 			{ // Update an existing group.
 				$this->checkAllowed( 'auth', 'modify' ) ;

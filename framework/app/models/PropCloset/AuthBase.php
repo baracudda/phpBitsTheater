@@ -123,7 +123,7 @@ abstract class AuthBase extends BaseModel {
 				BITS_URL, $theDomain, null, $bDoNotLetJsReadIt
 		);
 	}
-
+	
 	/**
 	 * Retrieve the current CSRF token.
 	 * @param string $aCsrfTokenName - the name of the token, in case it's useful.

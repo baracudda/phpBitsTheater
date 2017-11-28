@@ -51,7 +51,7 @@ use com\blackmoonit\Strings;
 		 */
 		static public function TYPE_ASCII_CHAR( $aCharLength )
 		{ return 'CHAR(' . $aCharLength . ') CHARACTER SET ascii COLLATE ascii_bin'; }
-
+		
 		
 		/**
 		 * Dummy time to use for non-null timestamp columns.
@@ -99,7 +99,7 @@ use com\blackmoonit\Strings;
 		 */
 		const VERSION_REPLACED_BY_SPEC =
 				"`replaced_by` char(36) CHARACTER SET ascii COLLATE ascii_bin NULL" ;
-
+		
 		/**
 		 * A regular expression which will recognize SQL date strings when used
 		 * as the pattern in <code>preg_match()</code>. This is used when
@@ -135,7 +135,7 @@ use com\blackmoonit\Strings;
 					self::VERSION_NUM_SPEC.', '.
 					self::VERSION_REPLACED_BY_SPEC;
 		}
-
+		
 		/**
 		 * The SQL, when executed, results in 'name' and 'size' columns.
 		 * @param string $aDb - the database name.
@@ -189,7 +189,7 @@ use com\blackmoonit\Strings;
 			}
 			return $objectArray;
 		}
-
+		
 		/**
 		 * Searches an object for fields that look like timestamps, and updates
 		 * them to ISO 8601 format.
@@ -234,7 +234,7 @@ use com\blackmoonit\Strings;
 		 * @param string $sqlTimestamp The timestamp from MySQL.
 		 * @return string the timestamp in ISO 8601 compliant format.
 		 * @see https://en.wikipedia.org/wiki/ISO_8601
-		 * 
+		 *
 		 * Example in:  "2015-09-09 17:55:51"
 		 * Example out: "2015-11-12T20:57:10+00:00"
 		 * Example out: "2015-11-12T20:57:10Z"
