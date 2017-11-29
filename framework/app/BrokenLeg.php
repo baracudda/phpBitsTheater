@@ -198,7 +198,7 @@ class BrokenLeg extends \Exception
 	 *  actor, model, or scene, or anything implementing IDirected
 	 * @param Exception $aException - a thrown exception.
 	 */
-	static public function tossException( IDirected &$aContext, $aException )
+	static public function tossException( IDirected $aContext, $aException )
 	{
 		if (ini_get('log_errors') && $aException instanceof IDebuggableException)
 		{
@@ -327,7 +327,7 @@ class BrokenLeg extends \Exception
 	 * resource; if non-empty, then the initial '/' separator is inserted
 	 * automatically before being used in getRes()
 	 */
-	static public function getMessageFromResource( IDirected &$aContext, $aMessageResource, $aResourceData=null )
+	static public function getMessageFromResource( IDirected $aContext, $aMessageResource, $aResourceData=null )
 	{
 		$theResource = $aMessageResource;
 		if (is_string($aResourceData))
@@ -419,7 +419,7 @@ class BrokenLeg extends \Exception
 	 * automatically before being used in getRes()
 	 * @return \BitsTheater\BrokenLeg an instance of the exception class
 	 */
-	public static function pratfallRes( IDirected &$aContext, $aCondition, $aCode,
+	public static function pratfallRes( IDirected $aContext, $aCondition, $aCode,
 			$aMessageResource, $aResourceData=null )
 	{
 		return static::pratfall( $aCondition, $aCode,
