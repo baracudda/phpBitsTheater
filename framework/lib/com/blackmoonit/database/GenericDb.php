@@ -17,11 +17,9 @@
 
 namespace com\blackmoonit\database;
 use com\blackmoonit\AdamEve as BaseDbClass;
-use com\blackmoonit\database\DbConnInfo;
-use com\blackmoonit\database\DbUtils;
-use \PDO;
-use \PDOStatement;
-use \PDOException;
+use PDO;
+use PDOStatement;
+use PDOException;
 {//begin namespace
 
 class GenericDb extends BaseDbClass {
@@ -87,7 +85,7 @@ class GenericDb extends BaseDbClass {
 	 * Params should be ordered array with ? params OR associative array with :label params.
 	 * @param string $aParamSql - the parameterized SQL string.
 	 * @return PDOStatement is returned, ready for binding to params.
-	 * @throws DbException if there is an error.
+	 * @throws \com\blackmoonit\exceptions\DbException
 	 */
 	public function prepareSQL($aParamSql) {
 		$theRetries = 0;
@@ -171,7 +169,7 @@ class GenericDb extends BaseDbClass {
 	 * Return SQL format for INSERT value field list.
 	 * @param array $aFieldList - fields we want returned from SQL SELECT statement.
 	 * @param array $aTextIdFieldList - (optional) TextId fields require special attention.
-	 * @throws InvalidArgumentException - if the fieldlist is empty.
+	 * @throws \InvalidArgumentException - if the fieldlist is empty.
 	 */
 	public function getSqlValueFields(array $aFieldList, array $aTextIdFieldList = NULL) {
 		$theResult = '';
@@ -185,14 +183,14 @@ class GenericDb extends BaseDbClass {
 		if (!empty($theResult))
 			return substr($theResult,0,-2);
 		else
-			throw new InvalidArgumentException('invalid field listing');
+			throw new \InvalidArgumentException('invalid field listing');
 	}
 	
 	/**
 	 * Return SQL format for UPDATE field list.
 	 * @param array $aUpdateParams - index keys are fields we want UPDATEd (values contain their new data).
 	 * @param array $aTextIdFieldList - (optional) TextId fields require special attention.
-	 * @throws InvalidArgumentException - if the fieldlist is empty.
+	 * @throws \InvalidArgumentException - if the fieldlist is empty.
 	 */
 	public function getSqlUpdateFields(array $aUpdateParams, array $aTextIdFieldList = NULL) {
 		$theResult = '';
@@ -206,11 +204,11 @@ class GenericDb extends BaseDbClass {
 		if (!empty($theResult))
 			return substr('SET '.$theResult,0,-2);
 		else
-			throw new InvalidArgumentException('invalid field listing');
+			throw new \InvalidArgumentException('invalid field listing');
 	}
 	
 	/**
-	 * @return Returns a SQL datetime string representing now() in UTC.
+	 * @return string Returns a SQL datetime string representing now() in UTC.
 	 */
 	public function utc_now($bUseMicroseconds=false) {
 		switch ($this->dbType()) {

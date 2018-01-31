@@ -77,7 +77,7 @@ class BitsWebsite extends BaseResources {
 	public $header_subtitle = 'An ity-bity framework.';
 	/**
 	 * Icon to display near the {@link BitsWebsite::$header_title}.
-	 * @var image
+	 * @var string
 	 */
 	public $site_logo = 'site_logo.png';
 	/**
@@ -201,7 +201,7 @@ class BitsWebsite extends BaseResources {
 	 * Override this function if your website needs to do some updates that are not database related.
 	 * Throw an exception if your update did not succeed.
 	 * @param number $aSeqNum - the version sequence number (<= what is defined in your overriden Website class).
-	 * @throws Exception on failure.
+	 * @throws \Exception on failure.
 	 */
 	public function updateVersion($aSeqNum) {
 		//NO NEED TO CALL PARENT! (this class)
@@ -211,7 +211,7 @@ class BitsWebsite extends BaseResources {
 			case ($theSeq<2):
 				//do your stuff here
 			}//end switch
-		} catch (Exception $e) {
+		} catch (\Exception $e) {
 			//throw expection if your update code fails (logging it would be a good idea, too).
 			$this->errorLog(__METHOD__.' '.$e->getMessage());
 			throw $e;

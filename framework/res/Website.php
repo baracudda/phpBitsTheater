@@ -43,12 +43,12 @@ class Website extends BaseResources {
 	 * Override this function if your website needs to do some updates that are not database related.
 	 * Throw an exception if your update did not succeed.
 	 * @param number $aSeqNum - the version sequence number (<= what is defined in your overriden Website class).
-	 * @throws Exception on failure.
+	 * @throws \Exception on failure.
 	 */
 	public function updateVersion($aSeqNum) {
 		try {
 			//nothing to do, yet
-		} catch (Exception $e) {
+		} catch (\Exception $e) {
 			//throw exception if your update code fails (logging it would be a good idea, too).
 			$this->errorLog(__METHOD__.' '.$e->getMessage());
 			throw $e;

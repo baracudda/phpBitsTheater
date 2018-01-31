@@ -1,7 +1,7 @@
 #!/usr/bin/php
 <?php
 use BitsTheater\Regisseur;
-use Joka\models\AmazonS3 as AmazonS3DB;
+use BitsTheater\models\AmazonS3 as AmazonS3DB;
 use BitsTheater\costumes\AmazonS3Item;
 
 /**
@@ -44,7 +44,7 @@ function printFileList( $aList )
 	}
 }
 
-/* @var $dbS3 AmazonS3Db */
+/* @var $dbS3 AmazonS3DB */
 $dbS3 = $director->getProp(AmazonS3DB::MODEL_NAME);
 
 if ($dbS3->isConnected())

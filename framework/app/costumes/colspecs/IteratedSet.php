@@ -227,7 +227,7 @@ class IteratedSet extends BaseCostume
 		}
 		catch( Exception $x )
 		{
-			Strings::errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
+		    $this->errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
 			throw $x ;
 		}
 
@@ -266,7 +266,7 @@ class IteratedSet extends BaseCostume
 		}
 		catch( Exception $x )
 		{
-			Strings::errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
+			$this->errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
 			throw $x ;
 		}
 		return $this ;

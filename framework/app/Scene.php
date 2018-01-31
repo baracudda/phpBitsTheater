@@ -18,9 +18,6 @@
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseScene;
 use BitsTheater\costumes\IDirected;
-use BitsTheater\Director;
-use BitsTheater\Actor;
-use BitsTheater\Model;
 use BitsTheater\models\Config;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Strings;
@@ -551,7 +548,7 @@ implements IDirected
 			} else {
 				header('Location: '.$theResult);
 			}
-		} catch (ReflectionException $e) {
+		} catch (\ReflectionException $e) {
 			//no method to call, just ignore it
 		}
 	}
@@ -794,7 +791,7 @@ implements IDirected
 	/**
 	 * Models can set the query total regardless of paging.
 	 * @param number $aTotalRowCount - the total.
-	 * @return BitsTheater\Scene
+	 * @return Scene
 	 */
 	public function setPagerTotalRowCount($aTotalRowCount) {
 		$this->_pager_total_row_count = max($aTotalRowCount,0);
@@ -812,7 +809,7 @@ implements IDirected
 	/**
 	 * Enable/disable the pager.
 	 * @param boolean $aEnabled - desired state of pager.
-	 * @return BitsTheater\Scene
+	 * @return Scene
 	 */
 	public function setPagerEnabled($aEnabled) {
 		$this->_pager_enabled = !empty($aEnabled);
@@ -828,7 +825,7 @@ implements IDirected
 	public function getPagerPageSize($aDefaultPageSize=25) {
 		if (!$this->isPagerEnabled())
 			return 0;
-		//TODO $this->_config['disply/query_limit'];
+		//TODO $this->_config['display/query_limit'];
 		$theLimit = max($aDefaultPageSize,1);
 		if (!empty($this->query_limit) && is_numeric($this->query_limit))
 			$theLimit = min(max($this->query_limit,1),1000);

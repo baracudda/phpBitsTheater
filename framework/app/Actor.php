@@ -19,7 +19,6 @@ namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseActor;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\Scene as MyScene;
-use BitsTheater\Director;
 use BitsTheater\models\Config;
 use com\blackmoonit\Strings;
 use ReflectionClass;
@@ -28,7 +27,6 @@ use BadMethodCallException;
 use Exception;
 use com\blackmoonit\exceptions\FourOhFourExit;
 use com\blackmoonit\exceptions\SystemExit;
-use BitsTheater\BrokenLeg;
 {//begin namespace
 
 /**

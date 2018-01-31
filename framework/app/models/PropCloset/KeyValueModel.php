@@ -216,7 +216,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 				} else {
 					return false;
 				}
-			} catch (PDOException $dbe) {
+			} catch (\PDOException $dbe) {
 				if ($this->exists($this->getTableName())) {
 					throw new DbException($e,'dbError@'.$this->getTableName().' '.__METHOD__."({$this->debugStr($aMapInfo)})\n");
 				} else {
@@ -243,7 +243,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 					$theResult = null;
 			}
 			$this->value_select->closeCursor(); //close the cursor so we can re-use the PDOStatement
-		} catch (PDOException $e) {
+		} catch (\PDOException $e) {
 			if ($this->exists($this->getTableName())) {
 				throw new DbException($e,'dbError@'.$this->getTableName().' '.__METHOD__."($aNsKey)\n");
 			}
@@ -329,7 +329,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 					));
 					$this->value_insert->execute();
 				}
-			} catch (PDOException $e) {
+			} catch (\PDOException $e) {
 				if ($this->exists($this->getTableName())) {
 					throw new DbException($e2,'dbError@'.$this->getTableName().' '.__METHOD__."({$this->debugStr($aNsKey)},{$aNewValue})\n");
 				}

@@ -18,9 +18,6 @@
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseDirector;
 use BitsTheater\costumes\IDirected;
-use BitsTheater\BrokenLeg;
-use BitsTheater\Model;
-use BitsTheater\DbConnInfo;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\models\Auth;
 use BitsTheater\res\ResException;
@@ -95,13 +92,13 @@ implements ArrayAccess, IDirected
 	protected $dbAuth = null;
 	/**
 	 * Cache of the config model in use.
-	 * @var Config
+	 * @var \BitsTheater\models\Config
 	 */
 	protected $dbConfig = null;
 	
 	/**
 	 * Determine which Director to create for the job.
-	 * @return BitsTheater\Director
+	 * @return Director
 	 */
 	static public function requisition()
 	{
@@ -820,7 +817,7 @@ implements ArrayAccess, IDirected
 	
 	/**
 	 * Get the currently logged in user's account name.
-	 * @return Returns the logged in user's account name, if any.
+	 * @return string Returns the logged in user's account name, if any.
 	 */
 	public function getMyUsername() {
 		if ($this->account_info!=null)
@@ -867,7 +864,7 @@ implements ArrayAccess, IDirected
 	/**
 	 * Deletes a log file. Will errorLog() if specified file exists
 	 * but was unsuccessful in deletion attempt.
-	 * @param unknown $aCategory Filename of log file desired.
+	 * @param string $aCategory Filename of log file desired.
 	 */
 	public function deleteLogFile($aCategory) {
 		$theCacheKey = VIRTUAL_HOST_NAME . '|' . $aCategory;
