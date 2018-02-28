@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-namespace BitsTheater\costumes\CursorCloset ;
+namespace BitsTheater\costumes\Wardrobe ;
 use BitsTheater\costumes\ABitsCostume as BaseCostume ;
 use BitsTheater\costumes\WornByModel ;
 use BitsTheater\costumes\SqlBuilder ;
@@ -30,7 +30,7 @@ use Exception ;
 
 /**
  * Provides helper functions for dealing with password reset requests. This
- * costume applies to the AuthBasic model.
+ * costume applies to the AuthBasic and AuthOrgs model.
  */
 class AuthPasswordReset extends BaseCostume
 {
