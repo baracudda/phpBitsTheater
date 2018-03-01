@@ -16,11 +16,10 @@
  */
 
 namespace BitsTheater\costumes\CursorCloset;
-use PDO ;
-use PDOStatement ;
 use BitsTheater\costumes\ASimpleCostume as BaseCostume;
-use BitsTheater\costumes\SimpleCostume;
+use BitsTheater\costumes\WornForExportData;
 use BitsTheater\Model as MyModel;
+use BitsTheater\costumes\colspecs\CommonMySql;
 {//namespace begin
 
 /**
@@ -29,6 +28,8 @@ use BitsTheater\Model as MyModel;
  */
 class ARecord extends BaseCostume
 {
+	use WornForExportData;
+	
 	/**
 	 * Static helper function to fetch a single instance of the record-wrapper
 	 * class without using <code>ARecordSet</code>. Intended as a replacement
@@ -61,62 +62,56 @@ class ARecord extends BaseCostume
 	protected $dbModel = null;
 	
 	/**
-	 * Export only these fields. All fields, if NULL.
-	 * @var string[]
+	 * Accessor.
+	 * @return MyModel Returns the model object.
 	 */
-	protected $mExportTheseFields = null;
-
-	public function __construct($aDbModel=null, $aFieldList=null)
-	{
-		$this->dbModel = $aDbModel;
-		$this->mExportTheseFields = $aFieldList;
-	}
+	public function getModel()
+	{ return $this->dbModel ; }
 	
 	/**
-	 * Return the fields that should be exported.
-	 * @param object $aExportData - the data to export.
-	 * @return object Returns the data to be exported.
+	 * Binds the costume instance to an instance of a model.
+	 * @param MyModel $aModel - the model to bind
+	 * @return $this Returns the updated costume
 	 */
-	protected function exportFilter($aExportData)
-	{
-		if (!empty($aExportData) && !empty($this->mExportTheseFields)) {
-			$o = new SimpleCostume();
-			foreach ($this->mExportTheseFields as $theField) {
-				$o->{$theField} = $aExportData->{$theField};
-			}
-			return $o;
-		} else
-			return $aExportData;
-	}
-
+	public function setModel( $aModel )
+	{ $this->dbModel = $aModel ; return $this ; }
+	
+	/**
+	 * Constructor for an ARecord entails a Model reference and a fieldset
+	 * to return, both of which are optional.
+	 * @param MyModel $aDbModel - the db model to use.
+	 * @param string[] $aFieldList - the field list to return.
+	 */
+	public function __construct($aDbModel=null, $aFieldList=null)
+	{ $this->setModel($aDbModel)->setExportFieldList($aFieldList); }
+		
 	/**
 	 * Construct the standard object with all data fields worth exporting defined.
 	 * @return object Returns a standard object with the properties to export defined.
 	 */
 	protected function constructExportObject()
 	{
-		//default export is "all public fields"
-		return (object) call_user_func('get_object_vars', $this);
+		$o = (object) call_user_func('get_object_vars', $this);
+		$theModel = $this->getModel();
+		//convert all `*_ts` timestamp fields into ISO format
+		switch ($theModel->dbType()) {
+			case $theModel::DB_TYPE_MYSQL:
+				$o = CommonMySql::deepConvertSQLTimestampsToISOFormat($o);
+				break;
+		}//switch
+		return $o ;
 	}
 	
+	/* define a 'onFetch()' method with no return value, if needed.
 	/**
-	 * Return this payload data as a simple class, minus any metadata this class might have.
-	 * @return object Returns the data to be exported.
-	 */
-	public function exportData()
+	 * Ensure we setup our class correctly after a fetch operation.
+	 * /
+	public function onFetch()
 	{
-		return $this->exportFilter( $this->constructExportObject() );
+		
 	}
-	
-	/**
-	 * Accessor for the export field list.
-	 * @return \BitsTheater\costumes\CursorCloset\string[]
-	 * @since BitsTheater 4.0.0
-	 */
-	public function getExportFieldList()
-	{ return $this->mExportTheseFields ; }
-	
-	
+	*/
+
 }//end class
 
 }//end namespace

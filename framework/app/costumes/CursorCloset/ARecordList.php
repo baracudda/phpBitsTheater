@@ -182,7 +182,10 @@ abstract class ARecordList extends BaseCostume
 			//create our new mDataSet to iterate through
 			$theSql = $this->createSqlQuery( array_keys($theBiteSizeChunkOfIds) );
 			$this->setDataFromPDO( $theSql->query() );
-			return parent::onFetch( $this->mDataSet->fetch() );
+			$theRow = $this->mDataSet->fetch();
+			if ( is_object($theRow) && method_exists($theRow, 'onFetch') )
+			{ $theRow->onFetch(); }
+			return parent::onFetch( $theRow );
 		} else {
 			return parent::onFetch( $aRow );
 		}

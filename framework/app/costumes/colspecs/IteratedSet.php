@@ -138,7 +138,17 @@ class IteratedSet extends BaseCostume
 	public function setItemClass( $aItemClass, $aItemClassArgs=null )
 	{
 		$this->mItemClass = $aItemClass ;
-		$this->mItemClassArgs = $aItemClassArgs ;
+		return $this->setItemClassArgs(...$aItemClassArgs) ;
+	}
+
+	/**
+	 * Sets the construction arguments for our Item Class.
+	 * @param mixed $_ - arguments to pass to the class's constructor.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setItemClassArgs( ...$args )
+	{
+		$this->mItemClassArgs = $args ;
 		return $this->setPDOFetchMode() ;
 	}
 
@@ -192,8 +202,12 @@ class IteratedSet extends BaseCostume
 	 */
 	public function fetch()
 	{
-		if( $this->mDataSet instanceof PDOStatement )
-			return $this->onFetch( $this->mDataSet->fetch() );
+		if( $this->mDataSet instanceof PDOStatement ) {
+			$theRow = $this->mDataSet->fetch();
+			if ( is_object($theRow) && method_exists($theRow, 'onFetch') )
+			{ $theRow->onFetch(); }
+			return $this->onFetch( $theRow );
+		}
 		else // We haven't implemented any other ways of behaving yet.
 			return $this->onFetch( false ) ;
 	}

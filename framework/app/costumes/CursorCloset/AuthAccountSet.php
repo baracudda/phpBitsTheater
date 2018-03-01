@@ -17,8 +17,8 @@
 
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\ARecordSet as BaseCostume;
-use BitsTheater\costumes\IDirected;
-use BitsTheater\Director;
+use BitsTheater\costumes\AuthGroupList;
+use BitsTheater\models\AuthGroups as AuthGroupsProp;
 {//namespace begin
 
 /**
@@ -32,11 +32,6 @@ use BitsTheater\Director;
  */
 class AuthAccountSet extends BaseCostume
 {
-	/**
-	 * The auth model I might need.
-	 * @var AuthGroups
-	 */
-	protected $dbAuthGroups = null;
 	/**
 	 * Group data to be returned.
 	 * @var AuthGroupList
@@ -67,12 +62,27 @@ class AuthAccountSet extends BaseCostume
 	}
 	
 	/**
-	 * Costume classes know about the Director.
-	 * @param IDirected $aContext - used to get the Director object.
+	 * @return AuthGroupsProp Returns the database model reference.
 	 */
-	public function setup(IDirected $aContext) {
-		parent::setup($aContext);
-		$this->dbAuthGroups = $aContext->getProp( 'AuthGroups' );
+	protected function getAuthGroupsProp()
+	{ return $this->getProp(AuthGroupsProp::MODEL_NAME); }
+
+	/**
+	 * Sets the construction arguments for our Item Class.
+	 * @param mixed $_ - arguments to pass to the class's constructor.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setItemClassArgs( ...$args )
+	{
+		// check field list argument of MyRecord for extended info we need to retrieve.
+		if ( !empty($args[1]) ) {
+			//the field list arg
+			$theFieldList =& $args[1];
+			if ( array_search('groups', $theFieldList)!==false ) {
+				$this->mGroupList = AuthGroupList::create($this->getModel());
+			}
+		}
+		return parent::setItemClassArgs(...$args);
 	}
 	
 	/**
@@ -82,30 +92,8 @@ class AuthAccountSet extends BaseCostume
 	 */
 	protected function onFetch($aRow)
 	{
-		try {
-			if (!empty($this->mGroupList) && !empty($aRow)) {
-				$aRow->groups = $this->dbAuthGroups->getAcctGroups($aRow->account_id);
-				/* instead of forcing strings, use JSON_FORCE_OBJECT in json_encode options
-				if (!empty($aRow->groups))
-					foreach ($aRow->groups as &$theGroupId)
-						$theGroupId = strval($theGroupId);
-				*/
-				$this->mGroupList->addListOfIds($aRow->groups);
-			}
-			if ($aRow !== false && !empty($aRow->hardware_ids))
-			{
-				//convert string field to a proper list of items
-				$aRow->hardware_ids = explode('|', $aRow->hardware_ids);
-				foreach ($aRow->hardware_ids as &$theToken) {
-					list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theToken);
-					$theToken = $theHardwareId;
-				}
-				//if there is only 1 item, ensure it is just a string, not an array
-				if (count($aRow->hardware_ids)==1)
-					$aRow->hardware_ids = $aRow->hardware_ids[0];
-			}
-		} catch (\Exception $e) {
-			$this->errorLog(__METHOD__ . $e->getMessage());
+		if ( !empty($aRow) && !empty($this->mGroupList) ) {
+			$this->mGroupList->addListOfIds($aRow->groups);
 		}
 		return parent::onFetch($aRow);
 	}
@@ -115,22 +103,16 @@ class AuthAccountSet extends BaseCostume
 	 * @param string $aEncodeOptions options for `json_encode()`
 	 */
 	protected function printExtraJsonProperties( $aEncodeOptions ) {
-		if (!empty($this->mGroupList)) {
-			print( ',"authgroups":');
+		if ( !empty($this->mGroupList) ) {
+			print(',"titan_group_id":"'
+					. $this->getAuthGroupsProp()->getTitanGroupID() . '"'
+			);
+			print(',"authgroups":');
 			$this->mGroupList->printAsJson( $aEncodeOptions );
 		}
+		parent::printExtraJsonProperties($aEncodeOptions);
 	}
 	
-	/**
-	 * Prints the entire data set to the output stream, item by item.
-	 * @param string $aEncodeOptions options for `json_encode()`
-	 * @return IteratedSet $this
-	 */
-	public function printAsJson( $aEncodeOptions=null )
-	{
-		return parent::printAsJson( $aEncodeOptions | JSON_FORCE_OBJECT );
-	}
-
 }//end class
 
 }//end namespace

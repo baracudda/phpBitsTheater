@@ -1,7 +1,7 @@
 <?php
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\CursorCloset\AuthAccountSet as BaseCostume;
-use BitsTheater\costumes\AuthAccount;
+use BitsTheater\costumes\AuthAccount as MyRecord;
 {//namespace begin
 
 class AuthAccountSet extends BaseCostume
@@ -11,7 +11,7 @@ class AuthAccountSet extends BaseCostume
 	 * the set.
 	 * @var string
 	 */
-	const DEFAULT_ITEM_CLASS = AuthAccount::ITEM_CLASS;
+	const DEFAULT_ITEM_CLASS = MyRecord::ITEM_CLASS;
 
 } // end class
 

@@ -17,8 +17,6 @@
 
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\ARecord as BaseCostume;
-use BitsTheater\models\Auth as MyModel;
-use BitsTheater\costumes\colspecs\CommonMySql;
 {//namespace begin
 
 /**
@@ -48,17 +46,24 @@ class AuthAccount extends BaseCostume
 	public $groups;
 	
 	/**
-	 * Return the fields that should be exported.
-	 * @param object $aExportData - the data to export.
-	 * @return object Returns the data to be exported.
+	 * Set the list of fields to restrict export to use.
+	 * @param array $aFieldList - the field list.
+	 * @return $this Returns $this for chaining.
 	 */
-	protected function exportFilter($aExportData) {
-		if (!empty($aExportData) && !empty($this->mExportTheseFields)) {
-			return parent::exportFilter($aExportData);
-		} else {
-			unset($aExportData->groups);
-			return $aExportData;
+	public function setExportFieldList($aFieldList)
+	{
+		$theIndex = array_search('with_map_info', $aFieldList);
+		$bIncMapInfo = ( $theIndex!==false );
+		unset($aFieldList[$theIndex]);
+		if ( empty($aFieldList) ) {
+			$aFieldList = array_diff(static::getDefinedFields(), array(
+					'groups',
+			));
 		}
+		if ( $bIncMapInfo ) {
+			$aFieldList[] = 'groups';
+		}
+		return parent::setExportFieldList($aFieldList);
 	}
 	
 	/**
@@ -69,16 +74,47 @@ class AuthAccount extends BaseCostume
 	{
 		$o = parent::constructExportObject();
 		unset($o->pwhash); //never export this value
-		$o->is_active = ($o->is_active === '1') ? true : false;
-		if ($this->dbModel->dbType()===MyModel::DB_TYPE_MYSQL)
-		{
-			$o->verified_ts = CommonMySql::convertSQLTimestampToISOFormat($o->verified_ts);
-			$o->created_ts = CommonMySql::convertSQLTimestampToISOFormat($o->created_ts);
-			$o->updated_ts = CommonMySql::convertSQLTimestampToISOFormat($o->updated_ts);
-		}
+		$o->is_active = filter_var($o->is_active, FILTER_VALIDATE_BOOLEAN);
 		return $o;
 	}
 
+	/** @return \BitsTheater\models\AuthGroups */
+	protected function getAuthGroupsProp()
+	{ return $this->getModel()->getProp( 'AuthGroups' ); }
+	
+	/**
+	 * Event called after fetching data from db and setting all our properties.
+	 */
+	public function onFetch()
+	{
+		if ( !empty($this->account_id) ) try {
+			if ( array_search('groups', $this->getExportFieldList())!==false ) {
+				$this->groups = $this->getAuthGroupsProp()->getAcctGroups($this->account_id);
+				if (!empty($aRow->groups)) {
+					foreach ($aRow->groups as &$theGroupId) {
+						if ( is_numeric($theGroupId) ) {
+							$theGroupId = strval($theGroupId);
+						}
+					}
+				}
+			}
+			if ( !empty($this->hardware_ids) )
+			{
+				//convert string field to a proper list of items
+				$this->hardware_ids = explode('|', $this->hardware_ids);
+				foreach ($this->hardware_ids as &$theToken) {
+					list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theToken);
+					$theToken = $theHardwareId;
+				}
+				//if there is only 1 item, ensure it is just a string, not an array
+				if (count($this->hardware_ids)==1)
+				{ $this->hardware_ids = $this->hardware_ids[0]; }
+			}
+		}
+		catch (\Exception $x)
+		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
+	}
+	
 }//end class
 	
 }//end namespace
