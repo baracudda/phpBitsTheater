@@ -34,6 +34,13 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 	const FEATURE_VERSION_SEQ = 2; //always ++ when making db schema changes
 	//v2 - corrected column name for static::MAPKEY_NAME
 
+	/**
+	 * Add our database name before the defined table prefix so we can work
+	 * with multiple databases at once.
+	 * @var boolean This value is TRUE as the intention here is to work with multiple dbs.
+	 */
+	const TABLE_PREFIX_INCLUDES_DB_NAME = true;
+
 	const TABLE_NAME = 'config';
 	const MAPKEY_NAME = 'setting';
 	public $tnConfig;

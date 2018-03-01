@@ -18,6 +18,7 @@
 namespace BitsTheater;
 use com\blackmoonit\database\GenericDb as BaseModel;
 use BitsTheater\costumes\IDirected;
+use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForCLI;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\exceptions\DbException;
@@ -48,6 +49,12 @@ implements IDirected
 	 * @var string
 	 */
 	public $dbConnName = 'webapp';
+	/**
+	 * Add our database name before the defined table prefix so we can work
+	 * with multiple databases at once.
+	 * @var boolean The default ancestor values is FALSE.
+	 */
+	const TABLE_PREFIX_INCLUDES_DB_NAME = false;
 	/**
 	 * The prefix all database tables will use. Defined in DbConnInfo.
 	 * Usually descendents will also prefix the database name as well.
@@ -125,8 +132,27 @@ implements IDirected
 	 * a successful db connection is made. Should probably include on first line:
 	 * parent::setupAfterDbConnected().
 	 */
-	protected function setupAfterDbConnected() {
-		$this->tbl_ = $this->myDbConnInfo->table_prefix;
+	protected function setupAfterDbConnected()
+	{
+		$this->tbl_ = $this->getDefinedTablePrefix();
+	}
+	
+	/**
+	 * Ensure our table prefix matches the connection information.
+	 * @return string Returns the defined table prefix.
+	 * @see Model::TABLE_PREFIX_INCLUDES_DB_NAME
+	 */
+	protected function getDefinedTablePrefix()
+	{
+		$theResult = '';
+		if ( static::TABLE_PREFIX_INCLUDES_DB_NAME )
+		{
+			$theResult = SqlBuilder::withModel($this)->getQuoted(
+					$this->myDbConnInfo->dbName
+			) . '.';
+		}
+		$theResult .= $this->myDbConnInfo->table_prefix;
+		return $theResult;
 	}
 	
 	/**

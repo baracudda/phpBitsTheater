@@ -44,12 +44,17 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	const FEATURE_ID = 'BitsTheater/framework';
 	const FEATURE_VERSION_SEQ = 9; //always ++ when making db schema changes
 		
+	/**
+	 * Add our database name before the defined table prefix so we can work
+	 * with multiple databases at once.
+	 * @var boolean This value is TRUE as the intention here is to work with multiple dbs.
+	 */
+	const TABLE_PREFIX_INCLUDES_DB_NAME = true;
+
 	public $tnSiteVersions; const TABLE_SiteVersions = 'zz_versions';
 	
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
-        $this->tbl_ = '`'.$this->myDbConnInfo->dbName.'`.'.$this->tbl_;
-		
         $this->tnSiteVersions = $this->tbl_.self::TABLE_SiteVersions;
 	}
 	

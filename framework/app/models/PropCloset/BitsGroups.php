@@ -51,6 +51,13 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	//v 3 - removed group_type field from groups table
 	//v 2 - added groups_reg_codes child table
 
+	/**
+	 * Add our database name before the defined table prefix so we can work
+	 * with multiple databases at once.
+	 * @var boolean This value is TRUE as the intention here is to work with multiple dbs.
+	 */
+	const TABLE_PREFIX_INCLUDES_DB_NAME = true;
+
 	public $tnGroups;			const TABLE_Groups = 'groups';
 	public $tnGroupMap;			const TABLE_GroupMap = 'groups_map';
 	public $tnGroupRegCodes;	const TABLE_GroupRegCodes = 'groups_reg_codes';
@@ -68,7 +75,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		$this->tnGroupMap = $this->tbl_.self::TABLE_GroupMap;
 		$this->tnGroupRegCodes = $this->tbl_.self::TABLE_GroupRegCodes;
 	}
-	
+
 	/**
 	 * @return string Returns the ID of the "titan" superuser group.
 	 */
@@ -397,13 +404,13 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			$theSql->mustAddParam('group_id', $theGroupID, PDO::PARAM_INT);
 			$theSql->endWhereClause();
 			$theSql->execDML();
-			
+
 			if ( !$bWasInTransaction )
-			$this->db->commit();
+				$this->db->commit();
 			return $theSql->myParams;
 		} catch (PDOException $pdox) {
 			if ( !$bWasInTransaction )
-			$this->db->rollBack();
+				$this->db->rollBack();
 			throw $theSql->newDbException(__METHOD__, $pdox);
 		}
 	}
@@ -538,7 +545,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		if ( $theGroupParentId<=self::UNREG_GROUP_ID ||
 				$theGroupParentId==self::TITAN_GROUP_ID )
 		{ $theGroupParentId = null; }
-		
+
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 				'group_name' => $aGroupName,
 				'parent_group_id' => $theGroupParentId,
@@ -685,18 +692,18 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		if ( empty($theGroupId) || $theGroupId == static::UNREG_GROUP_ID ||
 				$theGroupId == $this->getTitanGroupID() || empty($theRegCode) )
 		{ return false; } //trivially reject bad data
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
-					'group_id' => $theGroupId,
-					'reg_code' => $theRegCode,
-			));
-			$theSql->startWith( 'INSERT INTO ' . $this->tnGroupRegCodes );
-			$this->setAuditFieldsOnInsert($theSql);
-			$theSql->mustAddParam('group_id');
-			$theSql->mustAddParam('reg_code');
-			try { $theSql->execDML() ; }
-			catch( PDOException $pdox )
-			{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
-		}
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+				'group_id' => $theGroupId,
+				'reg_code' => $theRegCode,
+		));
+		$theSql->startWith( 'INSERT INTO ' . $this->tnGroupRegCodes );
+		$this->setAuditFieldsOnInsert($theSql);
+		$theSql->mustAddParam('group_id');
+		$theSql->mustAddParam('reg_code');
+		try { $theSql->execDML() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
+	}
 
 	/**
 	 * @return Return array(group_id => reg_code).

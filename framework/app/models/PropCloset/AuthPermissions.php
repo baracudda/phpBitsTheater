@@ -37,6 +37,13 @@ class AuthPermissions extends BaseModel {
 	const FORM_VALUE_Disallow = 'disallow';
 	const FORM_VALUE_DoNotShow = 'deny-disable';
 
+	/**
+	 * Add our database name before the defined table prefix so we can work
+	 * with multiple databases at once.
+	 * @var boolean This value is TRUE as the intention here is to work with multiple dbs.
+	 */
+	const TABLE_PREFIX_INCLUDES_DB_NAME = true;
+
 	public $tnPermissions; const TABLE_Permissions = 'permissions';
 
 	public $_permCache = array();
