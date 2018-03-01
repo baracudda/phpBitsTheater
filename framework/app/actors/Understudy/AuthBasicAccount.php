@@ -17,26 +17,24 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\actors\Understudy\ABitsAccount as BaseActor;
-use BitsTheater\costumes\AuthPasswordReset;
-use BitsTheater\costumes\colspecs\CommonMySql;
-use BitsTheater\outtakes\AccountAdminException;
-use BitsTheater\outtakes\PasswordResetException;
-use com\blackmoonit\exceptions\DbException;
-use com\blackmoonit\MailUtils;
-use com\blackmoonit\MailUtilsException;
-use com\blackmoonit\Arrays;
-use com\blackmoonit\Strings;
 use BitsTheater\BrokenLeg;
+use BitsTheater\costumes\colspecs\CommonMySql;
+use BitsTheater\costumes\AuthPasswordReset;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\HttpAuthHeader;
-use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthAccountSet;
 use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\WornForAuditFields;
+use BitsTheater\outtakes\AccountAdminException;
+use BitsTheater\outtakes\PasswordResetException;
+use com\blackmoonit\Arrays;
+use com\blackmoonit\exceptions\DbException;
+use com\blackmoonit\MailUtils;
+use com\blackmoonit\MailUtilsException;
+use com\blackmoonit\Strings;
 use Exception;
-use PDOStatement ;
 {//namespace begin
 
 class AuthBasicAccount extends BaseActor
@@ -128,7 +126,7 @@ class AuthBasicAccount extends BaseActor
 			if ($theCanRegisterResult==$dbAuth::REGISTRATION_SUCCESS) {
 				//see if there is a registration code that maps to a particular group
 				$dbAuthGroups = $this->getProp('AuthGroups');
-				$theDefaultGroup = $dbAuthGroups->findGroupIdByRegCode($this->getAppId(), $aRegCode);
+				$theDefaultGroup = $dbAuthGroups->findGroupIdByRegCode($aRegCode);
 				if ($theDefaultGroup!=0) {
 					$theVerifiedTs = $dbAccounts->utc_now();
 				} else if (!$bAllowGroup0toAutoRegister) {
@@ -333,15 +331,12 @@ class AuthBasicAccount extends BaseActor
 						$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email')), $v::USER_MSG_ERROR);
 						return $this->getMyUrl('view/'.$theAcctId);
 					} else {
-						$theSql = 'UPDATE '.$dbAuth->tnAuth.' SET email = :email WHERE account_id=:acct_id';
-						$dbAuth->execDML($theSql,array('acct_id'=>$theAcctId, 'email'=>$theNewEmail));
+						$dbAuth->updateEmail($theAcctId, $theNewEmail);
 					}
 				}
 				$pwKeyNew = $this->scene->getPwInputKey().'_new';
 				if (!empty($this->scene->$pwKeyNew) && $this->scene->$pwKeyNew===$this->scene->password_confirm) {
-					$thePwHash = Strings::hasher($this->scene->$pwKeyNew);
-					$theSql = 'UPDATE '.$dbAuth->tnAuth.' SET pwhash = :pwhash WHERE account_id=:acct_id';
-					$dbAuth->execDML($theSql,array('acct_id'=>$theAcctId, 'pwhash'=>$thePwHash));
+					$dbAuth->updatePassword($theAcctId, $this->scene->$pwKeyNew);
 				}
 				$v->addUserMsg($this->getRes('account/msg_update_success'), $v::USER_MSG_NOTICE);
 				return $this->getMyUrl('view/'.$theAcctId);
@@ -398,14 +393,7 @@ class AuthBasicAccount extends BaseActor
 								'account/msg_acctexists/'.$this->getRes('account/label_email')
 						);
 					} else {
-						$theSql = SqlBuilder::withModel($dbAuth)->obtainParamsFrom(array(
-								'email' => $theNewEmail,
-								'account_id' => $theAcctId,
-						));
-						$theSql->startWith('UPDATE')->add($dbAuth->tnAuth);
-						$theSql->add('SET')->mustAddParam('email');
-						$theSql->startWhereClause()->mustAddParam('account_id')->endWhereClause();
-						$theSql->execDML();
+						$dbAuth->updateEmail($theAcctId, $theNewEmail);
 					}
 				}
 				
@@ -413,14 +401,7 @@ class AuthBasicAccount extends BaseActor
 				$pwKeyNew = $v->getPwInputKey().'_new';
 				$pwKeyConfirm = $v->getPwInputKey().'_confirm';
 				if (!empty($v->$pwKeyNew) && ($v->$pwKeyNew===$v->$pwKeyConfirm)) {
-					$theSql = SqlBuilder::withModel($dbAuth)->obtainParamsFrom(array(
-							'pwhash' => Strings::hasher($v->$pwKeyNew),
-							'account_id' => $theAcctId,
-					));
-					$theSql->startWith('UPDATE')->add($dbAuth->tnAuth);
-					$theSql->add('SET')->mustAddParam('pwhash');
-					$theSql->startWhereClause()->mustAddParam('account_id')->endWhereClause();
-					$theSql->execDML();
+					$dbAuth->updatePassword($theAcctId, $v->$pwKeyNew);
 				}
 
 				//all modifications went ok, get the account info and return it
@@ -687,7 +668,7 @@ class AuthBasicAccount extends BaseActor
 				$accountGroup = 0;
 			} else {
 				// New account will have default group specified by supplied registration code.
-				$accountGroup = $dbAuthGroups->findGroupIdByRegCode($this->getAppId(), $aRegCode);
+				$accountGroup = $dbAuthGroups->findGroupIdByRegCode($aRegCode);
 			}
 		} else {
 			$filterOptions = array(
@@ -700,19 +681,19 @@ class AuthBasicAccount extends BaseActor
 				foreach ($aGroupId as $anID) {
 					$theID = filter_var($anID, FILTER_VALIDATE_INT, $filterOptions);
 					//if not TITAN group and not already in group, add to group list
-					if ( ($theID!==$dbAuthGroups::TITAN_GROUP_ID) &&
+					if ( ($theID!==$dbAuthGroups->getTitanGroupID()) &&
 						(array_search($theID, $accountGroup, true)===false) )
 					{
 						$accountGroup[] = $theID;
 					}
 				}
 				// Ensure not trying to create an account affiliated with the special TITAN group.
-				if ( array_search( $dbAuthGroups::TITAN_GROUP_ID, $accountGroup ) !== false )
+				if ( array_search( $dbAuthGroups->getTitanGroupID(), $accountGroup ) !== false )
 					throw AccountAdminException::toss( $this, 'CANNOT_CREATE_TITAN_ACCOUNT' );
 			} else {
 				$accountGroup = filter_var($aGroupId, FILTER_VALIDATE_INT, $filterOptions);
 				// Ensure not trying to create an account affiliated with the special TITAN group.
-				if ( $accountGroup == $dbAuthGroups::TITAN_GROUP_ID )
+				if ( $accountGroup == $dbAuthGroups->getTitanGroupID() )
 					throw AccountAdminException::toss( $this, 'CANNOT_CREATE_TITAN_ACCOUNT' );
 			}
 		}
@@ -729,7 +710,6 @@ class AuthBasicAccount extends BaseActor
 		} elseif ($canRegister == $dbAuth::REGISTRATION_NAME_TAKEN) {
 			throw AccountAdminException::toss( $this,
 					'UNIQUE_FIELD_ALREADY_EXISTS', $aName ) ;
-			throw BrokenLeg::toss( $this, 'DB_EXCEPTION', "Name already exists in system." );
 		} elseif ($canRegister == $dbAuth::REGISTRATION_EMAIL_TAKEN) {
 			throw AccountAdminException::toss( $this,
 					'UNIQUE_FIELD_ALREADY_EXISTS', $aEmail ) ;
@@ -833,15 +813,7 @@ class AuthBasicAccount extends BaseActor
 					throw AccountAdminException::toss( $this,
 						'UNIQUE_FIELD_ALREADY_EXISTS', $updatedEmail );
 				} else {
-					$theSql = SqlBuilder::withModel( $dbAuth )->obtainParamsFrom(
-							array(
-								'email' => $updatedEmail,
-								'account_id' => $aAccountId
-							));
-					$theSql->startWith( 'UPDATE' )->add( $dbAuth->tnAuth );
-					$this->setAuditFieldsOnUpdate($theSql)->mustAddParam( 'email' );
-					$theSql->startWhereClause()->mustAddParam( 'account_id' )->endWhereClause();
-					$theSql->execDML();
+					$dbAuth->updateEmail($aAccountId, $updatedEmail);
 				}
 			}
 
@@ -854,30 +826,14 @@ class AuthBasicAccount extends BaseActor
 					throw AccountAdminException::toss( $this,
 							'UNIQUE_FIELD_ALREADY_EXISTS', $updatedName );
 				} else {
-					$theSql = SqlBuilder::withModel( $dbAccounts )->obtainParamsFrom(
-							array(
-								'account_name' => $updatedName,
-								'account_id' => $aAccountId
-							));
-					$theSql->startWith( 'UPDATE' )->add( $dbAccounts->tnAccounts );
-					$theSql->add( 'SET' )->mustAddParam( 'account_name' );
-					$theSql->startWhereClause()->mustAddParam( 'account_id' )->endWhereClause();
-					$theSql->execDML();
+					$dbAccounts->updateName($aAccountId, $updatedName);
 				}
 			}
 
 			// Update password, if applicable.
 			if ( !empty ( $updatedPassword ))
 			{
-				$theSql = SqlBuilder::withModel( $dbAuth )->obtainParamsFrom(
-						array(
-							'pwhash' => Strings::hasher( $updatedPassword ),
-							'account_id' => $aAccountId
-						));
-				$theSql->startWith( 'UPDATE' )->add( $dbAuth->tnAuth );
-				$this->setAuditFieldsOnUpdate($theSql)->mustAddParam( 'pwhash' );
-				$theSql->startWhereClause()->mustAddParam( 'account_id' )->endWhereClause();
-				$theSql->execDML();
+				$dbAuth->updatePassword($aAccountId, $updatedPassword);
 			}
 
 			//update is_active, if applicable
@@ -892,14 +848,14 @@ class AuthBasicAccount extends BaseActor
 				foreach ($currentAuthGroups as &$thisGroupId)
 				{
 					// Ensure not trying to remove group affiliation to special TITAN group.
-					if ( $thisGroupId != $dbAuthGroups::TITAN_GROUP_ID )
+					if ( $thisGroupId != $dbAuthGroups->getTitanGroupID() )
 						$dbAuthGroups->delAcctMap($thisGroupId, $aAccountId);
 				}
 				// Now insert mapping of account with updated group id values.
 				foreach ($aGroupIds as &$thisNewGroupId)
 				{
 					// Ensure not trying to set group affiliation to special TITAN group.
-					if ( $thisNewGroupId == $dbAuthGroups::TITAN_GROUP_ID )
+					if ( $thisNewGroupId == $dbAuthGroups->getTitanGroupID() )
 						throw AccountAdminException::toss( $this, 'CANNOT_UPDATE_TO_TITAN' );
 
 					// Add mapping.

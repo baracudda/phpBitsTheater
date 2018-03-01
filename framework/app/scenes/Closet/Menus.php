@@ -80,7 +80,7 @@ class Menus extends MyScene {
 		}
 		$w .= str_repeat("\t",$aSubLevel)."</ul></div>";
 		if (!$this->_director->isGuest())
-			$w = str_replace('%account_id%',$this->_director->account_info->account_id,$w);
+			$w = str_replace('%account_id%',$this->getDirector()->getMyAccountInfo()->account_id,$w);
 		return $w;
 	}
 

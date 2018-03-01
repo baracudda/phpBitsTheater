@@ -27,7 +27,15 @@ use Exception;
 
 abstract class ABitsAccount extends BaseActor {
 	const DEFAULT_ACTION = 'view';
-	
+
+	/**
+	 * {@inheritDoc}
+	 * @return MyScene Returns a newly created scene descendant.
+	 * @see \BitsTheater\Actor::createMyScene()
+	 */
+	protected function createMyScene($anAction)
+	{ return new MyScene($this, $anAction); }
+
 	/**
 	 * View the currently logged in account information. (page render)
 	 * @param number $aAcctId - the account to view, if allowed to see one besides the current.
@@ -49,8 +57,9 @@ abstract class ABitsAccount extends BaseActor {
 				$this->isAllowed('account','modify')
 		);
 		if ($bAuthorizied) {
-			/* @var $v->ticket_info AccountInfoCache */
-			$v->ticket_info = AccountInfoCache::fromArray($dbAccounts->getAccount($aAcctId));
+			$v->ticket_info = $this->getProp('Auth')->getAccountInfoCache(
+					$dbAccounts, $aAcctId
+			);
 		}
 		$v->action_modify = $this->getMyUrl('/account/modify');
 		$v->redirect = $this->getMyUrl('/account/view/'.$aAcctId);
@@ -142,17 +151,13 @@ abstract class ABitsAccount extends BaseActor {
 		$this->viewToRender('results_as_json');
 		if( ! $this->isGuest() )
 		{
-			$theData = $this->director->account_info ;
+			$theData = $this->getDirector()->getMyAccountInfo()->exportData() ;
 			$theData->account_id = intval( $theData->account_id ) ;
 			//$theData->debugAuth = $v->debugAuth; unset($v->debugAuth); //DEBUG
-
-			$theGroupID =
-				( empty( $theData->groups ) ? false : $theData->groups[0] ) ;
-			$theError = null ;
-			if( $theGroupID ) try
+			if( $theData->groups ) try
 			{
 				$dbPerms = $this->getProp( 'Permissions' ) ;
-				$theData->permissions = $dbPerms->getGrantedRights($theGroupID);
+				$theData->permissions = $dbPerms->getGrantedRights($theData->groups);
 			}
 			catch( Exception $x )
 			{ throw BrokenLeg::tossException( $this, $x ) ; }
@@ -218,7 +223,7 @@ abstract class ABitsAccount extends BaseActor {
 		try { $theGroups = $dbGroups->getAcctGroups( $aAccountID ) ; }
 		catch( DbException $dbx )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_EXCEPTION, $dbx->getMessage() ) ; }
-		if( in_array( $dbGroups::TITAN_GROUP_ID, $theGroups ) )
+		if( in_array( $dbGroups->getTitanGroupID(), $theGroups ) )
 			throw AccountAdminException::toss( $this, 'CANNOT_DELETE_TITAN' ) ;
 		$this->returnProp( $dbGroups ) ;
 

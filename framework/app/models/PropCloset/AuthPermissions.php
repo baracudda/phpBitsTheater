@@ -18,7 +18,6 @@
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use BitsTheater\costumes\SqlBuilder;
-use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\models\Auth;
 use BitsTheater\models\PropCloset\BitsGroups ;
 use com\blackmoonit\exceptions\DbException;
@@ -112,14 +111,19 @@ class AuthPermissions extends BaseModel {
 	 */
 	public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null) {
 		if (empty($acctInfo)) {
-			$acctInfo =& $this->director->account_info;
-		}
-		if (empty($acctInfo)) {
-			$acctInfo = new AccountInfoCache();
+			$acctInfo = $this->getDirector()->getMyAccountInfo();
 		}
 		//$this->debugLog('acctinfo:'.$this->debugStr($acctInfo));
-		if (!empty($acctInfo->groups) && (array_search(1,$acctInfo->groups,true)!==false)) {
+		if ( !empty($acctInfo) && !empty($acctInfo->groups) &&
+				(array_search( BitsGroups::TITAN_GROUP_ID,$acctInfo->groups,true)!==false) ) {
 			return true; //group 1 is always allowed everything
+		}
+		if ( empty($acctInfo) )
+		{
+			$acctInfo = $this->getProp('Auth')->createAccountInfoObj(array(
+					'account_id' => 0,
+					'groups' => array( BitsGroups::UNREG_GROUP_ID ),
+			));
 		}
 		//cache the current users permissions
 		if (empty($this->_permCache[$acctInfo->account_id])) {

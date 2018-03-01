@@ -1,6 +1,7 @@
 <?php
+
 namespace BitsTheater\costumes ;
-use BitsTheater\costumes\CursorCloset\AuthPasswordReset as BaseCostume;
+use BitsTheater\costumes\Wardrobe\AuthPasswordReset as BaseCostume ;
 { // begin namespace
 
 /**
@@ -11,7 +12,7 @@ class AuthPasswordReset extends BaseCostume
 {
 	
 	//nothing to override, yet
-		
+	
 } // end AuthPasswordReset class
 
 } // end namespace

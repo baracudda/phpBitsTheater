@@ -58,7 +58,7 @@ abstract class AuthBase extends BaseModel {
 	
 	public function ripTicket() {
 		$this->clearCsrfTokenCookie();
-		unset($this->director->account_info);
+		$this->director->account_info = null;
 		$this->director->resetSession();
 	}
 	
@@ -246,6 +246,13 @@ abstract class AuthBase extends BaseModel {
 		} else
 			return true;
 	}
+	
+	/**
+	 * Create an object representing auth account information.
+	 * @param array|object $aInitialData - (optional) include this data in the object.
+	 * @return AccountInfoCache Returns the object for the Auth model in use.
+	 */
+	abstract public function createAccountInfoObj( $aInitialData=null );
 	
 }//end class
 

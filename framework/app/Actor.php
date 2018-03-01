@@ -558,11 +558,10 @@ implements IDirected
 	 * Return the logged in user's account_id.
 	 * @var integer
 	 */
-	public function getMyAccountID() {
-		if (!empty($this->director->account_info))
-			return $this->director->account_info->account_id;
-		else
-			return 0;
+	public function getMyAccountID()
+	{
+		$theAcctInfo = $this->getDirector()->getMyAccountInfo();
+		return ( !empty($theAcctInfo) ) ? $theAcctInfo->account_id : 0;
 	}
 	
 	/**

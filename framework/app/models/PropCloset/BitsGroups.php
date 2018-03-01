@@ -70,6 +70,12 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
+	 * @return string Returns the ID of the "titan" superuser group.
+	 */
+	public function getTitanGroupID()
+	{ return self::TITAN_GROUP_ID; }
+
+	/**
 	 * Future db schema updates may need to create a temp table of one
 	 * of the table definitions in order to update the contained data,
 	 * putting schema here and supplying a way to provide a different name
@@ -361,32 +367,44 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	
 	/**
 	 * Remove a group and its child data.
-	 * @param integer $aGroupId - the group ID.
+	 * @param integer $aGroupID - the group ID.
 	 * @return Returns an array('group_id'=>$aGroupId).
 	 */
-	public function del($aGroupId) {
+	public function del( $aGroupID )
+	{
 		$theSql = SqlBuilder::withModel($this);
-		$theGroupId = intval($aGroupId);
-		if ($theGroupId>self::TITAN_GROUP_ID) try {
+		$theGroupID = intval($aGroupID);
+		if ( $theGroupID == self::TITAN_GROUP_ID )
+			return;  //trivially ignore attempts to delete the "Titan" group.
+		$bWasInTransaction = $this->db->inTransaction();
+		if ( !$bWasInTransaction )
 			$this->db->beginTransaction();
+		try {
+			$theSql->startWith('DELETE FROM')->add($this->tnGroupRegCodes);
+			$theSql->startWhereClause();
+			$theSql->mustAddParam('group_id', $theGroupID, PDO::PARAM_INT);
+			$theSql->endWhereClause();
+			$theSql->execDML();
 			
 			$theSql->startWith('DELETE FROM')->add($this->tnGroupMap);
 			$theSql->startWhereClause();
-			$theSql->mustAddParam('group_id', $theGroupId, PDO::PARAM_INT);
+			$theSql->mustAddParam('group_id', $theGroupID, PDO::PARAM_INT);
 			$theSql->endWhereClause();
 			$theSql->execDML();
 			
 			$theSql->reset()->startWith('DELETE FROM')->add($this->tnGroups);
 			$theSql->startWhereClause();
-			$theSql->mustAddParam('group_id', $theGroupId, PDO::PARAM_INT);
+			$theSql->mustAddParam('group_id', $theGroupID, PDO::PARAM_INT);
 			$theSql->endWhereClause();
 			$theSql->execDML();
 			
+			if ( !$bWasInTransaction )
 			$this->db->commit();
 			return $theSql->myParams;
-		} catch (PDOException $pdoe) {
+		} catch (PDOException $pdox) {
+			if ( !$bWasInTransaction )
 			$this->db->rollBack();
-			throw $theSql->newDbException(__METHOD__, $pdoe);
+			throw $theSql->newDbException(__METHOD__, $pdox);
 		}
 	}
 	
@@ -517,8 +535,9 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	public function createGroup( $aGroupName, $aGroupParentId=null, $aGroupRegCode=null, $aGroupCopyID=null )
 	{
 		$theGroupParentId = intval($aGroupParentId);
-		if ($theGroupParentId<=self::UNREG_GROUP_ID)
-			$theGroupParentId = null;
+		if ( $theGroupParentId<=self::UNREG_GROUP_ID ||
+				$theGroupParentId==self::TITAN_GROUP_ID )
+		{ $theGroupParentId = null; }
 		
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 				'group_name' => $aGroupName,
@@ -663,8 +682,9 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	{
 		$theGroupId = intval($aGroupID);
 		$theRegCode = trim($aRegCode);
-		if ($theGroupId>self::UNREG_GROUP_ID && !empty($theRegCode))
-		{
+		if ( empty($theGroupId) || $theGroupId == static::UNREG_GROUP_ID ||
+				$theGroupId == $this->getTitanGroupID() || empty($theRegCode) )
+		{ return false; } //trivially reject bad data
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 					'group_id' => $theGroupId,
 					'reg_code' => $theRegCode,
@@ -705,7 +725,8 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			$theRow = $theSql->getTheRow();
 			return (!empty($theRow)) ? intval($theRow['group_id']) : self::UNREG_GROUP_ID;
 		} else {
-			return ($theRegCode==$aAppId) ? static::DEFAULT_REG_GROUP_ID : self::UNREG_GROUP_ID;
+			return ($theRegCode==$this->getDirector()->app_id)
+					? static::DEFAULT_REG_GROUP_ID : self::UNREG_GROUP_ID;
 		}
 	}
 

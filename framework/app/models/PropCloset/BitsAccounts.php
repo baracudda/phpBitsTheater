@@ -156,7 +156,26 @@ class BitsAccounts extends BaseModel {
 		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 
-
+	/**
+	 * Given the AccountID, update the name associated with it.
+	 * @param number $aAcctID - the account_id of the account.
+	 * @param string $aName - the name to use.
+	 */
+	public function updateName( $aAcctID, $aName )
+	{
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+				'account_id' => $aAcctID,
+				'account_name' => $aName,
+		));
+		$theSql->startWith('UPDATE')->add($this->tnAccounts);
+		$theSql->add('SET')->mustAddParam('account_name');
+		$theSql->startWhereClause()->mustAddParam('account_id')->endWhereClause();
+		try { $theSql->execDML() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
+	}
+	
+	
 }//end class
 
 }//end namespace

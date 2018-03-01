@@ -22,6 +22,7 @@ use BitsTheater\res\Resources as BaseResources;
 class BitsAuth extends BaseResources {
 	
 	public $msg_basic_auth_fail = 'Not authorized';
+	public $msg_sanitized_input_is_empty = '[%1$s] is too malformed to use.';
 	
 }//end class
 

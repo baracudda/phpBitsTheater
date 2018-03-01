@@ -50,6 +50,14 @@ class AuthNone extends BaseModel {
 		return true;
 	}
 	
+	/**
+	 * Create an object representing auth account information.
+	 * @param array|object $aInitialData - (optional) include this data in the object.
+	 * @return Returns the object for the Auth model in use.
+	 */
+	public function createAccountInfoObj( $aInitialData=null )
+	{ return new \stdClass(); }
+	
 }//end class
 
 }//end namespace

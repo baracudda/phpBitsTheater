@@ -36,10 +36,12 @@ class BitsAdmin extends BaseResources {
 	public $btn_label_resetup_db = '<span class="glyphicon glyphicon-asterisk"></span> Create Missing Tables';
 	
 	public $msg_warning_backup_db = "UPDATING COULD RESULT IN DATA LOSS IF A PROBLEM ARISES!<br>\nBACKUP YOUR DATABASE BEFORE UPDATING!";
-	public $msg_update_success = 'Update successful!';
+	public $msg_update_success = 'Feature [%s] updated successfully!';
+	public $msg_update_error = 'Feature [%1$s] update failure: %2$s';
 	public $msg_copy_cfg_fail = "Cannot copy over [cfg]/%s. Please make it writeable and try again.";
 	public $msg_missing_tables_created = 'Missing tables created.';
 	public $msg_cli_feature_up_to_date = 'Feature %s is already up to date.';
+	public $msg_cli_check_for_missing = 'Checking for missing tables and settings...';
 	
 	public $dialog_update_warning_title = 'WARNING!';
 	public $dialog_update_warning_msg = 'Are you <i>SURE</i> you want to update this feature?';

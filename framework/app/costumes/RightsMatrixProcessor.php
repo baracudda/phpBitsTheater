@@ -195,10 +195,11 @@ extends BaseCostume
 
 		$bSetting = false ;
 		$theGroupID = self::getStringifiedGroupID($aGroup->group_id) ;
-
+		
+		$dbAuthGroups = $this->getProp('AuthGroups');
 		if( $aGroup->group_id == AuthGroups::UNREG_GROUP_ID )
 			$bSetting = false ;
-		else if( $aGroup->group_id == AuthGroups::TITAN_GROUP_ID )
+		else if( $aGroup->group_id == $dbAuthGroups->getTitanGroupID() )
 			$bSetting = true ;
 		else if( $this->hasExplicitSettingFor($aNSName,$aPermName,$theGroupID) )
 			$bSetting = $this->myGroupPerms[$theGroupID][$aNSName][$aPermName] ;
@@ -211,6 +212,7 @@ extends BaseCostume
 					$aParentList
 			) ;
 		}
+		$this->returnProp($dbAuthGroups);
 
 		return $bSetting ;
 	}

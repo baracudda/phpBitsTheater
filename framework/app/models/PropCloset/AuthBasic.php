@@ -18,22 +18,22 @@
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\AuthBase as BaseModel;
 use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
-use BitsTheater\models\AuthGroups; /* @var $dbAuthGroups AuthGroups */
+use BitsTheater\models\AuthGroups as AuthGroupsDB; /* @var $dbAuthGroups AuthGroupsDB */
 use BitsTheater\Scene;
+use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\IFeatureVersioning;
+use BitsTheater\costumes\AccountInfoCache ;
 use BitsTheater\costumes\AuthPasswordReset ;
 use BitsTheater\costumes\SqlBuilder;
-use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\costumes\HttpAuthHeader;
+use BitsTheater\costumes\WornForFeatureVersioning;
+use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\outtakes\PasswordResetException ;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
 use PDO;
 use PDOException;
 use Exception;
-use BitsTheater\costumes\WornForFeatureVersioning;
-use BitsTheater\costumes\WornForAuditFields;
-use BitsTheater\costumes\colspecs\CommonMySql;
 {//namespace begin
 
 class AuthBasic extends BaseModel implements IFeatureVersioning
@@ -78,11 +78,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	public $myExistingFeatureVersionNum = self::FEATURE_VERSION_SEQ;
 
 	/**
-	 * @var Config
-	 */
-	protected $dbConfig = null;
-
-	/**
 	 * A Cookie's token prefix.
 	 * @var string
 	 */
@@ -117,9 +112,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
-		if ($this->director->canConnectDb()) {
-			$this->dbConfig = $this->getProp('Config');
-		}
 		$this->tnAuth = $this->tbl_.self::TABLE_Auth;
 		$this->tnAuthTokens = $this->tbl_.self::TABLE_AuthTokens;
 		$this->tnAuthMobile = $this->tbl_.self::TABLE_AuthMobile;
@@ -423,6 +415,14 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		return parent::isEmpty( empty($aTableName) ? $this->tnAuth : $aTableName );
 	}
 
+	/**
+	 * Create an object representing auth account information.
+	 * @param array|object $aInitialData - (optional) include this data in the object.
+	 * @return AccountInfoCache Returns the object for the Auth model in use.
+	 */
+	public function createAccountInfoObj( $aInitialData=null )
+	{ return AccountInfoCache::fromThing($aInitialData); }
+	
 	public function getAuthByEmail($aEmail) {
 		$theSql = "SELECT * FROM {$this->tnAuth} WHERE email = :email";
 		return $this->getTheRow($theSql,array('email'=>$aEmail));
@@ -709,7 +709,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		//check cookie duration
 		$delta = 1; //multiplication factor, which is why it is not 0.
 		try {
-			$theDuration = (!empty($aDuration)) ? $aDuration : $this->dbConfig['auth/cookie_freshness_duration'];
+			$theDuration = (!empty($aDuration)) ? $aDuration
+					: $this->getConfigSetting('auth/cookie_freshness_duration');
 		} catch (Exception $e) {
 			$theDuration = 'duration_1_day';
 		}
@@ -1505,7 +1506,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->db->beginTransaction() ;
 			try {
 				if ($this->isEmpty()) {
-					$aAuthGroups = AuthGroups::TITAN_GROUP_ID;
+					$aAuthGroups = AuthGroupsDB::TITAN_GROUP_ID;
 				}
 				$nowAsUTC = $this->utc_now();
 				$theVerifiedTS = ($aUserData['verified_timestamp']==='now')
@@ -1977,6 +1978,46 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 					'device_longitude' => (is_float($aCircumstances[3]) ? $aCircumstances[3] : null),
 			);
 		} else return array();
+	}
+	
+	/**
+	 * Given the AccountID, update the email associated with it.
+	 * @param number $aAcctID - the account_id of the auth account.
+	 * @param string $aEmail - the email to use.
+	 */
+	public function updateEmail( $aAcctID, $aEmail )
+	{
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+				'account_id' => $aAcctID,
+				'email' => $aEmail,
+		));
+		$theSql->startWith('UPDATE')->add($this->tnAuth);
+		$this->setAuditFieldsOnUpdate($theSql);
+		$theSql->mustAddParam('email');
+		$theSql->startWhereClause()->mustAddParam('account_id')->endWhereClause();
+		try { $theSql->execDML() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
+	}
+	
+	/**
+	 * Given the AccountID, update the password associated with it.
+	 * @param number $aAcctID - the account_id of the auth account.
+	 * @param string $aPw - the paintext password to hash-n-store.
+	 */
+	public function updatePassword( $aAcctID, $aPw )
+	{
+		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
+				'account_id' => $aAcctID,
+				'pwhash' => Strings::hasher($aPw),
+		));
+		$theSql->startWith('UPDATE')->add($this->tnAuth);
+		$this->setAuditFieldsOnUpdate($theSql);
+		$theSql->mustAddParam('pwhash');
+		$theSql->startWhereClause()->mustAddParam('account_id')->endWhereClause();
+		try { $theSql->execDML() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 	
 }//end class

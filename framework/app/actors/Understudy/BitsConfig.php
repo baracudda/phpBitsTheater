@@ -80,12 +80,9 @@ class BitsConfig extends BaseActor {
 		if ($this->checkAllowed('config','modify')) {
 			try {
 				$dbConfig = $this->getProp('Config');
-				$theConfigAreas = $dbConfig->getConfigAreas();
-				foreach ($theConfigAreas as &$theNamespaceInfo) {
-					$theNamespaceInfo->settings_list = $dbConfig->getConfigSettings($theNamespaceInfo);
-				}
+				$theConfigSettings = $dbConfig->getDefinedSettings();
 				$theResults = array();
-				foreach ($theConfigAreas as &$theNamespaceInfo) {
+				foreach ($theConfigSettings as $theNamespaceInfo) {
 					$theResults[] = $theNamespaceInfo->exportData();
 				}
 				$v->results = APIResponse::resultsWithData($theResults);

@@ -19,7 +19,7 @@ namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseDirector;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\AccountInfoCache;
-use BitsTheater\models\Auth;
+use BitsTheater\models\Auth as AuthDB;
 use BitsTheater\res\ResException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
@@ -87,7 +87,7 @@ implements ArrayAccess, IDirected
 	protected $_logFilenameCache = array();
 	/**
 	 * Cache of the auth model in use.
-	 * @var Auth
+	 * @var AuthDB
 	 */
 	protected $dbAuth = null;
 	/**
@@ -687,16 +687,16 @@ implements ArrayAccess, IDirected
 	 * Determine if there is even a user logged into the system or not.
 	 * @return boolean Returns TRUE if no user is logged in.
 	 */
-	public function isGuest() {
-		$theAcctInfo =& $this->account_info;
-		if (empty($theAcctInfo)) {
-			$theAcctInfo = new AccountInfoCache();
+	public function isGuest()
+	{
+		if (isset($this->dbAuth))
+		{
+			return $this->dbAuth->isGuestAccount(
+					$this->getMyAccountInfo()
+			);
 		}
-		if (isset($this->dbAuth)) {
-			return $this->dbAuth->isGuestAccount($theAcctInfo);
-		} else {
-			return true;
-		}
+		else
+		{ return true; }
 	}
 	
 	/**
@@ -825,14 +825,45 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * Get the currently logged in user's account name.
 	 * @return string Returns the logged in user's account name, if any.
 	 */
 	public function getMyUsername() {
-		if ($this->account_info!=null)
+		if ( !empty($this->account_info) )
 			return $this->account_info->account_name;
 		else
 			return null;
+	}
+	
+	/**
+	 * @return AccountInfoCache|null Return non-sensitive account info
+	 *    cache object used for the currently logged in user.
+	 *    Returns NULL not logged in.
+	 */
+	public function getMyAccountInfo()
+	{
+		return $this->account_info;
+	}
+	
+	/**
+	 * Cache the non-sensitive account info for the currently
+	 *    logged in user.
+	 * @return AccountInfoCache|null Return non-sensitive account info
+	 *    cache object used for the currently logged in user.
+	 *    Returns NULL if Auth model is not available.
+	 */
+	public function setMyAccountInfo( $aAcctInfo=null )
+	{
+		if ( !empty($this->dbAuth) && !empty($aAcctInfo) )
+		{
+			$this->account_info = $this->dbAuth->createAccountInfoObj($aAcctInfo);
+			$this[AuthDB::KEY_userinfo] =  $this->account_info->account_id;
+		}
+		else
+		{
+			$this->account_info = null;
+			unset($this[AuthDB::KEY_userinfo]);
+		}
+		return $this->account_info;
 	}
 	
 	/**
