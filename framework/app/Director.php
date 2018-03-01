@@ -452,13 +452,42 @@ implements ArrayAccess, IDirected
 		return $theModelClass;
 	}
 	
-	public function getDbConnInfo($aDbConnName='webapp') {
-		if (empty($this->dbConnInfo[$aDbConnName])) {
-			$this->dbConnInfo[$aDbConnName] = new DbConnInfo($aDbConnName);
+	/**
+	 * Cache the DB connection information for a specific connection name.
+	 * Any Models already connected to it will be re-connected to the new info.
+	 * @param DbConnInfo $aDbConnInfo - the DB connection info to cache.
+	 */
+	public function setDbConnInfo(DbConnInfo $aDbConnInfo)
+	{
+		if ( !empty($this->dbConnInfo[$aDbConnInfo->dbConnName]) ) {
+			$theOldDbConn = $this->dbConnInfo[$aDbConnInfo->dbConnName];
 		}
-		return $this->dbConnInfo[$aDbConnName];
+		$this->dbConnInfo[$aDbConnInfo->dbConnName] = $aDbConnInfo;
+		if ( !empty($this->_propMaster) ) {
+			foreach($this->_propMaster as $theModelRefCountCell) {
+				/* @var $theModel Model */
+				$theModel = $theModelRefCountCell['model'];
+				if ($theModel->dbConnName == $aDbConnInfo->dbConnName) {
+					$theModel->connect($aDbConnInfo->dbConnName);
+				}
+			}
+		}
+		if ( !empty($theOldDbConn) )
+		{ $theOldDbConn->disconnect(); }
 	}
 	
+	/**
+	 * Retrieve the connection information for a specific connection name.
+	 * @param string $aDbConnName - (optional) dbconn name, default="webapp".
+	 * @return \BitsTheater\DbConnInfo
+	 */
+	public function getDbConnInfo($aDbConnName='webapp')
+	{
+		if ( empty($this->dbConnInfo[$aDbConnName]) )
+		{ $this->setDbConnInfo(new DbConnInfo($aDbConnName)); }
+		return $this->dbConnInfo[$aDbConnName];
+	}
+
 	/**
 	 * Retrieve the singleton Model object for a given model class.
 	 * @param string $aModelClass - the model class to retrieve.
@@ -574,7 +603,7 @@ implements ArrayAccess, IDirected
 		if ( func_num_args()>1 )
 			$theResUri = func_get_args();
 		else //explode on "\" or "/"
-		$theResUri = explode('/',str_replace('\\','/',$aResName));
+			$theResUri = explode('/',str_replace('\\','/',$aResName));
 		//$this->debugPrint($this->debugStr($theResUri));
 		if (count($theResUri)>=2) {
 			$theResClassName = Strings::getClassName(array_shift($theResUri));

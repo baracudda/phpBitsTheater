@@ -114,15 +114,70 @@ class DbConnInfo {
 	}
 	
 	/**
+	 * Given a DbConnection string, parse the information we need to make a db connection.
+	 * @param string $aDbConnString - a connection string composed like the following:
+	 * <ol type="1">
+	 *   <li>driver://dbuser:dbpw@dbhost:dbport/dbname?prefix="webapp_"&charset="utf8mb4"</li>
+	 *   <li>driver://env_var@dbhost:dbport/dbname?prefix="webapp_"&charset="utf8mb4"</li>
+	 *   <li><span style="font-family:monospace">env_var</span> (which may contain any
+	 *      of the above formats)</li>
+	 * </ol>
+	 * @return $this Returns $this for chaining.
+	 * @throws InvalidArgumentException if various data points are missing
+	 */
+	public function loadDbConnInfoFromString($aDbConnString)
+	{
+		if ( empty($aDbConnString) )
+			throw new InvalidArgumentException('$aDbConnString is empty.');
+		if ( strpos($aDbConnString, '://')>0 ) {
+			$this->dbConnOptions->dns_scheme = DbConnOptions::DB_CONN_SCHEME_INI;
+			$theParsedParts = parse_url($aDbConnString);
+			// Potential keys within this array are: scheme - e.g. http,
+			//   host, port, user, pass, path, query - after the question mark ?,
+			//   fragment - after the hashmark #
+			if ( !empty($theParsedParts['scheme']) )
+			{ $this->dbConnSettings->driver = $theParsedParts['scheme']; }
+			if ( !empty($theParsedParts['host']) )
+			{ $this->dbConnSettings->host = $theParsedParts['host']; }
+			if ( !empty($theParsedParts['port']) )
+			{ $this->dbConnSettings->port = $theParsedParts['port']; }
+			if ( !empty($theParsedParts['user']) && empty($theParsedParts['pass']) ) {
+				$theUserPw = getenv($theParsedParts['user']);
+				$theParsedParts['user'] = strstr($theUserPw, ':', true);
+				$theParsedParts['pass'] = Strings::strstr_after($theUserPw, ':');
+			}
+			if ( !empty($theParsedParts['user']) )
+			{ $this->dbConnSettings->username = $theParsedParts['user']; }
+			if ( !empty($theParsedParts['pass']) )
+			{ $this->dbConnSettings->password = $theParsedParts['pass']; }
+			if ( !empty($theParsedParts['path']) )
+			{ $this->dbConnSettings->dbname = trim($theParsedParts['path'], '/'); }
+			if ( !empty($theParsedParts['query']) ) {
+				$theQueryParts = explode('&', $theParsedParts['query']);
+				if ( !empty($theQueryParts['prefix']) )
+				{ $this->dbConnOptions->table_prefix = $theQueryParts['prefix']; }
+				if ( !empty($theQueryParts['table_prefix']) )
+				{ $this->dbConnOptions->table_prefix = $theQueryParts['table_prefix']; }
+				if ( !empty($theQueryParts['charset']) )
+				{ $this->dbConnSettings->charset = $theQueryParts['charset']; }
+			}
+			$this->calcPDOparams();
+			return $this;
+		}
+		else
+		{ return $this->loadDbConnInfoFromString(getenv($aDbConnString)); }
+	}
+	
+	/**
 	 * Load up an INI file containing the information we need to make a db connection.
-	 * 
+	 *
 	 * ;comments begin with semi-colon
 	 * [dbopts]
 	 * table_prefix = "webapp_"
 	 * dns_scheme = "ini"
 	 * ;if dns_scheme is not "ini", custom PDO dns string supplied in dns_value
 	 * dns_value = ""
-	 * 
+	 *
 	 * ;if using "ini" scheme, following section is mantatory, otherwise its unnessessary.
 	 * [dbconn]
 	 * driver = mysql
@@ -131,7 +186,7 @@ class DbConnInfo {
 	 * dbname = my_db_name
 	 * username = rootbeer
 	 * password = "DoubleHelix!"
-	 * 
+	 *
 	 * @param string $aIniFilePath - filename containing the INI information needed.
 	 * @throws InvalidArgumentException if various data points are missing
 	 * @throws RuntimeException if unable to import the file.

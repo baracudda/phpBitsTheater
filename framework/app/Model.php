@@ -102,6 +102,14 @@ implements IDirected
 	}
 	
 	/**
+	 * Used in base connect() implementation.
+	 * @return DbConnInfo the database connection info.
+	 */
+	public function getDbConnInfo() {
+		return $this->myDbConnInfo;
+	}
+	
+	/**
 	 * Connect to the database. May also be called to reconnect after timeout.
 	 * @param string $aDbConnName - connection info name to load
 	 * @throws DbException - if failed to connect, this exception is thrown.
@@ -110,21 +118,31 @@ implements IDirected
 		if (empty($aDbConnName)) {
 			$aDbConnName = $this->dbConnName;
 		}
-		$this->myDbConnInfo = $this->director->getDbConnInfo($aDbConnName);
+		$this->connectTo($this->director->getDbConnInfo($aDbConnName));
+	}
+	
+	/**
+	 * Connect to the database. May also be called to reconnect after timeout.
+	 * @param DbConnInfo $aDbConnInfo - the connection information.
+	 * @throws DbException - if failed to connect, this exception is thrown.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function connectTo( DbConnInfo $aDbConnInfo )
+	{
+		$this->myDbConnInfo = $aDbConnInfo;
 		try {
-			if (!empty($this->db)) {
-				unset($this->db);
-				$this->myDbConnInfo->disconnect();
-			}
+			if ( !empty($this->db) )
+			{ unset($this->db); }
 			$this->db = $this->myDbConnInfo->connect();
-		} catch (PDOException $pdoe) {
-			throw new DbException($pdoe,'Failed to connect'.
-					(!empty($this->myDbConnInfo->dbName) ? ' to '.$this->myDbConnInfo->dbName : '')
+		} catch (PDOException $pdox) {
+			throw new DbException($pdox,
+					'Failed to connect to [' . $this->myDbConnInfo->dbName . ']'
 			);
 		}
-		if (!empty($this->db)) {
+		if ( !empty($this->db) ) {
 			$this->setupAfterDbConnected();
 		}
+		return $this;
 	}
 	
 	/**

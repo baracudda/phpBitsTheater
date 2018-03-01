@@ -22,20 +22,24 @@ use com\blackmoonit\exceptions\DbException;
 use PDO;
 {//begin namespace
 
-class DbConnInfo extends BaseDbConnInfo {
+class DbConnInfo extends BaseDbConnInfo
+{
+	/** @var string The connection name. */
 	public $dbConnName = 'webapp';
+	/** @var string The database name used by the connection. */
 	public $dbName = null;
-	public $table_prefix = '';	//prefix for every table used by this connection
+	/** @var string Prefix for every table used by this connection */
+	public $table_prefix = '';
+	/** @var PDO The actual, open connection. */
+	public $dbConn = null;
+	/** @var boolean Have we successfully loaded our dbconn info yet? */
+	public $bDbConnInfoLoaded = false;
+	
 	/**
-	 * @var PDO
+	 * Create the object and set the dbConnName, if not empty.
+	 * @param string $aDbConnName - (optional) the dbconn name, "webapp" if empty.
 	 */
-	public $dbConn = null; 		//the actual, open connection
-
-	/**
-	 * Setup this class for use.
-	 * @param array $aDbConn - use this connection. If null, create a new one.
-	 */
-	public function __construct($aDbConnName) {
+	public function __construct($aDbConnName=null) {
 		parent::__construct();
 		if (!empty($aDbConnName)) {
 			$this->dbConnName = $aDbConnName;
@@ -44,6 +48,19 @@ class DbConnInfo extends BaseDbConnInfo {
 	
 	public function __destruct() {
 		$this->disconnect();
+	}
+	
+	/**
+	 * Factory method for a URI-based new object.
+	 * @param string $aURI - the db connection info as URI string.
+	 * @param string $aDbConnName - (optional) the connection name for this object.
+	 * @return DbConnInfo Returns the newly created object with URI already parsed.
+	 */
+	static public function fromURI( $aURI, $aDbConnName=null )
+	{
+		$o = new DbConnInfo($aDbConnName);
+		$o->loadDbConnInfoFromString($aURI);
+		return $o;
 	}
 	
 	/**
@@ -59,27 +76,98 @@ class DbConnInfo extends BaseDbConnInfo {
 	 * @return boolean Returns TRUE if there is a db config file for our dbConnName.
 	 */
 	public function canAttemptConnectDb() {
-		return file_exists($this->getConfigFilePath());
+		return file_exists($this->getConfigFilePath())
+				|| (getenv('dbconn-' . $this->dbConnName)!=false);
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @see \com\blackmoonit\database\DbConnInfo::calcPDOparams()
+	 */
+	protected function calcPDOparams()
+	{
+		parent::calcPDOparams();
+		if ( !empty($this->dbConnOptions) && !empty($this->dbConnOptions->table_prefix) )
+		{ $this->table_prefix = $this->dbConnOptions->table_prefix; }
+		if ( !empty($this->dbConnSettings) && !empty($this->dbConnSettings->dbname) )
+		{ $this->dbName = $this->dbConnSettings->dbname; }
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @see \com\blackmoonit\database\DbConnInfo::loadDbConnInfoFromString()
+	 */
+	public function loadDbConnInfoFromString($aDbConnString)
+	{
+		//avoid infinite loop, match param with a certain env_var
+		$theEnvVar = getenv('dbconn-' . $this->dbConnName);
+		if ( Strings::startsWith($aDbConnString, '/') && $aDbConnString != $theEnvVar ) {
+			if ( $this->loadDbConnInfo() ) {
+				// "/newdbname" dbconn string means "use same connection, just new db name"
+				$this->dbConnSettings->dbname = Strings::strstr_after($aDbConnString, '/');
+				// re-calc the various PDO params based on the new dbname
+				$this->calcPDOparams();
+			}
+			return $this;
+		} else
+		{ return parent::loadDbConnInfoFromString($aDbConnString); }
+	}
+	
+	/**
+	 * Load db connection information from its configuration file.
+	 */
+	public function loadDbConnInfo()
+	{
+		if ( !$this->bDbConnInfoLoaded && $this->canAttemptConnectDb() )
+		{
+			$theCfgFile = $this->getConfigFilePath();
+			if ( file_exists($theCfgFile) )
+				$this->loadDbConnInfoFromIniFile($theCfgFile);
+			else
+				$this->loadDbConnInfoFromString(getenv('dbconn-' . $this->dbConnName));
+			$this->bDbConnInfoLoaded = true;
+		}
+		return ( $this->bDbConnInfoLoaded );
 	}
 	
 	/**
 	 * Connects to the database and returns the connection.
 	 * @return PDO Returns the connection when successful, FALSE if the attempt failed.
 	 */
-	public function connect() {
-		if (empty($this->dbConn) && $this->canAttemptConnectDb()) {
-			$theCfgFile = $this->getConfigFilePath();
-			$this->loadDbConnInfoFromIniFile($theCfgFile);
-			$this->table_prefix = $this->dbConnOptions->table_prefix;
-			if (!empty($this->dbConnSettings) && (!empty($this->dbConnSettings->dbname))) {
-				$this->dbName = $this->dbConnSettings->dbname;
+	public function connect()
+	{
+		//if PDO connection is empty, attempt to create one
+		if ( empty($this->dbConn) ) {
+			if ( $this->loadDbConnInfo() )
+			{
+				$this->dbConn = $this->getPDOConnection();
+				//only keep the connection info loaded long enough to
+				//  establish the connection object, then remove the
+				//  sensitive info so it is not residing in memory
+				//  which might get leaked.
+				$this->bDbConnInfoLoaded = false;
+				unset($this->dbConnSettings);
+				unset($this->username);
+				unset($this->password);
 			}
-			$this->dbConn = $this->getPDOConnection();
-			unset($this->dbConnSettings);
-			unset($this->username);
-			unset($this->password);
-		} elseif (empty($this->dbConn)) {
-			throw new DbException(null,'Failed to connect: '.str_replace(BITS_CFG_PATH,'"[%config]'.¦,$this->getConfigFilePath()).'" not found.');
+		}
+		//if still empty, we encountered a problem connecting
+		if ( empty($this->dbConn) ) {
+			if ( !$this->canAttemptConnectDb() )
+			{
+				$theErrMsg = 'Failed to connect: ' .
+						str_replace(BITS_CFG_PATH, '"[%config]' . DIRECTORY_SEPARATOR,
+								$this->getConfigFilePath()
+						) . '" not found.' ;
+			}
+			else
+			{ $theErrMsg = 'Connection invalid for [' . $this->dbConnName . ']'; }
+			$x = new DbException(null, $theErrMsg);
+			Strings::errorLog(__METHOD__, ' dbconn=', $this->dbConnName,
+					' loaded?=' . ($this->bDbConnInfoLoaded ? 'true' : 'false'),
+					' $this=', $this,
+					' stk=', $x->getTraceAsString() );
+			throw $x;
 		}
 		return $this->dbConn;
 	}
