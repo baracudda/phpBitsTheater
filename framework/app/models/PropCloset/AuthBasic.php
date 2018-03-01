@@ -470,7 +470,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * Gets the set of all account records.
 	 * @param Scene $aScene - (optional) Scene object in case we need user-defined query limits.
 	 * @param number $aGroupId - (optional) the group id to filter on
-	 * @return PDOStatement - the iterable result of the SELECT query
+	 * @return \PDOStatement - the iterable result of the SELECT query
 	 * @throws DbException if something goes wrong
 	 */
 	public function getAccountsToDisplay($aScene=null, $aGroupId=null) {

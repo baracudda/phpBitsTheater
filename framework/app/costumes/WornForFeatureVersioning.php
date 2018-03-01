@@ -16,10 +16,9 @@
  */
 
 namespace BitsTheater\costumes ;
-use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\colspecs\CommonMySql;
-use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
+use com\blackmoonit\exceptions\DbException;
 use Exception;
 use PDOException;
 { // begin namespace
@@ -45,10 +44,10 @@ trait WornForFeatureVersioning
 	/**
 	 * Meta data may be necessary to make upgrades-in-place easier. Check for
 	 * existing meta data and define if not present.
-	 * @param Scene $aScene - (optional) extra data may be supplied
+	 * @param \BitsTheater\Scene $aScene - (optional) extra data may be supplied
 	 */
 	public function setupFeatureVersion($aScene) {
-		/* @var $dbMeta MetaModel */
+		/* @var $dbMeta \BitsTheater\models\PropCloset\SetupDb */
 		$dbMeta = $this->getProp('SetupDb');
 		$theFeatureData = $dbMeta->getFeature(self::FEATURE_ID);
 		if (empty($theFeatureData)) {
@@ -92,7 +91,7 @@ trait WornForFeatureVersioning
 		$theSql = SqlBuilder::withModel($this);
 		switch( $this->dbType() )
 		{
-			case self::DB_TYPE_MYSQL:
+			case static::DB_TYPE_MYSQL:
 			default:
 				//for this particular operation, having the database prepended to the table name breaks the SQL
 				if (strpos($aTableName, $this->myDbConnInfo->dbName)!==false)
@@ -120,7 +119,7 @@ trait WornForFeatureVersioning
 		{
 			switch( $this->dbType() )
 			{
-				case self::DB_TYPE_MYSQL:
+				case static::DB_TYPE_MYSQL:
 				default:
 					$r = $this->query("DESCRIBE {$aTableName} $aFieldName");
 					$result = $r->fetch();
@@ -142,7 +141,6 @@ trait WornForFeatureVersioning
 	/**
 	 * Sometimes a model changes its name and/or its FeatureID.
 	 * @param string $aOldFeatureId - the old feature ID.
-	 * @param unknown $aNewFeatureData
 	 */
 	public function migrateFeatureVersionId($aOldFeatureId)
 	{
@@ -199,7 +197,7 @@ trait WornForFeatureVersioning
 		$theSql = SqlBuilder::withModel($this);
 		switch( $this->dbType() )
 		{
-			case self::DB_TYPE_MYSQL:
+			case static::DB_TYPE_MYSQL:
 			default:
 				$theSql->startWith(CommonMySql::getIndexDefinitionSql(
 						$aTableName, $aIndexName

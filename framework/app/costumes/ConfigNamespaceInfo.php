@@ -35,7 +35,7 @@ class ConfigNamespaceInfo extends BaseCostume {
 	public $group_id;
 	
 	/**
-	 * @var array[ConfigSettingInfo->key => ConfigSettingInfo]
+	 * @var ConfigSettingInfo[] keyed off of ConfigSettingInfo->key
 	 */
 	public $settings_list;
 	

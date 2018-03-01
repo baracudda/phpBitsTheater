@@ -403,7 +403,7 @@ implements IDirected
 
 	/**
 	 * Get list of all non-abstract model ReflectionClass objects.
-	 * @return array Returns list of all models as a ReflectionClass.
+	 * @return \ReflectionClass[] Returns list of all models as a ReflectionClass.
 	 */
 	static public function getAllModelClassInfo() {
 		return self::getModelClassInfos();

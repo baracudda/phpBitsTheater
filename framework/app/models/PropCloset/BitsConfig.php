@@ -233,7 +233,8 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 	/**
 	 * Get all defined namespaces visible for current login and return them
 	 * as ConfigNamespaceInfo objects.
-	 * @return array Returns an array of ConfigNamespaceInfo objects.
+	 * @return ConfigNamespaceInfo[] Returns an array of ConfigNamespaceInfo
+	 *    objects keyed by namespace.
 	 */
 	public function getConfigAreas() {
 		$theAreas = array();
@@ -251,7 +252,7 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 	 * Get all defined settings for a particular namespace visible for the
 	 * current login and return them as ConfigSettingInfo objects.
 	 * @param ConfigNamespaceInfo $aNamespaceInfo
-	 * @return array[ConfigSettingInfo] Returns an array of objects.
+	 * @return ConfigSettingInfo[] Returns an array of objects.
 	 */
 	public function getConfigSettings(ConfigNamespaceInfo $aNamespaceInfo) {
 		$theSettings = array();

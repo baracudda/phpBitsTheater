@@ -27,10 +27,7 @@ use BitsTheater\costumes\colspecs\CommonMySql;
  */
 class AuthAccount extends BaseCostume
 {
-	/**
-	 * My fully qualified classname.
-	 * @var string
-	 */
+	/** @var string My fully qualified classname. */
 	const ITEM_CLASS = __CLASS__;
 	
 	public $account_id;

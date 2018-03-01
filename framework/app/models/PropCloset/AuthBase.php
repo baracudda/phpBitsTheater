@@ -95,7 +95,7 @@ abstract class AuthBase extends BaseModel {
 	
 	/**
 	 * Checks the given account information for membership.
-	 * @param \BitsTheater\costumes\AccountInfoCache $aAccountInfo - the account info to check.
+	 * @param AccountInfoCache $aAccountInfo - the account info to check.
 	 * @return boolean Returns FALSE if the account info matches a member account.
 	 */
 	abstract public function isGuestAccount($aAccountInfo);

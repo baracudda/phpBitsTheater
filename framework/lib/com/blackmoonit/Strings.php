@@ -387,7 +387,8 @@ class Strings {
 	 * @param string $aPrefix - (optional) if not null, it will set the value.
 	 * @return string Returns the currently set debug prefix (defaults to "[dbg] ").
 	 */
-	static public function debugPrefix($aPrefix=null) {
+	static public function debugPrefix( $aPrefix=null )
+	{
 		static $myDebugPrefix = '[dbg] ';
 		if (isset($aPrefix))
 			$myDebugPrefix = $aPrefix;
@@ -413,7 +414,8 @@ class Strings {
 	 * @param string $aPrefix - (optional) if not null, it will set the value.
 	 * @return string Returns the currently set error prefix (defaults to "[err] ").
 	 */
-	static public function errorPrefix($aPrefix=null) {
+	static public function errorPrefix( $aPrefix=null )
+	{
 		static $myErrorPrefix = '[err] ';
 		if (isset($aPrefix))
 			$myErrorPrefix = $aPrefix;

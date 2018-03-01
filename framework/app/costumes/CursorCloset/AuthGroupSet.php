@@ -23,7 +23,7 @@ use BitsTheater\costumes\CursorCloset\ARecordSet as BaseCostume;
  * Acts as a container for, and iterator over, a set of auth groups.
  *
  * <pre>
- * $theSet = AuthGroupSet::create($this->getDirector())
+ * $theSet = AuthGroupSet::create($this)
  *     ->setDataFromPDO($pdo)
  *     ;
  * </pre>
@@ -39,8 +39,7 @@ class AuthGroupSet extends BaseCostume
 	
 	/**
 	 * Return the Model class or name to use in a getProp() call.
-	 * @return class|string
-	 * @see Director::getProp()
+	 * @return string
 	 */
 	protected function getModelClassToUse() {
 		return 'AuthGroups';

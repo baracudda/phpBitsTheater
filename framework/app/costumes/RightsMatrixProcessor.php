@@ -182,7 +182,7 @@ extends BaseCostume
 	 * the permissions DB has some hierarchical structure to it.
 	 * @param string $aNSName a permission namespace name
 	 * @param string $aPermName a permission name
-	 * @param object $aGroup a group ID
+	 * @param object $aGroup a group row data
 	 * @param array $aParentList - (optional) a parent group ID list to prevent
 	 *   infinite loops.
 	 * @return boolean indicates whether the permission is allowed (true) or

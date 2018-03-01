@@ -791,7 +791,7 @@ implements IDirected
 	/**
 	 * Models can set the query total regardless of paging.
 	 * @param number $aTotalRowCount - the total.
-	 * @return Scene
+	 * @return \BitsTheater\Scene
 	 */
 	public function setPagerTotalRowCount($aTotalRowCount) {
 		$this->_pager_total_row_count = max($aTotalRowCount,0);
@@ -809,7 +809,7 @@ implements IDirected
 	/**
 	 * Enable/disable the pager.
 	 * @param boolean $aEnabled - desired state of pager.
-	 * @return Scene
+	 * @return \BitsTheater\Scene
 	 */
 	public function setPagerEnabled($aEnabled) {
 		$this->_pager_enabled = !empty($aEnabled);

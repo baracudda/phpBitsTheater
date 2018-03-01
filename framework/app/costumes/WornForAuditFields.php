@@ -16,7 +16,6 @@
  */
 
 namespace BitsTheater\costumes ;
-use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\colspecs\CommonMySql;
 { // begin namespace
 
@@ -31,7 +30,7 @@ trait WornForAuditFields
 	 * NOTE: safe to use multiple times in a query, such as a MERGE query.
 	 * @param SqlBuilder $aSqlBuilder - pass in an existing builder to fill the
 	 *   fields properly.
-	 * @return Returns the passed in SqlBuilder so chaining is possible.
+	 * @return SqlBuilder Returns the passed in SqlBuilder so chaining is possible.
 	 */
 	protected function addAuditFieldsForInsert(SqlBuilder $aSqlBuilder) {
 		$nowAsUTC = $aSqlBuilder->myModel->utc_now();
@@ -55,7 +54,7 @@ trait WornForAuditFields
 	 * NOTE: safe to use multiple times in a query, such as a MERGE query.
 	 * @param SqlBuilder $aSqlBuilder - pass in an existing builder to fill the
 	 *   fields properly.
-	 * @return Returns the passed in SqlBuilder so chaining is possible.
+	 * @return SqlBuilder Returns the passed in SqlBuilder so chaining is possible.
 	 */
 	protected function addAuditFieldsForUpdate(SqlBuilder $aSqlBuilder) {
 		$nowAsUTC = $aSqlBuilder->myModel->utc_now();
@@ -75,7 +74,7 @@ trait WornForAuditFields
 	 * NOTE: "SET" will be prepended to the audit fields in the query.
 	 * @param SqlBuilder $aSqlBuilder - pass in an existing builder to fill the
 	 *   fields properly.
-	 * @return Returns the passed in SqlBuilder so chaining is possible.
+	 * @return SqlBuilder Returns the passed in SqlBuilder so chaining is possible.
 	 */
 	protected function setAuditFieldsOnInsert(SqlBuilder $aSqlBuilder) {
 		return $this->addAuditFieldsForInsert( $aSqlBuilder->setParamPrefix(' SET ') );
@@ -87,7 +86,7 @@ trait WornForAuditFields
 	 * NOTE: "SET" will be prepended to the audit fields in the query.
 	 * @param SqlBuilder $aSqlBuilder - pass in an existing builder to fill the
 	 *   fields properly.
-	 * @return Returns the passed in SqlBuilder so chaining is possible.
+	 * @return SqlBuilder Returns the passed in SqlBuilder so chaining is possible.
 	 */
 	protected function setAuditFieldsOnUpdate(SqlBuilder $aSqlBuilder) {
 		return $this->addAuditFieldsForUpdate( $aSqlBuilder->setParamPrefix(' SET ') );

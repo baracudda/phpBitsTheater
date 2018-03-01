@@ -24,7 +24,7 @@ class BitsPermissions extends BaseResource {
 	public $enum_right_values = array('allow','disallow','deny');
 
 	public $enum_namespace = array('auth', 'config', 'accounts');
-			
+	
 	public $enum_auth = array('modify','create','delete');
 	
 	public $enum_config = array('modify');

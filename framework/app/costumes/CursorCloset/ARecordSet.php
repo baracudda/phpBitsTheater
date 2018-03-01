@@ -19,9 +19,7 @@ namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\colspecs\IteratedSet as BaseCostume;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\WornByModel;
-use BitsTheater\Director;
 use com\blackmoonit\FinallyBlock;
-use Exception;
 {//namespace begin
 
 /**
@@ -44,13 +42,12 @@ abstract class ARecordSet extends BaseCostume
 	
 	/**
 	 * Return the Model class or name to use in a getProp() call.
-	 * @return class|string
-	 * @see Director::getProp()
+	 * @return string
 	 */
 	abstract protected function getModelClassToUse();
 	
 	/**
-	 * Costume classes know about the Director.
+	 * Costume classes know about the Director via IDirected context.
 	 * @param IDirected $aContext - used to get the Director object.
 	 */
 	public function setup(IDirected $aContext) {
@@ -86,7 +83,7 @@ abstract class ARecordSet extends BaseCostume
 	/**
 	 * Prints the entire data set to the output stream, item by item.
 	 * @param string $aEncodeOptions options for `json_encode()`
-	 * @return IteratedSet $this
+	 * @return $this Returns $this for chaining.
 	 */
 	public function printAsJson( $aEncodeOptions=null )
 	{
@@ -104,7 +101,7 @@ abstract class ARecordSet extends BaseCostume
 			parent::printAsJson( $aEncodeOptions );
 			$this->printExtraJsonProperties( $aEncodeOptions );
 		}
-		catch( Exception $x )
+		catch( \Exception $x )
 		{
 			$this->errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
 			throw $x ;

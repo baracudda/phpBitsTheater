@@ -1,10 +1,10 @@
 <?php
 namespace BitsTheater\actors;
-use BitsTheater\actors\Understudy\AuthBasicAccount as BaseActor;
-use BitsTheater\scenes\Account as MyScene; /* @var $v MyScene */
+use BitsTheater\actors\Understudy\AuthOrgAccount as BaseActor;
 {//namespace begin
 
-class Account extends BaseActor {
+class Account extends BaseActor
+{
 	
 	//nothing to override or do here, yet
 

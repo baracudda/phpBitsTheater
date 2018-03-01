@@ -23,7 +23,7 @@ use BitsTheater\costumes\CursorCloset\ARecordList as BaseCostume;
  * Acts as a container for, and iterator over, a list of auth groups.
  *
  * <pre>
- * $theSet = AuthGroupList::create($this->getDirector())
+ * $theSet = AuthGroupList::create($this)
  *     ->setListOfIds($theListToUse)
  *     ;
  * </pre>
@@ -34,20 +34,22 @@ class AuthGroupList extends BaseCostume
 	 * NOTE: since group_id is an INTEGER, we need to PRESERVE KEYS
 	 */
 	const ID_IS_NUMERIC = true;
+
 	/**
 	 * Return the Model class or name to use in a getProp() call.
-	 * @return class|string
-	 * @see Director::getProp()
+	 * @return string
 	 */
 	protected function getModelClassToUse() {
 		return 'AuthGroups';
 	}
+	
 	/**
 	 * Name of the ID field to use.
 	 * @return string
 	 */
 	protected function getIdFieldName()
 	{ return 'group_id'; }
+	
 	/**
 	 * Name of the table where to get the record from.
 	 * @return string

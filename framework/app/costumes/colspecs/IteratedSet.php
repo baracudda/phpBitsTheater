@@ -18,6 +18,7 @@ namespace BitsTheater\costumes\colspecs ;
 use BitsTheater\costumes\ABitsCostume as BaseCostume ;
 use BitsTheater\costumes\IDirected ;
 use com\blackmoonit\FinallyBlock ;
+use com\blackmoonit\Strings;
 use Exception ;
 use PDO ;
 use PDOStatement ;
@@ -119,7 +120,7 @@ class IteratedSet extends BaseCostume
 	 * @param PDOStatement $aRowSet the data set
 	 * @param string $aItemClass (optional) the name of a class which can
 	 *  contain items of the set
-	 * @return \BitsTheater\costumes\colspecs\IteratedSet $this
+	 * @return $this Returns $this for chaining.
 	 */
 	public function setDataFromPDO( PDOStatement $aRowSet )
 	{
@@ -161,7 +162,7 @@ class IteratedSet extends BaseCostume
 	/**
 	 * Creates an iterated set based on an already-obtained PDOStatement.
 	 * @param IDirected $aContext the context in which to create the object
-	 * @return \BitsTheater\costumes\colspecs\IteratedSet an instance
+	 * @return $this Returns a new instance
 	 */
 	public static function create( IDirected $aContext )
 	{
@@ -227,7 +228,7 @@ class IteratedSet extends BaseCostume
 		}
 		catch( Exception $x )
 		{
-		    $this->errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
+			Strings::errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
 			throw $x ;
 		}
 
@@ -266,7 +267,7 @@ class IteratedSet extends BaseCostume
 		}
 		catch( Exception $x )
 		{
-			$this->errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
+			Strings::errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
 			throw $x ;
 		}
 		return $this ;

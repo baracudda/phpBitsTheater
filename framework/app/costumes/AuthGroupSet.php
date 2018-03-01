@@ -1,7 +1,6 @@
 <?php
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\CursorCloset\AuthGroupSet as BaseCostume;
-use BitsTheater\costumes\AuthGroup;
 {//namespace begin
 
 class AuthGroupSet extends BaseCostume

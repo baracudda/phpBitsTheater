@@ -17,9 +17,6 @@
 
 namespace BitsTheater\res\en;
 use BitsTheater\res\Resources as BaseResources;
-use com\blackmoonit\database\DbConnOptions;
-use com\blackmoonit\database\DbConnSettings;
-use com\blackmoonit\database\DbConnInfo;
 {//begin namespace
 
 class BitsInstall extends BaseResources {

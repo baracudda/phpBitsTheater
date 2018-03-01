@@ -17,7 +17,6 @@
 
 namespace BitsTheater\costumes;
 use com\blackmoonit\AdamEve as BaseCostume;
-use BitsTheater\costumes\IDirected;
 use BitsTheater\Director;
 use BitsTheater\Model;
 use stdClass as StandardClass;
@@ -243,7 +242,7 @@ implements IDirected
 	 * Utility function to convert a standard class to a specified class.
 	 * @param StandardClass $aStdClass - the standard class to convert from.
 	 * @param string $aClassName - the class to convert to.
-	 * @return BitsTheater\costumes\mixed Returns the converted class.
+	 * @return object Returns the converted class.
 	 * @throws IllegalArgumentException
 	 */
 	static public function cnvStdClassToXClass(StandardClass $aStdClass, $aClassName) {
@@ -262,7 +261,7 @@ implements IDirected
 	 * Convert an instance of StdClass to this class.
 	 * @param IDirected $aContext - used to get the Director object.
 	 * @param StandardClass $aStdClass - the StdClass instance to convert from.
-	 * @return \BitsTheater\costumes\mixed Returns the converted class.
+	 * @return object Returns the converted class.
 	 */
 	static public function fromStdClass(IDirected $aContext, StandardClass $aStdClass) {
 		//$aContext->debugLog('costume stdcls: '.$aContext->debugStr($aStdClass));

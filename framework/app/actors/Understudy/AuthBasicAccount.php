@@ -1050,7 +1050,7 @@ class AuthBasicAccount extends BaseActor
 	
 	/**
 	 * Standard output for either getAll or getAllInGroup.
-	 * @param PDOStatement $aRowSet - the result set to return.
+	 * @param \PDOStatement $aRowSet - the result set to return.
 	 * @return AuthAccountSet Returns the wrapper class used.
 	 * @since BitsTheater 3.7.0
 	 */

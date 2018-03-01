@@ -25,7 +25,7 @@ use BitsTheater\Director;
  * Acts as a container for, and iterator over, a set of AuthAccounts.
  *
  * <pre>
- * $theSet = AuthAccountSet::create($this->getDirector())
+ * $theSet = AuthAccountSet::create($this)
  *     ->setDataFromPDO($pdo)
  *     ;
  * </pre>
@@ -52,8 +52,7 @@ class AuthAccountSet extends BaseCostume
 
 	/**
 	 * Return the Model class or name to use in a getProp() call.
-	 * @return class|string
-	 * @see Director::getProp()
+	 * @return string
 	 */
 	protected function getModelClassToUse() {
 		return 'Accounts';
@@ -78,7 +77,7 @@ class AuthAccountSet extends BaseCostume
 	
 	/**
 	 * Event called after fetching from $this->mDataSet.
-	 * @param object $aRow - the fetched data.
+	 * @param \BitsTheater\costumes\AuthAccount $aRow - the fetched data.
 	 * @return object Returns the row data fetched.
 	 */
 	protected function onFetch($aRow)

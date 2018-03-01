@@ -27,7 +27,7 @@ use BitsTheater\Director;
  * Acts as a container for, and iterator over, a short list of records.
  *
  * <pre>
- * $theSet = RecordList::create($this->getDirector())
+ * $theSet = RecordList::create($this)
  *     ->setDataFromPDO($pdo)
  *     ;
  * </pre>
@@ -76,7 +76,7 @@ abstract class ARecordList extends BaseCostume
 	
 	/**
 	 * Return the Model class or name to use in a getProp() call.
-	 * @return class|string
+	 * @return string
 	 * @see Director::getProp()
 	 */
 	abstract protected function getModelClassToUse();

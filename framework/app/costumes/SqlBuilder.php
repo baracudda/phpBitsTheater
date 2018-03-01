@@ -17,9 +17,7 @@
 
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
-use BitsTheater\Director;
 use BitsTheater\Model;
-use BitsTheater\costumes\ISqlSanitizer;
 use com\blackmoonit\exceptions\DbException;
 use PDO;
 use PDOStatement;
@@ -284,7 +282,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Gets the current value of a param that has been added.
 	 * @param string $aParamKey - the param key to retrieve.
-	 * @return multitype Returns the data.
+	 * @return mixed Returns the data.
 	 */
 	public function getParam($aParamKey) {
 		if (isset($this->myParams[$aParamKey]))
@@ -550,7 +548,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Sometimes parameter data needs processing before being used.
 	 * @param string $aParamKey - the parameter key.
-	 * @param Function $aParamFunc - a function used to process the
+	 * @param callable $aParamFunc - a function used to process the
 	 * data (even a default value) of the form:<br>
 	 * func($thisSqlBuilder, $paramKey, $currentParamValue) and returns
 	 * the processed value.
@@ -589,8 +587,9 @@ class SqlBuilder extends BaseCostume {
 	 * If sort list is defined and its contents are also contained
 	 * in the non-empty $aFieldList, then apply the sort order as neccessary.
 	 * @see \BitsTheater\costumes\SqlBuilder::applyOrderByList() which this method is an alias of.
-	 * @param array $aSortList - keys are the fields => values are 'ASC' or 'DESC' with null='ASC'.
-	 * @param array/string $aFieldList - the list or comma string of fieldnames.
+	 * @param array $aSortList - keys are the fields => values are
+	 *    'ASC'|true or 'DESC'|false with null='ASC'.
+	 * @param string|string[] $aFieldList - the list or comma string of fieldnames.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
 	public function applySortList($aSortList, $aFieldList=null) {
@@ -600,7 +599,8 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * If order by list is defined and its contents are also contained
 	 * in the non-empty $aFieldList, then apply the sort order as neccessary.
-	 * @param array $aOrderByList - keys are the fields => values are 'ASC' or 'DESC' with null='ASC'.
+	 * @param array $aOrderByList - keys are the fields => values are
+	 *    'ASC'|true or 'DESC'|false with null='ASC'.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
 	public function applyOrderByList($aOrderByList)
@@ -709,6 +709,7 @@ class SqlBuilder extends BaseCostume {
 	 * to record defined by WHERE clause returned no data.
 	 * @return boolean Returns the result of the SQLSTATE check.
 	 * @see SqlBuilder::execDMLandCheck()
+	 * @link https://dev.mysql.com/doc/refman/5.6/en/error-messages-server.html
 	 * @link https://ib-aid.com/download/docs/firebird-language-reference-2.5/fblangref25-appx02-sqlstates.html
 	 */
 	public function execDMLandCheckCode($aSqlState5digitCode=self::SQLSTATE_NO_DATA) {
@@ -747,7 +748,7 @@ class SqlBuilder extends BaseCostume {
 	 * Perform an INSERT query and return the new Auto-Inc ID field value for it.
 	 * Params should be ordered array with ? params OR associative array with :label params.
 	 * @throws DbException if there is an error.
-	 * @return Returns the lastInsertId().
+	 * @return int Returns the lastInsertId().
 	 * @see \BitsTheater\Model::addAndGetId();
 	 */
 	public function addAndGetId() {
@@ -759,7 +760,7 @@ class SqlBuilder extends BaseCostume {
 	 * and return the params used in the query. Convenience method when using
 	 * parameterized queries since PDOStatement::execDML() always only returns TRUE.
 	 * @throws DbException if there is an error.
-	 * @return Returns the param data.
+	 * @return string[] Returns the param data.
 	 * @see \PDOStatement::execute();
 	 */
 	public function execDMLandGetParams()

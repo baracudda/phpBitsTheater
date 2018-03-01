@@ -507,7 +507,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 * Creates a new user group.
 	 * @param string $aGroupName the new group's name
 	 * @param integer $aGroupParentId the ID of the group from which permission
-	 *  settings should be inherited (default null) (deprecated in Pulse 3.0)
+	 *  settings should be inherited (default null)
 	 * @param string $aGroupRegCode the group's registration code (default
 	 *  blank)
 	 * @param integer $aGroupCopyID the ID of a group from which permissions
@@ -677,7 +677,6 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			catch( PDOException $pdox )
 			{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 		}
-	}
 
 	/**
 	 * @return Return array(group_id => reg_code).
@@ -691,11 +690,11 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	
 	/**
 	 * See if an entered registration code matches a group_id.
-	 * @param string $aAppId - the site app_id.
 	 * @param string $aRegCode - the entered registration code.
-	 * @return integer Returns the group_id which matches or 0 if none.
+	 * @return integer Returns the group_id which matches or self::UNREG_GROUP_ID if none.
 	 */
-	public function findGroupIdByRegCode($aAppId, $aRegCode) {
+	public function findGroupIdByRegCode( $aRegCode )
+	{
 		$theRegCode = trim($aRegCode);
 		if (!$this->isEmpty($this->tnGroupRegCodes)) {
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
