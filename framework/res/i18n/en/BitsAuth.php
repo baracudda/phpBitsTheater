@@ -23,6 +23,8 @@ class BitsAuth extends BaseResources {
 	
 	public $msg_basic_auth_fail = 'Not authorized';
 	public $msg_sanitized_input_is_empty = '[%1$s] is too malformed to use.';
+	public $msg_no_permission_to_create_user = 'Database user not permitted to create users.';
+	public $msg_generic_create_user_error = 'SQLSTATE[%1$s] returned trying to create a user: %2$s';
 	
 }//end class
 

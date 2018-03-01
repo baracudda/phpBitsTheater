@@ -1,6 +1,6 @@
 <?php
 namespace BitsTheater\costumes;
-use BitsTheater\costumes\CursorCloset\AuthAccount as BaseCostume;
+use BitsTheater\costumes\CursorCloset\AuthAcct4Orgs as BaseCostume;
 {//namespace begin
 
 class AuthAccount extends BaseCostume
@@ -22,7 +22,7 @@ class AuthAccount extends BaseCostume
 			$o->mapped_imei = $o->hardware_ids;
 		return $o;
 	}
-
+	
 }//end class
 	
 }//end namespace

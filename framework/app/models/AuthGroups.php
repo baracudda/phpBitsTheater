@@ -1,7 +1,7 @@
 <?php
 
 namespace BitsTheater\models;
-use BitsTheater\models\PropCloset\BitsGroups as BaseModel;
+use BitsTheater\models\PropCloset\AuthGroups as BaseModel;
 {//begin namespace
 
 class AuthGroups extends BaseModel

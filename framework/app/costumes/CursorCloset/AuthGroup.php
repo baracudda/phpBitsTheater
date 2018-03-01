@@ -33,6 +33,7 @@ class AuthGroup extends BaseCostume
 	const ITEM_CLASS = __CLASS__;
 	
 	public $group_id;
+	public $group_num;
 	public $group_name;
 	public $parent_group_id;
 	
@@ -44,7 +45,12 @@ class AuthGroup extends BaseCostume
 	{
 		$o = parent::constructExportObject();
 		//$o->group_id = intval($o->group_id); leave as string
-		$o->parent_group_id = Strings::toInt($o->parent_group_id);
+		//BitsTheater\BitsGroups model does not have group_num like AuthGroups does.
+		if ( !isset($o->group_num) && is_int($o->group_id) )
+			unset($o->group_num);
+		//only convert to INT if ID is int-based.
+		if ( is_int($o->parent_group_id) )
+			$o->parent_group_id = Strings::toInt($o->parent_group_id);
 		return $o;
 	}
 

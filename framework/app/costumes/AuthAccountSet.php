@@ -1,6 +1,6 @@
 <?php
 namespace BitsTheater\costumes;
-use BitsTheater\costumes\CursorCloset\AuthAccountSet as BaseCostume;
+use BitsTheater\costumes\CursorCloset\AuthAcct4OrgsSet as BaseCostume;
 use BitsTheater\costumes\AuthAccount as MyRecord;
 {//namespace begin
 
