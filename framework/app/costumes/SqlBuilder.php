@@ -71,6 +71,12 @@ class SqlBuilder extends BaseCostume {
 	 */
 	const FIELD_LIST_HINT_END = '/* /FIELDLIST */';
 	/**
+	 * Standard SQL specifies '<>' as NOT EQUAL.
+	 * @var string
+	 */
+	const OPERATOR_NOT_EQUAL = '<>';
+	
+	/**
 	 * The model class, so we can pass-thru some method calls like query.
 	 * Also useful for auto-determining database quirks like the char used
 	 * around field names.
@@ -115,6 +121,13 @@ class SqlBuilder extends BaseCostume {
 	 * @var string
 	 */
 	public $myParamOperator = '=';
+	/**
+	 * Used to determine if we started a transaction or not.
+	 * @var int Flag is incremented every time a transaction is requested
+	 *   and decremented when commited; only begins/commits when transitioning
+	 *   from 0 to 1 and back to 0. This allows us to "nest" transactions.
+	 */
+	public $myTransactionFlag = 0;
 	
 	/**
 	 * Magic PHP method to limit what var_dump() shows.
@@ -530,7 +543,10 @@ class SqlBuilder extends BaseCostume {
 	 * ' LIKE ' is a popular operator as well).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
-	public function setParamOperator($aStr='=') {
+	public function setParamOperator($aStr='=')
+	{
+		if ( strpos($aStr, '!=') !== false )
+		{ $aStr = str_replace('!=', self::OPERATOR_NOT_EQUAL, $aStr); }
 		$this->myParamOperator = $aStr;
 		return $this;
 	}
@@ -913,6 +929,21 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
+	 * Quoted identifiers are DB vendor specific so providing a helper method to just
+	 * return a properly quoted string for MySQL vs MSSQL vs Oracle, etc. is handy.
+	 * @param string $aIdentifier - the string to quote.
+	 * @return string Returns the string properly quoted for the database connection in use.
+	 */
+	public function getQuoted( $aIdentifier )
+	{
+		return $this->field_quotes
+				. str_replace($this->field_quotes,
+						str_repeat($this->field_quotes, 2), $aIdentifier)
+				. $this->field_quotes
+		;
+	}
+	
+	/**
 	 * Providing click-able headers in tables to easily sort them by a particular field
 	 * is a great UI feature. However, in order to prevent SQL injection attacks, we
 	 * must double-check that a supplied field name to order the query by is something
@@ -953,6 +984,52 @@ class SqlBuilder extends BaseCostume {
 			}
 		}
 		return $theOrderByList;
+	}
+	
+	/**
+	 * If we are not already in a transaction, start one.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function beginTransaction()
+	{
+		if ( $this->myTransactionFlag<1 ) {
+			if ( !$this->myModel->db->inTransaction() ) {
+				$this->myModel->db->beginTransaction();
+				$this->myTransactionFlag += 1;
+			}
+		}
+		else {
+			$this->myTransactionFlag += 1;
+		}
+		return $this;
+	}
+	
+	/**
+	 * If we started a transaction earlier, commit it.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function commitTransaction()
+	{
+		if ( $this->myTransactionFlag>0 ) {
+			if ( --$this->myTransactionFlag == 0 ) {
+				$this->myModel->db->commit();
+			}
+		}
+		return $this;
+	}
+	
+	/**
+	 * If we started a transaction earlier, roll it back.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function rollbackTransaction()
+	{
+		if ( $this->myTransactionFlag>0 ) {
+			if ( --$this->myTransactionFlag == 0 ) {
+				$this->myModel->db->rollBack();
+			}
+		}
+		return $this;
 	}
 	
 }//end class

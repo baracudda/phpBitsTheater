@@ -53,6 +53,8 @@ class BitsGeneric extends BaseResources {
 	public $errmsg_too_many_requests = 'Too many requests at this time.';
 	public $errmsg_deprecated =
 		'That feature has been deprecated and is no longer supported by this service.' ;
+	public $errmsg_not_acceptable =
+		'Content type [%1$s] not acceptable by client specification.' ;
 	public $errmsg_cli_not_authed = "Double-check your user/pw and/or the -h parameter.\n";
 	
 	public $label_header_title_suffix_demo_mode = '(demo)';

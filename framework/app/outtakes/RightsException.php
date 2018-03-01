@@ -22,6 +22,11 @@ extends BrokenLeg
 		'auth_groups/errmsg_cannot_copy_to_titan' ;
 	const MSG_GROUP_NOT_FOUND = 'auth_groups/errmsg_group_not_found' ;
 
+	const ACT_CANNOT_MODIFY_TITAN = 'CANNOT_MODIFY_TITAN' ;
+	const ACT_CANNOT_COPY_FROM_TITAN = 'CANNOT_COPY_FROM_TITAN' ;
+	const ACT_CANNOT_COPY_TO_TITAN = 'ACT_CANNOT_COPY_TO_TITAN' ;
+	const ACT_GROUP_NOT_FOUND = 'ACT_GROUP_NOT_FOUND' ;
+
 } // end class RightsException
 
 } // end namespace BitsTheater\outtakes

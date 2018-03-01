@@ -212,6 +212,13 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 		return $this[$aNamespace.'/'.$aKey];
 	}
 	
+	/**
+	 * Alias for <span sytle="font-family:monospace">
+	 * $this[$aNamespace.'/'.$aKey] = $aValue;</span>
+	 * @param string $aNamespace - the namespace of the Config setting.
+	 * @param string $aKey - the Config setting name.
+	 * @param string $aValue - the value of the Config setting.
+	 */
 	public function setConfigValue($aNamespace, $aKey, $aValue) {
 		$this[$aNamespace.'/'.$aKey] = $aValue;
 	}
@@ -275,6 +282,19 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 	 */
 	public function getConfigSetting($aSetting) {
 		return $this[$aSetting];
+	}
+	
+	/**
+	 * Return all the defined config settings in the system.
+	 * @return ConfigNamespaceInfo[] Returns an array of config info keyed by namespace.
+	 */
+	public function getDefinedSettings()
+	{
+		$theConfigAreas = $this->getConfigAreas();
+		foreach ($theConfigAreas as $theNsInfo) {
+			$theNsInfo->settings_list = $this->getConfigSettings($theNsInfo);
+		}
+		return $theConfigAreas;
 	}
 	
 }//end class

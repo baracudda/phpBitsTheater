@@ -106,6 +106,45 @@ trait WornForFeatureVersioning
 	}
 	
 	/**
+	 * Returns the database's description of a table column. This is
+	 * idiosyncratic to each engine; only mySQL is supported so far.
+	 * @param string $aTableName the table in which the column is defined
+	 * @param string $aColumnName the name of the column to be described
+	 * @return object|NULL|boolean an object describing the column, or null if
+	 *  the column doesn't exist, or false if the database type is not yet
+	 *  supported
+	 * @since BitsTheater [NEXT]
+	 */
+	protected function describeColumn( $aTableName, $aColumnName )
+	{
+		$theSql = SqlBuilder::withModel($this) ;
+		switch( $this->dbType() )
+		{
+			case static::DB_TYPE_MYSQL:
+			{
+				//for this particular operation, having the database prepended to the table name breaks the SQL
+				if (strpos($aTableName, $this->myDbConnInfo->dbName)!==false)
+					$aTableName = Strings::strstr_after($aTableName, '`'.$this->myDbConnInfo->dbName.'`.');
+				$theSql->startWith( 'SELECT * FROM information_schema.COLUMNS' )
+					->startWhereClause()
+					->mustAddParam( 'TABLE_SCHEMA', $this->myDbConnInfo->dbName )
+					->setParamPrefix( ' AND ' )
+					->mustAddParam( 'TABLE_NAME', $aTableName )
+					->mustAddParam( 'COLUMN_NAME', $aColumnName )
+					->endWhereClause()
+					;
+				return ((object)($theSql->getTheRow())) ;
+			} break ;
+			default:
+				$this->debugLog( __METHOD__
+						. ' is not yet supported for DB type '
+						. $this->dbType()
+					);
+				return false ;
+		}
+	}
+	
+	/**
 	 * Return a String representation of the type of the field,
 	 * or false if it doesn't exist.
 	 * @param string $aFieldName - the field name to check.
@@ -208,6 +247,69 @@ trait WornForFeatureVersioning
 		//$this->debugLog($ps->rowCount());
 		return ($ps->rowCount()>0);
 	}
+	
+	/**
+	 * Checks whether a column is indexed. Distinct from
+	 * <code>isIndexDefined</code> in that it checks using the name of the
+	 * column that is indexed, not the name of the index itself.
+	 *
+	 * Currently supports either mySQL or PostgreSQL; default is to return a
+	 * false negative. There is no <code>CommonMySql</code> function available
+	 * for the query, because there is no commonality to exploit; everybody does
+	 * something different to support this type of operation.
+	 *
+	 * @param string $aTableName the name of the table in which the index would
+	 *  be defined
+	 * @param string $aFieldName the name of the column that would be indexed
+	 * @return boolean <code>true</code> if the column is indexed
+	 * @since BitsTheater [NEXT]
+	 */
+	public function isFieldIndexed( $aTableName, $aFieldName )
+	{
+		try
+		{
+			switch( $this->dbType() )
+			{
+				case static::DB_TYPE_MYSQL:
+				{ // https://dev.mysql.com/doc/refman/5.7/en/show-index.html
+					$theIndices = $this->query(
+							'SHOW INDEX FROM ' . $aTableName
+							.	' WHERE Column_name=\'' . $aFieldName . '\''
+							);
+					return ( !empty($theIndices) ) ;
+				} break ;
+				case static::DB_TYPE_PGSQL:
+				{ // https://www.postgresql.org/docs/9.1/static/view-pg-indexes.html
+					$theResult = $this->query(
+							'SELECT COUNT(indexname) AS indexcount '
+							.	'FROM pg_indexes WHERE tablename=\'' . $aTableName
+							.	'\' AND indexdef LIKE \'%' . $aFieldName . '%\''
+							);
+					return ( !empty($theResult['indexcount']) ) ;
+				} break ;
+				default:
+				{
+					$this->debugLog( __METHOD__
+							. ' does not yet support DB type [' . $this->dbType()
+							. ']; returning potentially-false negative.' ) ;
+					return false ;
+				}
+			}
+		}
+		catch( PDOException $pdox )
+		{
+			$this->errorLog( __METHOD__
+					. ' encountered an exception and is returning negative:  '
+					. $pdox->getMessage()
+					);
+			return false ;
+		}
+	}
+	
+	
+	
+	
+	
 	
 } // end trait
 

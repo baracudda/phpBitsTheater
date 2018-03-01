@@ -26,38 +26,58 @@ use \DateInterval;
 {//begin namespace
 
 class DbUtils {
-	const DB_TYPE_CUBRID	= 'cubrid';		//Cubrid
-	const DB_TYPE_DBLIB		= 'dblib';		//FreeTDS / Microsoft SQL Server / Sybase
-	const DB_TYPE_FIREBIRD	= 'firebird';	//Firebird/Interbase 6
-	const DB_TYPE_IBM		= 'ibm';		//IBM DB2
-	const DB_TYPE_INFORMIX	= 'informix';	//IBM Informix Dynamic Server
-	const DB_TYPE_MYSQL		= 'mysql';		//MySQL 3.x/4.x/5.x
-	const DB_TYPE_OCI		= 'oci';		//Oracle Call Interface
-	const DB_TYPE_ODBC		= 'odbc';		//ODBC v3 (IBM DB2, unixODBC and win32 ODBC)
-	const DB_TYPE_PGSQL		= 'pgsql';		//PostgreSQL
-	const DB_TYPE_SQLITE	= 'sqlite';		//SQLite 3 and SQLite 2
-	const DB_TYPE_SQLSRV	= 'sqlsrv';		//Microsoft SQL Server / SQL Azure
-	const DB_TYPE_4D		= '4d';			//4D
+	/** Cubrid */
+	const DB_TYPE_CUBRID	= 'cubrid';
+	/** FreeTDS / Microsoft SQL Server / Sybase */
+	const DB_TYPE_DBLIB		= 'dblib';
+	/** Firebird/Interbase 6 */
+	const DB_TYPE_FIREBIRD	= 'firebird';
+	/** IBM DB2 */
+	const DB_TYPE_IBM		= 'ibm';
+	/** IBM Informix Dynamic Server */
+	const DB_TYPE_INFORMIX	= 'informix';
+	/** MySQL 3+ */
+	const DB_TYPE_MYSQL		= 'mysql';
+	/** Oracle Call Interface */
+	const DB_TYPE_OCI		= 'oci';
+	/** ODBC v3 (IBM DB2, unixODBC and win32 ODBC) */
+	const DB_TYPE_ODBC		= 'odbc';
+	/** PostgreSQL */
+	const DB_TYPE_PGSQL		= 'pgsql';
+	/** SQLite 3 and SQLite 2 */
+	const DB_TYPE_SQLITE	= 'sqlite';
+	/** Microsoft SQL Server / SQL Azure */
+	const DB_TYPE_SQLSRV	= 'sqlsrv';
+	/** 4D */
+	const DB_TYPE_4D		= '4d';
 	
-	const DATETIME_FORMAT_DEF_STD = 'Y-m-d H:i:s' ;        // standard date-time
-	const DATETIME_FORMAT_DEF_USEC = 'Y-m-d H:i:s.u' ;      // with microseconds
+	/** MySQL date-time format to the second. */
+	const DATETIME_FORMAT_DEF_STD = 'Y-m-d H:i:s' ;
+	/** MySQL date-time format to the microsecond. */
+	const DATETIME_FORMAT_DEF_USEC = 'Y-m-d H:i:s.u' ;
+	/** ISO-8601 DateTime format to the second. */
+	const DATETIME_FORMAT_ISO8601 = 'Y-m-d\TH:i:s\Z';
 	
 	private function __construct() {} //do not instantiate
 
 	/**
-	 * Returns the database connection driver being used.
-	 * cubrid	DB_TYPE_CUBRID		Cubrid
-	 * dblib 	DB_TYPE_DBLIB 		FreeTDS / Microsoft SQL Server / Sybase
-	 * firebird	DB_TYPE_FIREBIRD 	Firebird/Interbase 6
-	 * ibm		DB_TYPE_IBM 		IBM DB2
-	 * informix	DB_TYPE_INFORMIX 	IBM Informix Dynamic Server
-	 * mysql	DB_TYPE_MYSQL 		MySQL 3.x/4.x/5.x
-	 * oci		DB_TYPE_OCI 		Oracle Call Interface
-	 * odbc		DB_TYPE_ODBC 		ODBC v3 (IBM DB2, unixODBC and win32 ODBC)
-	 * pgsql	DB_TYPE_PGSQL 		PostgreSQL
-	 * sqlite	DB_TYPE_SQLITE 		SQLite 3 and SQLite 2
-	 * sqlsrv	DB_TYPE_SQLSRV 		Microsoft SQL Server / SQL Azure
-	 * 4d		DB_TYPE_4D			4D
+	 * Get the db driver in use. Possible return values include: <table>
+	 * <tr><th>RETURNS</th><th>self::DB_TYPE_*</th><th>Description</th></tr>
+	 * <tr><td>cubrid</td>	<td>DB_TYPE_CUBRID</td>		<td>Cubrid</td></tr>
+	 * <tr><td>dblib</td>	<td>DB_TYPE_DBLIB</td>		<td>FreeTDS / Microsoft SQL Server / Sybase</td></tr>
+	 * <tr><td>firebird</td><td>DB_TYPE_FIREBIRD</td>	<td>Firebird/Interbase 6</td></tr>
+	 * <tr><td>ibm</td>		<td>DB_TYPE_IBM</td>		<td>IBM DB2</td></tr>
+	 * <tr><td>informix</td><td>DB_TYPE_INFORMIX</td>	<td>IBM Informix Dynamic Server</td></tr>
+	 * <tr><td>mysql</td>	<td>DB_TYPE_MYSQL</td>		<td>MySQL 3.x/4.x/5.x</td></tr>
+	 * <tr><td>oci</td>		<td>DB_TYPE_OCI</td>		<td>Oracle Call Interface</td></tr>
+	 * <tr><td>odbc</td>	<td>DB_TYPE_ODBC</td>		<td>ODBC v3 (IBM DB2, unixODBC and win32 ODBC)</td></tr>
+	 * <tr><td>pgsql</td>	<td>DB_TYPE_PGSQL</td>		<td>PostgreSQL</td></tr>
+	 * <tr><td>sqlite</td>	<td>DB_TYPE_SQLITE</td>		<td>SQLite 3 and SQLite 2</td></tr>
+	 * <tr><td>sqlsrv</td>	<td>DB_TYPE_SQLSRV</td>		<td>Microsoft SQL Server / SQL Azure</td></tr>
+	 * <tr><td>4d</td>		<td>DB_TYPE_4D</td>			<td>4D</td></tr>
+	 * </table>
+	 * @param PDO $aDbConn - the PDO connection.
+	 * @return string Returns the database connection driver being used.<br>
 	 */
 	static public function getDbType(PDO $aDbConn) {
 		if (isset($aDbConn)) {

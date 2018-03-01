@@ -169,7 +169,7 @@ implements IDirected
 	/**
 	 * Given an array or object, set the data members to its contents.
 	 * @param array|object $aThing - associative array or object
-	 * @return Returns $this for chaining purposes.
+	 * @return $this Returns $this for chaining purposes.
 	 */
 	public function setDataFrom($aThing) {
 		if (!empty($aThing))
@@ -219,6 +219,20 @@ implements IDirected
 	static public function fromJson(IDirected $aContext, &$asJson) {
 		$o = self::fromArray($aContext, json_decode($asJson,true));
 		return $o;
+	}
+	
+	/**
+	 * Create a new instance of whatever class this method
+	 * is called from (MyClass::fromThing() makes a MyClass
+	 * instance) and sets its properties to the values of the
+	 * object or array param.
+	 * @param array|object $aThing - thing to copy data from.
+	 * @return ABitsCostume Returns the new instance.
+	 */
+	static public function fromThing(IDirected $aContext, $aThing) {
+		$theClassName = get_called_class();
+		$o = new $theClassName($aContext);
+		return $o->setDataFrom($aThing);
 	}
 	
 	/**
@@ -281,7 +295,18 @@ implements IDirected
 		unset($o->myClassName);
 		unset($o->mySimpleClassName);
 		unset($o->myNamespaceName);
+		unset($o->lastClassLoaded1);
+		unset($o->lastClassLoaded2);
+		unset($o->lastClassLoaded3);
 		return $o;
+	}
+	
+	/**
+	 * Return the public fields defined by my descendant class.
+	 * @return string[]
+	 */
+	static public function getDefinedFields() {
+		return array_keys( call_user_func('get_class_vars', get_called_class()) );
 	}
 	
 }//end class

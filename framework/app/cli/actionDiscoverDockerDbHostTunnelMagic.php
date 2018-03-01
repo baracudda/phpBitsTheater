@@ -36,6 +36,7 @@ $theDbUser = $theCliOptions['dbuser'];
 $theDbPswd = $theCliOptions['dbpswd'];
 foreach($theDbHostsToTry as $theHost) {
 	try {
+		$director->debugLog("Attempting DBHOST [{$theHost}]...");
 		$theDns = "mysql:host={$theHost};port={$theDbPort};dbname={$theDbName};charset=utf8";
 		$theDbConn = new \PDO($theDns, $theDbUser, $theDbPswd);
 		$theResult = $theHost;

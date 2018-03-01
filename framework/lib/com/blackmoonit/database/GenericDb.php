@@ -17,25 +17,39 @@
 
 namespace com\blackmoonit\database;
 use com\blackmoonit\AdamEve as BaseDbClass;
+use com\blackmoonit\exceptions\DbException;
 use PDO;
 use PDOStatement;
 use PDOException;
 {//begin namespace
 
 class GenericDb extends BaseDbClass {
-	const DB_TYPE_CUBRID	= 'cubrid';		//Cubrid
-	const DB_TYPE_DBLIB		= 'dblib';		//FreeTDS / Microsoft SQL Server / Sybase
-	const DB_TYPE_FIREBIRD	= 'firebird';	//Firebird/Interbase 6
-	const DB_TYPE_IBM		= 'ibm';		//IBM DB2
-	const DB_TYPE_INFORMIX	= 'informix';	//IBM Informix Dynamic Server
-	const DB_TYPE_MYSQL		= 'mysql';		//MySQL 3.x/4.x/5.x
-	const DB_TYPE_OCI		= 'oci';		//Oracle Call Interface
-	const DB_TYPE_ODBC		= 'odbc';		//ODBC v3 (IBM DB2, unixODBC and win32 ODBC)
-	const DB_TYPE_PGSQL		= 'pgsql';		//PostgreSQL
-	const DB_TYPE_SQLITE	= 'sqlite';		//SQLite 3 and SQLite 2
-	const DB_TYPE_SQLSRV	= 'sqlsrv';		//Microsoft SQL Server / SQL Azure
-	const DB_TYPE_4D		= '4d';			//4D
-			
+	/** Cubrid */
+	const DB_TYPE_CUBRID	= 'cubrid';
+	/** FreeTDS / Microsoft SQL Server / Sybase */
+	const DB_TYPE_DBLIB		= 'dblib';
+	/** Firebird/Interbase 6 */
+	const DB_TYPE_FIREBIRD	= 'firebird';
+	/** IBM DB2 */
+	const DB_TYPE_IBM		= 'ibm';
+	/** IBM Informix Dynamic Server */
+	const DB_TYPE_INFORMIX	= 'informix';
+	/** MySQL 3+ */
+	const DB_TYPE_MYSQL		= 'mysql';
+	/** Oracle Call Interface */
+	const DB_TYPE_OCI		= 'oci';
+	/** ODBC v3 (IBM DB2, unixODBC and win32 ODBC) */
+	const DB_TYPE_ODBC		= 'odbc';
+	/** PostgreSQL */
+	const DB_TYPE_PGSQL		= 'pgsql';
+	/** SQLite 3 and SQLite 2 */
+	const DB_TYPE_SQLITE	= 'sqlite';
+	/** Microsoft SQL Server / SQL Azure */
+	const DB_TYPE_SQLSRV	= 'sqlsrv';
+	/** 4D */
+	const DB_TYPE_4D		= '4d';
+	
+	/** Number of connection attempts per query before giving up as exception. */
 	const MAX_RETRY_COUNT = 3;
 	
 	/**
@@ -63,19 +77,23 @@ class GenericDb extends BaseDbClass {
 	}
 	
 	/**
-	 * Returns the database connection driver being used.
-	 * cubrid	PDO_CUBRID	Cubrid
-	 * dblib 	PDO_DBLIB 	FreeTDS / Microsoft SQL Server / Sybase
-	 * firebird	PDO_FIREBIRD Firebird/Interbase 6
-	 * ibm		PDO_IBM 	IBM DB2
-	 * informix	PDO_INFORMIX IBM Informix Dynamic Server
-	 * mysql	PDO_MYSQL 	MySQL 3.x/4.x/5.x
-	 * oci		PDO_OCI 	Oracle Call Interface
-	 * odbc		PDO_ODBC 	ODBC v3 (IBM DB2, unixODBC and win32 ODBC)
-	 * pgsql	PDO_PGSQL 	PostgreSQL
-	 * sqlite	PDO_SQLITE 	SQLite 3 and SQLite 2
-	 * sqlsrv	PDO_SQLSRV 	Microsoft SQL Server / SQL Azure
-	 * 4d		PDO_4D		4D
+	 * Get the db driver in use. Possible return values include: <table>
+	 * <tr><th>RETURNS</th><th>self::DB_TYPE_*</th><th>Description</th></tr>
+	 * <tr><td>cubrid</td>	<td>DB_TYPE_CUBRID</td>		<td>Cubrid</td></tr>
+	 * <tr><td>dblib</td>	<td>DB_TYPE_DBLIB</td>		<td>FreeTDS / Microsoft SQL Server / Sybase</td></tr>
+	 * <tr><td>firebird</td><td>DB_TYPE_FIREBIRD</td>	<td>Firebird/Interbase 6</td></tr>
+	 * <tr><td>ibm</td>		<td>DB_TYPE_IBM</td>		<td>IBM DB2</td></tr>
+	 * <tr><td>informix</td><td>DB_TYPE_INFORMIX</td>	<td>IBM Informix Dynamic Server</td></tr>
+	 * <tr><td>mysql</td>	<td>DB_TYPE_MYSQL</td>		<td>MySQL 3.x/4.x/5.x</td></tr>
+	 * <tr><td>oci</td>		<td>DB_TYPE_OCI</td>		<td>Oracle Call Interface</td></tr>
+	 * <tr><td>odbc</td>	<td>DB_TYPE_ODBC</td>		<td>ODBC v3 (IBM DB2, unixODBC and win32 ODBC)</td></tr>
+	 * <tr><td>pgsql</td>	<td>DB_TYPE_PGSQL</td>		<td>PostgreSQL</td></tr>
+	 * <tr><td>sqlite</td>	<td>DB_TYPE_SQLITE</td>		<td>SQLite 3 and SQLite 2</td></tr>
+	 * <tr><td>sqlsrv</td>	<td>DB_TYPE_SQLSRV</td>		<td>Microsoft SQL Server / SQL Azure</td></tr>
+	 * <tr><td>4d</td>		<td>DB_TYPE_4D</td>			<td>4D</td></tr>
+	 * </table>
+	 * @param PDO $aDbConn - the PDO connection.
+	 * @return string Returns the database connection driver being used.<br>
 	 */
 	public function dbType() {
 		return DbUtils::getDbType($this->db);
@@ -85,7 +103,7 @@ class GenericDb extends BaseDbClass {
 	 * Params should be ordered array with ? params OR associative array with :label params.
 	 * @param string $aParamSql - the parameterized SQL string.
 	 * @return PDOStatement is returned, ready for binding to params.
-	 * @throws \com\blackmoonit\exceptions\DbException
+	 * @throws DbException if there is an error.
 	 */
 	public function prepareSQL($aParamSql) {
 		$theRetries = 0;
@@ -208,6 +226,7 @@ class GenericDb extends BaseDbClass {
 	}
 	
 	/**
+	 * @param boolean $bUseMicroseconds - include micro-seconds or not.
 	 * @return string Returns a SQL datetime string representing now() in UTC.
 	 */
 	public function utc_now($bUseMicroseconds=false) {
@@ -217,6 +236,19 @@ class GenericDb extends BaseDbClass {
 				return ($bUseMicroseconds) ? DbUtils::utc_now(true) : gmdate(DbUtils::DATETIME_FORMAT_DEF_STD) ;
 			default:
 				return DbUtils::utc_now($bUseMicroseconds);
+		}
+	}
+	
+	/**
+	 * @return Returns a SQL datetime string representing now() in UTC.
+	 */
+	public function getDateTimeAsDbTimestampFormat( \DateTime $aDateTime )
+	{
+		switch ($this->dbType()) {
+			case self::DB_TYPE_MYSQL:
+				return $aDateTime->format(DbUtils::DATETIME_FORMAT_DEF_STD);
+			default:
+				return $aDateTime->format(DbUtils::DATETIME_FORMAT_ISO8601);
 		}
 	}
 	

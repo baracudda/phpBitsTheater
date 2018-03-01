@@ -114,6 +114,7 @@ class BrokenLeg extends \Exception
 	const ERR_SERVICE_UNAVAILABLE =  self::HTTP_SERVICE_UNAVAILABLE ;
 	const ERR_TOO_MANY_REQUESTS =    self::HTTP_TOO_MANY_REQUESTS ;
 	const ERR_DEPRECATED_FUNCTION =  self::HTTP_GONE ;
+	const ERR_NOT_ACCEPTABLE =       self::HTTP_NOT_ACCEPTABLE ;
 	
 	// General-purpose messages should be defined in the BitsGeneric resource.
 	const MSG_DEFAULT = 'generic/errmsg_default' ;
@@ -129,6 +130,7 @@ class BrokenLeg extends \Exception
 	const MSG_SERVICE_UNAVAILABLE = 'generic/errmsg_service_unavailable';
 	const MSG_TOO_MANY_REQUESTS = 'generic/errmsg_too_many_requests';
 	const MSG_DEPRECATED_FUNCTION = 'generic/errmsg_deprecated' ;
+	const MSG_NOT_ACCEPTABLE = 'generic/errmsg_not_acceptable' ;
 	
 	// Condition constants if you like to use them rather than remember strings to use.
 	const ACT_DEFAULT =              'DEFAULT';
@@ -144,6 +146,7 @@ class BrokenLeg extends \Exception
 	const ACT_SERVICE_UNAVAILABLE =  'SERVICE_UNAVAILABLE';
 	const ACT_TOO_MANY_REQUESTS =    'TOO_MANY_REQUESTS';
 	const ACT_DEPRECATED_FUNCTION =  'DEPRECATED_FUNCTION';
+	const ACT_NOT_ACCEPTABLE =       'NOT_ACCEPTABLE' ;
 	// Virtual Conditions that map to other conditions based on certain criteria
 	const ACT_PERMISSION_DENIED =    'PERMISSION_DENIED'; //FORBIDDEN or NOT_AUTH
 	
@@ -221,7 +224,7 @@ class BrokenLeg extends \Exception
 					? static::ACT_DB_CONNECTION_FAILED
 					: static::ACT_DB_EXCEPTION
 					;
-			throw static::toss($aContext, $theErr, $aException->getErrorMsg());
+			throw static::toss($aContext, $theErr, $aException->getMessage());
 		}
 		else if(isset($aException->code) && isset($aException->message))
 		{

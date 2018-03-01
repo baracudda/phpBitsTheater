@@ -181,6 +181,19 @@ class AdamEve extends BaseClass {
 
 	/**
 	 * Send string out to the debug log (or std log as [dbg]).
+	 * Accepts any number of parameters and will convert all non-strings with json_encode().
+	 */
+	public function logAsJSON( $_ ) {
+		$theLogLine = '';
+		foreach (func_get_args() as $arg)
+		{
+			$theLogLine .= ( is_string($arg) ) ? $arg : json_encode($arg);
+		}
+		$this->debugLog( $theLogLine );
+	}
+	
+	/**
+	 * Send string out to the debug log (or std log as [dbg]).
 	 * Accepts any number of parameters and will convert all non-strings with debugStr().
 	 */
 	public function logStuff( $_ ) {
