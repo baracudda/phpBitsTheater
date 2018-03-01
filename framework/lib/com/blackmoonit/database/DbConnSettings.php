@@ -54,9 +54,11 @@ class DbConnSettings {
 	public $dbname = null;
 	public $username = null;
 	public $password = null;
+	/** @var string The charset the db connection should use */
+	public $charset = null;
 
 	/**
-	 * Copies array values into matching property names 
+	 * Copies array values into matching property names
 	 * based on the array keys.
 	 * @param array $anArray - array to copy from.
 	 */
@@ -88,7 +90,9 @@ class DbConnSettings {
 				default:
 					$theDns = $this->driver.':host='.$this->host.
 							((!empty($this->port)) ? (';port='.$this->port) : '' ).
-							';dbname='.$this->dbname.';charset=utf8';
+							';dbname='.$this->dbname.
+							';charset='.((!empty($this->charset)) ? $this->charset : 'utf8mb4' )
+							;
 					break;
 			}//switch
 		}//if
