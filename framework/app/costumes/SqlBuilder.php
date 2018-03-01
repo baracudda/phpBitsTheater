@@ -136,8 +136,6 @@ class SqlBuilder extends BaseCostume {
 		$vars = parent::__debugInfo();
 		unset($vars['myModel']);
 		unset($vars['mySqlSanitizer']);
-		unset($vars['myParamPrefix']);
-		unset($vars['myParamOperator']);
 		return $vars;
 	}
 	
@@ -565,9 +563,9 @@ class SqlBuilder extends BaseCostume {
 	 * Sometimes parameter data needs processing before being used.
 	 * @param string $aParamKey - the parameter key.
 	 * @param callable $aParamFunc - a function used to process the
-	 * data (even a default value) of the form:<br>
-	 * func($thisSqlBuilder, $paramKey, $currentParamValue) and returns
-	 * the processed value.
+	 *   data (even a default value) of the form:<br>
+	 *   func($thisSqlBuilder, $paramKey, $currentParamValue) and returns
+	 *   the processed value.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
 	public function setParamDataHandler($aParamKey, $aParamFunc) {
@@ -1028,6 +1026,68 @@ class SqlBuilder extends BaseCostume {
 			if ( --$this->myTransactionFlag == 0 ) {
 				$this->myModel->db->rollBack();
 			}
+		}
+		return $this;
+	}
+	
+	/**
+	 * If the Sanitizer is using a pager and limiting the query, try to
+	 * retrieve the overall query total so we can display "page 1 of 20"
+	 * or equivalent text/widget.<br>
+	 * NOTE: this method must be called after the SELECT query is defined,
+	 * but before the OrderBy/Sort and LIMIT clauses are applied to the SQL
+	 * string.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function retrieveQueryTotalsForSanitizer()
+	{
+		if ( !empty($this->mySqlSanitizer) &&
+				$this->mySqlSanitizer->getPagerPageSize()>0 )
+		{
+			$theCount = $this->getQueryTotals();
+			if ( !empty($theCount) ) {
+				$this->mySqlSanitizer->setPagerTotalRowCount(
+						$theCount['total_rows']
+				);
+			}
+		}
+		return $this;
+	}
+	
+	/**
+	 * If we have a SqlSanitizer defined, retrieve the query limit information
+	 * from it and add the SQL limit clause to our SQL string.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function applyQueryLimitFromSanitizer()
+	{
+		if ( !empty($this->mySqlSanitizer) )
+			return $this->addQueryLimit(
+					$this->mySqlSanitizer->getPagerPageSize(),
+					$this->mySqlSanitizer->getPagerQueryOffset()
+			) ;
+		else
+			return $this;
+	}
+	
+	/**
+	 * Return the SQL "LIMIT" expression for our model's database type.
+	 * @param int $aLimit - the limit we are wishing to impose.
+	 * @param int $aOffset - (optional) the offset with which to start our limit.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function addQueryLimit($aLimit, $aOffset=null)
+	{
+		if ( $aLimit+0 > 0 ) {
+			$theModel = $this->myModel;
+			switch ( $theModel->dbType() ) {
+				case $theModel::DB_TYPE_MYSQL:
+				case $theModel::DB_TYPE_PGSQL:
+				default:
+					$this->add('LIMIT')->add($aLimit);
+					if ( $aOffset+0 > 0 )
+					{ $this->add('OFFSET')->add($aOffset); }
+			}//switch
 		}
 		return $this;
 	}

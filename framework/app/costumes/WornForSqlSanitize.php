@@ -23,7 +23,7 @@ trait WornForSqlSanitize
 	/**
 	 * @return string[] Returns the array of defined fields available.
 	 */
-	abstract public function getDefinedFields() ;
+	abstract static public function getDefinedFields() ;
 	
 	/**
 	 * Returns TRUE if the fieldname specified is sortable.
@@ -39,6 +39,26 @@ trait WornForSqlSanitize
 	abstract public function getDefaultSortColumns() ;
 	
 	/**
+	 * Get the defined maximum row count for a page in a pager.
+	 * @return int Returns the max number of rows shown for a single pager page;
+	 *   guaranteed to be >=1 unless the pager is disabled, which returns 0.
+	 */
+	abstract public function getPagerPageSize() ;
+	
+	/**
+	 * Get the SQL query offset based on pager page size and page desired.
+	 * @return int Returns the offset the query should use.
+	 */
+	abstract public function getPagerQueryOffset() ;
+	
+	/**
+	 * Set the query total regardless of paging.
+	 * @param number $aTotalRowCount - the total.
+	 * @return $this Returns $this for chaining.
+	 */
+	abstract public function setPagerTotalRowCount( $aTotalRowCount ) ;
+	
+	/**
 	 * Figure out the columns to sort by and whether or not they should be ascending.
 	 * The default behavior reads properties called <code>orderby</code> and possibly
 	 * <code>orderbyrvs</code> to determine the result.
@@ -49,12 +69,13 @@ trait WornForSqlSanitize
 	 */
 	public function getSortColumns()
 	{
-		if (is_string($this->orderby))
-			return array( $this->orderby => ($this->orderbyrvs ? false : true) );
-		else if (is_array($this->orderby))
-			return $this->orderby;
-		else
-			return $this->getDefaultSortColumns();
+		if ( !empty($this->orderby) ) {
+			if ( is_string($this->orderby) )
+				return array( $this->orderby => ($this->orderbyrvs ? false : true) );
+			else if ( is_array($this->orderby) )
+				return $this->orderby;
+		}
+		return $this->getDefaultSortColumns();
 	}
 	
 	/**
@@ -82,10 +103,8 @@ trait WornForSqlSanitize
 	 * @param string[] $aFieldList - the supplied field list.
 	 * @return string[] Returns the array of valid fields.
 	 */
-	public function getSanitizedFieldList( $aFieldList )
-	{
-		return array_intersect( $this->getDefinedFields() , $aFieldList ) ;
-	}
+	static public function getSanitizedFieldList( $aFieldList )
+	{ return array_intersect( static::getDefinedFields() , $aFieldList ) ; }
 	
 	/**
 	 * Check for what fields to return by API request, allowing for default if
@@ -97,9 +116,9 @@ trait WornForSqlSanitize
 	{
 		$theFieldList = null;
 		if (!empty($this->field_list))
-			$theFieldList = $this->getSanitizedFieldList( $this->field_list );
+			$theFieldList = static::getSanitizedFieldList( $this->field_list );
 		if (empty($theFieldList))
-			$theFieldList = $this->getSanitizedFieldList( $aDefaultFieldList );
+			$theFieldList = static::getSanitizedFieldList( $aDefaultFieldList );
 		//if we are still at a loss for fields, just return NULL
 		if (empty($theFieldList))
 			$theFieldList = null;

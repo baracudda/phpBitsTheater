@@ -23,7 +23,7 @@ interface ISqlSanitizer
 	/**
 	 * @return string[] Returns the array of defined fields available.
 	 */
-	function getDefinedFields() ;
+	static function getDefinedFields() ;
 	
 	/**
 	 * Returns TRUE if the fieldname specified is sortable.
@@ -65,7 +65,27 @@ interface ISqlSanitizer
 	 * @param string[] $aFieldList - the supplied field list.
 	 * @return string[] Returns the array of valid fields.
 	 */
-	function getSanitizedFieldList( $aFieldList ) ;
+	static function getSanitizedFieldList( $aFieldList ) ;
+	
+	/**
+	 * Get the defined maximum row count for a page in a pager.
+	 * @return int Returns the max number of rows shown for a single pager page;
+	 *   guaranteed to be >=1 unless the pager is disabled, which returns 0.
+	 */
+	function getPagerPageSize() ;
+	
+	/**
+	 * Get the SQL query offset based on pager page size and page desired.
+	 * @return int Returns the offset the query should use.
+	 */
+	function getPagerQueryOffset() ;
+	
+	/**
+	 * Set the query total regardless of paging.
+	 * @param number $aTotalRowCount - the total.
+	 * @return $this Returns $this for chaining.
+	 */
+	function setPagerTotalRowCount( $aTotalRowCount ) ;
 	
 }//end interface
 

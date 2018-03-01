@@ -76,7 +76,7 @@ class AuthBasicAccount extends MyScene implements ISqlSanitizer
 	/**
 	 * @return string[] Returns the array of defined fields available.
 	 */
-	public function getDefinedFields()
+	static public function getDefinedFields()
 	{ return AuthAccount::getDefinedFields() ; }
 	
 	/**

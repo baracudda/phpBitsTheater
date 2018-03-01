@@ -823,11 +823,11 @@ implements IDirected
 	 * @return int Returns the max number of rows shown for a single pager page;
 	 * guaranteed to be 1 or greater.
 	 */
-	public function getPagerPageSize($aDefaultPageSize=25) {
+	public function getPagerPageSize() {
 		if (!$this->isPagerEnabled())
 			return 0;
-		//TODO $this->_config['display/query_limit'];
-		$theLimit = max($aDefaultPageSize,1);
+		//TODO $this->_config['disply/query_limit'];
+		$theLimit = max(25,1);
 		if (!empty($this->query_limit) && is_numeric($this->query_limit))
 			$theLimit = min(max($this->query_limit,1),1000);
 		else if (!empty($this->pagesz) && is_numeric($this->pagesz))
@@ -847,14 +847,15 @@ implements IDirected
 	
 	/**
 	 * Get the SQL query offset based on pager page size and page desired.
-	 * @param int $aPagerPageNum
+	 * @return int Returns the query offset to use.
 	 */
-	public function getQueryOffset($aPageSize, $aPageNum=null) {
+	public function getPagerQueryOffset() {
 		$theOffset = 0;
-		if (!empty($this->query_offset) && is_numeric($this->query_offset))
+		$thePageSize = $this->getPagerPageSize();
+		if ( !empty($this->query_offset) && is_numeric($this->query_offset) )
 			$theOffset = $this->query_offset;
-		else if (($aPageSize>0) && !isset($aPageNum))
-			$theOffset = ($this->getPagerCurrPage()-1)*$aPageSize;
+		else if ( ($thePageSize>0) )
+			$theOffset = ($this->getPagerCurrPage()-1) * $thePageSize;
 		return $theOffset;
 	}
 	
@@ -868,7 +869,7 @@ implements IDirected
 		$theResult = null;
 		$theLimit = $this->getPagerPageSize();
 		if ($theLimit>0) {
-			$theOffset = $this->getQueryOffset($theLimit);
+			$theOffset = $this->getPagerQueryOffset();
 			switch ($aDbType) {
 				case Model::DB_TYPE_MYSQL:
 				case Model::DB_TYPE_PGSQL:
