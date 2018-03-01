@@ -18,8 +18,6 @@
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
 use BitsTheater\costumes\WornForCLI;
-use BitsTheater\models\SetupDb; /* @var $dbMeta SetupDb */
-use com\blackmoonit\Strings;
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
 use Exception;
@@ -122,12 +120,11 @@ class BitsAdmin extends BaseActor
 			
 			//does the framework need updating?
 			$v->feature_id = $dbMeta::FEATURE_ID;
-			if ($theFeatureList[$v->feature_id]['needs_update']) {
-				$dbMeta->upgradeFeature($v);
-			}
+			if ($theFeatureList[$v->feature_id]['needs_update'])
+			{ $dbMeta->upgradeFeature($v); }
 			else if ($this->isRunningUnderCLI())
 			{
-				print( Strings::format($this->getRes('admin/msg_cli_feature_up_to_date'),
+				print( $this->getRes('admin', 'msg_cli_feature_up_to_date',
 						$v->feature_id) . PHP_EOL
 				);
 			}
@@ -135,12 +132,29 @@ class BitsAdmin extends BaseActor
 			
 			//does the website itself need updating?
 			$v->feature_id = $this->getRes('website/getFeatureId');
-			if ($theFeatureList[$v->feature_id]['needs_update']) {
-				$dbMeta->upgradeFeature($v);
-			}
+			if ($theFeatureList[$v->feature_id]['needs_update'])
+			{ $dbMeta->upgradeFeature($v); }
 			else if ($this->isRunningUnderCLI())
 			{
-				print( Strings::format($this->getRes('admin/msg_cli_feature_up_to_date'),
+				print( $this->getRes('admin', 'msg_cli_feature_up_to_date',
+						$v->feature_id) . PHP_EOL
+				);
+			}
+			unset($theFeatureList[$v->feature_id]);
+			
+			//ensure that Auth model gets updated first.
+			$dbAuth = $this->getProp('Auth');
+			$v->feature_id = $dbAuth::FEATURE_ID;
+			if ($v->force_model_upgrade)
+			{
+				$dbMeta->removeFeature($v->feature_id);
+				$dbMeta->refreshFeatureTable($v);
+			}
+			if ($theFeatureList[$v->feature_id]['needs_update'] || $v->force_model_upgrade)
+			{ $dbMeta->upgradeFeature($v); }
+			else if ($this->isRunningUnderCLI())
+			{
+				print( $this->getRes('admin', 'msg_cli_feature_up_to_date',
 						$v->feature_id) . PHP_EOL
 				);
 			}
@@ -163,12 +177,14 @@ class BitsAdmin extends BaseActor
 				}
 				else if ($this->isRunningUnderCLI())
 				{
-					print( Strings::format($this->getRes('admin/msg_cli_feature_up_to_date'),
+					print( $this->getRes('admin', 'msg_cli_feature_up_to_date',
 							$v->feature_id) . PHP_EOL
 					);
 				}
 			}//end foreach
 			
+			if ($this->isRunningUnderCLI())
+			{ print( $this->getRes('admin', 'msg_cli_check_for_missing') . PHP_EOL ); }
 			//after updating all known features, create any missing ones.
 			$dbMeta->setupModels($v);
 			

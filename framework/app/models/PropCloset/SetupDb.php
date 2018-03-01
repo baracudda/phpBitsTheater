@@ -354,17 +354,6 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 						
 						$theResultSet[$theFeatureRow['feature_id']] = $theFeatureRow;
 					}
-					//webapp version may be missing, specifically check and add if so
-					$theWebappFeatureId = $this->getRes('website/getFeatureId');
-					if (empty($theResultSet[$theWebappFeatureId])) {
-						$theResultSet[$theWebappFeatureId]['feature_id'] = $theWebappFeatureId;
-						$theResultSet[$theWebappFeatureId]['model_class'] = $this->mySimpleClassName;
-						$theResultSet[$theWebappFeatureId]['version_seq'] = null;
-						$theResultSet[$theWebappFeatureId]['version_seq_new'] = $this->getRes('website/version_seq');
-						$theResultSet[$theWebappFeatureId]['version_display'] = $this->getRes('admin/field_value_unknown_version');
-						$theResultSet[$theWebappFeatureId]['version_display_new'] = $this->getRes('website/version');
-						$theResultSet[$theWebappFeatureId]['needs_update'] = true;
-					}
 				}
 			} catch (PDOException $pdoe) {
 				throw new DbException($pdoe,  __METHOD__.' failed.');
@@ -376,6 +365,17 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					'version_display' => $this->getRes('website/getFrameworkVersion/1'),
 					'version_display_new' => $this->getRes('website/getFrameworkVersion/'.self::FEATURE_VERSION_SEQ),
 			));
+		}
+		//webapp version may be missing, specifically check and add if so
+		$theWebappFeatureId = $this->getRes('website/getFeatureId');
+		if (empty($theResultSet[$theWebappFeatureId])) {
+			$theResultSet[$theWebappFeatureId]['feature_id'] = $theWebappFeatureId;
+			$theResultSet[$theWebappFeatureId]['model_class'] = $this->mySimpleClassName;
+			$theResultSet[$theWebappFeatureId]['version_seq'] = null;
+			$theResultSet[$theWebappFeatureId]['version_seq_new'] = $this->getRes('website/version_seq');
+			$theResultSet[$theWebappFeatureId]['version_display'] = $this->getRes('admin/field_value_unknown_version');
+			$theResultSet[$theWebappFeatureId]['version_display_new'] = $this->getRes('website/version');
+			$theResultSet[$theWebappFeatureId]['needs_update'] = true;
 		}
 		return $theResultSet;
 	}
@@ -468,29 +468,36 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					$dbModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
 					//if no exception occurs, all went well
 					$this->updateFeature($dbModel->getCurrentFeatureVersion($theFeatureData['feature_id']));
-					
-					$theMsg = $this->getRes('admin/msg_update_success');
-					$this->outputUserMsg($aDataObject, $theMsg, $aDataObject::USER_MSG_NOTICE);
+					$theMsg = $this->getRes('admin', 'msg_update_success',
+							$theFeatureData['feature_id']
+					);
+					$this->outputUserMsg($aDataObject, $theMsg, 'notice');
 				} catch (Exception $e) {
-					$theMsg = $e->getMessage();
+					$theMsg = $this->getRes('admin', 'msg_update_error',
+							$theFeatureData['feature_id'], $e->getMessage()
+					);
 					$this->errorLog($theMsg);
-					$this->outputUserMsg($aDataObject, $theMsg, $aDataObject::USER_MSG_ERROR);
+					$this->outputUserMsg($aDataObject, $theMsg, 'error');
 				}
 			}
 		} else if (!empty($aDataObject)) {
+			$theFeatureData = $this->getFeature(static::FEATURE_ID);
 			try {
 				$this->setupModel();
-				//$this->setupDefaultData($aDataObject);
-				$this->upgradeFeatureVersion($this->getFeature(self::FEATURE_ID), $aDataObject);
+				$this->upgradeFeatureVersion($theFeatureData, $aDataObject);
 				
 				$this->refreshFeatureTable($aDataObject);
 				
-				$theMsg = $this->getRes('admin/msg_update_success');
-				$this->outputUserMsg($aDataObject, $theMsg, $aDataObject::USER_MSG_NOTICE);
+				$theMsg = $this->getRes('admin', 'msg_update_success',
+						$theFeatureData['feature_id']
+				);
+				$this->outputUserMsg($aDataObject, $theMsg, 'notice');
 			} catch (Exception $e) {
-				$theMsg = $e->getMessage();
+				$theMsg = $this->getRes('admin', 'msg_update_error',
+						$theFeatureData['feature_id'], $e->getMessage()
+				);
 				$this->errorLog($theMsg);
-				$this->outputUserMsg($aDataObject, $theMsg, $aDataObject::USER_MSG_ERROR);
+				$this->outputUserMsg($aDataObject, $theMsg, 'error');
 			}
 		}
 	}
