@@ -79,6 +79,7 @@ interface IDirected {
 
 	/**
 	 * Get a resource based on its combined 'namespace/resource_name'.
+	 * Alternatively, you can pass each segment in as its own parameter.
 	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
 	 */
 	public function getRes($aName);

@@ -96,7 +96,7 @@ implements IDirected
 	
 	/**
 	 * Connect to the database. May also be called to reconnect after timeout.
-	 * @param string aDbConnName - connection info name to load
+	 * @param string $aDbConnName - connection info name to load
 	 * @throws DbException - if failed to connect, this exception is thrown.
 	 */
 	public function connect($aDbConnName=null) {
@@ -129,6 +129,10 @@ implements IDirected
 		$this->tbl_ = $this->myDbConnInfo->table_prefix;
 	}
 	
+	/**
+	 * Detect if we have a connection or not.
+	 * @return boolean Returns TRUE if a database connection exists.
+	 */
 	public function isConnected() {
 		return (isset($this->db));
 	}
@@ -421,9 +425,12 @@ implements IDirected
 	
 	/**
 	 * Get a list of models based on the parameter.
-	 * @param string $aModelClassPattern - NULL for all non-abstract models, else a result from getModelClassPattern.
-	 * @param boolean $bIncludeAbstracts - restricts the list to only instantiable classes if FALSE, default is FALSE.
-	 * @return array Returns list of all models that match the pattern as a ReflectionClass.
+	 * @param string $aModelClassPattern - NULL for all non-abstract models,
+	 *   else a result from getModelClassPattern.
+	 * @param boolean $bIncludeAbstracts - restricts the list to only
+	 *   instantiable classes if FALSE, default is FALSE.
+	 * @return \ReflectionClass[] Returns list of all models that match the
+	 *   pattern as a ReflectionClass.
 	 * @see Model::getModelClassPattern()
 	 */
 	static public function getModelClassInfos($aModelClassPattern=null, $bIncludeAbstracts=false) {
@@ -568,10 +575,11 @@ implements IDirected
 
 	/**
 	 * Get a resource based on its combined 'namespace/resource_name'.
+	 * Alternatively, you can pass each segment in as its own parameter.
 	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
 	 */
 	public function getRes($aName) {
-		return $this->getDirector()->getRes($aName);
+		return call_user_func_array(array($this->getDirector(), 'getRes'), func_get_args());
 	}
 	
 	/**

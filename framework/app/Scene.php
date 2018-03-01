@@ -492,10 +492,11 @@ implements IDirected
 
 	/**
 	 * Get a resource based on its combined 'namespace/resource_name'.
+	 * Alternatively, you can pass each segment in as its own parameter.
 	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
 	 */
 	public function getRes($aName) {
-		return $this->getDirector()->getRes($aName);
+		return call_user_func_array(array($this->getDirector(), 'getRes'), func_get_args());
 	}
 	
 	/**

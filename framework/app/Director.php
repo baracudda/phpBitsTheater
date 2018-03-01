@@ -459,6 +459,12 @@ implements ArrayAccess, IDirected
 		return $this->dbConnInfo[$aDbConnName];
 	}
 	
+	/**
+	 * Retrieve the singleton Model object for a given model class.
+	 * @param string $aModelClass - the model class to retrieve.
+	 * @throws Exception when the model fails to connect or is not found.
+	 * @return Model Returns the model class requested.
+	 */
 	public function getModel($aModelClass) {
 		$theModelClass = static::getModelClass($aModelClass);
 		if (class_exists($theModelClass)) {
@@ -552,6 +558,7 @@ implements ArrayAccess, IDirected
 	
 	/**
 	 * Get a resource based on its combined 'namespace/resource_name'.
+	 * Alternatively, you can pass each segment in as its own parameter.
 	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
 	 */
 	public function getRes($aResName) {
@@ -564,7 +571,9 @@ implements ArrayAccess, IDirected
 				$this->_resManager = new $theInstallResMgr('en/US');
 			}
 		}
-		//explode on "\" or "/"
+		if ( func_num_args()>1 )
+			$theResUri = func_get_args();
+		else //explode on "\" or "/"
 		$theResUri = explode('/',str_replace('\\','/',$aResName));
 		//$this->debugPrint($this->debugStr($theResUri));
 		if (count($theResUri)>=2) {

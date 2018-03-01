@@ -128,10 +128,11 @@ implements IDirected
 
 	/**
 	 * Get a resource based on its combined 'namespace/resource_name'.
+	 * Alternatively, you can pass each segment in as its own parameter.
 	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
 	 */
 	public function getRes($aName) {
-		return $this->getDirector()->getRes($aName);
+		return call_user_func_array(array($this->getDirector(), 'getRes'), func_get_args());
 	}
 	
 	/**
@@ -150,7 +151,7 @@ implements IDirected
 	 * @throws \Exception
 	 */
 	public function getConfigSetting($aSetting) {
-		return $this->getDirector()->getConfigSetting($aSetting);
+		return call_user_func_array(array($this->getDirector(), 'getConfigSetting'), func_get_args());
 	}
 	
 	/**
@@ -220,7 +221,7 @@ implements IDirected
 		$o = self::fromArray($aContext, json_decode($asJson,true));
 		return $o;
 	}
-	
+
 	/**
 	 * Create a new instance of whatever class this method
 	 * is called from (MyClass::fromThing() makes a MyClass

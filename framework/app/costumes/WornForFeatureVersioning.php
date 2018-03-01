@@ -219,7 +219,7 @@ trait WornForFeatureVersioning
 			try
 			{ $theSql->execDML(); }
 			catch (\Exception $e)
-			{ throw $theSql->newDbException(__METHOD__ . "[{$aTable}]", $e); }
+			{ throw $theSql->newDbException(__METHOD__ . " [{$aTable}]", $e); }
 			$this->debugLog("v{$aVersionNum}: added [{$aField}] to [{$aTable}]");
 		} else {
 			$this->debugLog("v{$aVersionNum}: {$aTable} already updated.");

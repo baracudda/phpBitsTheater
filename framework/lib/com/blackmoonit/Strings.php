@@ -398,15 +398,18 @@ class Strings {
 	/**
 	 * Send the string parameter to the debug log with the defined debugPrefix prepended.
 	 * Current implementation is the LOG_ERR destination.
-	 * @param $s - var to log, strings sent "as is", anything else converted to string via
-	 *     the debugStr() method.
+	 * Accepts any number of parameters and will convert all non-strings with debugStr().
 	 * @see Strings::debugPrefix()
 	 * @see Strings::debugStr()
 	 */
-	static public function debugLog($s) {
-		if (!is_string($s))
-			$s = self::debugStr($s);
-		syslog(LOG_ERR,self::debugPrefix().$s);
+	static public function debugLog( $_ )
+	{
+		$theLogLine = '';
+		foreach (func_get_args() as $arg)
+		{
+			$theLogLine .= ( is_string($arg) ) ? $arg : self::debugStr($arg);
+		}
+		syslog(LOG_ERR, self::debugPrefix() . $theLogLine);
 	}
 	
 	/**
@@ -425,15 +428,18 @@ class Strings {
 	/**
 	 * Send the string parameter to the error log with the defined errorPrefix prepended.
 	 * Current implementation is the LOG_ERR destination.
-	 * @param $s - var to log, strings sent "as is", anything else converted to string via
-	 *     the debugStr() method.
+	 * Accepts any number of parameters and will convert all non-strings with debugStr().
 	 * @see Strings::errorPrefix()
 	 * @see Strings::debugStr()
 	 */
-	static public function errorLog($s) {
-		if (!is_string($s))
-			$s = self::debugStr($s);
-		syslog(LOG_ERR,self::errorPrefix().$s);
+	static public function errorLog( $_ )
+	{
+		$theLogLine = '';
+		foreach (func_get_args() as $arg)
+		{
+			$theLogLine .= ( is_string($arg) ) ? $arg : self::debugStr($arg);
+		}
+		syslog(LOG_ERR, self::errorPrefix() . $theLogLine);
 	}
 	
 	/**
@@ -691,6 +697,8 @@ class Strings {
 			case 'G' : $theValue *= 1024 ; // gigabytes
 			case 'M' : $theValue *= 1024 ; // megabytes
 			case 'K' : $theValue *= 1024 ; // kilobytes
+			break ;
+			default : ; // Can't happen...?
 		}
 		
 		return $theValue ;
