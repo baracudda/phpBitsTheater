@@ -34,7 +34,8 @@ namespace com\blackmoonit\database;
  *	const DRIVER_4D		= '4d';		//4D
  *	</pre>
  */
-class DbConnSettings {
+class DbConnSettings
+{
 	const DRIVER_CUBRID		= 'cubrid';		//Cubrid
 	const DRIVER_DBLIB		= 'dblib';		//FreeTDS / Microsoft SQL Server / Sybase
 	const DRIVER_FIREBIRD	= 'firebird';	//Firebird/Interbase 6
@@ -58,23 +59,42 @@ class DbConnSettings {
 	public $charset = null;
 
 	/**
-	 * Copies array values into matching property names
-	 * based on the array keys.
-	 * @param array $anArray - array to copy from.
+	 * Copies values into matching property names
+	 * based on the array keys or object property names.
+	 * @param array|object $aThing - array or object to copy from.
+	 * @return $this Returns $this for chaining purposes.
 	 */
-	public function copyFromArray(&$anArray) {
-		if (empty($anArray))
-			return;
-		foreach ($anArray as $theName => $theValue) {
-			if (property_exists($this, $theName)) {
-				$this->{$theName} = $theValue;
+	public function copyFrom( $aThing )
+	{
+		if ( !empty($aThing) ) {
+			foreach ($aThing as $theName => $theValue) {
+				if (property_exists($this, $theName)) {
+					if ( $theName != 'password' )
+					{ $this->{$theName} = $theValue; }
+					else
+					{ $this->password = base64_encode($theValue); }
+				}
 			}
 		}
-		if (!empty($this->password)) {
-			$this->password = base64_encode($this->password);
-		}
+		return $this;
 	}
+	
+	/**
+	 * Copies array values into matching property names
+	 * based on the array keys.
+	 * @param array|object $anArray - array to copy from.
+	 */
+	public function copyFromArray( $anArray )
+	{ return $this->copyFrom($anArray); }
 
+	/**
+	 * Given an array or object, set the data members to its contents.
+	 * @param array|object $aThing - associative array or object
+	 * @return $this Returns $this for chaining purposes.
+	 */
+	public function setDataFrom( $aThing )
+	{ return $this->copyFrom($aThing); }
+	
 	/**
 	 * Based on the data within this object, construct the DNS to be used
 	 * for the first parameter in creating a PDO object.
@@ -87,12 +107,16 @@ class DbConnSettings {
 					$theDns = $this->driver.':'.$this->host;
 					break;
 				case self::DRIVER_MYSQL:
+					if ( empty($this->charset) && !empty($this->dbname) )
+					{ $this->charset = 'utf8mb4'; }
 				default:
-					$theDns = $this->driver.':host='.$this->host.
-							((!empty($this->port)) ? (';port='.$this->port) : '' ).
-							';dbname='.$this->dbname.
-							';charset='.((!empty($this->charset)) ? $this->charset : 'utf8mb4' )
-							;
+					$theDns = $this->driver . ':host=' . $this->host;
+					if ( !empty($this->port) )
+					{ $theDns .= ';port=' . $this->port; }
+					if ( !empty($this->dbname) )
+					{ $theDns .= ';dbname=' . $this->dbname; }
+					if ( !empty($this->charset) )
+					{ $theDns .= ';charset=' . $this->charset; }
 					break;
 			}//switch
 		}//if

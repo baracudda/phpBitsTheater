@@ -19,6 +19,7 @@ namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\AuthBase as BaseModel;
 use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use BitsTheater\models\AuthGroups as AuthGroupsDB; /* @var $dbAuthGroups AuthGroupsDB */
+use BitsTheater\models\Config;
 use BitsTheater\Scene;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\IFeatureVersioning;
@@ -1315,6 +1316,30 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
+	 * See if we are trying to migrate the Auth model.
+	 * @param object $aScene - the Scene object associated with an Actor.
+	 * @return boolean Returns TRUE if admitted.
+	 * @see BaseModel::checkTicket()
+	 */
+	protected function checkInstallPwForMigration($aScene)
+	{
+		$theInstallScene = new \BitsTheater\scenes\Install();
+		$theInstallScene->installpw = $aScene->{static::KEY_pwinput};
+		$bAuthed = $theInstallScene->checkInstallPw();
+		if ( $bAuthed )
+		{
+			//set my fake titan account info so we can migrate!
+			$this->getDirector()->setMyAccountInfo(array(
+					'auth_id' => 'ZOMG-n33dz-2-migratez!',
+					'account_id' => -1,
+					'account_name' => $aScene->{static::KEY_token},
+					'groups' => array( $this->getProp('AuthGroups')->getTitanGroupID() ),
+			));
+		}
+		return $bAuthed;
+	}
+
+	/**
 	 * See if we can validate the api/page request with an account.
 	 * @param object $aScene - the Scene object associated with an Actor.
 	 * @return boolean Returns TRUE if admitted.
@@ -1324,7 +1349,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	{
 		$bAuthorized = false;
 		if( $this->director->canConnectDb() )
-		{
+		try {
 			$this->removeStaleAuthLockoutTokens() ;
 
 			$dbAccounts = $this->getProp('Accounts') ;
@@ -1364,6 +1389,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 //			else $this->debugLog(__METHOD__.' not authorized'); //DEBUG
 			$this->returnProp($dbAccounts);
 		}
+		catch ( DbException $dbx )
+		{ $bAuthorized = $this->checkInstallPwForMigration($aScene); }
 		return $bAuthorized;
 	}
 

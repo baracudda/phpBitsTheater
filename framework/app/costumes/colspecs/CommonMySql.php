@@ -58,8 +58,13 @@ class CommonMySql
 	 * @var string
 	 */
 	const DUMMY_TIME = '1970-01-01 00:00:01' ;
-
-
+	/**
+	 * Defines the generic Unicode character set and collation in use.
+	 * @var string
+	 * @since v4.0.0
+	 */
+	const DEFAULT_UNICODE_SPEC = 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci';
+	
 	/**
 	 * Fully-defines a column for tracking a row's creation time.
 	 * We cannot construct a const from other consts, so cannot use DUMMY_TIME here.
@@ -76,23 +81,24 @@ class CommonMySql
 	const UPDATED_TS_SPEC =
 			'updated_ts timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP' ;
 	/**
+	 * Typical field definition for storing account names.
+	 */
+	const ACCOUNT_NAME_SPEC = 'VARCHAR(60) ' . self::DEFAULT_UNICODE_SPEC . ' NULL';
+	/**
 	 * User that created a record may be recorded.
 	 * @var string
 	 */
-	const CREATED_BY_SPEC =
-			"`created_by` varchar(60) CHARACTER SET utf8 COLLATE utf8_general_ci NULL" ;
+	const CREATED_BY_SPEC = '`created_by` ' . self::ACCOUNT_NAME_SPEC ;
 	/**
 	 * User that updated a record may be recorded.
 	 * @var string
 	 */
-	const UPDATED_BY_SPEC =
-			"`updated_by` varchar(60) CHARACTER SET utf8 COLLATE utf8_general_ci NULL" ;
+	const UPDATED_BY_SPEC = '`updated_by` ' . self::ACCOUNT_NAME_SPEC ;
 	/**
 	 * Version of this current record
 	 * @var string
 	 */
-	const VERSION_NUM_SPEC =
-			"`version_num` INT(11) NULL" ;
+	const VERSION_NUM_SPEC = '`version_num` INT(11) NULL' ;
 	/**
 	 * UUID of the record that replaced this one
 	 * @var string
@@ -105,7 +111,7 @@ class CommonMySql
 	 * "utf8mb4" requires MySQL 5.5+, else use "utf8".
 	 * @var string
 	 */
-	const TABLE_SPEC_FOR_UNICODE = 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci';
+	const TABLE_SPEC_FOR_UNICODE = self::DEFAULT_UNICODE_SPEC ;
 	
 	/**
 	 * Default Unicode table specification.

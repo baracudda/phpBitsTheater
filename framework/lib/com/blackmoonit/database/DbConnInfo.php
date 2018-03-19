@@ -16,18 +16,17 @@
  */
 
 namespace com\blackmoonit\database;
-use com\blackmoonit\database\DbConnOptions;
-use com\blackmoonit\database\DbConnSettings;
 use com\blackmoonit\Strings;
-use \InvalidArgumentException;
-use \RuntimeException;
-use \PDO;
+use InvalidArgumentException;
+use RuntimeException;
+use PDO;
 {//begin namespace
 
 /**
  * PDO connection information class, useful instead of an associative array.
  */
-class DbConnInfo {
+class DbConnInfo
+{
 	const INI_SECTION_DB_OPTIONS = 'dbopts';
 	const INI_SECTION_DB_CONN_INFO = 'dbconn';
 	
@@ -77,40 +76,41 @@ class DbConnInfo {
 	 * @see \com\blackmoonit\database\DbConnSettings
 	 */
 	static public function asSchemeINI($aDbConnName, $aDbConnDriver=DbConnSettings::DRIVER_MYSQL) {
-		$o = new DbConnInfo($aDbConnName, DbConnOptions::asSchemeINI($aDbConnName));
+		$theClass = get_called_class();
+		$o = new $theClass($aDbConnName, DbConnOptions::asSchemeINI($aDbConnName));
 		$o->dbConnSettings->driver = $aDbConnDriver;
 		return $o;
 	}
 	
 	/**
 	 * Once the $dbConnOptions and $dbConnSettings info is set, calculate our PDO connection params.
+	 * @return $this Returns $this for chaining.
 	 * @throws InvalidArgumentException
 	 */
 	protected function calcPDOparams() {
-		if (!empty($this->dbConnOptions)) {
-			switch ($this->dbConnOptions->dns_scheme) {
-				case DbConnOptions::DB_CONN_SCHEME_INI:
-					if (!empty($this->dbConnSettings)) {
-						$this->dns = $this->dbConnSettings->getDnsParam();
-						$this->username = $this->dbConnSettings->username;
-						$this->password = $this->dbConnSettings->password;
-					} else {
-						throw new InvalidArgumentException('"dbconn" information is missing');
-					}
-					break;
-				case DbConnOptions::DB_CONN_SCHEME_ALIAS:
-					$this->dns = $this->dbConnOptions->dns_value;
-					break;
-				case DbConnOptions::DB_CONN_SCHEME_URI:
-					$this->dns = 'uri:'.$this->dbConnOptions->dns_value;
-					break;
-				default:
-					$this->dns = $this->dbConnOptions->dns_scheme.':'.$this->dbConnOptions->dns_value;
-					break;
-			}//switch
-		} else {
-			throw new InvalidArgumentException('"dbopts" information is missing');
-		}
+		if ( empty($this->dbConnOptions) )
+		{ throw new InvalidArgumentException('"dbopts" information is missing'); }
+		switch ($this->dbConnOptions->dns_scheme) {
+			case DbConnOptions::DB_CONN_SCHEME_INI:
+				if (!empty($this->dbConnSettings)) {
+					$this->dns = $this->dbConnSettings->getDnsParam();
+					$this->username = $this->dbConnSettings->username;
+					$this->password = $this->dbConnSettings->password;
+				} else {
+					throw new InvalidArgumentException('"dbconn" information is missing');
+				}
+				break;
+			case DbConnOptions::DB_CONN_SCHEME_ALIAS:
+				$this->dns = $this->dbConnOptions->dns_value;
+				break;
+			case DbConnOptions::DB_CONN_SCHEME_URI:
+				$this->dns = 'uri:'.$this->dbConnOptions->dns_value;
+				break;
+			default:
+				$this->dns = $this->dbConnOptions->dns_scheme.':'.$this->dbConnOptions->dns_value;
+				break;
+		}//switch
+		return $this;
 	}
 	
 	/**
@@ -188,6 +188,7 @@ class DbConnInfo {
 	 * password = "DoubleHelix!"
 	 *
 	 * @param string $aIniFilePath - filename containing the INI information needed.
+	 * @return $this Returns $this for chaining.
 	 * @throws InvalidArgumentException if various data points are missing
 	 * @throws RuntimeException if unable to import the file.
 	 */
@@ -201,28 +202,31 @@ class DbConnInfo {
 			$this->dbConnOptions->myDbConnName = $this->myDbConnName;
 		}
 		if ($theConfig = parse_ini_file($aIniFilePath, TRUE)) {
-			$this->dbConnOptions->copyFromArray($theConfig[self::INI_SECTION_DB_OPTIONS]);
-			if (!empty($theConfig[self::INI_SECTION_DB_CONN_INFO]))
-				$this->dbConnSettings->copyFromArray($theConfig[self::INI_SECTION_DB_CONN_INFO]);
+			$this->dbConnOptions->setDataFrom($theConfig[self::INI_SECTION_DB_OPTIONS]);
+			if ( !empty($theConfig[self::INI_SECTION_DB_CONN_INFO]) )
+			{ $this->dbConnSettings->setDataFrom($theConfig[self::INI_SECTION_DB_CONN_INFO]); }
 			try {
-				$this->calcPDOparams();
-			} catch (InvalidArgumentException $e) {
-				throw new InvalidArgumentException($e->getMessage().' from INI file '.basename($aIniFilePath));
+				return $this->calcPDOparams();
+			} catch (InvalidArgumentException $x) {
+				throw new InvalidArgumentException( $x->getMessage() .
+						' from INI file ' . basename($aIniFilePath)
+				);
 			}
 		} else {
-			throw new RuntimeException('Unable to import '.basename($aIniFilePath).'.');
+			throw new RuntimeException('Unable to import ' . basename($aIniFilePath) . '.');
 		}
 	}
 	
 	/**
 	 * Load pertinent database connection information from INI config file.
 	 * @param string $aIniFilePath - the path and filename info.
-	 * @return DbConnInfo Returns the database settings as this object.
+	 * @return $this Returns the new object.
 	 * @throws InvalidArgumentException if various data points are missing
 	 * @throws RuntimeException if unable to import the file.
 	 */
 	static public function readDbConnInfo($aIniFilePath) {
-		$o = new DbConnInfo();
+		$theClass = get_called_class();
+		$o = new $theClass();
 		if (empty($aIniFilePath))
 			$aIniFilePath = $this->dbConnOptions->ini_filename;
 		$o->loadDbConnInfoFromIniFile($aIniFilePath);
@@ -232,15 +236,21 @@ class DbConnInfo {
 	/**
 	 * Get a PDO database connection.
 	 * @return PDO Returns the PDO connection.
+	 * @throws \PDOException if connection fails.
 	 */
 	public function getPDOConnection() {
 		$theResult = null;
-		if (!empty($this->username) && !empty($this->password))
-			$theResult = new PDO($this->dns,$this->username,base64_decode($this->password));
-		else
-			$theResult = new PDO($this->dns);
-		$theResult->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
-		$theResult->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+		try {
+			if (!empty($this->username) && !empty($this->password))
+				$theResult = new PDO($this->dns, $this->username, base64_decode($this->password));
+			else
+				$theResult = new PDO($this->dns);
+			$theResult->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+			$theResult->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+		} catch ( \PDOException $pdox ) {
+			Strings::errorLog('DbConnection failure for [', $this->dns, ']: ', $pdox->getMessage());
+			throw $pdox;
+		}
 		return $theResult;
 	}
 	

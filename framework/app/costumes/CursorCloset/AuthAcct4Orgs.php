@@ -45,7 +45,8 @@ class AuthAcct4Orgs extends BaseCostume
 	{
 		$theIndex = array_search('with_map_info', $aFieldList);
 		$bIncMapInfo = ( $theIndex!==false );
-		unset($aFieldList[$theIndex]);
+		if ( $theIndex!==false )
+		{ unset($aFieldList[$theIndex]); }
 		if ( empty($aFieldList) ) {
 			$aFieldList = array_diff(static::getDefinedFields(), array(
 					'groups',
@@ -61,7 +62,7 @@ class AuthAcct4Orgs extends BaseCostume
 	
 	/** @return \BitsTheater\models\Auth */
 	protected function getAuthProp()
-	{ return $this->getProp( 'Auth' ); }
+	{ return $this->getModel()->getProp( 'Auth' ); }
 	
 	/**
 	 * Event called after fetching data from db and setting all our properties.
@@ -69,7 +70,7 @@ class AuthAcct4Orgs extends BaseCostume
 	public function onFetch()
 	{
 		if ( !empty($this->auth_id) ) try {
-			if ( array_search('org_ids', $this->getExportFieldList()!==false) ) {
+			if ( array_search('org_ids', $this->getExportFieldList())!==false ) {
 				$this->org_ids = $this->getAuthProp()
 					->getOrgsForAuthCursor($this->auth_id, 'org_id')
 					->fetchAll(\PDO::FETCH_COLUMN, 0)

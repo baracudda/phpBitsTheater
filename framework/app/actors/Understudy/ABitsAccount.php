@@ -152,9 +152,7 @@ abstract class ABitsAccount extends BaseActor {
 		if( ! $this->isGuest() )
 		{
 			$theData = $this->getDirector()->getMyAccountInfo()->exportData() ;
-			$theData->account_id = intval( $theData->account_id ) ;
-			//$theData->debugAuth = $v->debugAuth; unset($v->debugAuth); //DEBUG
-			if( $theData->groups ) try
+			if( !empty($theData->groups) ) try
 			{
 				$dbPerms = $this->getProp( 'Permissions' ) ;
 				$theData->permissions = $dbPerms->getGrantedRights($theData->groups);

@@ -220,6 +220,9 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			$theSql = SqlBuilder::withModel($this);
 			$theSql->startWith('INSERT INTO')->add($this->tnGroups);
 			$this->setAuditFieldsOnInsert($theSql);
+			$theSql->mustAddParam( 'group_id', '__PLACEHOLDER__' );
+			$theSql->mustAddParam( 'group_num', '__PLACEHOLDER__' );
+			$theSql->mustAddParam( 'group_name', '__PLACEHOLDER__' );
 			
 			// Now use this to construct each of the rows of group data.
 			// This works because audit fields are the only params set in the
@@ -227,9 +230,6 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			$theDefaultData =
 					$this->buildDefaultGroupDataArray( $theSql->myParams ) ;
 			
-			// Now continue building the query.
-			$theSql->mustAddParam( 'group_id' );
-			$theSql->mustAddParam( 'group_name' );
 			try
 			{ $theSql->execMultiDML( $theDefaultData ); }
 			catch (PDOException $pdox)
@@ -259,11 +259,11 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				default:
 					$theGroupID = Strings::createUUID();
 			}//end switch
-			$theDefaultData[] = array_merge( array(
+			$theDefaultData[] = array_merge( $aAuditFields, array(
 					'group_id' => $theGroupID,
 					'group_num' => $theIdx++,
 					'group_name' => $theGroupName,
-			), $aAuditFields );
+			) );
 		}
 		return $theDefaultData ;
 	}
@@ -1003,7 +1003,10 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			/* @var $dbAuth \BitsTheater\models\Auth */
 			$dbAuth = $this->getProp('Auth');
 			$theAuthRow = $dbAuth->getAuthByAccountId($aAcctId);
-			return $this->getGroupIDListForAuth($theAuthRow['auth_id']);
+			if ( !empty($theAuthRow) )
+			{ return $this->getGroupIDListForAuth($theAuthRow['auth_id']); }
+			else
+			{ return array( static::UNREG_GROUP_ID ); }
 		}
 		else //we may be in a state before migration took place
 		{

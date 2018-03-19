@@ -199,7 +199,7 @@ class BrokenLeg extends \Exception
 	 * @param IDirected $aContext some BitsTheater object that can provide context
 	 *  for the website, so that text resources can be retrieved; this can be an
 	 *  actor, model, or scene, or anything implementing IDirected
-	 * @param Exception $aException - a thrown exception.
+	 * @param \Exception $aException - a thrown exception.
 	 */
 	static public function tossException( IDirected $aContext, $aException )
 	{
@@ -250,6 +250,18 @@ class BrokenLeg extends \Exception
 	 */
 	protected $myExtras = null ;
 
+	/**
+	 * Magic PHP method to limit what var_dump() shows.
+	 */
+	public function __debugInfo() {
+		return array(
+				'code' => $this->code,
+				'message' => $this->message,
+				'myCondition' => $this->myCondition,
+				'myExtras' => $this->myExtras,
+		);
+	}
+	
 	/** Accessor for the condition token. */
 	public function getCondition()
 	{ return $this->myCondition ; }
@@ -281,7 +293,7 @@ class BrokenLeg extends \Exception
 	 * Writes an "extra" property into the exception, which will be returned as
 	 * part of a <code>data</code> property.
 	 * @param string $aKey the data key
-	 * @param unknown $aValue the data value
+	 * @param mixed $aValue the data value
 	 * @return \BitsTheater\BrokenLeg $this
 	 * @since phpBitsTheater 3.8.2
 	 */
@@ -450,7 +462,7 @@ class BrokenLeg extends \Exception
 	/**
 	 * (Override) Returns the representation of this object that is appropriate
 	 * for error responses from the API.
-	 * @return stdClass an object with "cause" and "message" fields
+	 * @return \stdClass an object with "cause" and "message" fields
 	 * @since BitsTheater 3.6
 	 */
 	public function exportData()

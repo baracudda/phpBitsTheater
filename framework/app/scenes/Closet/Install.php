@@ -16,15 +16,13 @@
  */
 
 namespace BitsTheater\scenes\Closet;
-use BitsTheater\Scene as MyScene;
-use com\blackmoonit\Widgets;
+use BitsTheater\Scene as BaseScene;
+use BitsTheater\costumes\DbConnInfo;
 use com\blackmoonit\database\DbConnOptions;
-use com\blackmoonit\database\DbConnSettings;
-use com\blackmoonit\database\DbConnInfo;
-use PDO;
+use com\blackmoonit\Widgets;
 {//namespace begin
 
-class Install extends MyScene {
+class Install extends BaseScene {
 	const INSTALL_PW_FILENAME = 'install.pw';
 
 	protected function setupDefaults() {
@@ -91,7 +89,7 @@ class Install extends MyScene {
 	
 	public function getDbTypes() {
 		//return $this->getRes('install/db_types');
-		$theList = PDO::getAvailableDrivers();
+		$theList = \PDO::getAvailableDrivers();
 		return array_combine($theList,$theList);
 	}
 	
@@ -112,7 +110,12 @@ class Install extends MyScene {
 				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->host))
 					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->host;
 				$w .= '<td class="db-field-label">'.$this->getRes('install/label_dns_dbhost').': </td>';
-				$w .= '<td>'.Widgets::createTextBox($theWidgetName,$v->$theWidgetName,true,30).'</td>';
+				$theInput = Widgets::buildTextBox($theWidgetName)->setSize(30)
+						->setPlaceholder($this->getRes('install','validate_dbhost'))
+						->setContent($v->$theWidgetName)
+						->setRequired(true)
+						->renderInline();
+				$w .= '<td>' . $theInput . '</td>';
 				$w .= "</tr>\n";
 
 				$w .= '<tr>';
@@ -120,7 +123,12 @@ class Install extends MyScene {
 				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->driver))
 					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->driver;
 				$w .= '<td class="db-field-label">'.$this->getRes('install/label_dns_dbtype').': </td>';
-				$w .= '<td>'.Widgets::createDropDown($theWidgetName,$v->getDbTypes(),$v->$theWidgetName).'</td>';
+				$theInput = Widgets::buildDropDown($theWidgetName)
+						->setOptions($v->getDbTypes())->setSelectedValue($v->$theWidgetName)
+						//->setPlaceholder($this->getRes('install','validate_dbtype'))
+						->regenerate()
+						->renderInline();
+				$w .= '<td>' . $theInput . '</td>';
 				$w .= "</tr>\n";
 				
 				$w .= '<tr>';
@@ -128,7 +136,12 @@ class Install extends MyScene {
 				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->dbname))
 					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->dbname;
 				$w .= '<td class="db-field-label">'.$this->getRes('install/label_dns_dbname').': </td>';
-				$w .= '<td>'.Widgets::createTextBox($theWidgetName,$v->$theWidgetName,true,30).'</td>';
+				$theInput = Widgets::buildTextBox($theWidgetName)->setSize(30)
+						->setPlaceholder($this->getRes('install','validate_dbname'))
+						->setContent($v->$theWidgetName)
+						->setRequired(true)
+						->renderInline();
+				$w .= '<td>' . $theInput . '</td>';
 				$w .= "</tr>\n";
 				
 				$w .= '<tr>';
@@ -136,7 +149,11 @@ class Install extends MyScene {
 				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->username))
 					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->username;
 				$w .= '<td class="db-field-label">'.$this->getRes('install/label_dns_dbuser').': </td>';
-				$w .= '<td>'.Widgets::createTextBox($theWidgetName,$v->$theWidgetName,false,30).'</td>';
+				$theInput = Widgets::buildTextBox($theWidgetName)->setSize(30)
+						->setPlaceholder($this->getRes('install','validate_dbuser'))
+						->setContent($v->$theWidgetName)
+						->renderInline();
+				$w .= '<td>' . $theInput . '</td>';
 				$w .= "</tr>\n";
 				
 				$w .= '<tr>';
@@ -144,8 +161,33 @@ class Install extends MyScene {
 				if (empty($v->$theWidgetName) && !empty($aDbConnInfo->dbConnSettings->password))
 					$v->$theWidgetName = $aDbConnInfo->dbConnSettings->password;
 				$w .= '<td class="db-field-label">'.$this->getRes('install/label_dns_dbpwrd').': </td>';
-				$w .= '<td>'.Widgets::createPassBox($theWidgetName,$v->$theWidgetName,false,30).'</td>';
+				$theInput = Widgets::buildPassBox($theWidgetName)->setSize(30)
+						->setPlaceholder($this->getRes('install','validate_dbpwrd'))
+						->setContent($v->$theWidgetName)
+						->renderInline();
+				$w .= '<td>' . $theInput . '</td>';
 				$w .= "</tr>\n";
+
+				$w .= '<tr>';
+				$theWidgetName = $theFormIdPrefix.'_admin_dbuser';
+				$w .= '<td class="db-field-label">'.$this->getRes('install','label_dns_admin_dbuser').': </td>';
+				$theInput = Widgets::buildTextBox($theWidgetName)->setSize(30)
+						->setPlaceholder($this->getRes('install','validate_admin_dbuser'))
+						->setContent($v->$theWidgetName)
+						->renderInline();
+				$w .= '<td>' . $theInput . '</td>';
+				$w .= "</tr>\n";
+				
+				$w .= '<tr>';
+				$theWidgetName = $theFormIdPrefix.'_admin_dbpwrd';
+				$w .= '<td class="db-field-label">'.$this->getRes('install','label_dns_admin_dbpwrd').': </td>';
+				$theInput = Widgets::buildPassBox($theWidgetName)->setSize(30)
+						->setPlaceholder($this->getRes('install','validate_admin_dbpwrd'))
+						->setContent($v->$theWidgetName)
+						->renderInline();
+				$w .= '<td>' . $theInput . '</td>';
+				$w .= "</tr>\n";
+				
 				$w .= "</table>\n";
 				break;
 			case DbConnOptions::DB_CONN_SCHEME_ALIAS:

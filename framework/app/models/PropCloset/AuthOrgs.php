@@ -20,6 +20,7 @@ use BitsTheater\models\PropCloset\AuthBase as BaseModel;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\costumes\DbAdmin;
+use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\ISqlSanitizer;
@@ -28,7 +29,6 @@ use BitsTheater\costumes\WornByIDirectedForValidation;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\costumes\WornForFeatureVersioning;
 use BitsTheater\costumes\AuthPasswordReset;
-use BitsTheater\DbConnInfo;
 use BitsTheater\models\AuthGroups as AuthGroupsDB;
 use BitsTheater\outtakes\AccountAdminException;
 use BitsTheater\outtakes\PasswordResetException;
@@ -920,35 +920,31 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 					AccountAdminException::ACT_UNIQUE_FIELD_ALREADY_EXISTS, 'org_name'
 			);
 		}
-		$theAdminDbConn = $theDbAdmin->createDbFromUserInput($aDbConnInput);
-		if ( !empty($theAdminDbConn) && $theAdminDbConn->dbConn->inTransaction() ) {
-			// commit the new db so we can start populating it
-			$theAdminDbConn->dbConn->commit();
-			// add in the proper model tables
-			$theDbNewConn = DbConnInfo::fromURI($aDbConnInput->dbconn, APP_DB_CONN_NAME);
-			$theDbAdmin->setupNewDb($aDbConnInput, $theDbNewConn, APP_DB_CONN_NAME);
-			unset($theDbNewConn);
-			// now lets actually insert the new org into our database
-			$theSql->reset();
-			$theSql->startWith('INSERT INTO')->add($this->tnAuthOrgs);
-			$this->setAuditFieldsOnInsert($theSql);
-			$theSql->mustAddParam('org_id', Strings::createUUID())
-				->mustAddParam('org_name')
-				->mustAddParam('org_title')
-				->addParam('org_desc')
-				->mustAddParam('dbconn')
-				->addParam('parent_org_id')
-				;
-			try
-			{
-				$theParams = $theSql->execDMLandGetParams();
-				//return everything EXCEPT the constructed dbconn param (security measure)
-				unset($theParams['dbconn']);
-				return $theParams;
-			}
-			catch (PDOException $pdox)
-			{ throw $theSql->newDbException(__METHOD__, $pdox); }
+		$theDbAdmin->createDbFromUserInput($aDbConnInput);
+		// add in the proper model tables
+		$theDbNewConn = DbConnInfo::fromURI($aDbConnInput->dbconn, APP_DB_CONN_NAME);
+		$theDbAdmin->setupNewDb($aDbConnInput, $theDbNewConn, APP_DB_CONN_NAME);
+		unset($theDbNewConn);
+		// now lets actually insert the new org into our database
+		$theSql->reset();
+		$theSql->startWith('INSERT INTO')->add($this->tnAuthOrgs);
+		$this->setAuditFieldsOnInsert($theSql);
+		$theSql->mustAddParam('org_id', Strings::createUUID())
+			->mustAddParam('org_name')
+			->mustAddParam('org_title')
+			->addParam('org_desc')
+			->mustAddParam('dbconn')
+			->addParam('parent_org_id')
+			;
+		try
+		{
+			$theParams = $theSql->execDMLandGetParams();
+			//return everything EXCEPT the constructed dbconn param (security measure)
+			unset($theParams['dbconn']);
+			return $theParams;
 		}
+		catch (PDOException $pdox)
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
 	
 	/**
@@ -1527,17 +1523,34 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	/**
 	 * Loads all the appropriate data about an account for login caching purposes.
 	 * If the Account is INACTIVE, return NULL.
-	 * @param AuthOrgs $dbAcct - the accounts model.
+	 * @param mixed $aDUMMY - unused parameter, exists only for backward compatibility with AuthBasic.
 	 * @param integer $aAccountId - the account id.
 	 * @return AccountInfoCache|NULL Returns the data if found and active, else NULL.
 	 */
-	public function getAccountInfoCache($dbAccounts, $aAccountId) {
+	public function getAccountInfoCache($aDUMMY, $aAccountId) {
 		$theResult = AccountInfoCache::fromThing($this,
 				$this->getAuthByAccountId($aAccountId)
 		);
 		if ( empty($theResult) || !$theResult->is_active )
 			return null;
 		$theResult->groups = $this->belongsToGroups($aAccountId) ;
+		return $theResult;
+	}
+
+	/**
+	 * Loads all the appropriate data about an account for login caching purposes.
+	 * If the Account is INACTIVE, return NULL.
+	 * @param string $aEmail - the account email address.
+	 * @return AccountInfoCache|NULL Returns the data if found and active, else NULL.
+	 */
+	public function getAccountInfoCacheByEmail($aEmail)
+	{
+		$theResult = AccountInfoCache::fromThing($this,
+				$this->getAuthByEmail($aEmail)
+		);
+		if ( empty($theResult) || !$theResult->is_active )
+			return null;
+		$theResult->groups = $this->belongsToGroups($theResult->account_id) ;
 		return $theResult;
 	}
 
@@ -2070,7 +2083,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * Deletes all tokens associated with the specified account ID.
 	 * Caller must ensure that the account ID is not null.
 	 * @param integer $aAccountID the account ID
-	 * @return AuthBasic $this
+	 * @return $this Returns $this for chaining.
 	 * @since BitsTheater 3.6
 	 */
 	public function deleteFor( $aAccountID )
@@ -2121,23 +2134,67 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
+	 * Deletes all tokens associated with the specified account ID.
+	 * @param string $aAuthID - the account ID
+	 * @return $this Returns $this for chaining.
+	 * @since BitsTheater 4.0.0
+	 */
+	public function deleteAuthAccount( $aAuthID )
+	{
+		$theSql = SqlBuilder::withModel($this);
+		$theSql->beginTransaction();
+		try {
+			$theSql->reset()
+				->startWith('DELETE FROM')->add($this->tnAuthMobile)
+				->startWhereClause()
+				->mustAddParam('auth_id', $aAuthID)
+				->endWhereClause()
+				->execDML()
+				;
+			$theSql->reset()
+				->startWith('DELETE FROM')->add($this->tnAuthTokens)
+				->startWhereClause()
+				->mustAddParam('auth_id', $aAuthID)
+				->endWhereClause()
+				->execDML()
+				;
+			$theSql->reset()
+				->startWith('DELETE FROM')->add($this->tnAuthOrgMap)
+				->startWhereClause()
+				->mustAddParam('auth_id', $aAuthID)
+				->endWhereClause()
+				->execDML()
+				;
+			$theSql->reset()
+				->startWith('DELETE FROM')->add($this->tnAuthAccounts)
+				->startWhereClause()
+				->mustAddParam('auth_id', $aAuthID)
+				->endWhereClause()
+				->execDML()
+				;
+			$theSql->commitTransaction();
+		}
+		catch( PDOException $pdox )
+		{
+			$theSql->rollbackTransaction();
+			throw $theSql->newDbException(__METHOD__, $pdox);
+		}
+	}
+
+	/**
 	 * Given the parameters, can a user register with them?
 	 * @see \BitsTheater\models\PropCloset\AuthBase::canRegister()
 	 */
 	public function canRegister($aAcctName, $aEmailAddy) {
 		$this->removeStaleRegistrationCapTokens();
-		if ($this->checkRegistrationCap()) {
-			return self::REGISTRATION_CAP_EXCEEDED;
-		}
+		if ( $this->checkRegistrationCap() )
+		{ return self::REGISTRATION_CAP_EXCEEDED; }
 
-		$dbAccounts = $this->getProp('Accounts');
 		$theResult = self::REGISTRATION_SUCCESS;
-		if ($dbAccounts->getByName($aAcctName)) {
-			$theResult = self::REGISTRATION_NAME_TAKEN;
-		} else if ($this->getAuthByEmail($aEmailAddy)) {
-			$theResult = self::REGISTRATION_EMAIL_TAKEN;
-		}
-		$this->returnProp($dbAccounts);
+		if ( $this->getByName($aAcctName) )
+		{ $theResult = self::REGISTRATION_NAME_TAKEN; }
+		else if ( $this->getAuthByEmail($aEmailAddy) )
+		{ $theResult = self::REGISTRATION_EMAIL_TAKEN; }
 		return $theResult;
 	}
 

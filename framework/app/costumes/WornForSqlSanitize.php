@@ -21,11 +21,6 @@ namespace BitsTheater\costumes;
 trait WornForSqlSanitize
 {
 	/**
-	 * @return string[] Returns the array of defined fields available.
-	 */
-	abstract static public function getDefinedFields() ;
-	
-	/**
 	 * Returns TRUE if the fieldname specified is sortable.
 	 * @param string $aFieldName - the field name to check.
 	 * @return boolean Returns TRUE if sortable, else FALSE.

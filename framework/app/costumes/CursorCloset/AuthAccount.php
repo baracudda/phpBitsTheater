@@ -54,7 +54,8 @@ class AuthAccount extends BaseCostume
 	{
 		$theIndex = array_search('with_map_info', $aFieldList);
 		$bIncMapInfo = ( $theIndex!==false );
-		unset($aFieldList[$theIndex]);
+		if ( $theIndex!==false )
+		{ unset($aFieldList[$theIndex]); }
 		if ( empty($aFieldList) ) {
 			$aFieldList = array_diff(static::getDefinedFields(), array(
 					'groups',

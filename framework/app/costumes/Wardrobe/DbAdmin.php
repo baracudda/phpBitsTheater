@@ -19,9 +19,9 @@ namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\Model as BasicModel;
 use BitsTheater\Scene as BasicScene;
+use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\BrokenLeg;
-use BitsTheater\DbConnInfo;
 use BitsTheater\models\Config as ConfigDB;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\exceptions\DbException;
@@ -39,10 +39,10 @@ class DbAdmin extends BaseCostume
 	/**
 	 * Create the database using the provided dbconn inputs.
 	 * @param object $aDbConnInput - the dbconn input from the user (CONSIDER IT TOXIC!).
-	 * @return DbConnInfo|null Returns the DbConnInfo in use if successfully created
-	 *   the new database so that we may commit the transaction or roll it back.
+	 * @param DbConnInfo $aDbConn - (optional) newly defined connection.
+	 * @return $this Returns $this for chaining.
 	 */
-	public function createDbFromUserInput( $aDbConnInput )
+	public function createDbFromUserInput( $aDbConnInput, DbConnInfo $aDbConn=null )
 	{
 		$this->sanitizeDbConnInput($aDbConnInput);
 		// enforce certain fields to be non-empty
@@ -51,10 +51,10 @@ class DbAdmin extends BaseCostume
 			;
 		switch ($aDbConnInput->dbtype) {
 			case DbUtils::DB_TYPE_MYSQL:
-				return $this->createDbAndUserForMySql( $aDbConnInput );
+				return $this->createDbAndUserForMySql( $aDbConnInput, $aDbConn );
 			default:
 				//TODO what is the typical process for create user/db?
-				return null;
+				return $this;
 		}//switch
 	}
 	
@@ -187,56 +187,84 @@ class DbAdmin extends BaseCostume
 	 * <span style="font-family:monospace">admin_dbpass<span> are the credential
 	 * fields to use for that.
 	 * @param object $aDbConnInput - the <i>sanitized</i> dbconn input from the user.
-	 * @return DbConnInfo|null Returns the DbConnInfo in use if successfully created
-	 *   the new database so that we may commit the transaction or roll it back.
+	 * @param DbConnInfo $aDbConn - (optional) newly defined connection.
+	 * @return $this Returns $this for chaining.
 	 */
-	protected function createDbAndUserForMySql( $aDbConnInput )
+	protected function createDbAndUserForMySql( $aDbConnInput, DbConnInfo $aDbConn=null )
 	{
 		// first, a new Model object with the default connection
-		$theModel = new BasicModel($this->getDirector());
+		$theModel = new BasicModel();
+		$theModel->director = $this->getDirector();
 		if ( !empty($aDbConnInput->admin_dbuser) && !empty($aDbConnInput->admin_dbpass) ) {
-			// since we do not keep around the sensitive information, we need to reload
-			//   the default connection information.
-			$theWebAppDbConn = new DbConnInfo();
-			$theWebAppDbConn->loadDbConnInfo();
-			// now replace the user/pw with whatever the user gave us
-			$theWebAppDbConn->username = $aDbConnInput->admin_dbuser;
-			$theWebAppDbConn->password = base64_encode($aDbConnInput->admin_dbpass);
+			if ( !empty($aDbConn) ) {
+				$theWebAppDbConn = clone $aDbConn;
+			}
+			else {
+				// since we do not keep around the sensitive information, we need to reload
+				//   the default connection information.
+				$theWebAppDbConn = new DbConnInfo();
+				$theWebAppDbConn->loadDbConnInfo();
+			}
+			$theWebAppDbConn->cnvToAdminConn(
+					$aDbConnInput->admin_dbuser, $aDbConnInput->admin_dbpass
+			);
+			unset($aDbConnInput->admin_dbuser); //do not keep around any longer than needed
+			unset($aDbConnInput->admin_dbpass); //do not keep around any longer than needed
 			// then we have our model object connect to the new connection
 			$theModel->connectTo($theWebAppDbConn);
 			// now we can let SqlBuilder run its queries using this temp model
 			//   which has admin privileges, which go poof at end of method.
-			unset($aDbConnInput->admin_dbuser); //do not keep around any longer than needed
-			unset($aDbConnInput->admin_dbpass); //do not keep around any longer than needed
 		}
-		$theModel->myDbConnInfo->dbConn->beginTransaction();
 		$theSql = SqlBuilder::withModel($theModel)->obtainParamsFrom($aDbConnInput);
+		$theSql->beginTransaction();
 		try {
 			if ( !Strings::beginsWith($aDbConnInput->dbconn, '/') ) {
 				// we are changing more than just making a new database, we need a new user as well
-				$theSql->startWith('CREATE USER')
-					->add("':dbuser'@':dbuser_fromhost'")
-					->setParam('dbuser', $aDbConnInput->dbuser)
-					->setParam('dbuser_fromhost', $aDbConnInput->dbuser_fromhost)
-					->add("IDENTIFIED BY ':dbpass'")
-					->setParam('dbpass', $aDbConnInput->dbpass)
+				$theResult = $theSql->reset()
+					->startWith('SELECT COUNT(*) FROM mysql.user')
+					->startWhereClause()
+					->mustAddParam('user', $aDbConnInput->dbuser)
+					->endWhereClause()
+					->add('LIMIT 1')
+					//->logSqlDebug(__METHOD__) //DEBUG
+					->query()
 					;
-				$ps = $theSql->execDML();
-				switch ($ps->errorCode()) {
-					case '00000': //SUCCESS! \o/
-						break;
-					case '42000': //ER_NO_PERMISSION_TO_CREATE_USER
-						throw new DbException(null,
-								$this->getRes('auth', 'msg_no_permission_to_create_user')
-						);
-					default:
-						$theErrInfo = $ps->errorInfo();
-						throw $theSql->newDbException(__METHOD__,
-								$this->getRes('msg_generic_create_user_error',
-										$theErrInfo[0], $theErrInfo[2]
-								)
-						);
-				}//switch
+				if ( empty($theResult) || empty($theResult->fetch(\PDO::FETCH_COLUMN)) ) {
+					$theSql->reset()
+						->startWith('CREATE USER')
+						->add(":dbuser@:dbuser_fromhost")
+						->setParam('dbuser', $aDbConnInput->dbuser)
+						->setParam('dbuser_fromhost', $aDbConnInput->dbuser_fromhost)
+						->add("IDENTIFIED BY :dbpass")
+						->setParam('dbpass', $aDbConnInput->dbpass)
+						//->logSqlDebug(__METHOD__) //DEBUG
+						;
+					$ps = $theSql->execDML();
+					switch ($ps->errorCode()) {
+						case '00000': //SUCCESS! \o/
+							$this->logStuff(__METHOD__,
+									' created DBUSER [', $aDbConnInput->dbuser, ']'
+							);
+							break;
+						case '42000': //ER_NO_PERMISSION_TO_CREATE_USER
+							throw new DbException(null,
+									$this->getRes('auth', 'msg_no_permission_to_create_user')
+							);
+						default:
+							$theErrInfo = $ps->errorInfo();
+							throw $theSql->newDbException(__METHOD__,
+									$this->getRes('msg_generic_create_user_error',
+											$theErrInfo[0], $theErrInfo[2]
+									)
+							);
+					}//switch
+				}
+				else
+				{
+					$this->logStuff(__METHOD__, ' DBUSER [',
+							$aDbConnInput->dbuser . '] already exists.'
+					);
+				}
 			}
 			
 			// now that we have the dbuser, grant it rights to the soon-to-be db
@@ -250,19 +278,23 @@ class DbAdmin extends BaseCostume
 				;
 			//$theSql->logSqlDebug(__METHOD__); //DEBUG
 			$theSql->execDML();
-	
+			
 			// now that we have a dbuser with rights, create the new db
 			$theSql->reset();
 			$theSql->startWith('CREATE DATABASE IF NOT EXISTS')
 				->add($theSql->getQuoted($aDbConnInput->dbname))
 				;
 			$theSql->execDML();
+			$this->logStuff(__METHOD__,
+					' created Database [', $aDbConnInput->dbname, '].'
+			);
+			$theSql->commitTransaction();
+			return $this;
 		}
 		catch (\PDOException $pdox) {
-			$theModel->myDbConnInfo->dbConn->rollBack();
+			$theSql->rollbackTransaction();
 			throw $theSql->newDbException(__METHOD__, $pdox);
 		}
-		return $theModel->myDbConnInfo;
 	}
 	
 	/**

@@ -17,6 +17,7 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\Scene ;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\colspecs\CommonMySql ;
 use BitsTheater\costumes\IFeatureVersioning;
@@ -76,14 +77,14 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					case self::DB_TYPE_MYSQL:
 					default:
 						return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-							"( feature_id CHAR(120) CHARACTER SET utf8 NOT NULL".
+							"( feature_id CHAR(120) NOT NULL".
 							", model_class CHAR(120) NOT NULL".
-							", version_display CHAR(40) CHARACTER SET utf8 NULL".
+							", version_display CHAR(40) NULL".
 							", version_seq INT(11) NOT NULL DEFAULT 0".
 							", ".CommonMySql::CREATED_TS_SPEC.
 							", ".CommonMySql::UPDATED_TS_SPEC.
 							", PRIMARY KEY (feature_id, model_class)".
-							") DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci";
+							') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 				}
 				break;
 		}
@@ -384,7 +385,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	 * Insert the feature into our table.
 	 * @param $aDataObject - object containing data to be used on INSERT.
 	 * @throws DbException
-	 * @return Returns array(feature info) on success, else NULL.
+	 * @return array Returns array(feature info) on success, else NULL.
 	 */
 	public function insertFeature($aDataObject) {
 		$nowAsUTC = $this->utc_now();
@@ -406,7 +407,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	 * Update an existing Feature record, version_seq is REQUIRED.
 	 * @param $aDataObject - object containing data to be used on UPDATE.
 	 * @throws DbException
-	 * @return Returns array(device_id, name) on success, else NULL.
+	 * @return array Returns array(device_id, name) on success, else NULL.
 	 */
 	public function updateFeature($aDataObject) {
 		$nowAsUTC = $this->utc_now();
@@ -471,13 +472,13 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					$theMsg = $this->getRes('admin', 'msg_update_success',
 							$theFeatureData['feature_id']
 					);
-					$this->outputUserMsg($aDataObject, $theMsg, 'notice');
+					$this->outputUserMsg($aDataObject, $theMsg, Scene::USER_MSG_NOTICE);
 				} catch (Exception $e) {
 					$theMsg = $this->getRes('admin', 'msg_update_error',
 							$theFeatureData['feature_id'], $e->getMessage()
 					);
 					$this->errorLog($theMsg);
-					$this->outputUserMsg($aDataObject, $theMsg, 'error');
+					$this->outputUserMsg($aDataObject, $theMsg, Scene::USER_MSG_ERROR);
 				}
 			}
 		} else if (!empty($aDataObject)) {
@@ -491,13 +492,13 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 				$theMsg = $this->getRes('admin', 'msg_update_success',
 						$theFeatureData['feature_id']
 				);
-				$this->outputUserMsg($aDataObject, $theMsg, 'notice');
+				$this->outputUserMsg($aDataObject, $theMsg, Scene::USER_MSG_NOTICE);
 			} catch (Exception $e) {
 				$theMsg = $this->getRes('admin', 'msg_update_error',
 						$theFeatureData['feature_id'], $e->getMessage()
 				);
 				$this->errorLog($theMsg);
-				$this->outputUserMsg($aDataObject, $theMsg, 'error');
+				$this->outputUserMsg($aDataObject, $theMsg, Scene::USER_MSG_ERROR);
 			}
 		}
 	}

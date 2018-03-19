@@ -18,7 +18,8 @@
 namespace com\blackmoonit\database;
 {//begin namespace
 
-class DbConnOptions {
+class DbConnOptions
+{
 	const DB_CONN_SCHEME_INI = 'ini';		//default connection scheme
 	const DB_CONN_SCHEME_ALIAS = 'alias';	//an alias name defined in php.ini
 	const DB_CONN_SCHEME_URI = 'uri';		//uri to a file containing the DNS value
@@ -54,9 +55,42 @@ class DbConnOptions {
 	 */
 	public function __construct($aDbConnName=null) {
 		$this->myDbConnName = $aDbConnName;
-		if (!empty($aDbConnName))
+		if ( !empty($aDbConnName) )
 			$this->table_prefix = $aDbConnName.'_';
 	}
+	
+	/**
+	 * Copies values into matching property names
+	 * based on the array keys or object property names.
+	 * @param array|object $aThing - array or object to copy from.
+	 * @return $this Returns $this for chaining purposes.
+	 */
+	public function copyFrom( $aThing )
+	{
+		if ( !empty($aThing) ) {
+			foreach ($aThing as $theName => $theValue) {
+				if (property_exists($this, $theName))
+				{ $this->{$theName} = $theValue; }
+			}
+		}
+		return $this;
+	}
+	
+	/**
+	 * Copies array values into matching property names
+	 * based on the array keys.
+	 * @param array|object $anArray - array to copy from.
+	 */
+	public function copyFromArray( $anArray )
+	{ return $this->copyFrom($anArray); }
+
+	/**
+	 * Given an array or object, set the data members to its contents.
+	 * @param array|object $aThing - associative array or object
+	 * @return $this Returns $this for chaining purposes.
+	 */
+	public function setDataFrom( $aThing )
+	{ return $this->copyFrom($aThing); }
 	
 	/**
 	 * Constructs dbconn options for an INI scheme with default values.
@@ -68,21 +102,6 @@ class DbConnOptions {
 		$o->dns_scheme = self::DB_CONN_SCHEME_INI;
 		$o->ini_filename = 'dbconn-'.$aDbConnName;
 		return $o;
-	}
-	
-	/**
-	 * Copies array values into matching property names 
-	 * based on the array keys.
-	 * @param array $anArray - array to copy from.
-	 */
-	public function copyFromArray(&$anArray) {
-		if (empty($anArray))
-			return;
-		foreach ($anArray as $theName => $theValue) {
-			if (property_exists($this, $theName)) {
-				$this->{$theName} = $theValue;
-			}
-		}
 	}
 	
 }//class

@@ -77,11 +77,12 @@ class Resources extends BaseResources {
 	
 	/**
 	 * Shortcut to calling the Director's getRes method.
+	 * Alternatively, you can pass each segment in as its own parameter.
 	 * @param string $aResName - the resource in the form 'resClass/resName'.
 	 * @return mixed Returns either a string or an array, depending on the resource retrieved.
 	 */
 	public function getRes($aResName) {
-		return $this->_director->getRes($aResName);
+		return call_user_func_array(array($this->_director, 'getRes'), func_get_args());
 	}
 	
 	/**

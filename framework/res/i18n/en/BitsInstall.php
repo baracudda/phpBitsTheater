@@ -31,6 +31,8 @@ class BitsInstall extends BaseResources {
 	public $validate_dbname = 'What is the database called?';
 	public $validate_dbuser = 'Who am I requesting data as?';
 	public $validate_dbpwrd = 'What is your quest?';
+	public $validate_admin_dbuser = 'Admin creds only needed if creating this db/user.';
+	public $validate_admin_dbpwrd = 'Admin password.';
 	
 	public $label_dns_scheme_ini = 'Standard Credentials';
 	public $label_dns_scheme_alias = 'Alias defined in php.ini';
@@ -43,7 +45,9 @@ class BitsInstall extends BaseResources {
 	public $label_dns_dbname = 'Database Name';
 	public $label_dns_dbuser = 'Username';
 	public $label_dns_dbpwrd = 'Password';
-		
+	public $label_dns_admin_dbuser = 'DBA Username';
+	public $label_dns_admin_dbpwrd = 'DBA Password';
+	
 	public $label_dns_alias = 'Alias';
 	
 	public $label_dns_uri = 'URI';

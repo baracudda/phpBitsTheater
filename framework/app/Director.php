@@ -17,6 +17,7 @@
 
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseDirector;
+use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\models\Auth as AuthDB;

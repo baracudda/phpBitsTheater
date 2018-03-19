@@ -17,6 +17,7 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\costumes\colspecs\CommonMySql;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\FinallyBlock;
@@ -88,7 +89,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 				", value NVARCHAR(250) NULL".
 				", val_def NVARCHAR(250) NULL".
 				", PRIMARY KEY (namespace, ".static::MAPKEY_NAME.")".
-				") CHARACTER SET utf8 COLLATE utf8_general_ci";
+				') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 		}
 		$this->execDML($theSql);
 		$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->getTableName()));

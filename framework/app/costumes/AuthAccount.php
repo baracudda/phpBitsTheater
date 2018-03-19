@@ -23,6 +23,16 @@ class AuthAccount extends BaseCostume
 		return $o;
 	}
 	
+	/**
+	 * Event called after fetching data from db and setting all our properties.
+	 */
+	public function onFetch()
+	{
+		parent::onFetch();
+		if ( !empty($this->hardware_ids) && empty($this->mapped_imei) )
+		{ $this->mapped_imei = $this->hardware_ids; }
+	}
+	
 }//end class
 	
 }//end namespace

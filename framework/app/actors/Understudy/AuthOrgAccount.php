@@ -50,6 +50,7 @@ class AuthOrgAccount extends BaseActor
 {
 	use WornForAuditFields;
 	
+	/** @var string The default URL method to call if not specified. */
 	const DEFAULT_ACTION = 'register';
 
 	/**
@@ -73,6 +74,10 @@ class AuthOrgAccount extends BaseActor
 	protected function createMyScene($anAction)
 	{ return new MyScene($this, $anAction); }
 
+	/** @return MyScene Returns my scene object. */
+	public function getMyScene()
+	{ return $this->scene; }
+
 	/**
 	 * @return AuthDB Returns the database model reference.
 	 */
@@ -84,7 +89,7 @@ class AuthOrgAccount extends BaseActor
 	 */
 	protected function getAuthGroupsModel()
 	{ return $this->getProp(AuthGroupsDB::MODEL_NAME); }
-
+	
 	/**
 	 * Fetches an instance of the model usually accessed by this actor, granting
 	 * access to account data.
@@ -93,17 +98,18 @@ class AuthOrgAccount extends BaseActor
 	 *  the database
 	 */
 	protected function getCanonicalModel()
+	{ return $this->getProp( self::CANONICAL_MODEL ) ; }
+	
+	/**
+	 * HTML page to view the currently logged in account info.
+	 * {@inheritDoc}
+	 * @see \BitsTheater\actors\Understudy\ABitsAccount::view()
+	 */
+	public function view( $aAcctId=null )
 	{
-		return $this->getProp( self::CANONICAL_MODEL ) ;
-	}
-
-	public function view($aAcctId=null)
-	{
-		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
-		
 		$theImmediateRedirect = parent::view($aAcctId);
-		if (empty($theImmediateRedirect)) {
+		if ( empty($theImmediateRedirect) ) {
+			$v = $this->getMyScene();
 			$bAuthorizied = !empty($aAcctId) && !empty($v->ticket_info) && (
 					//everyone is allowed to modify email/pw of their own account
 					$aAcctId==$this->director->account_info->account_id ||
@@ -137,7 +143,7 @@ class AuthOrgAccount extends BaseActor
 			$bAllowUnregGroupToAutoRegister=true)
 	{
 		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		if (!empty($aAcctName) && !empty($aAcctPw) && !empty($aAcctEmail) && !empty($aRegCode)) {
 			$dbAuth = $this->getProp('Auth');
 			$theCanRegisterResult = $dbAuth->canRegister($aAcctName, $aAcctEmail);
@@ -155,9 +161,9 @@ class AuthOrgAccount extends BaseActor
 				//TODO rework add/register
 				//now that we have a proper group and account name, lets save stuff!
 				$theNewAcct = array(
-						'account_name' => $aAcctName,
+						$v->getUsernameKey() => $aAcctName,
 						'email' => $aAcctEmail,
-						$dbAuth::KEY_pwinput => $aAcctPw,
+						$v->getPwInputKey() => $aAcctPw,
 						'verified_timestamp' => $theVerifiedTs,
 				);
 				$dbAuth->registerAccount($theNewAcct, $theDefaultGroup);
@@ -175,7 +181,7 @@ class AuthOrgAccount extends BaseActor
 	protected function processRegistrationForm()
 	{
 		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		if (!empty($v->requested_by)) $this->getHomePage(); //if honeypot filled, ignore spambot
 		//make sure user/pw reg fields will not interfere with any login user/pw field in header
 		$userKey = $v->getUsernameKey().'_reg';
@@ -191,20 +197,22 @@ class AuthOrgAccount extends BaseActor
 			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey, $v->email, $v->reg_code);
 			//$this->debugLog(__METHOD__.' '.$v->$userKey.' code='.$theRegResult.' redirect='.$v->redirect);
 			if (isset($theRegResult)) {
-				if ($theRegResult===$dbAuth::REGISTRATION_EMAIL_TAKEN) {
-					$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_email')),$v::USER_MSG_ERROR);
-				} else if ($theRegResult===$dbAuth::REGISTRATION_NAME_TAKEN) {
-					$v->addUserMsg($this->getRes('account/msg_acctexists/'.$this->getRes('account/label_name')),$v::USER_MSG_ERROR);
-				} else if ($theRegResult===$dbAuth::REGISTRATION_SUCCESS) {
-					if (!empty($v->redirect)) {
-						//registration succeeded, save the account id in session cache
-						$theAuthRow = $dbAuth->getAuthByEmail($v->email);
-						$this->director[$v->getUsernameKey()] = $theAuthRow['account_id'];
-						//if the above session cache is not set, the redirect will probably fail (since they are not logged in)
-						return $v->redirect;
-					} else {
-						return $this->getHomePage();
-					}
+				if ( $theRegResult===$dbAuth::REGISTRATION_EMAIL_TAKEN ) {
+					$v->addUserMsg($this->getRes('account', 'msg_acctexists',
+							$this->getRes('account', 'label_email')), $v::USER_MSG_ERROR
+					);
+				} else if ( $theRegResult===$dbAuth::REGISTRATION_NAME_TAKEN ) {
+					$v->addUserMsg($this->getRes('account', 'msg_acctexists',
+							$this->getRes('account', 'label_name')), $v::USER_MSG_ERROR
+					);
+				} else if ( $theRegResult===$dbAuth::REGISTRATION_SUCCESS ) {
+					//registration succeeded, save the account in session cache
+					$this->getDirector()->setMyAccountInfo(
+							$dbAuth->getAccountInfoCacheByEmail($v->email)
+					);
+					//since we are "logged in" via a non-standard mechanism, create an anti-CSRF token
+					$dbAuth->setCsrfTokenCookie();
+					return ( !empty($v->redirect) ) ? $v->redirect : $this->getHomePage();
 				}
 			}
 		} else {
@@ -216,9 +224,10 @@ class AuthOrgAccount extends BaseActor
 		return $this->getMyUrl('register');
 	}
 	
-	public function register($aTask='data-entry') {
+	public function register($aTask='data-entry')
+	{
 		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		if ($aTask==='new') {
 			return $this->processRegistrationForm();
 		} else {
@@ -239,7 +248,7 @@ class AuthOrgAccount extends BaseActor
 			$v->action_url_register = $this->getMyUrl('register/new');
 			$dbAccounts = $this->getProp('Accounts');
 			if ($dbAccounts->isEmpty()) {
-				$v->redirect = $this->getMyUrl('/rights');
+				$v->redirect = $this->getSiteUrl('/rights');
 				$v->reg_code = $this->getAppId();
 			} else {
 				$v->redirect = $this->getHomePage();
@@ -251,39 +260,44 @@ class AuthOrgAccount extends BaseActor
 	 * API for registration returning JSON rather than render a page.
 	 * @return APIResponse Returns the standard API response object with User info.
 	 */
-	public function registerUsingRegCode() {
+	public function registerUsingRegCode()
+	{
 		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
+		
+		//Check session registration cooldown timestamp to prevent mass bot-fueled registries
+		$bPostKeyOldEnough = true;
+		if ( !empty($this->director['register_cooldown_ts']) ) {
+			//post time is older than cooldown period
+			$bPostKeyOldEnough = ( $this->director['register_cooldown_ts'] < time() );
+		}
+		$this->director['register_cooldown_ts'] = time()+10; //10 second cooldown period
 		
 		//make sure user/pw reg fields will not interfere with any login user/pw field in header
 		$userKey = $v->getUsernameKey().'_reg';
 		$pwKey = $v->getPwInputKey().'_reg';
 		$bPwOk = ($v->$pwKey===$v->password_confirm);
-		$bRegCodeOk = (!empty($v->reg_code));
-		if ($bPwOk && $bRegCodeOk) {
+		$bRegCodeOk = ( !empty($v->reg_code) );
+		if ( $bPwOk && $bRegCodeOk && $bPostKeyOldEnough ) {
 			$dbAuth = $this->getProp('Auth');
 			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey, $v->email,
 					$v->reg_code, false);
-			//$this->debugLog(__METHOD__.' '.$v->$userKey.' code='.$theRegResult);
+			//$this->debugLog(__METHOD__.' ['.$v->$userKey.'] code='.$theRegResult); //DEBUG
 			switch ($theRegResult) {
 				case $dbAuth::REGISTRATION_SUCCESS :
-					//registration succeeded, save the account id in session cache
-					$theAuthRow = $dbAuth->getAuthByEmail($v->email);
-					//cache the account_id in session data
-					$this->getDirector()[$v->getUsernameKey()] = $theAuthRow['account_id'];
-					//get account info so we can return it via APIResponse data
-					$dbAccounts = $this->getProp('Accounts');
+					//registration succeeded, save the account in session cache
 					$this->getDirector()->setMyAccountInfo(
-							$dbAuth->getAccountInfoCache($dbAccounts, $theAuthRow['account_id'])
+							$dbAuth->getAccountInfoCacheByEmail($v->email)
 					);
 					//since we are "logged in" via a non-standard mechanism, create an anti-CSRF token
 					$dbAuth->setCsrfTokenCookie();
 					//we may wish to return the newly created account data
-					$this->ajajGetAccountInfo();
-					break;
+					return $this->ajajGetAccountInfo();
 				case $dbAuth::REGISTRATION_REG_CODE_FAIL :
-					throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
+					throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN)->putExtra(
+							'reason', $this->getRes('account', 'msg_reg_code_mismatch')
+					);
 				case $dbAuth::REGISTRATION_EMAIL_TAKEN :
 					throw BrokenLeg::pratfallRes($this, 'EMAIL_EXISTS', 400,
 							'account/msg_acctexists/'.$this->getRes('account/label_email')
@@ -298,7 +312,14 @@ class AuthOrgAccount extends BaseActor
 					throw BrokenLeg::toss($this, BrokenLeg::ACT_DEFAULT);
 			}//switch
 		} else {
-			throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED);
+			$theX = BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED);
+			if ( !$bPwOk )
+			{ $theX->putExtra('reason', $this->getRes('account', 'msg_pw_nomatch')); }
+			else if ( !$bRegCodeOk )
+			{ $theX->putExtra('reason', $this->getRes('account', 'msg_reg_code_mismatch')); }
+			else if ( !$bPostKeyOldEnough )
+			{ $theX->putExtra('reason', $this->getRes('account', 'msg_reg_too_fast')); }
+			throw $theX;
 		}
 	}
 
@@ -308,8 +329,9 @@ class AuthOrgAccount extends BaseActor
 	 * anything.
 	 * @return string Returns the redirect URL, if defined.
 	 */
-	public function modify() {
-		$v =& $this->scene;
+	public function modify()
+	{
+		$v = $this->getMyScene();
 		$dbAccounts = $this->getProp('Accounts');
 		$theAcctName = $this->scene->ticket_name;
 		$theAcctInfo = $dbAccounts->getByName($theAcctName);
@@ -368,9 +390,10 @@ class AuthOrgAccount extends BaseActor
 	 * Endpoint will return the standard API response object with User info.
 	 * @return string Returns the redirect URL, if defined.
 	 */
-	public function ajajModify() {
+	public function ajajModify()
+	{
 		//do not use the form vars being used for the modify() endpoint, treat like login().
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		if ($this->isGuest())
 			throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED);
 		
@@ -422,7 +445,7 @@ class AuthOrgAccount extends BaseActor
 				}
 
 				//all modifications went ok, get the account info and return it
-				$theChangedAccountInfo = $dbAuth->getAccountInfoCache($dbAccounts, $theAcctId);
+				$theChangedAccountInfo = $dbAuth->getAccountInfoCache($dbAuth, $theAcctId);
 				if ($theAcctId==$this->getDirector()->account_info->account_id) {
 					//if changing my own account, update my account cache
 					$this->getDirector()->setMyAccountInfo( $theChangedAccountInfo );
@@ -441,7 +464,7 @@ class AuthOrgAccount extends BaseActor
 	 */
 	protected function processPasswordResetRequest()
 	{
-		$v =& $this->scene ;
+		$v = $this->getMyScene();
 		if (!empty($v->requested_by)) $this->getHomePage(); //if honeypot filled, ignore spambot
 		$theAddr =& $v->send_to_email ;
 		$dbAuth = $this->getProp('Auth') ;
@@ -491,7 +514,7 @@ class AuthOrgAccount extends BaseActor
 	 */
 	public function requestPasswordReset( $aAction=null )
 	{
-		$v =& $this->scene ;
+		$v = $this->getMyScene();
 		if( $aAction == 'proc' && !empty( $v->send_to_email ) )
 			return $this->processPasswordResetRequest() ;
 		else
@@ -510,7 +533,7 @@ class AuthOrgAccount extends BaseActor
 	 */
 	public function passwordResetReentry( $aAuthID, $aAuthToken )
 	{
-		$v =& $this->scene ;
+		$v = $this->getMyScene();
 		$utils = AuthPasswordReset::withModel($this->getProp('Auth')) ;
 		
 		$isAuthenticated = false ;
@@ -546,10 +569,11 @@ class AuthOrgAccount extends BaseActor
      * Returns JSON encoded array[code, user_token, auth_token]
 	 * @return string Returns the redirect URL, if defined.
 	 */
-	public function registerViaMobile() {
+	public function registerViaMobile()
+	{
 		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
-		$this->renderThisView = 'results_as_json';
+		$v = $this->getMyScene();
+		$this->viewToRender('results_as_json');
 		$dbAuth = $this->getProp('Auth');
 		//$this->debugLog('regargs='.$v->name.', '.$v->salt.', '.$v->email.', '.$v->code);
 		$theRegResult = $this->registerNewAccount($v->name, $v->salt, $v->email, $v->code, false);
@@ -581,10 +605,11 @@ class AuthOrgAccount extends BaseActor
 	 * @param string $aPing - (optional) ping string which could be used to pong a response.
 	 * @return string Returns the redirect URL, if defined.
 	 */
-	public function requestMobileAuth($aPing=null) {
+	public function requestMobileAuth($aPing=null)
+	{
 		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
-		$this->renderThisView = 'results_as_json';
+		$v = $this->getMyScene();
+		$this->viewToRender('results_as_json');
 		if (empty($aPing)) {
 //			$this->debugLog(__METHOD__.$v->debugStr($v->auth_header_data)); //DEBUG
 			$theAuthHeader = HttpAuthHeader::fromHttpAuthHeader($this->getDirector(),
@@ -617,7 +642,7 @@ class AuthOrgAccount extends BaseActor
 		
 		/* example of descendant code
 		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		parent::requestMobileAuth($aPing);
 		if (empty($v->results) && $aPing==='MY_PING_STRING') {
 			$v->results = array(
@@ -661,7 +686,7 @@ class AuthOrgAccount extends BaseActor
 		$this->checkAllowed( 'accounts', 'view' );
 		
 		// Retrieve our passed-in values.
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		$aName 		= trim ( $v->account_name );
 		$aPassword 	= trim ( $v->account_password );
 		$aEmail 	= trim ( $v->email );
@@ -725,9 +750,9 @@ class AuthOrgAccount extends BaseActor
 		}
 		// Aggregate our account data for registration.
 		$newAccountData = array(
-				$dbAuth::KEY_userinfo => $aName,
+				$v->getUsernameKey() => $aName,
 				'email' => $aEmail,
-				$dbAuth::KEY_pwinput => $aPassword,
+				$v->getPwInputKey() => $aPassword,
 				'verified_ts' => 'now', //admin creating account, assume valid email.
 		);
 		if (isset($v->account_is_active))
@@ -809,7 +834,7 @@ class AuthOrgAccount extends BaseActor
 		$dbAuthGroups = $this->getProp('AuthGroups');
 		
 		// Retrieve our passed-in values.
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		$theID = trim($this->getRequestData($aID, 'account_id', false));
 		$theID = trim($this->getRequestData($theID, 'auth_id', false));
 		$dbAuth->checkIsNotEmpty('auth_id, account_id, or URL/id', $theID);
@@ -1141,25 +1166,24 @@ class AuthOrgAccount extends BaseActor
 	 * @return AuthAccountSet Returns the wrapper class used.
 	 * @since BitsTheater 3.7.0
 	 */
-	protected function getAuthAccountSet($aRowSet) {
-		$v =& $this->scene ;
+	protected function getAuthAccountSet($aRowSet)
+	{
+		$v = $this->getMyScene();
 		//get all fields, even the optional ones
 		$theFieldList = AuthAccount::getDefinedFields();
 		//construct our iterator object
-		$theAccountSet = AuthAccountSet::create( $this->getDirector() )
-				->setItemClass(AuthAccount::ITEM_CLASS,
-						array($this->getProp('Auth'), $theFieldList) )
+		$theAccountSet = AuthAccountSet::create( $this )
+				->setItemClassArgs($this->getProp('Auth'), $theFieldList)
 				->setDataFromPDO($aRowSet)
 				;
 		$theAccountSet->filter = $v->filter ;
 		$theAccountSet->total_count = $v->getPagerTotalRowCount() ;
-					
+		
 		//include group details.
 		$theGroupFieldList = array('group_id', 'group_name');
-		$theAccountSet->mGroupList = AuthGroupList::create( $this->getDirector() )
+		$theAccountSet->mGroupList = AuthGroupList::create( $this )
 				->setFieldList($theGroupFieldList)
-				->setItemClass(AuthGroup::ITEM_CLASS,
-						array($this->getProp('AuthGroups'), $theGroupFieldList) )
+				->setItemClassArgs($this->getProp('AuthGroups'), $theGroupFieldList)
 				;
 					
 		return $theAccountSet;
@@ -1279,13 +1303,16 @@ class AuthOrgAccount extends BaseActor
 	 */
 	public function ajajDelete( $aAccountID=null )
 	{
-		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
-		$this->checkCanDeleteAccount( $theAccountID ) ;
-		// Each part of the chain happens only if the previous one succeeds.
-		$this->deletePermissionData( $theAccountID )
-			->deleteOrgMap( $theAccountID )
-			->deleteAccountData( $theAccountID )
-			;
+		$theAccountID = $this->getRequestData($aAccountID, 'account_id');
+		$this->checkCanDeleteAccount($theAccountID);
+		$dbAuth = $this->getMyModel();
+		$theAuth = $dbAuth->getAuthByAccountID($theAccountID) ;
+		$theAuthID = $theAuth['auth_id'];
+		if ( !empty($theAuthID) ) {
+			// Each part of the chain happens only if the previous one succeeds.
+			$this->deletePermissionData($theAccountID, $theAuthID);
+			$dbAuth->deleteAuthAccount($theAuthID);
+		}
 		$this->scene->results = APIResponse::noContentResponse() ;
 	}
 
@@ -1294,18 +1321,18 @@ class AuthOrgAccount extends BaseActor
 	 * Consumed by ajajDelete().
 	 * @param integer $aAccountID the account ID
 	 * @throws BrokenLeg
-	 * @since BitsTheater 3.8
+	 * @since BitsTheater 4.0.0
 	 */
-	protected function deletePermissionData( $aAccountID )
+	protected function deletePermissionData( $aAccountID, $aAuthID )
 	{
-		$this->debugLog( __METHOD__ . ' - Deleting auth group map for account [' . $aAccountID . ']...' ) ;
-		$dbAuthGroups = $this->getProp( 'AuthGroups' ) ;
+		$this->debugLog( __METHOD__ . ' - Deleting auth group map for account [' . $aAuthID . ']...' ) ;
+		$dbAuthGroups = $this->getAuthGroupsModel();
 		$theGroups = $dbAuthGroups->getAcctGroups( $aAccountID );
 		if ( !empty($theGroups) )
 		{
 			try {
 				foreach ($theGroups as $theGroupID)
-					$dbAuthGroups->delMap( $theGroupID, $aAccountID ) ;
+					$dbAuthGroups->delMap( $theGroupID, $aAuthID ) ;
 			}
 			catch( Exception $x )
 			{ throw BrokenLeg::tossException( $this, $x ) ; }
@@ -1316,19 +1343,17 @@ class AuthOrgAccount extends BaseActor
 	/**
 	 * Deletes the assignments of an account to organizations, if any.
 	 * @param string $aAccountID the account's auth ID
-	 * @return \BitsTheater\actors\Understudy\AuthOrgAccount $this
+	 * @return $this Returns $this for chaining.
 	 */
-	protected function deleteOrgMap( $aAccountID )
+	protected function deleteOrgMap( $aAuthID )
 	{
 		$this->debugLog( __METHOD__ . ' deleting org assignments for account ['
-				. $aAccountID . ']...' ) ;
+				. $aAuthID . ']...' ) ;
 		$dbAuth = $this->getProp( static::CANONICAL_MODEL ) ;
 		try
-		{
-			$theAuth = $dbAuth->getAuthByAccountID($aAccountID) ;
-			$dbAuth->delOrgsForAuth( $theAuth['auth_id'] ) ;
-		}
-		catch( Exception $x ) { throw BrokenLeg::tossException( $this, $x ) ; }
+		{ $dbAuth->delOrgsForAuth( $aAuthID ) ; }
+		catch( Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
 		return $this ;
 	}
 
@@ -1338,12 +1363,11 @@ class AuthOrgAccount extends BaseActor
 	 * @return string Returns the redirect URL, if defined.
 	 * @since BitsTheater 3.6.1
 	 */
-	public function ajajMapMobileToAccount() {
-		$v =& $this->scene;
+	public function ajajMapMobileToAccount()
+	{
+		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
-		//what device are we trying to map an account to?
-		if (empty($v->device_id))
-			throw BrokenLeg::toss( $this, 'MISSING_VALUE', 'device_id' ) ;
+		//no error for "missing device_id" since we may be NULLing it out
 		$dbAuth = $this->getProp('Auth');
 		$theAuthRow = null;
 		//we need either an account_id or an auth_id
@@ -1354,17 +1378,17 @@ class AuthOrgAccount extends BaseActor
 		if (empty($v->account_id) && !empty($v->auth_id)) {
 			$theAuthRow = $dbAuth->getAuthByAuthId($v->auth_id);
 		}
-		if (!empty($theAuthRow)) try {
+		if ( empty($theAuthRow) )
+		{ throw BrokenLeg::toss( $this, 'MISSING_VALUE', "'account_id' or 'auth_id'" ) ; }
+		try {
 			//once we have all 3 peices, create our one-time mapping token
 			$dbAuth->generateAutoLoginForMobileDevice($theAuthRow['auth_id'],
 					$theAuthRow['account_id'], $v->device_id
 			);
 			$v->results = APIResponse::noContentResponse() ;
-		} catch (Exception $x) {
-			throw BrokenLeg::tossException( $this, $x ) ;
 		}
-		else
-			throw BrokenLeg::toss( $this, 'MISSING_VALUE', "'account_id' or 'auth_id'" ) ;
+		catch (Exception $x)
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
 	}
 	
 	/**
@@ -1399,8 +1423,9 @@ class AuthOrgAccount extends BaseActor
 	 * Returns JSON encoded array[account_name, auth_id, user_token, auth_token]
 	 * @return string Returns the redirect URL, if defined.
 	 */
-	public function requestMobileAuthAccount() {
-		$v =& $this->scene;
+	public function requestMobileAuthAccount()
+	{
+		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
 		
 		//Auth Header IS NOT SET because we do not have an account, yet
@@ -1419,10 +1444,8 @@ class AuthOrgAccount extends BaseActor
 			//$this->debugLog(__METHOD__.' rows='.$this->debugStr($theTokenRows));
 			if (!empty($theTokenRows)) {
 				//just use the first one found
-				$theTokenRow = $theTokenRows[0];
-				$theAccountInfoCache = $dbAuth->getAccountInfoCache(
-						$this->getProp('Accounts'), $theTokenRow['account_id']
-				);
+				$theID = $theTokenRows[0]['account_id'];
+				$theAccountInfoCache = $dbAuth->getAccountInfoCache($dbAuth, $theID);
 				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
 						$theAccountInfoCache, $theHttpAuthHeader
 				);
@@ -1441,7 +1464,7 @@ class AuthOrgAccount extends BaseActor
 		if (!$this->isAllowed('accounts','view'))
 			return $this->getHomePage();
 		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		//indicate what top menu we are currently in
 		$this->setCurrentMenuKey('admin');
 		
@@ -1512,7 +1535,7 @@ class AuthOrgAccount extends BaseActor
 	 */
 	protected function getOrgs($aID=null)
 	{
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		$dbAuth = $this->getMyModel();
 		$theFilter = null;
 		if ( !empty($aID) ) {
@@ -1546,7 +1569,7 @@ class AuthOrgAccount extends BaseActor
 	public function ajajGetOrgs($aID=null)
 	{
 		// Assign by reference our current scene to our scope helper variable.
-		$v =& $this->scene;
+		$v = $this->getMyScene();
 		// Ensure view set to response in JSON format for this endpoint.
 		$this->viewToRender('results_as_json');
 		// Ensure required endpoint permissions are held, throwing BrokenLeg otherwise.

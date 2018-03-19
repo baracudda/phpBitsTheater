@@ -87,7 +87,16 @@ class FileUploadInfo extends BaseCostume {
 	public function getInputStream() {
 		return fopen($this->tmp_name, 'rb');
 	}
-	
+
+	/**
+	 * Return this payload data as a simple class, minus any metadata this class might have.
+	 * @return string Return self encoded as a standard class.
+	 */
+	public function exportData()
+	{
+		return $this->constructExportObject();
+	}
+
 }//end class
-	
+
 }//end namespace

@@ -31,7 +31,7 @@ $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_name').'
 		."</td></tr>\n";
 $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_email').':</td>'
 		.'<td class="db-field">'
-		.Widgets::buildEmailBox('email')->setRequired()->setSize(40)->setValue($v->$email)
+		.Widgets::buildEmailBox('email')->setRequired()->setSize(40)->setValue($v->email)
 				->setPlaceholder($v->getRes('account/placeholder_email'))->render()
 		."</td></tr>\n";
 $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwinput').':</td>'

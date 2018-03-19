@@ -50,5 +50,3 @@ if (!empty($theResult))
 else
 	$director->debugLog("The DBHOST [{$theHost}] connected!");
 
-//end output with an EOL so CLI prompt will alway appear correctly on a fresh line
-print(PHP_EOL);

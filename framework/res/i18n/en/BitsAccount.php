@@ -70,6 +70,7 @@ class BitsAccount extends BaseResources
 	public $placeholder_autharea_password = '  pw';
 	
 	public $msg_pw_nomatch = 'Passwords do not match.' ;
+	public $msg_reg_code_mismatch = 'Failed to match a valid Registration Code.';
 	public $msg_acctexists =
 		'%1$s already exists. Please use a different one.' ;
 	public $msg_update_success = 'Successfully updated the account.';

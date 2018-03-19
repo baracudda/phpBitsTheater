@@ -1,22 +1,21 @@
 <?php
 /*
  * Copyright (C) 2013 Blackmoon Info Tech Services
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 namespace com\blackmoonit;
-use PDO;
 {//begin namespace
 
 /**
@@ -73,20 +72,21 @@ class OutputToCSV {
 	 */
 	protected $bGenerateHeaderFromInput = false;
 	/**
-	 * Generate a csv output header row based on this array's values.
-	 * @var array
+	 * Generate a csv output header row based on this set of values.
+	 * @var string[]
 	 */
 	protected $mHeaderRow = null;
 	/**
 	 * Direct the csv output to the following stream. If this is not
 	 * defined, a string is created containing the entire output.
-	 * The var is a resource (stream).
+	 * @var resource
 	 */
 	protected $mOutputStream = null;
 	/**
 	 * Callback functions keyed by column names so that alternate output
 	 * is easily modified for a given column. Great for date formats.
 	 * Callbacks are of the form myCallback($col, $row).
+	 * @var callable[]
 	 */
 	protected $mCallbacks = array();
 	/**
@@ -108,7 +108,7 @@ class OutputToCSV {
 	
 	/**
 	 * Factory method for those that like to use them.
-	 * @return \com\blackmoonit\OutputToCSV
+	 * @return $this Returns $this for chaining.
 	 */
 	static public function newInstance() {
 		return new OutputToCSV();
@@ -122,7 +122,7 @@ class OutputToCSV {
 	 *
 	 * @param string $aEnclosure - the left enclosure (or both if only param).
 	 * @param string $aEnclosureRight - (optional) sets the right enclosure string.
-	 * @return \com\blackmoonit\OutputToCSV Returns $this for chaining.
+	 * @return $this Returns $this for chaining.
 	 */
 	public function setEnclosure($aEnclosure, $aEnclosureRight=null) {
 		$this->mEnclosureLeft = (!is_null($aEnclosure)) ? $aEnclosure : '';
@@ -138,7 +138,7 @@ class OutputToCSV {
 	 *
 	 * @param string $aEnclosureReplacement - the left enclosure replacement (or both if only param).
 	 * @param string $aEnclosureReplacementRight - (optional) sets the right enclosure replacement string.
-	 * @return \com\blackmoonit\OutputToCSV Returns $this for chaining.
+	 * @return $this Returns $this for chaining.
 	 */
 	public function setEnclosureReplacement($aEnclosureReplacement, $aEnclosureReplacementRight=null) {
 		$this->mReplaceEnclosureLeft = (!is_null($aEnclosureReplacement)) ? $aEnclosureReplacement : '';
@@ -149,7 +149,7 @@ class OutputToCSV {
 	/**
 	 * Sets the delimiter between values to use. Default is comma (,).
 	 * @param string $aDelimiter - the string to use between values.
-	 * @return \com\blackmoonit\OutputToCSV Returns $this for chaining.
+	 * @return $this Returns $this for chaining.
 	 */
 	public function setDelimiter($aDelimiter) {
 		$this->mDelimiter = $aDelimiter;
@@ -158,8 +158,8 @@ class OutputToCSV {
 	
 	/**
 	 * Data used to export to CSV.
-	 * @param array|PDOStatement $aInput - input data.
-	 * @return \com\blackmoonit\OutputToCSV
+	 * @param array|object $aInput - input data.
+	 * @return $this Returns $this for chaining.
 	 */
 	public function setInput($aInput) {
 		if (is_array($aInput)) {
@@ -177,7 +177,7 @@ class OutputToCSV {
 	 * to use with this method. Streams are not a class, so no
 	 * type hints are possible, yet.
 	 * @param mixed $aOutputStream - the output stream to use.
-	 * @return \com\blackmoonit\OutputToCSV
+	 * @return $this Returns $this for chaining.
 	 */
 	public function setOutputStream($aOutputStream) {
 		$this->mOutputStream = $aOutputStream;
@@ -185,7 +185,7 @@ class OutputToCSV {
 	}
 	
 	/**
-	 * @return mixed Returns the output stream in use.
+	 * @return resource Returns the output stream in use.
 	 */
 	public function getOutputStream() {
 		return $this->mOutputStream;
@@ -196,7 +196,7 @@ class OutputToCSV {
 	 * @param boolean $bUseInputForHeaderRow - (optional) default is TRUE
 	 * since most that would call this method want to change it from its
 	 * default value.
-	 * @return \com\blackmoonit\OutputToCSV
+	 * @return $this Returns $this for chaining.
 	 */
 	public function setGenerateHeaderRow($bGenerateHeaderRow=true) {
 		$this->bGenerateHeader = $bGenerateHeaderRow;
@@ -208,7 +208,7 @@ class OutputToCSV {
 	 * from the table column names.
 	 * @param array $aHeaderRow - associative array where the array
 	 * keys are the header names.
-	 * @return \com\blackmoonit\OutputToCSV
+	 * @return $this Returns $this for chaining.
 	 */
 	public function setHeaderRowData($aHeaderRow) {
 		$this->mHeaderRow = $aHeaderRow;
@@ -221,7 +221,7 @@ class OutputToCSV {
 	 * @param boolean $bUseInputForHeaderRow - (optional) default is TRUE
 	 * since most that would call this method want to change it from its
 	 * default value.
-	 * @return \com\blackmoonit\OutputToCSV
+	 * @return $this Returns $this for chaining.
 	 */
 	public function useInputForHeaderRow($bUseInputForHeaderRow=true) {
 		$this->bGenerateHeaderFromInput = $bUseInputForHeaderRow;
@@ -233,9 +233,9 @@ class OutputToCSV {
 	/**
 	 * Some fields need special handling performed on export.
 	 * @param string $aColName - the column name on when callback is invoked.
-	 * @param function $aCallbackFunction - callback function to get value to
+	 * @param callable $aCallbackFunction - callback function to get value to
 	 * export. Callback signature: ( $col_value, $row_data[] ) returns string.
-	 * @return \com\blackmoonit\OutputToCSV
+	 * @return $this Returns $this for chaining.
 	 */
 	public function setCallback($aColName, $aCallbackFunction) {
 		$this->mCallbacks[$aColName] = $aCallbackFunction;
@@ -246,32 +246,34 @@ class OutputToCSV {
 	 * Retrieve the row indicated by the param or just get the next
 	 * available row if indexing is not possible.
 	 * @param number $aIdx - (optional) mainly used for array index retrieval.
-	 * @return array Returns the associative array of data to output as CSV.
+	 * @return array|object|null Returns the data to output as CSV.
 	 */
 	protected function getInputRow($aIdx=0) {
 		if (!empty($this->mInputArray)) {
 			if (!empty($this->mInputArray[$aIdx]))
 				return $this->mInputArray[$aIdx];
 		} else if (!empty($this->mInputPDOStatement)) {
-			return $this->mInputPDOStatement->fetch(PDO::FETCH_ASSOC);
+			return $this->mInputPDOStatement->fetch();
 		}
 		return null;
 	}
 
 	/**
 	 * Generate just the header CSV line based on param or prior set header row data.
-	 * @param string $aHeaderValues - (optional) header values to output; will use mHeaderRow
+	 * @param string[] $aHeaderValues - (optional) header values to output; will use mHeaderRow
 	 * if nothing was passed in.
 	 * @return string Returns the CSV header line to output.
 	 */
 	protected function generateHeaderRow($aHeaderValues=null) {
 		$theHeaderValues = (!empty($aHeaderValues)) ? $aHeaderValues : $this->mHeaderRow;
-		foreach ($theHeaderValues as &$theName) {
+		$theOutput = array();
+		foreach ($theHeaderValues as $theName) {
 			$theName = str_replace($this->mEnclosureLeft,$this->mReplaceEnclosureLeft,$theName);
 			$theName = str_replace($this->mEnclosureRight,$this->mReplaceEnclosureRight,$theName);
+			$theOutput[] = $theName;
 		}
 		$theSeparator = $this->mEnclosureRight.$this->mValueDelimiter.$this->mEnclosureLeft;
-		return $this->mEnclosureLeft.implode($theSeparator, $theHeaderValues).$this->mEnclosureRight.$this->mLineDelimiter;
+		return $this->mEnclosureLeft.implode($theSeparator, $theOutput).$this->mEnclosureRight.$this->mLineDelimiter;
 	}
 	
 	/**
@@ -286,7 +288,10 @@ class OutputToCSV {
 		$theRow = $this->getInputRow($theIdx);
 		if (!empty($theRow) && $this->bGenerateHeader) {
 			if ($this->bGenerateHeaderFromInput || empty($this->mHeaderRow)) {
-				$this->setHeaderRowData(array_keys($theRow));
+				$theHeaderData = array();
+				foreach ($theRow as $theHeaderValue => $someRowData)
+				{ $theHeaderData[] = $theHeaderValue; }
+				$this->setHeaderRowData($theHeaderData);
 			}
 			$this->csv .= $this->generateHeaderRow();
 			if ($this->mOutputStream) {
@@ -329,7 +334,7 @@ class OutputToCSV {
 	/**
 	 * Convert the input into a CSV output using the defined options/settings.
 	 * @param $aInput - (optional if already been set) array/stream to convert.
-	 * @return \com\blackmoonit\OutputToCSV|string - Returns a string if no output stream is defined, else $this.
+	 * @return $this|string - Returns a string if no output stream is defined, else $this.
 	 * @see StackOverflow.com http://stackoverflow.com/a/21858025
 	 */
 	public function generateCSV($aInput=null) {

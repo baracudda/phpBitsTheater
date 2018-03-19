@@ -17,6 +17,7 @@
 
 namespace BitsTheater;
 use com\blackmoonit\database\GenericDb as BaseModel;
+use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForCLI;
@@ -27,8 +28,6 @@ use com\blackmoonit\Strings;
 use ReflectionClass;
 use PDOException;
 use PDOStatement;
-use BitsTheater\Director;
-use BitsTheater\DbConnInfo;
 {//begin namespace
 
 /**
@@ -401,7 +400,7 @@ implements IDirected
 	 * @param array $aParamValues - if the SQL statement is parameterized, pass in the values for them, too.
 	 * @param array $aParamTypes - (optional) the types of each param (PDO::PARAM_? constants).
 	 * @throws DbException if there is an error.
-	 * @return Returns the lastInsertId().
+	 * @return int Returns the lastInsertId().
 	 */
 	public function addAndGetId($aSql, $aParamValues=null, $aParamTypes=null) {
 		$theResult = null;
@@ -688,7 +687,7 @@ implements IDirected
 	 * Send string out to the debug log (or std log as [dbg]).
 	 * @param $s - parameter to print out (non-strings converted with debugStr()).
 	 * @see Strings::debugLog()
-	 * @see AdamEve::debugStr()
+	 * @see \com\blackmoonit\AdamEve::debugStr()
 	 */
 	public function debugLog($s) {
 		parent::debugLog($s);
@@ -702,7 +701,7 @@ implements IDirected
 	 * Send string out to the error log prepended with the defined error prefix.
 	 * @param $s - parameter to print out (non-strings converted with debugStr()).
 	 * @see Strings::errorLog($s)
-	 * @see AdamEve::debugStr()
+	 * @see \com\blackmoonit\AdamEve::debugStr()
 	 */
 	public function errorLog($s) {
 		parent::errorLog($s);

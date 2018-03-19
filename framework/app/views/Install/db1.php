@@ -1,11 +1,6 @@
 <?php
-use BitsTheater\scenes\Install as MyScene;
-/* @var $recite MyScene */
-/* @var $v MyScene */
+use BitsTheater\scenes\Install as MyScene; /* @var $recite MyScene */ /* @var $v MyScene */
 use com\blackmoonit\Widgets;
-use com\blackmoonit\database\DbConnOptions;
-use com\blackmoonit\database\DbConnSettings;
-use com\blackmoonit\database\DbConnInfo;
 $recite->includeMyHeader();
 $w = '';
 
@@ -16,7 +11,7 @@ $w .= "<br />\n";
 
 $w .= '<table class="db-entry">';
 $w .= '<tr>';
-/* @var $theDbConnInfo DbConnInfo */
+/* @var $theDbConnInfo BitsTheater\costumes\DbConnInfo */
 foreach($v->db_conns as $theDbConnInfo) {
 	$r = '<td align="center" style="border: 1px solid">';
 	
@@ -87,7 +82,10 @@ $w .= "<br/>\n";
 $w .= $recite->continue_button;
 //$w .= '</div>';
 
-$form_html = Widgets::createHtmlForm($recite->form_name,$recite->next_action,$w,'',false);
-print($form_html);
+$theHtmlForm = Widgets::buildForm($recite->next_action)
+	->setName($recite->form_name)
+	->append($w)
+	;
+print($theHtmlForm);
 print(str_repeat('<br />',3));
 $recite->includeMyFooter();

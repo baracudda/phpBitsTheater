@@ -15,9 +15,11 @@
  * limitations under the License.
  */
 
-namespace BitsTheater;
+namespace BitsTheater\costumes\Wardrobe;
 use com\blackmoonit\database\DbConnInfo as BaseDbConnInfo;
 use com\blackmoonit\Strings;
+use com\blackmoonit\database\DbConnOptions;
+use com\blackmoonit\database\DbConnSettings;
 use com\blackmoonit\exceptions\DbException;
 use PDO;
 {//begin namespace
@@ -39,8 +41,10 @@ class DbConnInfo extends BaseDbConnInfo
 	 * Create the object and set the dbConnName, if not empty.
 	 * @param string $aDbConnName - (optional) the dbconn name, "webapp" if empty.
 	 */
-	public function __construct($aDbConnName=null) {
-		parent::__construct();
+	public function __construct($aDbConnName=null, DbConnOptions $aDbConnOptions=null,
+			DbConnSettings $aDbConnSettings=null)
+	{
+		parent::__construct($aDbConnName, $aDbConnOptions, $aDbConnSettings);
 		if (!empty($aDbConnName)) {
 			$this->dbConnName = $aDbConnName;
 		}
@@ -54,11 +58,12 @@ class DbConnInfo extends BaseDbConnInfo
 	 * Factory method for a URI-based new object.
 	 * @param string $aURI - the db connection info as URI string.
 	 * @param string $aDbConnName - (optional) the connection name for this object.
-	 * @return DbConnInfo Returns the newly created object with URI already parsed.
+	 * @return $this Returns the newly created object with URI already parsed.
 	 */
 	static public function fromURI( $aURI, $aDbConnName=null )
 	{
-		$o = new DbConnInfo($aDbConnName);
+		$theClass = get_called_class();
+		$o = new $theClass($aDbConnName);
 		$o->loadDbConnInfoFromString($aURI);
 		return $o;
 	}
@@ -67,9 +72,8 @@ class DbConnInfo extends BaseDbConnInfo
 	 * Get the config file including full path.
 	 * @return string Returns the file, with path, to the db config.
 	 */
-	protected function getConfigFilePath() {
-		return Strings::format(BITS_CFG_PATH.'dbconn-%s.ini', $this->dbConnName);
-	}
+	protected function getConfigFilePath()
+	{ return Strings::format(BITS_CFG_PATH . 'dbconn-%s.ini', $this->dbConnName); }
 	
 	/**
 	 * Checks for config file existance.
@@ -91,6 +95,8 @@ class DbConnInfo extends BaseDbConnInfo
 		{ $this->table_prefix = $this->dbConnOptions->table_prefix; }
 		if ( !empty($this->dbConnSettings) && !empty($this->dbConnSettings->dbname) )
 		{ $this->dbName = $this->dbConnSettings->dbname; }
+		$this->bDbConnInfoLoaded = ( !empty($this->dns) );
+		return $this;
 	}
 	
 	/**
@@ -115,6 +121,7 @@ class DbConnInfo extends BaseDbConnInfo
 	
 	/**
 	 * Load db connection information from its configuration file.
+	 * @return boolean Returns TRUE if info was loaded.
 	 */
 	public function loadDbConnInfo()
 	{
@@ -125,14 +132,13 @@ class DbConnInfo extends BaseDbConnInfo
 				$this->loadDbConnInfoFromIniFile($theCfgFile);
 			else
 				$this->loadDbConnInfoFromString(getenv('dbconn-' . $this->dbConnName));
-			$this->bDbConnInfoLoaded = true;
 		}
 		return ( $this->bDbConnInfoLoaded );
 	}
 	
 	/**
 	 * Connects to the database and returns the connection.
-	 * @return PDO Returns the connection when successful, FALSE if the attempt failed.
+	 * @return PDO|boolean Returns the connection when successful, FALSE if the attempt failed.
 	 */
 	public function connect()
 	{
@@ -176,13 +182,35 @@ class DbConnInfo extends BaseDbConnInfo
 	 * Disconnect from the database. STUB: non-functional!
 	 * NOTE: PDO does not have a disconnect at this time.
 	 */
-	public function disconnect() {
+	public function disconnect()
+	{
 		/* PDO does not have a disconnect at this time
 		if (!empty($this->dbConn)) {
 			$this->dbConn->disconnect();
 		}
 		*/
 		unset($this->dbConn);
+	}
+	
+	/**
+	 * Convert this connection to a generic DBA connection. Used primarily
+	 * to create DB accounts and databases before using them as a normal
+	 * database connection for models.
+	 * @param string $aDBAuser - the username for the DBA.
+	 * @param string $aDBApswd - the password for the DBA.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function cnvToAdminConn($aDBAuser, $aDBApswd)
+	{
+		$this->dbConnSettings->setDataFrom(array(
+				'username' => $aDBAuser,
+				'password' => $aDBApswd,
+				'dbname' => null,  //DBA likely trying to create dbname
+				'charset' => null, //no dbname means charset may cause SQL01000 error
+		));
+		//since we changed some db settings, we need to call recalc
+		$this->calcPDOparams();
+		return $this;
 	}
 	
 }//end class

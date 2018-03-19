@@ -86,7 +86,7 @@ class Regisseur
 	 * Determine if we are executing in CLI mode or not.
 	 * @return boolean
 	 */
-	protected function isRunningUnderCLI()
+	public function isRunningUnderCLI()
 	{
 		return (php_sapi_name() === 'cli' OR defined('STDIN'));
 	}

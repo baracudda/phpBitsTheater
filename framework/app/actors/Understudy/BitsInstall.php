@@ -18,10 +18,11 @@
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
 use BitsTheater\scenes\Install as MyScene; /* @var $v MyScene */
+use BitsTheater\costumes\DbConnInfo;
+use BitsTheater\costumes\DbAdmin;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\database\DbConnOptions;
-use com\blackmoonit\database\DbConnInfo; /* @var $theDbConnInfo DbConnInfo */
-use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
+use com\blackmoonit\database\DbConnSettings;
 use com\blackmoonit\Strings;
 use com\blackmoonit\FileUtils;
 use PDOException;
@@ -30,14 +31,23 @@ use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
 {//namespace begin
 
-class BitsInstall extends BaseActor {
+class BitsInstall extends BaseActor
+{
 	const DEFAULT_ACTION = 'install';
+
+	/**
+	 * {@inheritDoc}
+	 * @return MyScene Returns a newly created scene descendant.
+	 * @see \BitsTheater\Actor::createMyScene()
+	 */
+	protected function createMyScene($anAction)
+	{ return new MyScene($this, $anAction); }
 
 	/**
 	 * Similar to file_put_contents, but forces all parts of the folder path to exist first.
 	 * @param string $aDestFile - path and filename of destination.
 	 * @param string $aFileContents - contents to be saved in $aDestFile.
-	 * @return Returns false on failure, else num bytes stored.
+	 * @return int|boolean Returns false on failure, else num bytes stored.
 	 */
 	protected function file_force_contents($aDestFile, $aFileContents) {
 		return FileUtils::file_force_contents($aDestFile, $aFileContents, strlen($aFileContents));
@@ -256,14 +266,33 @@ class BitsInstall extends BaseActor {
 				//copy completed, now try to connect to the db and prove it works
 				try {
 					$theDbConnInfo->loadDbConnInfoFromIniFile($theDbConnFilePath);
+					//if connection works, see if we have DBA creds
+					$theWidgetName = $theFormIdPrefix.'_admin_dbuser';
+					$v->admin_dbuser = $v->$theWidgetName;
+					$theWidgetName = $theFormIdPrefix.'_admin_dbpwrd';
+					$v->admin_dbpass = $v->$theWidgetName;
+					if ( !empty($v->admin_dbuser) && !empty($v->admin_dbpass) ) {
+						$v->table_prefix = $theDbConnInfo->dbConnOptions->table_prefix;
+						$v->dbname = $theDbConnInfo->dbConnSettings->dbname;
+						$v->dbtype = $theDbConnInfo->dbConnSettings->driver;
+						$v->dbhost = $theDbConnInfo->dbConnSettings->host;
+						$v->dbport = $theDbConnInfo->dbConnSettings->port;
+						$v->dbuser = $theDbConnInfo->dbConnSettings->username;
+						$v->dbpass = base64_decode($theDbConnInfo->dbConnSettings->password);
+						$v->dbcharset = $theDbConnInfo->dbConnSettings->charset;
+						//$this->logStuff(__METHOD__, ' create user & db with v=', $v); //DEBUG
+						$theDbAdmin = new DbAdmin($this);
+						$theDbAdmin->createDbFromUserInput($v, $theDbConnInfo);
+					}
+					
 					$thePdoConn = $theDbConnInfo->getPDOConnection();
 					$v->connected = !empty($thePdoConn);
 					$thePdoConn = null;
-				} catch (PDOException $e) {
-					throw new DbException($e, $theDbConnFilePath.' caused: ');
+				} catch (PDOException $pdox) {
+					throw new DbException($pdox, $theDbConnFilePath . ' caused: ');
 				}
 				if (!$v->connected) {
-					if (empty($v->do_not_delete_failed_config)) {
+					if ( filter_var($v->do_not_delete_failed_config, FILTER_VALIDATE_BOOLEAN) ) {
 						//if db connection failed, delete the file so it can be attempted again
 						$v->permission_denied = !unlink($dst);
 					}
@@ -389,6 +418,34 @@ class BitsInstall extends BaseActor {
 	}
 	
 	/**
+	 * Append a success message to the API reponse object.
+	 * @param APIResponse $aApiResponse - the API response object.
+	 * @param string $aSegment - the getRes('install', $aSegment) to use.
+	 */
+	protected function appendSuccessMsg(APIResponse $aApiResponse, $aSegment)
+	{
+		$theMsg = $this->getRes('install',
+				'msg_install_segment_x_success',
+				$this->getRes('install', $aSegment)
+		);
+		array_push($aApiResponse->data['messages'], $theMsg);
+	}
+	
+	/**
+	 * Append an "already done" message to the API reponse object.
+	 * @param APIResponse $aApiResponse - the API response object.
+	 * @param string $aSegment - the getRes('install', $aSegment) to use.
+	 */
+	protected function appendAlreadyDoneMsg(APIResponse $aApiResponse, $aSegment)
+	{
+		$theMsg = $this->getRes('install',
+				'msg_install_segment_x_already_done',
+				$this->getRes('install', $aSegment)
+		);
+		array_push($aApiResponse->data['messages'], $theMsg);
+	}
+	
+	/**
 	 * Part of the setupWebsite endpoint, install the language setting class.
 	 * @param APIResponse $aApiResponse - the result object.
 	 */
@@ -402,25 +459,18 @@ class BitsInstall extends BaseActor {
 			{
 				if (!$this->installLang($v->lang_type))
 				{
+					$theMsg = $this->getRes('install',
+							'errmsg_forbidden_write_access', $theDestFilePath
+					);
 					throw BrokenLeg::pratfall('FORBIDDEN_WRITE_ACCESS', 403,
-							str_replace(BITS_PATH, '[%site]', Strings::format(
-									$this->getRes('install/errmsg_forbidden_write_access'),
-									$theDestFilePath
-							))
+							str_replace(BITS_PATH, '[%site]', $theMsg)
 					);
 				}
-				array_push($aApiResponse->data['messages'],
-						$this->getRes('install/msg_install_segment_x_success/'.
-								$this->getRes('install/install_segment_language')
-						)
-				);
+				$this->appendSuccessMsg($aApiResponse, 'install_segment_language');
 			}
-			else
-				array_push($aApiResponse->data['messages'],
-						$this->getRes('install/msg_install_segment_x_already_done/'.
-								$this->getRes('install/install_segment_language')
-						)
-				);
+			else {
+				$this->appendAlreadyDoneMsg($aApiResponse, 'install_segment_language');
+			}
 		}
 		
 	}
@@ -439,25 +489,18 @@ class BitsInstall extends BaseActor {
 			{
 				if (!$this->installAuth($v->auth_type))
 				{
+					$theMsg = $this->getRes('install',
+							'errmsg_forbidden_write_access', $theDestFilePath
+					);
 					throw BrokenLeg::pratfall('FORBIDDEN_WRITE_ACCESS', 403,
-							str_replace(BITS_PATH, '[%site]', Strings::format(
-									$this->getRes('install/errmsg_forbidden_write_access'),
-									$theDestFilePath
-							))
+							str_replace(BITS_PATH, '[%site]', $theMsg)
 					);
 				}
-				array_push($aApiResponse->data['messages'],
-						$this->getRes('install/msg_install_segment_x_success/'.
-								$this->getRes('install/install_segment_auth')
-						)
-				);
+				$this->appendSuccessMsg($aApiResponse, 'install_segment_auth');
 			}
-			else
-				array_push($aApiResponse->data['messages'],
-						$this->getRes('install/msg_install_segment_x_already_done/'.
-								$this->getRes('install/install_segment_auth')
-						)
-				);
+			else {
+				$this->appendAlreadyDoneMsg($aApiResponse, 'install_segment_auth');
+			}
 		}
 	}
 	
@@ -472,18 +515,11 @@ class BitsInstall extends BaseActor {
 			if (!$this->getDirector()->canConnectDb())
 			{
 				$this->installDbConns();
-				array_push($aApiResponse->data['messages'],
-						$this->getRes('install/msg_install_segment_x_success/'.
-								$this->getRes('install/install_segment_dbconn')
-						)
-				);
+				$this->appendSuccessMsg($aApiResponse, 'install_segment_dbconn');
 			}
-			else
-				array_push($aApiResponse->data['messages'],
-						$this->getRes('install/msg_install_segment_x_already_done/'.
-								$this->getRes('install/install_segment_dbconn')
-						)
-				);
+			else {
+				$this->appendAlreadyDoneMsg($aApiResponse, 'install_segment_dbconn');
+			}
 		} catch (DbException $dbe) {
 			throw BrokenLeg::toss($this, BrokenLeg::ACT_DB_EXCEPTION, $dbe->getErrorMsg());
 		}
@@ -502,11 +538,7 @@ class BitsInstall extends BaseActor {
 			
 			$theSetupDb = $this->getProp('SetupDb');
 			$theSetupDb->setupModels($v);
-			array_push($aApiResponse->data['messages'],
-					$this->getRes('install/msg_install_segment_x_success/'.
-							$this->getRes('install/install_segment_create_db')
-					)
-			);
+			$this->appendSuccessMsg($aApiResponse, 'install_segment_create_db');
 		}
 	}
 	
@@ -526,28 +558,20 @@ class BitsInstall extends BaseActor {
 				$theSiteId = (!empty($v->site_id)) ? $v->site_id : Strings::createUUID();
 				if (!$this->installSettings($theSiteId))
 				{
+					$theMsg = $this->getRes('install',
+							'errmsg_forbidden_write_access', $theDestFilePath
+					);
 					throw BrokenLeg::pratfall('FORBIDDEN_WRITE_ACCESS', 403,
-							str_replace(BITS_PATH, '[%site]', Strings::format(
-									$this->getRes('install/errmsg_forbidden_write_access'),
-									$theDestFilePath
-							))
+							str_replace(BITS_PATH, '[%site]', $theMsg)
 					);
 				}
 				$aApiResponse->data['site_id'] = $theSiteId;
-				array_push($aApiResponse->data['messages'],
-						$this->getRes('install/msg_install_segment_x_success/'.
-								$this->getRes('install/install_segment_settings_class')
-						)
-				);
+				$this->appendSuccessMsg($aApiResponse, 'install_segment_settings_class');
 			}
 			else
 			{
 				$aApiResponse->data['site_id'] = $this->getDirector()->app_id;
-				array_push($aApiResponse->data['messages'],
-						$this->getRes('install/msg_install_segment_x_already_done/'.
-								$this->getRes('install/install_segment_settings_class')
-						)
-				);
+				$this->appendAlreadyDoneMsg($aApiResponse, 'install_segment_settings_class');
 			}
 		}
 	}
@@ -568,7 +592,7 @@ class BitsInstall extends BaseActor {
 				$theOldValue = $dbConfig[$theConfigName]; //so it also loads the default in case value="?"
 				$dbConfig[$theConfigName] = strval($theConfigValue);
 				array_push($aApiResponse->data['messages'],
-						Strings::format($this->getRes('install/msg_config_x_updated'), $theConfigName)
+						$this->getRes('install', 'msg_config_x_updated', $theConfigName)
 				);
 			}
 		}

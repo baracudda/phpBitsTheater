@@ -17,9 +17,10 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
+use BitsTheater\costumes\APIResponse;
+use BitsTheater\costumes\SiteUpdater ;
 use BitsTheater\costumes\WornForCLI;
 use BitsTheater\BrokenLeg;
-use BitsTheater\costumes\APIResponse;
 use Exception;
 {//namespace begin
 
@@ -28,6 +29,25 @@ class BitsAdmin extends BaseActor
 	use WornForCLI;
 	
 	const DEFAULT_ACTION = 'websiteStatus';
+	
+	/**
+	 * @return \BitsTheater\models\SetupDb Returns the database model reference.
+	 */
+	protected function getMetaModel()
+	{ return $this->getProp('SetupDb'); }
+
+	/**
+	 * Gives the name of the model that should be used to upgrade the site.
+	 * A class that overrides BitsAdmin can override this method to provide an
+	 * alternative model.
+	 * @return string the model to be used for site upgrades
+	 * @since BitsTheater [NEXT]
+	 */
+	protected function getUpdateModelName()
+	{
+		$dbMeta = $this->getMetaModel();
+		return $dbMeta::MODEL_NAME ;
+	}
 
 	/**
 	 * Webpage endpoint.
@@ -49,15 +69,22 @@ class BitsAdmin extends BaseActor
 	/**
 	 * Update a specific feature.
 	 */
-	public function ajajUpdateFeature() {
-		$v =& $this->scene;
-		if ($this->checkAllowed('config', 'modify')) {
-			$dbMeta = $this->getProp('SetupDb');
-			try {
-				$v->results = APIResponse::resultsWithData($dbMeta->upgradeFeature($v));
-			} catch (Exception $e) {
-				$v->addUserMsg($e->getMessage(), $v::USER_MSG_ERROR);
-				throw BrokenLeg::tossException($this, $e);
+	public function ajajUpdateFeature()
+	{
+		$v =& $this->scene ;
+		if( $this->checkAllowed( 'config', 'modify' ) )
+		{
+			$theUpdater = new SiteUpdater(
+					$this, $v, $this->getUpdateModelName() ) ;
+			try
+			{
+				$v->results = APIResponse::resultsWithData(
+							$theUpdater->upgradeFeature() ) ;
+			}
+			catch( Exception $x )
+			{
+				$v->addUserMsg( $x->getMessage(), $v::USER_MSG_ERROR ) ;
+				throw BrokenLeg::tossException( $this, $x ) ;
 			}
 		}
 	}
@@ -100,98 +127,27 @@ class BitsAdmin extends BaseActor
 	}
 	
 	/**
-	 * API for CLI version of websiteStatus() page.
+	 * API for updating all features of the website.
+	 *
+	 * This was formerly <code>apiWebsiteUpgrade()</code> and used only from the
+	 * CLI <code>actionWebsiteUpgrade</code>, but is now available as a REST API
+	 * function instead.
+	 *
+	 * @since BitsTheater [NEXT]
 	 */
-	public function apiWebsiteUpgrade() {
-		$v =& $this->scene;
-		if ( !$this->isAllowed( 'config', 'modify' ) ) {
-			$myAcctID = $this->getMyAccountID();
-			if ($this->isRunningUnderCLI() && empty($myAcctID))
-				print($this->getRes('generic/errmsg_cli_not_authed') . PHP_EOL);
-			$this->checkAllowed( 'config', 'modify' ) ; //fail 403/401 as appropriate
+	public function ajajWebsiteUpgrade()
+	{
+		$v =& $this->scene ;
+		$this->checkAllowed( 'config', 'modify' ) ;
+		try
+		{
+			$theUpdater = new SiteUpdater(
+					$this, $v, $this->getUpdateModelName() ) ;
+			$theUpdater->upgradeAllFeatures() ;
+			$v->results = APIResponse::noContentResponse() ;
 		}
-		try {
-			//if ($this->isRunningUnderCLI())
-			//	print($this->getRes('admin/msg_warning_backup_db') . PHP_EOL);
-			$dbMeta = $this->getProp('SetupDb');
-			
-			$dbMeta->refreshFeatureTable($v);
-			$theFeatureList = $dbMeta->getFeatureVersionList();
-			
-			//does the framework need updating?
-			$v->feature_id = $dbMeta::FEATURE_ID;
-			if ($theFeatureList[$v->feature_id]['needs_update'])
-			{ $dbMeta->upgradeFeature($v); }
-			else if ($this->isRunningUnderCLI())
-			{
-				print( $this->getRes('admin', 'msg_cli_feature_up_to_date',
-						$v->feature_id) . PHP_EOL
-				);
-			}
-			unset($theFeatureList[$v->feature_id]);
-			
-			//does the website itself need updating?
-			$v->feature_id = $this->getRes('website/getFeatureId');
-			if ($theFeatureList[$v->feature_id]['needs_update'])
-			{ $dbMeta->upgradeFeature($v); }
-			else if ($this->isRunningUnderCLI())
-			{
-				print( $this->getRes('admin', 'msg_cli_feature_up_to_date',
-						$v->feature_id) . PHP_EOL
-				);
-			}
-			unset($theFeatureList[$v->feature_id]);
-			
-			//ensure that Auth model gets updated first.
-			$dbAuth = $this->getProp('Auth');
-			$v->feature_id = $dbAuth::FEATURE_ID;
-			if ($v->force_model_upgrade)
-			{
-				$dbMeta->removeFeature($v->feature_id);
-				$dbMeta->refreshFeatureTable($v);
-			}
-			if ($theFeatureList[$v->feature_id]['needs_update'] || $v->force_model_upgrade)
-			{ $dbMeta->upgradeFeature($v); }
-			else if ($this->isRunningUnderCLI())
-			{
-				print( $this->getRes('admin', 'msg_cli_feature_up_to_date',
-						$v->feature_id) . PHP_EOL
-				);
-			}
-			unset($theFeatureList[$v->feature_id]);
-			
-			//check the model list for neccessary upgrading
-			foreach ($theFeatureList as $theFeatureInfo)
-			{
-				$v->feature_id = $theFeatureInfo['feature_id'];
-				if ($theFeatureInfo['needs_update'] || $v->force_model_upgrade)
-				{
-					if ($v->force_model_upgrade)
-					{
-						$dbMeta->removeFeature($v->feature_id);
-						$dbMeta->refreshFeatureTable($v);
-					}
-					$dbMeta->upgradeFeature($v);
-					if ($this->isRunningUnderCLI())
-						print( PHP_EOL );
-				}
-				else if ($this->isRunningUnderCLI())
-				{
-					print( $this->getRes('admin', 'msg_cli_feature_up_to_date',
-							$v->feature_id) . PHP_EOL
-					);
-				}
-			}//end foreach
-			
-			if ($this->isRunningUnderCLI())
-			{ print( $this->getRes('admin', 'msg_cli_check_for_missing') . PHP_EOL ); }
-			//after updating all known features, create any missing ones.
-			$dbMeta->setupModels($v);
-			
-			$v->results = APIResponse::noContentResponse();
-		}
-		catch (Exception $e)
-		{ throw BrokenLeg::tossException($this, $e); }
+		catch( Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
 	}
    	
 }//end class

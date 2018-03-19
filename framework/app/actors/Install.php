@@ -1,12 +1,11 @@
 <?php
 namespace BitsTheater\actors;
 use BitsTheater\actors\Understudy\BitsInstall as BaseActor;
-use BitsTheater\scenes\Install as MyScene; /* @var $v MyScene */
-use com\blackmoonit\database\DbConnInfo;
-use com\blackmoonit\Strings;
+use BitsTheater\costumes\DbConnInfo;
 {//namespace begin
 
-class Install extends BaseActor {
+class Install extends BaseActor
+{
 	/* exmple connection override	
 	public function getDbConns() {
 		$db_conns = array();

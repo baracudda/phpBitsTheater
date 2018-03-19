@@ -17,7 +17,7 @@
 
 namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
-use BitsTheater\costumes\SimpleCostume;
+use BitsTheater\costumes\WornForExportData;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\models\AuthGroups;
 use com\blackmoonit\Strings;
@@ -28,7 +28,8 @@ use com\blackmoonit\Strings;
  * @since BitsTheater 4.0.0
  */
 class CacheForAuthAccountInfo extends BaseCostume
-{
+{ use WornForExportData;
+
 	/** @var string */
 	public $auth_id = null;
 	/** @var integer */
@@ -48,12 +49,6 @@ class CacheForAuthAccountInfo extends BaseCostume
 	/** @var string[] account has membership in these AuthGroups. */
 	public $groups = array( AuthGroups::UNREG_GROUP_ID );
 
-	/**
-	 * Export only these fields. All fields, if NULL.
-	 * @var string[]
-	 */
-	protected $mExportTheseFields = null ;
-		
 	public function __construct($aContext=null, $aFieldList=null) {
 		if ( !empty($aContext) )
 		{ $this->setDirector( $aContext->getDirector() ); }
@@ -82,52 +77,23 @@ class CacheForAuthAccountInfo extends BaseCostume
 	}
 
 	/**
-	 * Return the fields that should be exported.
-	 * @param object $aExportData - the data to export.
-	 * @return object Returns the data to be exported.
-	 */
-	protected function exportFilter($aExportData) {
-		if (!empty($aExportData) && !empty($this->mExportTheseFields)) {
-			$o = new SimpleCostume();
-			foreach ($this->mExportTheseFields as $theField) {
-				$o->{$theField} = $aExportData->{$theField};
-			}
-			return $o;
-		} else {
-			return $aExportData;
-		}
-	}
-
-	/**
 	 * Construct the standard object with all data fields worth exporting defined.
 	 * @return object Returns a standard object with the properties to export defined.
 	 */
 	protected function constructExportObject()
 	{
 		$o = parent::constructExportObject();
+		$o->account_id = intval( $o->account_id ) ;
 		unset($o->last_seen_dt);
 		$dbAuth = $this->getDirector()->getProp('Auth');
-		if ($dbAuth->dbType()===$dbAuth::DB_TYPE_MYSQL)
-		{
-			$o->last_seen_ts = CommonMySql::convertSQLTimestampToISOFormat($o->last_seen_ts);
-			if ( isset($o->created_ts) )
-			{ $o->created_ts = CommonMySql::convertSQLTimestampToISOFormat($o->created_ts); }
-			if ( isset($o->updated_ts) )
-			{ $o->updated_ts = CommonMySql::convertSQLTimestampToISOFormat($o->updated_ts); }
-		}
+		switch ($dbAuth->dbType()) {
+			case $dbAuth::DB_TYPE_MYSQL:
+				$o = CommonMySql::deepConvertSQLTimestampsToISOFormat($o);
+				break;
+		}//switch
 		return $o;
 	}
-
-	/**
-	 * Return this payload data as a simple class, minus any metadata this class might have.
-	 * @return string Return self encoded as a standard class.
-	 */
-	public function exportData()
-	{
-		$o = $this->constructExportObject();
-		return $this->exportFilter($o);
-	}
-
+	
 }//end class
 
 }//end namespace
