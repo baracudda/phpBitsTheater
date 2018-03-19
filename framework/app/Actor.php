@@ -163,6 +163,10 @@ implements IDirected
 		return new $theSceneClass($this, $anAction);
 	}
 
+	/** @return MyScene Returns my scene object. */
+	public function getMyScene()
+	{ return $this->scene; }
+
 	/**
 	 * Once it has been determined that we wish to and are allowed to perform
 	 * an action, this method actually does the work calling the method.
