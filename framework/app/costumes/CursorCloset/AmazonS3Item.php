@@ -37,7 +37,7 @@ class AmazonS3ItemOwner extends BaseCostume
 /**
  * Amazon S3 content item can be used as this object rather than
  * an associative array.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.0.0
  */
 class AmazonS3Item extends BaseCostume
 {

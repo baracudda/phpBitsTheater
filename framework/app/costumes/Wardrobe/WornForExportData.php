@@ -30,7 +30,7 @@ trait WornForExportData
 	/**
 	 * Accessor for the export field list.
 	 * @return string[]
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.0.0
 	 */
 	public function getExportFieldList()
 	{ return $this->mExportTheseFields ; }

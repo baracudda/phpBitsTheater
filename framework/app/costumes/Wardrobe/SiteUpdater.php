@@ -25,7 +25,7 @@ use BitsTheater\costumes\WornForCLI;
 /**
  * Costume to centralize the site upgrade algorithm. This may be called from a
  * REST API actor or from a CLI actor.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.0.0
  * @see BitsTheater\actors\Understudy\BitsAdmin
  */
 class SiteUpdater extends BaseCostume

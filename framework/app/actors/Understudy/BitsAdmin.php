@@ -41,7 +41,7 @@ class BitsAdmin extends BaseActor
 	 * A class that overrides BitsAdmin can override this method to provide an
 	 * alternative model.
 	 * @return string the model to be used for site upgrades
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.0.0
 	 */
 	protected function getUpdateModelName()
 	{
@@ -133,7 +133,7 @@ class BitsAdmin extends BaseActor
 	 * CLI <code>actionWebsiteUpgrade</code>, but is now available as a REST API
 	 * function instead.
 	 *
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.0.0
 	 */
 	public function ajajWebsiteUpgrade()
 	{

@@ -113,7 +113,7 @@ trait WornForFeatureVersioning
 	 * @return object|NULL|boolean an object describing the column, or null if
 	 *  the column doesn't exist, or false if the database type is not yet
 	 *  supported
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.0.0
 	 */
 	protected function describeColumn( $aTableName, $aColumnName )
 	{
@@ -262,7 +262,7 @@ trait WornForFeatureVersioning
 	 *  be defined
 	 * @param string $aFieldName the name of the column that would be indexed
 	 * @return boolean <code>true</code> if the column is indexed
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.0.0
 	 */
 	public function isFieldIndexed( $aTableName, $aFieldName )
 	{

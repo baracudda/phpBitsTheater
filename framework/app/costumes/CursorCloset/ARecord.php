@@ -43,7 +43,7 @@ class ARecord extends BaseCostume
 	 *  exported, to be provided ot the record class's constructor
 	 * @return ARecord|boolean An instance of the record wrapper class, or
 	 *  <code>false</code> on failure (as <code>aPDOStatement::fetch()</code>)
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.0.0
 	 * @see \BitsTheater\costumes\colspecs\IteratedSet::fetch()
 	 */
 	public static function fetchInstanceFromStatement( \PDOStatement $aStmt,

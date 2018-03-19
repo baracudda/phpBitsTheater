@@ -6,7 +6,7 @@ namespace BitsTheater\costumes;
 /**
  * Amazon S3 content item can be used as this object rather than
  * an associative array.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.0.0
  */
 class AmazonS3Item extends \BitsTheater\costumes\CursorCloset\AmazonS3Item
 {

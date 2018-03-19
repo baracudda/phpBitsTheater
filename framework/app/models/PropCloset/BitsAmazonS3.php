@@ -32,7 +32,7 @@ use GuzzleHttp\Promise\PromiseInterface;
 
 /**
  * Interfaces with Amazon's S3 accounts to store files.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.0.0
  */
 class BitsAmazonS3 extends BaseModel
 {

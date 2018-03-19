@@ -45,7 +45,7 @@ use PDOException;
  * AuthOrgs is a special beast where it combines Accounts & Auth tables,
  * and then extends the logic so that each account will auto
  * change what some db connection information.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.0.0
  */
 class AuthOrgs extends BaseModel implements IFeatureVersioning
 {

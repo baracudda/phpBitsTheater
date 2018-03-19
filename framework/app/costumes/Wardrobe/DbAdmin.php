@@ -31,7 +31,7 @@ use com\blackmoonit\Strings;
 
 /**
  * Database administration class used for privileged admin functions.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.0.0
  */
 class DbAdmin extends BaseCostume
 { use WornByIDirectedForValidation;

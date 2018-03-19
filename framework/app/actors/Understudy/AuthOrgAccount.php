@@ -1084,7 +1084,7 @@ class AuthOrgAccount extends BaseActor
 	 * @return array|NULL an associative array of organization data, or a simple
 	 *  array of values if exactly one column is requested in
 	 *  <code>$aFieldList</code>, or null if an error occurs.
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.0.0
 	 */
 	protected function getOrgsForAccount( $aAuthID=null, $aFieldList=null )
 	{
@@ -1118,7 +1118,7 @@ class AuthOrgAccount extends BaseActor
 	 * @param string[] $aFieldList a subset of columns to return; if exactly one
 	 *  column is given, then the return value is a simple array of the values
 	 *  from that column
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.0.0
 	 */
 	public function ajajGetOrgsFor( $aAuthID=null, $aFieldList=null )
 	{

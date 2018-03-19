@@ -21,7 +21,7 @@ namespace BitsTheater\costumes\Wardrobe;
 /**
  * Large Database result sets should be broken up with a pager so that data
  * can be retrieved in chunks.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.0.0
  */
 trait WornForPagerManagement
 {
