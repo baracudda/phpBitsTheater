@@ -22,7 +22,7 @@ use BitsTheater\costumes\AmazonS3Item;
 use com\blackmoonit\Strings;
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
-use Aws\S3\Exception\S3Exception;
+//use Aws\S3\Exception\S3Exception;
 use Aws\CommandPool;
 use Aws\CommandInterface;
 use Aws\ResultInterface;
@@ -42,6 +42,9 @@ class BitsAmazonS3 extends BaseModel
 	protected $mConfigNameForRegion = 'region_name';
 	protected $mConfigNameForBucket = 'bucket_name';
 	protected $mConfigNameForRootPath = 'root_path';
+	
+	/** @var string The default region to use if none is supplied. */
+	const DEFAULT_REGION = 'us-east-1'; //Amazon's default region
 	
 	/**
 	 * The Amazon S3 client.
@@ -79,7 +82,7 @@ class BitsAmazonS3 extends BaseModel
 	 * If the config settings are not fully defined, you may toss this
 	 * generic exception if desired.
 	 * @param string $aConfigNamespace - the namespace of the config settings.
-	 * @throws BitsTheater\BrokenLeg
+	 * @throws \BitsTheater\BrokenLeg
 	 */
 	public function tossWhenNotDefined( $aConfigNamespace )
 	{
@@ -104,7 +107,7 @@ class BitsAmazonS3 extends BaseModel
 		
 		$theOptions = array( 'version' => 'latest' );
 		if ( empty($theRegionName) )
-			$theRegionName = 'us_east_1'; //Amazon's default region
+		{ $theRegionName = static::DEFAULT_REGION; }
 		if ( !empty($theAccountKey) && !empty($theSecretKey) && !empty($theRegionName) )
 		{
 			$theOptions['credentials'] = array(
