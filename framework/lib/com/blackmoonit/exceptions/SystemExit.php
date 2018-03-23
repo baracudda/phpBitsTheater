@@ -16,15 +16,13 @@
  */
 
 namespace com\blackmoonit\exceptions;
-use com\blackmoonit\exceptions\DebuggableExceptionTrait;
-use com\blackmoonit\exceptions\IDebuggableException;
-use \Exception;
 {//begin namespace
 
 /**
  * Usually just a clean exit, but with the ability to log a message if desired.
  */
-class SystemExit extends Exception implements IDebuggableException {
+class SystemExit extends \Exception implements IDebuggableException
+{
 	private $mDebuggableExceptionTrait;
 	
 	public function __construct() {
@@ -32,6 +30,9 @@ class SystemExit extends Exception implements IDebuggableException {
 		$this->mDebuggableExceptionTrait = new DebuggableExceptionTrait($this);
 	}
 	
+	public function getException()
+	{ return $this->mDebuggableExceptionTrait->getException(); }
+
 	public function setContextMsg($aMsg) {
 		$this->mDebuggableExceptionTrait->setContextMsg($aMsg);
 		return $this; //support chaining
@@ -44,6 +45,9 @@ class SystemExit extends Exception implements IDebuggableException {
 	public function getErrorMsg() {
 		return $this->mDebuggableExceptionTrait->getErrorMsg();
 	}
+	
+	public function getDebugMsg()
+	{ return $this->mDebuggableExceptionTrait->getDebugMsg(); }
 	
 	public function getDebugDisplay($aMsg=null) {
 		return $this->mDebuggableExceptionTrait->getDebugDisplay($aMsg);

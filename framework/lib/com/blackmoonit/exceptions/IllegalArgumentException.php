@@ -16,15 +16,14 @@
  */
 
 namespace com\blackmoonit\exceptions;
-use com\blackmoonit\exceptions\DebuggableExceptionTrait;
-use com\blackmoonit\exceptions\IDebuggableException;
-use \InvalidArgumentException;
+use InvalidArgumentException as BaseException;
 {//begin namespace
 
 /**
  * Alias for InvalidArgumentException
  */
-class IllegalArgumentException extends InvalidArgumentException implements IDebuggableException {
+class IllegalArgumentException extends BaseException implements IDebuggableException
+{
 	private $mDebuggableExceptionTrait;
 	
 	public function __construct() {
@@ -32,6 +31,9 @@ class IllegalArgumentException extends InvalidArgumentException implements IDebu
 		$this->mDebuggableExceptionTrait = new DebuggableExceptionTrait($this);
 	}
 	
+	public function getException()
+	{ return $this->mDebuggableExceptionTrait->getException(); }
+
 	public function setContextMsg($aMsg) {
 		$this->mDebuggableExceptionTrait->setContextMsg($aMsg);
 		return $this; //support chaining
@@ -44,6 +46,9 @@ class IllegalArgumentException extends InvalidArgumentException implements IDebu
 	public function getErrorMsg() {
 		return $this->mDebuggableExceptionTrait->getErrorMsg();
 	}
+	
+	public function getDebugMsg()
+	{ return $this->mDebuggableExceptionTrait->getDebugMsg(); }
 	
 	public function getDebugDisplay($aMsg=null) {
 		return $this->mDebuggableExceptionTrait->getDebugDisplay($aMsg);

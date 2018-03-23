@@ -16,8 +16,6 @@
  */
 
 namespace com\blackmoonit\exceptions;
-use com\blackmoonit\exceptions\DebuggableExceptionTrait;
-use com\blackmoonit\exceptions\IDebuggableException;
 use PDOException;
 {//begin namespace
 
@@ -26,7 +24,8 @@ use PDOException;
  * A DB exception occured, alias for PDOException (if using a different DB abstraction layer,
  * descend from that DB layer's exception class instead.
  */
-class DbException extends PDOException implements IDebuggableException {
+class DbException extends PDOException implements IDebuggableException
+{
 	private $mDebuggableExceptionTrait;
 	
 	public function __construct($e, $aMsg='') {
@@ -59,6 +58,9 @@ class DbException extends PDOException implements IDebuggableException {
 		}
 		return $theResult;
 	}
+	
+	public function getException()
+	{ return $this->mDebuggableExceptionTrait->getException(); }
 	
 	public function setContextMsg($aMsg) {
 		$this->mDebuggableExceptionTrait->setContextMsg($aMsg);

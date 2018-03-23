@@ -22,7 +22,9 @@ use com\blackmoonit\Strings;
 /**
  * Pseudo-trait for Exceptions in < PHP 5.4
  */
-class DebuggableExceptionTrait extends \stdClass implements IDebuggableException {
+class DebuggableExceptionTrait extends \stdClass
+implements IDebuggableException
+{
 	private $mException;
 	protected $mContextMsg = '';
 	protected $mDebugCheck = '_DEBUG_APP';
@@ -40,6 +42,10 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 	public function getContextMsg() {
 		return $this->mContextMsg;
 	}
+	
+	/** @return \Exception The exception being wrapped. */
+	public function getException()
+	{ return $this->mException; }
 	
     public function getErrorMsg() {
 		return $this->mException->getMessage();
@@ -78,7 +84,7 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 	 * Pass in a CONST name to check or a function/method name to check for "is debugging".
 	 * Default is to check the _DEBUG_APP const.
 	 * @param string $aDebugCheck - CONST or function/method to check that returns TRUE or FALSE.
-	 * @return Returns $this to support chaining.
+	 * @return $this Returns $this to support chaining.
 	 */
 	public function setDebugCheck($aDebugCheck) {
 		if (!empty($aDebugCheck))
@@ -93,7 +99,7 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 	/**
 	 * If headers have not yet been sent and debug output must occur, this CSS file will be loaded.
 	 * @param string $aCssFileUrl - Url for CSS to print pretty errors while debugging.
-	 * @return Returns $this to support chaining.
+	 * @return $this Returns $this to support chaining.
 	 */
 	public function setCssFileUrl($aCssFileUrl) {
 		if (!empty($aCssFileUrl))
@@ -108,7 +114,7 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 	/**
 	 * If defined, trace output will str_replace the param with "[%site]".
 	 * @param string $aFileRoot - This path will be replaced with "[%site]" in debug output.
-	 * @return Returns $this to support chaining.
+	 * @return $this Returns $this to support chaining.
 	 */
 	public function setFileRoot($aFileRoot) {
 		if (!empty($aFileRoot))
@@ -117,7 +123,7 @@ class DebuggableExceptionTrait extends \stdClass implements IDebuggableException
 	}
 	
 	protected function isDebugging() {
-		return (is_string($this->mDebugCheck) && defined($this->mDebugCheck) && constant($this->mDebugCheck)) || 
+		return (is_string($this->mDebugCheck) && defined($this->mDebugCheck) && constant($this->mDebugCheck)) ||
 				(is_callable($this->mDebugCheck) && call_user_func($this->mDebugCheck));
 	}
 

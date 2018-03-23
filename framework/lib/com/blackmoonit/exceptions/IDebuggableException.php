@@ -18,20 +18,21 @@
 namespace com\blackmoonit\exceptions;
 {//begin namespace
 
-interface IDebuggableException {
+interface IDebuggableException
+{
+	function getException();
+	function setContextMsg($aMsg);
+	function getContextMsg();
+	function getErrorMsg();
+	function getDebugMsg();
+	function getDebugDisplay($aMsg = NULL);
+	function getDebugCheck();
+	function setDebugCheck($aDebugCheck);
+	function getCssFileUrl();
+	function setCssFileUrl($aCssFileUrl);
+	function getFileRoot();
+	function setFileRoot($aFileRoot);
+	function debugPrint($aMsg = NULL);
+}
 
-	public function setContextMsg($aMsg);
-	public function getContextMsg();
-	public function getErrorMsg();
-	public function getDebugDisplay($aMsg = NULL);
-	public function getDebugCheck();
-	public function setDebugCheck($aDebugCheck);
-	public function getCssFileUrl();
-	public function setCssFileUrl($aCssFileUrl);
-	public function getFileRoot();
-	public function setFileRoot($aFileRoot);
-	public function debugPrint($aMsg = NULL);
-	
-}//class
-
-}//namespace
+}//namespace end
