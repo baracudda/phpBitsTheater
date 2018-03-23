@@ -969,7 +969,17 @@ implements ArrayAccess, IDirected
 		$theFullMsg = '['.$theTimeStr.'] '.$aMessage;
 		$this->log($aCategory, $theFullMsg);
 	}
-
+	
+	/**
+	 * Determine if we are executing in CLI mode or not.
+	 * @return boolean
+	 */
+	public function isRunningUnderCLI()
+	{
+		global $theStageManager;
+		return $theStageManager->isRunningUnderCLI();
+	}
+	
 }//end class
 
 }//end namespace

@@ -882,6 +882,9 @@ class SqlBuilder extends BaseCostume {
 		$this->errorLog($aWhatFailed . ' [1/3] failed: ' . $theMsg);
 		$this->errorLog($aWhatFailed . ' [2/3] sql=' . $this->mySql);
 		$this->errorLog($aWhatFailed . ' [3/3] params=' . $this->debugStr($this->myParams));
+		if ( $this->getDirector()->isDebugging() &&
+				is_callable(array($aMsgOrException, 'getTraceAsString')) )
+		{ $this->errorLog( $aMsgOrException->getTraceAsString() ); }
 		return $this;
 	}
 	

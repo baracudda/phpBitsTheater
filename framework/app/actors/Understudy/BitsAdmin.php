@@ -128,14 +128,8 @@ class BitsAdmin extends BaseActor
 	
 	/**
 	 * API for updating all features of the website.
-	 *
-	 * This was formerly <code>apiWebsiteUpgrade()</code> and used only from the
-	 * CLI <code>actionWebsiteUpgrade</code>, but is now available as a REST API
-	 * function instead.
-	 *
-	 * @since BitsTheater v4.0.0
 	 */
-	public function ajajWebsiteUpgrade()
+	public function apiWebsiteUpgrade()
 	{
 		$v =& $this->scene ;
 		$this->checkAllowed( 'config', 'modify' ) ;

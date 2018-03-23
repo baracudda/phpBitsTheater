@@ -177,11 +177,14 @@ implements IDirected
 	protected function performAct($aAction, $aQuery) {
 		$theThingToCall = array($this, $aAction);
 		if (is_callable($theThingToCall))
-			return call_user_func_array($theThingToCall, $aQuery);
-		else
-			throw new FourOhFourExit(BITS_URL . '/' . $this->mySimpleClassName
-					. '/' . $aAction . '/' . implode('/', $aQuery)
-			);
+		{ return call_user_func_array($theThingToCall, $aQuery); }
+		else {
+			$theUrlNotFound = BITS_URL . '/' . $this->mySimpleClassName
+					. '/' . $aAction . '/' . implode('/', $aQuery);
+			if ($this->getDirector()->isRunningUnderCLI() )
+			{ print('Endpoint not found: ' . $theUrlNotFound); }
+			throw new FourOhFourExit($theUrlNotFound);
+		}
 	}
 
 	/**

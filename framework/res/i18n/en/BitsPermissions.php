@@ -53,11 +53,13 @@ class BitsPermissions extends BaseResources {
 	
 	public $label_namespace = array(
 			'auth' => 'Authorization',
+			'auth_orgs' => 'Organizations',
 			'config' => 'Settings',
 			'accounts' => 'Accounts',
 	);
 	public $desc_namespace = array(
 			'auth' => 'Authorization Rights',
+			'auth_orgs' => 'Organization Rights',
 			'config' => 'Settings/Configuration/Preferences',
 			'accounts' => 'Membership Account Rights',
 	);
