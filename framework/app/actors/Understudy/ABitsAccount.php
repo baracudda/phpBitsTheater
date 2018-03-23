@@ -27,7 +27,7 @@ use Exception;
 
 abstract class ABitsAccount extends BaseActor {
 	const DEFAULT_ACTION = 'view';
-
+	
 	/**
 	 * {@inheritDoc}
 	 * @return MyScene Returns a newly created scene descendant.

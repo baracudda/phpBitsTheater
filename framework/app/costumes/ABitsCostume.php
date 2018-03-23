@@ -221,7 +221,7 @@ implements IDirected
 		$o = self::fromArray($aContext, json_decode($asJson,true));
 		return $o;
 	}
-
+	
 	/**
 	 * Create a new instance of whatever class this method
 	 * is called from (MyClass::fromThing() makes a MyClass

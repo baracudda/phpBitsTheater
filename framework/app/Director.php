@@ -488,7 +488,7 @@ implements ArrayAccess, IDirected
 		{ $this->setDbConnInfo(new DbConnInfo($aDbConnName)); }
 		return $this->dbConnInfo[$aDbConnName];
 	}
-
+	
 	/**
 	 * Retrieve the singleton Model object for a given model class.
 	 * @param string $aModelClass - the model class to retrieve.
