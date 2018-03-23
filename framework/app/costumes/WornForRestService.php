@@ -18,7 +18,6 @@
 namespace BitsTheater\costumes ;
 use com\blackmoonit\Strings;
 use BitsTheater\BrokenLeg;
-use BitsTheater\costumes\APIResponse;
 {//begin namespace
 
 /**
@@ -107,7 +106,7 @@ trait WornForRestService
 	 * If the config settings are not fully defined, you may toss this
 	 * generic exception.
 	 * @param string $aConfigNamespace - the namespace of the config settings.
-	 * @throws BitsTheater\BrokenLeg
+	 * @throws \BitsTheater\BrokenLeg
 	 */
 	public function tossWhenNotDefined($aConfigNamespace) {
 		$theCondition = strtoupper($aConfigNamespace) . '_NOT_DEFINED';
@@ -123,7 +122,7 @@ trait WornForRestService
 	 * @param string $aAction - the action to be performed.
 	 * @param string $aData - the POST data to accompany the request.
 	 * @param number $aTimeout - the timeout value for the request.
-	 * @return \Joka\costumes\APIResponse - the response from the endpoint,
+	 * @return APIResponse - the response from the endpoint,
 	 *  encapsulated in a known container.
 	 */
 	protected function sendRequestToRestService($aPostURL, $aAction=null, $aData=null, $aTimeout=45)
