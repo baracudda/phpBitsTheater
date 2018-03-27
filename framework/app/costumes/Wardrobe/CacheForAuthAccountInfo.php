@@ -17,7 +17,7 @@
 
 namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
-use BitsTheater\costumes\WornForExportData;
+use BitsTheater\costumes\WornForExportData as ExportDataTrait;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\models\AuthGroups;
 use com\blackmoonit\Strings;
@@ -28,7 +28,7 @@ use com\blackmoonit\Strings;
  * @since BitsTheater 4.0.0
  */
 class CacheForAuthAccountInfo extends BaseCostume
-{ use WornForExportData;
+{ use ExportDataTrait;
 
 	/** @var string */
 	public $auth_id = null;
