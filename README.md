@@ -3,6 +3,9 @@ phpBitsTheater
 
 Highly customizable PHP framework extending the [MVC site model](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93controller). Terms used borrow heavily from theater jargon. The framework was designed from the ground-up to employ a more modern [Semantic URL](https://en.wikipedia.org/wiki/Semantic_URL) scheme.
 
+v4+:
+Minimum PHP version required is 5.6 (due to automatic argument wrap/unwrap "..." and class const concatenation).
+v3 and below:
 Minimum PHP version required is 5.4 (due to using the (new ClassName())->blah() feature of 5.4 in some places).
 
 This framework extends the Model-View-Controller site model:
