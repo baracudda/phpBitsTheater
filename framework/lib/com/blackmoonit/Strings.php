@@ -239,10 +239,23 @@ class Strings {
 	 * @return string - Returns the generated UUID (36 chars).
 	 * @see Strings::createTextId()
 	 */
-	static public function createUUID() {
-		return Strings::createGUID();
-	}
+	static public function createUUID()
+	{ return Strings::createGUID(); }
 	
+	/**
+	 * Checks a UUID string (36 chars with dashes, no "{}") to see if it is a
+	 * Type 4 UUID.
+	 * @param string $aUUID - the UUID string to check.
+	 * @return int Returns 1 if the string is a Type 4 UUID,
+	 *   0 if it is not, or false if an error occurred.
+	 */
+	static public function isUUIDtype4( $aUUID )
+	{
+		return preg_match('/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}/i',
+				$aUUID
+		);
+	}
+
 	const DEBUG_VAR_DUMP_FLAG = '__DEBUG_VAR_DUMP_FLAG';
 	/**
 	 * Recursive var dump that takes into account the magic method __debugInfo(). This method
