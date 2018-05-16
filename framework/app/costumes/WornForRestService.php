@@ -130,38 +130,13 @@ trait WornForRestService
 	protected function sendRequestToRestService($aPostURL, $aAction=null, $aData=null, $aTimeout=45)
 	{
 		$theResult = new APIResponse() ;
-		if (empty($aPostURL))
-			throw BrokenLeg::toss( $this, BrokenLeg::ACT_SERVICE_UNAVAILABLE ) ;
-		
-		$thePostURL = (Strings::endsWith($aPostURL, '/')) ? $aPostURL : $aPostURL . '/';
-		$thePostURL .= $aAction ;
-		$theRequest = curl_init() ;
-		curl_setopt( $theRequest, CURLOPT_URL, $thePostURL ) ;
-		curl_setopt( $theRequest, CURLOPT_RETURNTRANSFER, true ) ;
-		if (!empty($aData)) {
-			$theEncodedData = json_encode($aData) ;
-			curl_setopt( $theRequest, CURLOPT_CUSTOMREQUEST, 'POST' ) ;
-			curl_setopt( $theRequest, CURLOPT_POSTFIELDS, $theEncodedData ) ;
-			curl_setopt( $theRequest, CURLOPT_HTTPHEADER, array(
-					'Content-Type: application/json',
-					'Content-Length: ' . strlen($theEncodedData)
-			));
-		}
-		else {
-			curl_setopt( $theRequest, CURLOPT_CUSTOMREQUEST, 'GET' ) ;
-		}
-		curl_setopt( $theRequest, CURLOPT_CONNECTTIMEOUT, $aTimeout ) ;
-
-		$theRawResponse = curl_exec($theRequest) ;
+		$theRequest = CurlRequestBuilder::withURL($this, $aPostURL, $aAction)
+			->encodeDataAsJSON($aData)->setTimeout($aTimeout)
+			;
+		$theRawResponse = $theRequest->execute();
+		//$theRequest->logReqDebug($theRawResponse); //DEBUG
 		$theRespData = json_decode($theRawResponse) ;
-		$theRespCode = curl_getinfo( $theRequest, CURLINFO_HTTP_CODE ) ;
-		curl_close($theRequest) ;
-//		$this->debugLog( __METHOD__ . ' DEBUG - URL [' . $thePostURL
-//				. ']; request data [' . json_encode($aData)
-//				. ']; response data [' . $theRawResponse
-//				. ']; HTTP code ['. $theRespCode . ']' )
-//				;
-		if( $theRespCode >= 200 && $theRespCode < 300 )
+		if ( $theRequest->isResponseSuccessful() )
 		{ // Success!
 			$theResult->status = APIResponse::STATUS_SUCCESS ;
 			$theResult->data = $theRespData ;
@@ -174,7 +149,7 @@ trait WornForRestService
 			if( isset($theRespData->error) && isset($theRespData->error->message) )
 				$theErrorMessage = $theRespData->error->message ;
 			$theFailure = BrokenLeg::pratfall(strtoupper($this->getRes('generic/errmsg_failure')),
-					$theRespCode, $theErrorMessage ) ;
+					$theRequest->getResponseCode(), $theErrorMessage ) ;
 			$theResult->error = $theFailure ;
 		}
 		return $theResult ;

@@ -779,6 +779,83 @@ class Strings {
 	}
 	
 	/**
+	 * Get the HTTP header value given to us.
+	 * @param string $aHeaderName - the header name.
+	 * @param string $aDefaultValue - (optional) default value if not in $_SERVER[].
+	 * @return string The HTTP header value to use.
+	 */
+	static public function getHttpHeaderValue( $aHeaderName, $aDefaultValue=null )
+	{
+		$theKey = self::httpHeaderNameToServerKey($aHeaderName);
+		if ( isset($_SERVER[$theKey]) && ($_SERVER[$theKey] != '') )
+		{ return $_SERVER[$theKey]; }
+		else
+		{ return $aDefaultValue; }
+	}
+	
+	/**
+	 * HTTP headers are famous for being mixed bag of upper and lower case
+	 * names, but this will normalize them to their standard Camel-Case format.
+	 * @param string $aHeaderName - a header name.
+	 * @return string Returns the header converted to its proper Camel-Case name.
+	 */
+	static public function normalizeHttpHeaderName( $aHeaderName )
+	{
+		return str_replace(' ', '-', ucwords(strtolower(
+				str_replace(array('_','-'), ' ', trim($aHeaderName))
+		)));
+	}
+	
+	/**
+	 * HTTP headers are famous for being mixed bag of upper and lower case
+	 * names, but this will normalize them to their standard Camel-Case format.
+	 * @param string $aHeader - the entire header string, "some-name: value".
+	 * @return string Returns the normalized header.
+	 */
+	static public function normalizeHttpHeader( $aHeader )
+	{
+		$theNameValueSeparatorPos = strpos($aHeader, ':');
+		return ( $theNameValueSeparatorPos >= 0 ) ?
+			self::normalizeHttpHeaderName(
+					substr($aHeader, 0, $theNameValueSeparatorPos)
+			) . substr($aHeader, $theNameValueSeparatorPos)
+			: self::normalizeHttpHeaderName($aHeader);
+	}
+	
+	/**
+	 * FastCGI may not have the global function getallheaders() defined,
+	 * so we define it here just in case it does not exist elsewhere.
+	 */
+	static public function getAllHttpHeaders()
+	{
+		if (function_exists('getallheaders'))
+		{ return getallheaders(); }
+		else
+		{
+			$theHeaders = array();
+			foreach ($_SERVER as $theKey => $theVal) {
+				if (substr($theKey, 0, 5) == 'HTTP_') {
+					$theHeaders[self::normalizeHttpHeaderName(
+							substr($theKey, 5)
+					)] = $theVal;
+				}
+		   }
+		   return $theHeaders;
+		}
+	}
+	
+	/**
+	 * Normalize and create an HTTP header.
+	 * @param string $aName - the header name.
+	 * @param string $aValue - the value of the header.
+	 * @return string Returns the header string.
+	 */
+	static public function createHttpHeader( $aName, $aValue )
+	{
+		return self::normalizeHttpHeaderName($aName) . ': ' . $aValue;
+	}
+	
+	/**
 	 * Recombine the array made by parse_url() into a string.
 	 * @param array $aParsedUrl
 	 * @return string Returns the url string.
