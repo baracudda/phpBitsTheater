@@ -27,7 +27,7 @@ use com\blackmoonit\Strings;
  * or user uploaded managed files.
  * @since BitsTheater [NEXT]
  */
-class ManagedMediaFile extends BaseCostume
+abstract class ManagedMediaFile extends BaseCostume
 {
 	/** @var string The path to the actual file contents. */
 	protected $mManagedMediaFilePath = null;
@@ -68,6 +68,12 @@ class ManagedMediaFile extends BaseCostume
 	public $mReplacementValueList = null;
 	/** @var boolean Determines Regex or Simple replacements. */
 	public $bUseRegexReplacements = false;
+	
+	/**
+	 * Return the file path to be used.
+	 * @return string Returns the full file path of the media.
+	 */
+	abstract public function getFile();
 	
 	/**
 	 * Take a combined key=>value array and set the Pattern/Values lists.
