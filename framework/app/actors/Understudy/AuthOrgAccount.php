@@ -17,23 +17,22 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\actors\Understudy\ABitsAccount as BaseActor;
-use BitsTheater\scenes\Account as MyScene;
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\AuthPasswordReset;
 use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthAccountSet;
-use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\AuthOrgSet;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForAuditFields;
-use BitsTheater\outtakes\AccountAdminException;
-use BitsTheater\outtakes\PasswordResetException;
 use BitsTheater\models\Auth as AuthDB; /* @var $dbAuth AuthDB */
 use BitsTheater\models\AuthGroups as AuthGroupsDB; /* @var $dbAuthGroups AuthGroupsDB */
+use BitsTheater\outtakes\AccountAdminException;
+use BitsTheater\outtakes\PasswordResetException;
+use BitsTheater\scenes\Account as MyScene;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\MailUtils;
@@ -1173,7 +1172,7 @@ class AuthOrgAccount extends BaseActor
 		$theFieldList = AuthAccount::getDefinedFields();
 		//construct our iterator object
 		$theAccountSet = AuthAccountSet::create( $this )
-				->setItemClassArgs($this->getProp('Auth'), $theFieldList)
+				->setItemClassArgs($this->getMyModel(), $theFieldList)
 				->setDataFromPDO($aRowSet)
 				;
 		$theAccountSet->filter = $v->filter ;
@@ -1183,7 +1182,7 @@ class AuthOrgAccount extends BaseActor
 		$theGroupFieldList = array('group_id', 'group_name');
 		$theAccountSet->mGroupList = AuthGroupList::create( $this )
 				->setFieldList($theGroupFieldList)
-				->setItemClassArgs($this->getProp('AuthGroups'), $theGroupFieldList)
+				->setItemClassArgs($this->getAuthGroupsModel(), $theGroupFieldList)
 				;
 					
 		return $theAccountSet;
@@ -1264,9 +1263,18 @@ class AuthOrgAccount extends BaseActor
 	{
 		$theAccountID = $this->getRequestData( $aAccountID, 'account_id', true ) ;
 		$this->setActiveStatus( $theAccountID, false ) ;
-		$dbAuth = $this->getProp( 'Auth' ) ;
+		$dbAuth = $this->getMyModel();
 		$theAuthRow = $dbAuth->getAuthByAccountId( $aAccountID );
-		$dbAuth->removeTokensFor($theAuthRow['auth_id'], $theAuthRow['account_id'], '%');
+		$theTokensToRemove = array(
+				$dbAuth::TOKEN_PREFIX_ANTI_CSRF . '%',
+				$dbAuth::TOKEN_PREFIX_COOKIE . '%',
+				$dbAuth::TOKEN_PREFIX_LOCKOUT . '%',
+		);
+		foreach ($theTokensToRemove as $theTokenPattern) {
+			$dbAuth->removeTokensFor($theAuthRow['auth_id'],
+					$theAuthRow['account_id'], $theTokenPattern
+			);
+		}
 	}
 
 	/**
@@ -1572,26 +1580,28 @@ class AuthOrgAccount extends BaseActor
 		// Ensure view set to response in JSON format for this endpoint.
 		$this->viewToRender('results_as_json');
 		// Ensure required endpoint permissions are held, throwing BrokenLeg otherwise.
-		$this->checkAllowed('auth', 'view_orgs');
-		// get all messages, or just a single one?
-		$theID = $this->getRequestData($aID, 'org_id', false);
+		$this->checkAllowed('auth_orgs', 'view');
 		// sort_by is an alias for orderby in this endpoint
 		$v->orderby = $this->getRequestData($v->orderby, 'sort_by', false);
-		// Retrieve the site message from db.
+		// get all data, or just a single one?
+		$theID = $this->getRequestData($aID, 'org_id', false);
+		// Retrieve the data from db.
 		try
 		{
 			$theRecordSet = $this->getOrgs($theID);
 			if ( !empty($theID) ) {
 				$theRow = $theRecordSet->fetch();
 				if ( $theRow !== false ) {
-					$v->results = APIResponse::resultsWithData($theRow->exportData()) ;
+					$this->setApiResults($theRow->exportData());
 				}
-				else {
+				else if ( empty($aID) ) {
+					$this->setApiResults(array());
+				} else {
 					throw BrokenLeg::toss($this, 'ENTITY_NOT_FOUND', $theID);
 				}
 			}
 			else {
-				$v->results = APIResponse::resultsWithData($theRecordSet) ;
+				$this->setApiResults($theRecordSet);
 			}
 		}
 		catch(Exception $x)
