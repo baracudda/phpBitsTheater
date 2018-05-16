@@ -505,10 +505,10 @@ implements ArrayAccess, IDirected
 			if (empty($this->_propMaster[$theModelClass])) {
 				//ensure we have a non-empty reference in case of a dbconn exception
 				//  so that nested infinite loops can be avoided
-					$this->_propMaster[$theModelClass] = array(
+				$this->_propMaster[$theModelClass] = array(
 						'model' => null,
-							'ref_count' => 0,
-					);
+						'ref_count' => 0,
+				);
 				try
 				{ $this->_propMaster[$theModelClass]['model'] = new $theModelClass($this); }
 				catch (Exception $e) {
@@ -843,10 +843,21 @@ implements ArrayAccess, IDirected
 	 * @throws \Exception
 	 */
 	public function getConfigSetting($aSetting) {
-		if (empty($this->dbConfig))
-			$this->dbConfig = $this->getProp('Config');
-		if (!empty($this->dbConfig)) {
-			return $this->dbConfig[$aSetting];
+		if ( is_null($this->dbConfig) )
+		{ $this->dbConfig = $this->getProp('Config'); }
+		if ( !empty($this->dbConfig) )
+		{ return $this->dbConfig[$aSetting]; }
+		else {
+			//if dbConfig is empty, means dbconn error
+			//  return the pre-defined default value, if any
+			list($theAreaName, $theSettingName) = explode('/', $aSetting, 2);
+			$res = $this->getRes('config/' . $theAreaName);
+			if ( array_key_exists($theSettingName, $res) )
+			{
+				/* @var $theConfigRes \BitsTheater\costumes\ConfigResEntry */
+				$theConfigRes = $res[$theSettingName];
+				return $theConfigRes->default_value;
+			}
 		}
 	}
 
