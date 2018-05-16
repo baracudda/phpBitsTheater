@@ -200,6 +200,7 @@ class BrokenLeg extends \Exception
 	 *  for the website, so that text resources can be retrieved; this can be an
 	 *  actor, model, or scene, or anything implementing IDirected
 	 * @param \Exception $aException - a thrown exception.
+	 * @return BrokenLeg Returns the newly created object for throwing.
 	 */
 	static public function tossException( IDirected $aContext, $aException )
 	{

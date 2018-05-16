@@ -74,7 +74,7 @@ implements ArrayAccess, IDirected
 	protected $_propMaster = array();
 	/**
 	 * Resource manager class (@var may not apply during installation).
-	 * @var configs\I18N
+	 * @var res\ResI18N
 	 */
 	protected $_resManager = null;
 	/**
@@ -480,7 +480,7 @@ implements ArrayAccess, IDirected
 	/**
 	 * Retrieve the connection information for a specific connection name.
 	 * @param string $aDbConnName - (optional) dbconn name, default="webapp".
-	 * @return \BitsTheater\DbConnInfo
+	 * @return DbConnInfo
 	 */
 	public function getDbConnInfo($aDbConnName='webapp')
 	{

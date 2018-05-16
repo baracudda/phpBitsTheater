@@ -200,7 +200,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Mainly used internally to get param data.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the obtainParamsFrom() method.
+	 *   data set by the obtainParamsFrom() method.
 	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @return mixed Returns the data value.
 	 * @see \BitsTheater\costumes\SqlBuilder::obtainParamsFrom()
@@ -231,7 +231,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Mainly used internally by addParamIfDefined to determine if data param exists.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the obtainParamsFrom() method.
+	 *   data set by the obtainParamsFrom() method.
 	 * @return boolean Returns TRUE if data key is defined (or param function exists).
 	 * @see \BitsTheater\costumes\SqlBuilder::obtainParamsFrom()
 	 */
@@ -254,7 +254,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Resets the object so it can be resused with same dataset.
 	 * @param boolean $bClearDataFunctionsToo - (optional) clear data processing
-	 * functions as well (default is FALSE).
+	 *   functions as well (default is FALSE).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
 	public function reset($bClearDataFunctionsToo=false) {
@@ -271,7 +271,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Sets the param value and param type, but does not affect the SQL string.
 	 * @param string $aParamKey - the field/param name.
-	 * @param string $aParamValue - the param value to use.
+	 * @param mixed $aParamValue - the param value to use.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
@@ -356,7 +356,8 @@ class SqlBuilder extends BaseCostume {
 	 * Honors the ParamPrefix and ParamOperator properties.
 	 * @param string $aFieldName - the field name.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the obtainParamsFrom() method; NOTE: $aDataKeys will have _$i from 1..count() appended.
+	 *   data set by the obtainParamsFrom() method;
+	 *   NOTE: $aDataKeys will have _$i from 1..count() appended.
 	 * @param array $aDataValuesList - the value list to use as param values.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -380,7 +381,7 @@ class SqlBuilder extends BaseCostume {
 	 * Internal method to affect SQL statment with a param and its value.
 	 * @param string $aFieldName - the field name.
 	 * @param string $aParamKey - the param name.
-	 * @param string $aParamValue - the param value to use.
+	 * @param mixed $aParamValue - the param value to use.
 	 * @param number $aParamType - PDO::PARAM_* integer constant.
 	 */
 	protected function addingParam($aFieldName, $aParamKey, $aParamValue, $aParamType) {
@@ -423,8 +424,8 @@ class SqlBuilder extends BaseCostume {
 	 * Parameter must go into the SQL string regardless of NULL status of data.
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the obtainParamsFrom() method.
-	 * @param string $aDefaultValue - (optional) default value if data is null.
+	 *   data set by the obtainParamsFrom() method.
+	 * @param mixed $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
@@ -437,8 +438,8 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Parameter must go into the SQL string regardless of NULL status of data.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the obtainParamsFrom() method; this doubles as the field name.
-	 * @param string $aDefaultValue - (optional) default value if data is null.
+	 *   data set by the obtainParamsFrom() method; this doubles as the field name.
+	 * @param mixed $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
@@ -455,8 +456,8 @@ class SqlBuilder extends BaseCostume {
 	 * e.g. <code>UPDATE myIDfield=:new_myIDfield_data WHERE myIDfield=:myIDfield</code>
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the obtainParamsFrom() method.
-	 * @param string $aDefaultValue - (optional) default value if data is null.
+	 *   data set by the obtainParamsFrom() method.
+	 * @param mixed $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
@@ -472,7 +473,7 @@ class SqlBuilder extends BaseCostume {
 	 * Parameter gets added to the SQL string if data key exists in data set.
 	 * @param string $aFieldName - field name to use.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 *     data set by the obtainParamsFrom() method.
+	 *   data set by the obtainParamsFrom() method.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
@@ -488,8 +489,8 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Parameter only gets added to the SQL string if data is not NULL.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 * data set by the obtainParamsFrom() method.
-	 * @param string $aDefaultValue - (optional) default value if data is null.
+	 *   data set by the obtainParamsFrom() method.
+	 * @param mixed $aDefaultValue - (optional) default value if data is null.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
@@ -504,7 +505,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Parameter gets added to the SQL string if data key exists in data set.
 	 * @param string $aDataKey - array key or property name used to retrieve
-	 *     data set by the obtainParamsFrom() method.
+	 *   data set by the obtainParamsFrom() method.
 	 * @param number $aParamType - (optional) PDO::PARAM_* integer constant (STR is default).
 	 * @param $aParamTypeDeprecated - (IGNORE) defined for backward compatibility only!
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
@@ -538,7 +539,7 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Operator string to use in all subsequent calls to addParam methods.
 	 * @param string $aStr - operator string to use ('=' is default,
-	 * ' LIKE ' is a popular operator as well).
+	 *   ' LIKE ' is a popular operator as well).
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
 	public function setParamOperator($aStr='=')
@@ -602,7 +603,7 @@ class SqlBuilder extends BaseCostume {
 	 * in the non-empty $aFieldList, then apply the sort order as neccessary.
 	 * @see \BitsTheater\costumes\SqlBuilder::applyOrderByList() which this method is an alias of.
 	 * @param array $aSortList - keys are the fields => values are
-	 *    'ASC'|true or 'DESC'|false with null='ASC'.
+	 *   'ASC'|true or 'DESC'|false with null='ASC'.
 	 * @param string|string[] $aFieldList - the list or comma string of fieldnames.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
@@ -614,7 +615,7 @@ class SqlBuilder extends BaseCostume {
 	 * If order by list is defined and its contents are also contained
 	 * in the non-empty $aFieldList, then apply the sort order as neccessary.
 	 * @param array $aOrderByList - keys are the fields => values are
-	 *    'ASC'|true or 'DESC'|false with null='ASC'.
+	 *   'ASC'|true or 'DESC'|false with null='ASC'.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
 	public function applyOrderByList($aOrderByList)
@@ -683,7 +684,7 @@ class SqlBuilder extends BaseCostume {
 	 * Execute DML (data manipulation language - INSERT, UPDATE, DELETE) statements.
 	 * @throws DbException if there is an error.
 	 * @return number|PDOStatement Returns the number of rows affected OR if using params,
-	 *     the PDOStatement.
+	 *   the PDOStatement.
 	 * @see \BitsTheater\Model::execDML();
 	 */
 	public function execDML() {
@@ -693,9 +694,9 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Executes DML statement and then checks the returned SQLSTATE.
 	 * @param string|array $aSqlState5digitCodes - standard 5 digit codes to check,
-	 * defaults to '02000', meaning "no data"; e.g. UPDATE/DELETE failed due
-	 * to record defined by WHERE clause returned no data. May be a comma separated
-	 * list of codes or an array of codes to check against.
+	 *   defaults to '02000', meaning "no data"; e.g. UPDATE/DELETE failed due
+	 *   to record defined by WHERE clause returned no data. May be a comma separated
+	 *   list of codes or an array of codes to check against.
 	 * @return boolean Returns the result of the SQLSTATE check.
 	 * @link https://ib-aid.com/download/docs/firebird-language-reference-2.5/fblangref25-appx02-sqlstates.html
 	 */
@@ -719,8 +720,8 @@ class SqlBuilder extends BaseCostume {
 	/**
 	 * Executes DML statement and then checks the returned SQLSTATE.
 	 * @param string $aSqlState5digitCode - a single standard 5 digit code to check,
-	 * defaults to '02000', meaning "no data"; e.g. UPDATE/DELETE failed due
-	 * to record defined by WHERE clause returned no data.
+	 *   defaults to '02000', meaning "no data"; e.g. UPDATE/DELETE failed due
+	 *   to record defined by WHERE clause returned no data.
 	 * @return boolean Returns the result of the SQLSTATE check.
 	 * @see SqlBuilder::execDMLandCheck()
 	 * @link https://dev.mysql.com/doc/refman/5.6/en/error-messages-server.html
@@ -953,10 +954,10 @@ class SqlBuilder extends BaseCostume {
 	 * headers that can be clicked on for sorting purposes. The Scene's properties called
 	 * <code>orderby</code> and <code>orderbyrvs</code> are used to determine the result.
 	 * @param object $aScene - the object, typically a Scene decendant, which is used
-	 *     to call <code>isFieldSortable()</code> and access the properties
-	 *     <code>orderby</code> and <code>orderbyrvs</code>.
+	 *   to call <code>isFieldSortable()</code> and access the properties
+	 *   <code>orderby</code> and <code>orderbyrvs</code>.
 	 * @param array $aDefaultOrderByList - (optional) default to use if no proper
-	 *     <code>orderby</code> field was defined.
+	 *   <code>orderby</code> field was defined.
 	 * @return array Returns the sanitized OrderBy list.
 	 * @deprecated Please use SqlBuilder::applyOrderByListFromSanitizer()
 	 */

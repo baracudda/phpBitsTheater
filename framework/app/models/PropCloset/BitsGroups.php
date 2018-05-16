@@ -355,7 +355,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 * Insert a group record.
 	 * @param Object|Scene $aDataObject - the (usually Scene) object containing
 	 *   the POST data used for insert.
-	 * @return Returns the data posted to the database.
+	 * @return array Returns the data posted to the database.
 	 */
 	public function add($aDataObject) {
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
@@ -375,7 +375,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	/**
 	 * Remove a group and its child data.
 	 * @param integer $aGroupID - the group ID.
-	 * @return Returns an array('group_id'=>$aGroupId).
+	 * @return array Returns an array('group_id'=>$aGroupId).
 	 */
 	public function del( $aGroupID )
 	{
@@ -457,7 +457,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 * Add a record to the account/group map table.
 	 * @param number $aGroupId - the group ID.
 	 * @param number $aAcctId - the account ID.
-	 * @return Returns the data added.
+	 * @return array Returns the data added.
 	 */
 	public function addAcctMap($aGroupId, $aAcctId) {
 		$theGroupId = intval($aGroupId);
@@ -482,7 +482,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 * Remove a record from the account/group map table.
 	 * @param integer $aGroupId - the group ID.
 	 * @param integer $aAcctId - the account ID.
-	 * @return Returns the data removed.
+	 * @return array Returns the data removed.
 	 */
 	public function delAcctMap($aGroupId, $aAcctId) {
 		$theGroupId = intval($aGroupId);
@@ -508,7 +508,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	/**
 	 * Get the groups a particular account belongs to.
 	 * @param integer $aAcctId - the account ID.
-	 * @return Returns the array of group IDs.
+	 * @return array Returns the array of group IDs.
 	 */
 	public function getAcctGroups($aAcctId) {
 		$theAcctId = intval($aAcctId);
@@ -706,7 +706,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * @return Return array(group_id => reg_code).
+	 * @return array Return array(group_id => reg_code).
 	 */
 	public function getGroupRegCodes() {
 		$theSql = "SELECT * FROM {$this->tnGroupRegCodes} ORDER BY group_id";
@@ -796,7 +796,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 * Fetches the account record for any account that is mapped into the
 	 * specified group.
 	 * @param integer $aGroupID
-	 * @return PDOStatement - the result set
+	 * @return \PDOStatement Returns the query result.
 	 * @throws DbException if something goes wrong
 	 * @since BitsTheater 3.6
 	 */

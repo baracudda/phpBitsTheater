@@ -22,6 +22,7 @@ use BitsTheater\BrokenLeg;
 
 /**
  * A set of methods helpful for dealing with a REST service.
+ * NOTE: for use with $this implementing IDirected.
  */
 trait WornForRestService
 {
@@ -124,6 +125,7 @@ trait WornForRestService
 	 * @param number $aTimeout - the timeout value for the request.
 	 * @return APIResponse - the response from the endpoint,
 	 *  encapsulated in a known container.
+	 * @throws BrokenLeg::ACT_SERVICE_UNAVAILABLE if $aPostURL is empty.
 	 */
 	protected function sendRequestToRestService($aPostURL, $aAction=null, $aData=null, $aTimeout=45)
 	{

@@ -214,7 +214,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 			case ($theSeq<4):
 				//AuthGroups is a default framework class, but may not be there
 				//  in actual website, so check for !empty() before "fixing" it.
-				/* @var $dbAuthGroups BitsTheater\models\AuthGroups */
+				/* @var $dbAuthGroups \BitsTheater\models\AuthGroups */
 				$dbAuthGroups = $this->getProp('AuthGroups');
 				if (!empty($dbAuthGroups)) {
 					$this->updateFeature($dbAuthGroups->getCurrentFeatureVersion());
@@ -244,7 +244,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	
 	/**
 	 * Calls all models to create their tables and insert default data, if necessary.
-	 * @param $aScene - the currently running page's Scene object.
+	 * @param object $aScene - the currently running page's Scene object or generic object.
 	 */
 	public function setupModels($aScene) {
 		$this->setupModel($aScene);

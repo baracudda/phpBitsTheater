@@ -2,7 +2,6 @@
 use BitsTheater\Scene as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
-use com\blackmoonit\Strings;
 use com\blackmoonit\OutputToICS;
 use com\blackmoonit\ICalendarEntry;
 

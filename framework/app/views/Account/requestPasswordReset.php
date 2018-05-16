@@ -3,7 +3,7 @@ use BitsTheater\scenes\Account as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
 use \com\blackmoonit\Widgets ;
-use \com\blackmoonit\Strings ;
+
 $recite->includeMyHeader() ;
 
 $w = '<h2>' . $v->getRes('account/title_request_pwd_reset') . '</h2>' . PHP_EOL;

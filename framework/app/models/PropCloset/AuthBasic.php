@@ -19,7 +19,6 @@ namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\AuthBase as BaseModel;
 use BitsTheater\models\Accounts; /* @var $dbAccounts Accounts */
 use BitsTheater\models\AuthGroups as AuthGroupsDB; /* @var $dbAuthGroups AuthGroupsDB */
-use BitsTheater\models\Config;
 use BitsTheater\Scene;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\IFeatureVersioning;

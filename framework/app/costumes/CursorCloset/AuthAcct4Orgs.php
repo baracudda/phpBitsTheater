@@ -83,5 +83,5 @@ class AuthAcct4Orgs extends BaseCostume
 	}
 	
 }//end class
-	
+
 }//end namespace

@@ -1,7 +1,6 @@
 <?php
 
 namespace BitsTheater\costumes ;
-use BitsTheater\Model ;
 use BitsTheater\costumes\ABitsCostume as BaseCostume ;
 use BitsTheater\models\AuthGroups ; /* @var $dbGroups AuthGroups */
 use BitsTheater\models\Permissions ; /* @var $dbPerms Permissions */
@@ -43,7 +42,7 @@ extends BaseCostume
 	 * @param $bIncludeSystemGroups boolean indicates whether to include the
 	 *  "unregistered" and "titan" groups that are defined by default when the
 	 *  system is installed
-	 * @return a dictionary of group and permission data
+	 * @return object Return a dictionary of group and permission data
 	 */
 	public function process( $bIncludeSystemGroups=false )
 	{
@@ -225,7 +224,7 @@ extends BaseCostume
 	 * Consumed by getValueForGroupPermission().
 	 * @param string $aNSName a permission namespace name
 	 * @param string $aPermName a permission name
-	 * @param unknown $aGroupIDString a stringified group ID
+	 * @param string $aGroupIDString a stringified group ID
 	 * @return boolean whether there is an explicit setting for this group
 	 */
 	protected function hasExplicitSettingFor( $aNSName, $aPermName, $aGroupIDString )

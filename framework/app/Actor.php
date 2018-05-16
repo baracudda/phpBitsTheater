@@ -645,6 +645,7 @@ implements IDirected
 	 * @throws BrokenLeg (MISSING_ARGUMENT) if no value was found in either data
 	 *  source, and the caller indicated that a result is required
 	 * @see Actor::getRequestData()
+	 * @deprecated Use getRequestData() instead.
 	 * @since BitsTheater 3.7.0
 	 */
 	protected function getEntityID( $aValue=null, $aField=null, $isRequired=true )

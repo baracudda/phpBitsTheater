@@ -17,6 +17,7 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\costumes\AccountInfoCache;
 use com\blackmoonit\Strings;
 {//namespace begin
 

@@ -4,8 +4,8 @@ use BitsTheater\Scene as MyScene;
 /* @var $v MyScene */
 use BitsTheater\costumes\ConfigNamespaceInfo;
 use BitsTheater\costumes\ConfigSettingInfo;
-use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
+
 $h = $v->cueActor('Fragments', 'get', 'csrf_header_jquery');
 $recite->includeMyHeader($h);
 

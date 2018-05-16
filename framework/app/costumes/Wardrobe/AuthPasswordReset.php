@@ -20,12 +20,8 @@ use BitsTheater\costumes\WornByModel ;
 use BitsTheater\costumes\SqlBuilder ;
 use BitsTheater\outtakes\PasswordResetException ;
 use BitsTheater\models\PropCloset\AuthBasic as AuthDB ;
-//use com\blackmoonit\database\DbUtils ;
 use com\blackmoonit\Strings ;
-//use DateTime ;
-//use DateTimeZone ;
 use PDOException ;
-use Exception ;
 { // begin namespace
 
 /**
@@ -113,7 +109,7 @@ class AuthPasswordReset extends BaseCostume
 	/**
 	 * Set the account ID to use.
 	 * @param number $aAcctID - the account ID to use.
-	 * @return BitsTheater\costumes\AuthPasswordReset
+	 * @return $this Return $this for chaining.
 	 */
 	public function setAccountID($aAcctID)
 	{
@@ -124,7 +120,7 @@ class AuthPasswordReset extends BaseCostume
 	/**
 	 * Set the auth ID to use.
 	 * @param number $aAuthID - the auth ID to use.
-	 * @return BitsTheater\costumes\AuthPasswordReset
+	 * @return $this Return $this for chaining.
 	 */
 	public function setAuthID($aAuthID)
 	{

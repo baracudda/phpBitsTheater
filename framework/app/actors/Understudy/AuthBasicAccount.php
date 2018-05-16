@@ -27,6 +27,7 @@ use BitsTheater\costumes\AuthAccountSet;
 use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\WornForAuditFields;
+use BitsTheater\models\Accounts;
 use BitsTheater\outtakes\AccountAdminException;
 use BitsTheater\outtakes\PasswordResetException;
 use com\blackmoonit\Arrays;
@@ -60,7 +61,7 @@ class AuthBasicAccount extends BaseActor
 	/**
 	 * Fetches an instance of the model usually accessed by this actor, granting
 	 * access to account data.
-	 * @return Model - an instance of the model
+	 * @return Accounts - an instance of the model
 	 * @throws BrokenLeg - 'DB_CONNECTION_FAILED' if the model can't connect to
 	 *  the database
 	 * @since BitsTheater 3.6
@@ -524,9 +525,10 @@ class AuthBasicAccount extends BaseActor
 	}
 	
 	/**
-     * Register a user via mobile app rather than on web page.
-	 * POST vars expected: name, salt, email, code, fingerprints
-     * @return Returns JSON encoded array[code, user_token, auth_token]
+     * Register a user via mobile app rather than on web page.<br>
+	 * POST vars expected: name, salt, email, code, fingerprints.<br>
+     * Response is a JSON encoded array[code, user_token, auth_token].<br>
+	 * @return string Returns the redirect URL, if defined.
 	 */
 	public function registerViaMobile() {
 		//shortcut variable $v also in scope in our view php file.
@@ -558,9 +560,10 @@ class AuthBasicAccount extends BaseActor
 	
 	/**
 	 * Mobile auth is a bit more involved than Basic HTTP auth, use this mechanism
-	 * for authenticating mobile devices (which may be rooted).
+	 * for authenticating mobile devices (which may be rooted).<br>
+     * Returns JSON encoded array[account_name, user_token, auth_token, api_version_seq]
 	 * @param string $aPing - (optional) ping string which could be used to pong a response.
-     * @return Returns JSON encoded array[account_name, user_token, auth_token, api_version_seq]
+	 * @return string Returns the redirect URL, if defined.
 	 */
 	public function requestMobileAuth($aPing=null) {
 		//shortcut variable $v also in scope in our view php file.
@@ -1091,7 +1094,7 @@ class AuthBasicAccount extends BaseActor
 	 */
 	public function ajajActivate( $aAccountID=null )
 	{
-		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$theAccountID = $this->getRequestData( $aAccountID, 'account_id' ) ;
 		$this->setActiveStatus( $theAccountID, true ) ;
 	}
 
@@ -1107,7 +1110,7 @@ class AuthBasicAccount extends BaseActor
 	 */
 	public function ajajDeactivate( $aAccountID=null )
 	{
-		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$theAccountID = $this->getRequestData( $aAccountID, 'account_id' ) ;
 		$this->setActiveStatus( $theAccountID, false ) ;
 		//TODO also remove tokens
 	}
@@ -1198,7 +1201,8 @@ class AuthBasicAccount extends BaseActor
 
 	/**
 	 * Map a mobile device with an account to auto-login once configured.
-	 * @return Returns NO CONTENT.
+	 * Returns NO CONTENT.
+	 * @return string Returns the redirect URL, if defined.
 	 * @since BitsTheater 3.6.1
 	 */
 	public function ajajMapMobileToAccount() {
@@ -1258,8 +1262,9 @@ class AuthBasicAccount extends BaseActor
 	
 	/**
 	 * Mobile devices might ask the server for what account should be used
-	 * for authenticating mobile devices (which may be rooted).
-	 * @return Returns JSON encoded array[account_name, auth_id, user_token, auth_token]
+	 * for authenticating mobile devices (which may be rooted).<br>
+	 * Returns JSON encoded array[account_name, auth_id, user_token, auth_token]
+	 * @return string Returns the redirect URL, if defined.
 	 */
 	public function requestMobileAuthAccount() {
 		$v =& $this->scene;

@@ -30,6 +30,7 @@ use BitsTheater\costumes\CursorCloset\AuthAccountSet as BaseCostume;
  */
 class AuthAcct4OrgsSet extends BaseCostume
 {
+	
 	/**
 	 * Org data to be returned.
 	 * @var AuthOrgList
@@ -68,7 +69,8 @@ class AuthAcct4OrgsSet extends BaseCostume
 	 * print() out extra properties besides the set of records here, if any.
 	 * @param string $aEncodeOptions options for `json_encode()`
 	 */
-	protected function printExtraJsonProperties( $aEncodeOptions ) {
+	protected function printExtraJsonProperties( $aEncodeOptions )
+	{
 		if (!empty($this->mOrgList)) {
 			print( ',"authorgs":');
 			$this->mOrgList->printAsJson( $aEncodeOptions );

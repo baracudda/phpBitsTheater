@@ -22,7 +22,6 @@ use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\DbAdmin;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\database\DbConnOptions;
-use com\blackmoonit\database\DbConnSettings;
 use com\blackmoonit\Strings;
 use com\blackmoonit\FileUtils;
 use PDOException;

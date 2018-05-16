@@ -806,13 +806,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Show the site messages for display (pager and such).
+	 * Show the organizations for display (pager and such).
 	 * @param ISqlSanitizer $aSqlSanitizer - the SQL sanitizer obj being used.
+	 * @param SqlBuilder $aFilter - (optional) Specifies restrictions on
+	 *   data to return; effectively populating a WHERE filter for the query.
 	 * @param string[]|NULL $aFieldList - (optional) String list representing
 	 *   which columns to return. Leaving this argument blank defaults to
 	 *   returning all table column fields.
-	 * @param SqlBuilder $aFilter - (optional) Specifies restrictions on
-	 *   data to return; effectively populating a WHERE filter for the query.
 	 * @throws DBException
 	 * @return \PDOStatement Returns the query result.
 	 */

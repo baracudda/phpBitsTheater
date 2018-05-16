@@ -233,7 +233,7 @@ class BitsAmazonS3 extends BaseModel
 		- RequestId -> "A002E663A4DB34FF"
 		}
 		*/
-		/* @var $theResults Guzzle\Service\Resource\Model */
+		/* @ var $theResults \Guzzle\Service\Resource\Model */
 		/*
 		$theResults = $this->getS3Client()->listObjects(array(
 				'Bucket' => $theBucketName,

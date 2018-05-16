@@ -2,7 +2,7 @@
 use BitsTheater\Scene as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
-use com\blackmoonit\Widgets;
+
 $recite->includeMyHeader();
 $w = '';
 

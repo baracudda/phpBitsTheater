@@ -183,7 +183,6 @@ trait WornForFeatureVersioning
 	 */
 	public function migrateFeatureVersionId($aOldFeatureId)
 	{
-		/* @var $dbMeta MetaModel */
 		$dbMeta = $this->getProp('SetupDb');
 		if (!empty($dbMeta) && $dbMeta->isConnected()) {
 			$theOldFeatureData = $dbMeta->getFeature($aOldFeatureId);

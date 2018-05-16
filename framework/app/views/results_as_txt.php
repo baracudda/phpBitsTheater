@@ -2,7 +2,6 @@
 use BitsTheater\Scene as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
-use com\blackmoonit\Strings;
 use com\blackmoonit\OutputToCSV;
 
 //if no headers are sent, send some

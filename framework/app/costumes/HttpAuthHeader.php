@@ -17,10 +17,6 @@
 
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
-use BitsTheater\costumes\IDirected;
-use BitsTheater\costumes\WornForHttpAuthBasic;
-use BitsTheater\costumes\WornForHttpAuthBroadway;
-use BitsTheater\Director;
 {//namespace begin
 
 /**
@@ -48,7 +44,8 @@ class HttpAuthHeader extends BaseCostume
 	 */
 	public function setup(IDirected $aContext) {
 		parent::setup($aContext);
-		$this->setHttpAuthHeader($_SERVER['HTTP_AUTHORIZATION']);
+		if ( !empty($_SERVER['HTTP_AUTHORIZATION']) )
+		{ $this->setHttpAuthHeader($_SERVER['HTTP_AUTHORIZATION']); }
 	}
 
 	/**

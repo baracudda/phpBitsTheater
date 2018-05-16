@@ -21,6 +21,8 @@ use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\ConfigNamespaceInfo;
 use BitsTheater\costumes\ConfigSettingInfo;
 use BitsTheater\costumes\ConfigResEntry;
+use BitsTheater\Scene;
+use com\blackmoonit\exceptions\DbException;
 use PDOException;
 {//namespace begin
 

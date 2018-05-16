@@ -31,7 +31,7 @@ class BitsAdmin extends BaseActor
 	const DEFAULT_ACTION = 'websiteStatus';
 	
 	/**
-	 * @return \BitsTheater\models\SetupDb Returns the database model reference.
+	 * @return \BitsTheater\models\PropCloset\SetupDb Returns the database model reference.
 	 */
 	protected function getMetaModel()
 	{ return $this->getProp('SetupDb'); }

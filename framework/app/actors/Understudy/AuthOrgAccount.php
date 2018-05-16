@@ -564,9 +564,9 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-     * Register a user via mobile app rather than on web page.
-	 * POST vars expected: name, salt, email, code, fingerprints
-     * Returns JSON encoded array[code, user_token, auth_token]
+     * Register a user via mobile app rather than on web page.<br>
+	 * POST vars expected: name, salt, email, code, fingerprints<br>
+     * Returns JSON encoded array[code, user_token, auth_token]<br>
 	 * @return string Returns the redirect URL, if defined.
 	 */
 	public function registerViaMobile()
@@ -600,7 +600,7 @@ class AuthOrgAccount extends BaseActor
 	
 	/**
 	 * Mobile auth is a bit more involved than Basic HTTP auth, use this mechanism
-	 * for authenticating mobile devices (which may be rooted).
+	 * for authenticating mobile devices (which may be rooted).<br>
      * Returns JSON encoded array[account_name, user_token, auth_token, api_version_seq]
 	 * @param string $aPing - (optional) ping string which could be used to pong a response.
 	 * @return string Returns the redirect URL, if defined.
@@ -1161,7 +1161,7 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-	 * Standard output for either getAll or getAllInGroup.
+	 * Standard output for either getAll.
 	 * @param \PDOStatement $aRowSet - the result set to return.
 	 * @return AuthAccountSet Returns the wrapper class used.
 	 * @since BitsTheater 3.7.0
@@ -1361,7 +1361,6 @@ class AuthOrgAccount extends BaseActor
 	 * Map a mobile device with an account to auto-login once configured.
 	 * Returns NO CONTENT.
 	 * @return string Returns the redirect URL, if defined.
-	 * @since BitsTheater 3.6.1
 	 */
 	public function ajajMapMobileToAccount()
 	{
@@ -1419,7 +1418,7 @@ class AuthOrgAccount extends BaseActor
 	
 	/**
 	 * Mobile devices might ask the server for what account should be used
-	 * for authenticating mobile devices (which may be rooted).
+	 * for authenticating mobile devices (which may be rooted).<br>
 	 * Returns JSON encoded array[account_name, auth_id, user_token, auth_token]
 	 * @return string Returns the redirect URL, if defined.
 	 */

@@ -67,13 +67,8 @@ class AuthOrg extends BaseCostume
 	 * @return array Returns <code>array[fieldname => ascending=true]</code>.
 	 */
 	static public function getDefaultSortColumns()
-	{ return array('org_name' => true); }
+	{ return array('org_title' => true); }
 	
-	static public function getSortColumns()
-	{
-	}
-
-
 	/**
 	 * Returns TRUE if the fieldname specified is sortable.
 	 * @param string $aFieldName - the field name to check.

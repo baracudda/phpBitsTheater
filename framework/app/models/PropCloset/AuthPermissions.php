@@ -18,15 +18,14 @@
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use BitsTheater\costumes\SqlBuilder;
-use BitsTheater\models\Auth;
-use BitsTheater\models\PropCloset\BitsGroups ;
+use BitsTheater\outtakes\RightsException ;
+use BitsTheater\BrokenLeg ;
+use BitsTheater\Scene;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Arrays;
 use PDO;
 use PDOStatement;
 use PDOException;
-use BitsTheater\BrokenLeg ;
-use BitsTheater\outtakes\RightsException ;
 {//namespace begin
 
 class AuthPermissions extends BaseModel {
@@ -203,7 +202,7 @@ class AuthPermissions extends BaseModel {
 		$theGroupId = $aGroupId+0;
 		//check rights for group passed in, and then all its parents
 		$theMergeList = array($theGroupId => -1);
-		/* @var $dbAuth Auth */
+		/* @var $dbAuth \BitsTheater\models\Auth */
 		$dbAuth = $this->getProp('Auth');
 		$theGroupList = Arrays::array_column_as_key($dbAuth->getGroupList(),'group_id');
 		//$this->debugLog('grouplist='.$this->debugStr($theGroupList));
@@ -294,7 +293,7 @@ class AuthPermissions extends BaseModel {
 	 * @param string $aGroupID a group ID to be merged into the result set
 	 * @param boolean $bIsFirst indicates whether this is the first group being
 	 *  processed in a loop that is ascending a chain of ancestors
-	 * @return a copy of the permissions table that was passed in; this function
+	 * @return array Returns a copy of the permissions table that was passed in; this function
 	 *  should be called such that the return value is assigned back into the
 	 *  referenced array if it is being called iteratively on a hierarchy
 	 */

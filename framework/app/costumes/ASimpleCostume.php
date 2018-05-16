@@ -39,7 +39,7 @@ abstract class ASimpleCostume extends BaseCostume {
 	/**
 	 * Given an array or object, set the data members to its contents.
 	 * @param array|object $aThing - associative array or object
-	 * @return Returns $this for chaining purposes.
+	 * @return $this Returns $this for chaining purposes.
 	 */
 	public function setDataFrom($aThing) {
 		if (!empty($aThing))

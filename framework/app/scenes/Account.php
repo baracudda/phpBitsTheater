@@ -1,7 +1,7 @@
 <?php
 
 namespace BitsTheater\scenes;
-use BitsTheater\scenes\Closet\AuthBasicAccount as MyScene;
+use BitsTheater\scenes\Closet\AuthOrgAccount as MyScene;
 {//namespace begin
 
 class Account extends MyScene
