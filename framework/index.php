@@ -35,6 +35,14 @@ try {
 	header('Location: '.SERVER_URL.'/error.php?url='.$e404->url); //if custom 404 page, found! else generates a 404 =)
 } catch (SystemExit $se) {
 	/* do nothing */
+} catch (BrokenLeg $blx) {
+	$theHttpCode = $blx->getCode();
+	http_response_code($theHttpCode);
+	if ( $theHttpCode!=401 && $theHttpCode!=403 ) {
+		Strings::errorLog($blx->getMessage(), ' cs:#012',
+				$blx->getTraceAsString()
+		);
+	}
 } catch (IDebuggableException $e) {
 	$e->setDebugCheck(function() {
 			return (!class_exists(BITS_NAMESPACE_CFGS.'Settings') || _DEBUG_APP);
