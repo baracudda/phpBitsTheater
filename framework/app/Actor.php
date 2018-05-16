@@ -556,10 +556,10 @@ implements IDirected
 	 * @param string $aMsg - (OPTIONAL) message to return.
 	 * @throws SystemExit
 	 */
-	public function throwPermissionDenied($aMsg='') {
-		if ($aMsg==='') {
-			$aMsg = getRes('generic/msg_permission_denied');
-		}
+	public function throwPermissionDenied( $aMsg=null )
+	{
+		if ( is_null($aMsg) )
+		{ $aMsg = $this->getRes('generic/msg_permission_denied'); }
 		throw new SystemExit($aMsg, 403);
 	}
 	
