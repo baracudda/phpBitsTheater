@@ -28,8 +28,10 @@ use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\models\Accounts;
+use BitsTheater\models\Auth as AuthDB; /* @var $dbAuth AuthDB */
 use BitsTheater\outtakes\AccountAdminException;
 use BitsTheater\outtakes\PasswordResetException;
+use BitsTheater\scenes\Account as MyScene;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\MailUtils;
@@ -57,6 +59,24 @@ class AuthBasicAccount extends BaseActor
 	 * @var string
 	 */
 	const MAGIC_PING_TOKEN = 'pInG';
+
+	/**
+	 * {@inheritDoc}
+	 * @return MyScene Returns a newly created scene descendant.
+	 * @see \BitsTheater\Actor::createMyScene()
+	 */
+	protected function createMyScene($anAction)
+	{ return new MyScene($this, $anAction); }
+
+	/** @return MyScene Returns my scene object. */
+	public function getMyScene()
+	{ return $this->scene; }
+
+	/**
+	 * @return AuthDB Returns the database model reference.
+	 */
+	protected function getAuthModel()
+	{ return $this->getProp(AuthDB::MODEL_NAME); }
 
 	/**
 	 * Fetches an instance of the model usually accessed by this actor, granting
@@ -1112,7 +1132,18 @@ class AuthBasicAccount extends BaseActor
 	{
 		$theAccountID = $this->getRequestData( $aAccountID, 'account_id' ) ;
 		$this->setActiveStatus( $theAccountID, false ) ;
-		//TODO also remove tokens
+		$dbAuth = $this->getAuthModel();
+		$theAuthRow = $dbAuth->getAuthByAccountId( $aAccountID );
+		$theTokensToRemove = array(
+				$dbAuth::TOKEN_PREFIX_ANTI_CSRF . '%',
+				$dbAuth::TOKEN_PREFIX_COOKIE . '%',
+				$dbAuth::TOKEN_PREFIX_LOCKOUT . '%',
+		);
+		foreach ($theTokensToRemove as $theTokenPattern) {
+			$dbAuth->removeTokensFor($theAuthRow['auth_id'],
+					$theAuthRow['account_id'], $theTokenPattern
+			);
+		}
 	}
 
 	/**
