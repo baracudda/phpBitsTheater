@@ -49,7 +49,8 @@ abstract class AuthBase extends BaseModel {
 	 */
 	public function checkTicket($aScene) {
 		if ($this->director->isInstalled()) {
-			if ($this->director->app_id != \BitsTheater\configs\Settings::getAppId()) {
+			$theSettingsClass = $this->director->getSiteSettingsClass();
+			if ( $this->director->app_id != $theSettingsClass::getAppId() ) {
 				$this->ripTicket();
 				return false;
 			}

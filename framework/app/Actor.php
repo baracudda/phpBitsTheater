@@ -545,8 +545,10 @@ implements IDirected
 	 * Returns the defined Home/Landing page of the website.
 	 * @return string
 	 */
-	public function getHomePage() {
-		return BITS_URL.'/'.configs\Settings::getLandingPage();
+	public function getHomePage()
+	{
+		$theSettingsClass = $this->director->getSiteSettingsClass();
+		return BITS_URL . '/' . $theSettingsClass::getLandingPage();
 	}
 	
 	/**

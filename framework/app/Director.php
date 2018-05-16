@@ -20,6 +20,7 @@ use com\blackmoonit\AdamEve as BaseDirector;
 use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\costumes\SiteSettings;
 use BitsTheater\models\Auth as AuthDB;
 use BitsTheater\res\ResException;
 use com\blackmoonit\Strings;
@@ -179,7 +180,8 @@ implements ArrayAccess, IDirected
 		//APP_ID is important since it is used for creating unique session variables
 		if ($this->isInstalled()) {
 			//website is installed, always get app_id from the Settings class.
-			$this->app_id = configs\Settings::APP_ID;
+			$theSettingsClass = $this->getSiteSettingsClass();
+			$this->app_id = $theSettingsClass::getAppId();
 		} else if (!empty($_SESSION[$theSessionGlobalVarName])) {
 			//website is being installed, grab app_id from session global.
 			$this->app_id = $_SESSION[$theSessionGlobalVarName];
@@ -331,7 +333,8 @@ implements ArrayAccess, IDirected
 				throw new FourOhFourExit($aUrl);
 			}
 		} elseif ($this->isInstalled() && empty($aUrl)) {
-			header('Location: ' . configs\Settings::getLandingPage());
+			$theSettingsClass = $this->getSiteSettingsClass();
+			header('Location: ' . $theSettingsClass::getLandingPage());
 		} else {
 			throw new FourOhFourExit($aUrl);
 		}
@@ -595,7 +598,8 @@ implements ArrayAccess, IDirected
 		if (empty($this->_resManager)) {
 			if ($this->canGetRes()) {
 				//TODO create a user config for "en/US" and pass that into the constructor. (lang/region)
-				$this->_resManager = new configs\I18N();
+				$theSiteLangClass = $this->getSiteLanguageClass();
+				$this->_resManager = new $theSiteLangClass();
 			} else {
 				$theInstallResMgr = BITS_NAMESPACE_RES.'ResI18N';
 				$this->_resManager = new $theInstallResMgr('en/US');
@@ -978,6 +982,28 @@ implements ArrayAccess, IDirected
 	{
 		global $theStageManager;
 		return $theStageManager->isRunningUnderCLI();
+	}
+	
+	/**
+	 * Method to use instead of 'use \BitsTheater\configs\I18N;' since the
+	 * class itself does not exist until runtime installation creates it.
+	 * @return \BitsTheater\res\ResI18N Return the SiteLangauges class.
+	 */
+	public function getSiteLanguageClass()
+	{
+		$theInstalledLangClass = BITS_NAMESPACE_RES . 'ResI18N';
+		return $theInstalledLangClass;
+	}
+	
+	/**
+	 * Method to use instead of 'use \BitsTheater\configs\Settings;' since the
+	 * class itself does not exist until runtime installation creates it.
+	 * @return SiteSettings Return the SiteSettings class.
+	 */
+	public function getSiteSettingsClass()
+	{
+		$theInstalledSettingsClass = BITS_NAMESPACE_CFGS . 'Settings';
+		return $theInstalledSettingsClass;
 	}
 	
 }//end class
