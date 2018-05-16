@@ -54,8 +54,9 @@ class BrokenLeg extends \Exception
 	// https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 	const HTTP_OK = 200 ;
 	const HTTP_CREATED = 201 ;
+	const HTTP_ACCEPTED = 202 ; // A non-committal success response; stay tuned.
 	const HTTP_NO_CONTENT = 204 ;
-	const HTTP_MULTISTATUS = 207 ; // In particular, reflects a "partial" success.
+	const HTTP_MULTISTATUS = 207 ;           // Warns of only a partial success.
 	const HTTP_MULTIPLE_CHOICES = 300 ;
 	const HTTP_MOVED_PERMANENTLY = 301 ;                 // Deprecated? see 308.
 	const HTTP_SEE_OTHER = 303 ;
@@ -225,11 +226,13 @@ class BrokenLeg extends \Exception
 					? static::ACT_DB_CONNECTION_FAILED
 					: static::ACT_DB_EXCEPTION
 					;
-			throw static::toss($aContext, $theErr, $aException->getMessage());
+			return static::toss($aContext, $theErr, $aException->getMessage());
 		}
-		else if(isset($aException->code) && isset($aException->message))
-		{
-			throw static::pratfall(static::ACT_DEFAULT, $aException->code, $aException->message);
+		else if ( !empty($aException->code) && !empty($aException->message) )
+		{ //consider 0 code the same as NULL, same with empty string "" msg.
+			return static::pratfall(static::ACT_DEFAULT,
+					$aException->code, $aException->message
+			);
 		}
 		else
 		{
