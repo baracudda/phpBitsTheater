@@ -116,6 +116,50 @@ class AuthAccount extends BaseCostume
 		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
 	}
 	
-}//end class
+	/**
+	 * Return the default columns to sort by and whether or not they should be ascending.
+	 * @return array Returns <code>array[fieldname => ascending=true]</code>.
+	 */
+	static public function getDefaultSortColumns()
+	{ return array('account_name' => true); }
 	
+	/**
+	 * Returns TRUE if the fieldname specified is sortable.
+	 * @param string $aFieldName - the field name to check.
+	 * @return boolean Returns TRUE if sortable, else FALSE.
+	 */
+	static public function isFieldSortable($aFieldName)
+	{
+		$theAllowedSorts = array_diff(static::getDefinedFields(), array(
+		));
+		return ( array_search($aFieldName, $theAllowedSorts)!==false );
+	}
+	
+	/**
+	 * What fields are individually filterable?
+	 * @return string[] Returns the list of filterable fields.
+	 */
+	static public function getFilterFieldList()
+	{ return static::getDefinedFields(); }
+	
+	/**
+	 * What fields are text searchable?
+	 * @return string[] Returns the list of searchable fields.
+	 */
+	static public function getSearchFieldList()
+	{
+		return array(
+				'account_name',
+				'email',
+				'created_by',
+				'updated_by',
+				//NOTE: not sure how to "text search" date fields, yet
+				//'created_ts',
+				//'updated_ts',
+				//'verified_ts',
+		);
+	}
+	
+}//end class
+
 }//end namespace

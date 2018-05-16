@@ -103,17 +103,15 @@ implements ISqlSanitizer
 	
 	/**
 	 * @see MyModel::getOrganizationsToDisplay()
-	 * @param SqlBuilder $theFilter - (optional) additional filtering.
+	 * @param SqlBuilder $aFilter - (optional) additional filtering.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function getOrganizationsToDisplay($theFilter=null)
+	public function getOrganizationsToDisplay(SqlBuilder $aFilter=null)
 	{
 		$theRowSet = $this->getMyModel()
-			->getOrganizationsToDisplay($this,
-					$this->getExportFieldsList(), $theFilter
-			);
+			->getOrganizationsToDisplay($this, $aFilter);
 		$this->setDataFromPDO($theRowSet);
-		//$this->filter = $theFilter?; //not supported yet
+		//$this->filter = $aFilter->?; //not supported yet
 		return $this;
 	}
 	

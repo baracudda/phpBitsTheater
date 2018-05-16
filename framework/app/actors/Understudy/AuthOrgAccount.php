@@ -1189,27 +1189,6 @@ class AuthOrgAccount extends BaseActor
 	}
 
 	/**
-	 * Consumed by ajajGetAll().
-	 * @param integer $aGroupID the ID of the account group
-	 * @since BitsTheater 3.6.0
-	 */
-	protected function getAllInGroup( $aGroupID )
-	{
-		$dbGroups = $this->getProp('AuthGroups');
-		if( ! $dbGroups->groupExists($aGroupID) )
-			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aGroupID ) ;
-		$dbAuth = $this->getProp('Auth');
-		try {
-			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene, $aGroupID);
-			$this->scene->results = APIResponse::resultsWithData(
-					$this->getAuthAccountSet($theRowSet)
-			);
-		}
-		catch (Exception $x)
-		{ throw BrokenLeg::tossException( $this, $x ) ; }
-	}
-
-	/**
 	 * Allows a site administrator to view the details of all existing accounts
 	 * on the system, or all accounts in a particular "role" (permission group).
 	 * @param integer $aGroupID - (optional) the ID of a permission group
@@ -1219,15 +1198,25 @@ class AuthOrgAccount extends BaseActor
 	public function ajajGetAll( $aGroupID=null )
 	{
 		$this->checkAllowed( 'accounts', 'view' );
-		$theGroupID = $this->getEntityID( $aGroupID, 'group_id', false ) ;
-		if( ! empty($theGroupID) )
-			return $this->getAllInGroup( $theGroupID ) ; // instead of "get all"
-		$dbAuth = $this->getProp('Auth');
+		$theGroupID = $this->getRequestData( $aGroupID, 'group_id', false ) ;
 		try {
-			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene);
-			$this->scene->results = APIResponse::resultsWithData(
-					$this->getAuthAccountSet($theRowSet)
+			if ( !empty($theGroupID) ) {
+				$dbAuthGroups = $this->getAuthGroupsModel();
+				if ( $dbAuthGroups->groupExists($theGroupID) ) {
+					$theFilter = SqlBuilder::withModel($dbAuthGroups)
+						->startWhereClause()
+						->mustAddParam('group_id', $theGroupID)
+						->endWhereClause()
+						;
+				}
+				else
+				{ throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $theGroupID ); }
+			}
+			$dbAuth = $this->getMyModel();
+			$theRowSet = $dbAuth->getAuthAccountsToDisplay($this->scene,
+					$theFilter
 			);
+			$this->setApiResults($this->getAuthAccountSet($theRowSet));
 		}
 		catch (Exception $x)
 		{ throw BrokenLeg::tossException( $this, $x ) ; }
@@ -1605,6 +1594,69 @@ class AuthOrgAccount extends BaseActor
 			}
 		}
 		catch(Exception $x)
+		{ throw BrokenLeg::tossException($this, $x); }
+	}
+
+	/**
+	 * Retrieves specific accounts by the given parameters.
+	 * @param string $aFilter - Filter string used to search for accounts
+	 * by a certain subset of field/column values.
+	 */
+	public function ajajSearch( $aSearchText=null )
+	{
+		// Assign by reference our current scene to our scope helper variable.
+		$v = $this->getMyScene();
+		// Ensure view set to response in JSON format for this endpoint.
+		$this->viewToRender('results_as_json');
+		// Ensure required endpoint permissions are held, throwing BrokenLeg otherwise.
+		$this->checkAllowed('accounts', 'view');
+		// sort_by is an alias for orderby in this endpoint
+		$v->orderby = $this->getRequestData($v->orderby, 'sort_by', false);
+		// Parse given request parameters.
+		$theSearchText = Strings::stripEnclosure(trim(
+				$this->getRequestData($aSearchText, 'search', false)
+		));
+		if ( !empty($theSearchText) )
+		{ $theSearchText = '%' . $theSearchText . '%'; }
+		$bAndSearchText = filter_var($v->andSearch, FILTER_VALIDATE_BOOLEAN);
+		//put the authgroups/authorgs ID lists under their appropriate filter key
+		if ( !empty($v->authgroups) )
+		{
+			if ( empty($v->filter) )
+			{ $v->filter = array(); }
+			if ( is_array($v->filter) )
+			{ $v->filter['group_id'] =  $v->authgroups; }
+			else //if it is not an array, it is an object
+			{ $v->filter->group_id = $v->authgroups; }
+		}
+		if ( !empty($v->authorgs) )
+		{
+			if ( empty($v->filter) )
+			{ $v->filter = array(); }
+			if ( is_array($v->filter) )
+			{ $v->filter['org_id'] =  $v->authorgs; }
+			else //if it is not an array, it is an object
+			{ $v->filter->org_id = $v->authorgs; }
+		}
+		//we wish to return auth groups and orgs list details
+		$bIncMaps = true;
+		//get default field list
+		$theFieldList = array();
+		if ( $bIncMaps )
+		{ $theFieldList[] = 'with_map_info'; }
+		try
+		{
+			//construct our iterator object
+			$theIterator = AuthAccountSet::create($this)
+				->setupPagerDataFromUserData($this->scene)
+				->setItemClassArgs($this->getMyModel(), $theFieldList)
+				;
+			$theFilter = $theIterator->getFilterForSearch($v->filter,
+					$theSearchText, $bAndSearchText);
+			$theRowSet = $theIterator->getAccountsToDisplay($theFilter);
+			$this->setApiResults($theRowSet);
+		}
+		catch ( \Exception $x )
 		{ throw BrokenLeg::tossException($this, $x); }
 	}
 

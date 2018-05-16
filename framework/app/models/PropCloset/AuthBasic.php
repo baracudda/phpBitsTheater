@@ -523,7 +523,45 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			throw $theSql->newDbException(__METHOD__, $pdoe);
 		}
 	}
-	
+
+	/**
+	 * @param Scene $aScene
+	 * @param string $aFilter
+	 */
+	public function getAccountsByFilter( $aScene, $orderByList = null, $aFilter = null )
+	{
+		$theResultSet = null ;
+		$theSql = SqlBuilder::withModel($this)->setSanitizer($aScene)->obtainParamsFrom(array(
+				'token' => self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%',
+		));
+		//query field list
+		$dbAccounts = $this->getProp('Accounts');
+		//NOTE: since we have a nested query in field list, must add HINT for getQueryTotals()
+		$theSql->startWith('SELECT')->add(SqlBuilder::FIELD_LIST_HINT_START);
+		$theSql->add('auth.*, acct.account_name');
+		//find mapped hardware ids, if any (AuthAccount costume will convert this field into appropriate string)
+		$theSql->add(', (')
+			->add("SELECT GROUP_CONCAT(`token` SEPARATOR ', ') FROM")->add($this->tnAuthTokens)
+			->add('WHERE auth.account_id=account_id')->setParamPrefix(' AND ')
+			->setParamOperator(' LIKE ')->mustAddParam('token')->setParamOperator('=')
+			->add(') AS hardware_ids');
+		//done with fields
+		$theSql->add(SqlBuilder::FIELD_LIST_HINT_END);
+		//now for rest of query
+		$theSql->add('FROM')->add($this->tnAuth)->add('AS auth');
+		$theSql->add('JOIN')->add($dbAccounts->tnAccounts)->add('AS acct ON auth.account_id=acct.account_id');
+		try
+		{
+			$theSql->applyOrderByList( $orderByList );
+			$ps = $theSql->query() ;
+			if( $ps ) $theResultSet = $ps->fetchAll() ;
+		}
+		catch( PDOException $pdoe )
+		{ $this->relayPDOException( __METHOD__, $pdoe, $theSql ) ; }
+
+		return $theResultSet ;
+	}
+
 	/**
 	 * Retrieve the auth mobile data of a particular mobile_id.
 	 * @param string $aMobileId - the ID of the row to return.

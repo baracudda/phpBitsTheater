@@ -817,7 +817,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @return \PDOStatement Returns the query result.
 	 */
 	public function getOrganizationsToDisplay(ISqlSanitizer $aSqlSanitizer,
-			$aFieldList=null, SqlBuilder $aFilter=null)
+			SqlBuilder $aFilter=null, $aFieldList=null)
 	{
 		$theSql = SqlBuilder::withModel($this)->setSanitizer($aSqlSanitizer)
 			->startWith('SELECT')->addFieldList($aFieldList)
@@ -1100,6 +1100,61 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
+	 * Show the auth accounts for display (pager and such).
+	 * @param ISqlSanitizer $aSqlSanitizer - the SQL sanitizer obj being used.
+	 * @param SqlBuilder $aFilter - (optional) Specifies restrictions on
+	 *   data to return; effectively populating a WHERE filter for the query.
+	 * @param string[]|NULL $aFieldList - (optional) String list representing
+	 *   which columns to return. Leaving this argument blank defaults to
+	 *   returning all table column fields.
+	 * @throws DBException
+	 * @return \PDOStatement Returns the query result.
+	 */
+	public function getAuthAccountsToDisplay(ISqlSanitizer $aSqlSanitizer,
+			 SqlBuilder $aFilter=null, $aFieldList=null)
+	{
+		if ( empty($aFieldList) ) {
+			$aFieldList = array(
+					'*',
+					'hardware_ids',
+			);
+		}
+		if ( is_array($aFieldList) ) {
+			$theIdx = array_search('hardware_ids', $aFieldList);
+			if ( $theIdx !== false ) {
+				//find mapped hardware ids, if any
+				//  NOTE: AuthAccount costume converts this field into the appropriate string
+				$aFieldList[$theIdx] = '('
+					. " SELECT GROUP_CONCAT(token SEPARATOR ', ')"
+					. ' FROM' . $this->tnAuthTokens . ' WHERE '
+					. $this->tnAuthAccounts . '.auth_id=' . $this->tnAuthTokens . '.auth_id'
+					. ' AND token LIKE "' . static::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%"'
+					. ') AS hardware_ids'
+					;
+			}
+		}
+		
+		$theSql = SqlBuilder::withModel($this)->setSanitizer($aSqlSanitizer);
+		//query field list NOTE: since we may have a nested query in
+		//  the field list, must add HINT for getQueryTotals()
+		$theSql->startWith('SELECT')
+			->add(SqlBuilder::FIELD_LIST_HINT_START)
+			->addFieldList($aFieldList)
+			->add(SqlBuilder::FIELD_LIST_HINT_END)
+			;
+		$theSql->add('FROM')->add($this->tnAuthAccounts);
+		$theSql->startWhereClause()->applyFilter($aFilter)->endWhereClause()
+			->retrieveQueryTotalsForSanitizer()
+			->applyOrderByListFromSanitizer()
+			->applyQueryLimitFromSanitizer()
+			;
+		//$theSql->logSqlDebug(__METHOD__); //DEBUG
+		try { return $theSql->query() ; }
+		catch( PDOException $pdox )
+		{ $this->relayPDOException( __METHOD__, $pdox, $theSql ) ; }
+	}
+	
+	/**
 	 * Gets the set of all account records.
 	 * @param Scene $aScene - (optional) Scene object in case we need user-defined query limits.
 	 * @param number $aGroupId - (optional) the group id to filter on
@@ -1107,52 +1162,15 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @throws DbException if something goes wrong
 	 */
 	public function getAccountsToDisplay($aScene=null, $aGroupId=null) {
-		$theQueryLimit = (!empty($aScene)) ? $aScene->getQueryLimit($this->dbType()) : null;
-		$theSql = SqlBuilder::withModel($this)->setSanitizer($aScene)->obtainParamsFrom(array(
-				'group_id' => $aGroupId,
-				'token' => self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%',
-		));
-		try {
-			//query field list
-			//NOTE: since we have a nested query in field list, must add HINT for getQueryTotals()
-			$theSql->startWith('SELECT')->add(SqlBuilder::FIELD_LIST_HINT_START);
-			$theSql->add('auth.*');
-			//find mapped hardware ids, if any (AuthAccount costume will convert this field into appropriate string)
-			$theSql->add(', (')
-					->add("SELECT GROUP_CONCAT(`token` SEPARATOR ', ') FROM")->add($this->tnAuthTokens)
-					->add('WHERE auth.auth_id=auth_id')->setParamPrefix(' AND ')
-					->setParamOperator(' LIKE ')->mustAddParam('token')->setParamOperator('=')
-					->add(') AS hardware_ids')
-					;
-			//done with fields
-			$theSql->add(SqlBuilder::FIELD_LIST_HINT_END);
-			//now for rest of query
-			$theSql->add('FROM')->add($this->tnAuthAccounts)->add('AS auth');
-			if (!is_null($aGroupId)) {
-				$dbAuthGroups = $this->getAuthGroupsProp();
-				$theSql->add('JOIN')->add($dbAuthGroups->tnGroupMap)->add('AS gm USING (auth_id)');
-				$theSql->startWhereClause()->mustAddParam('group_id')->endWhereClause();
-			}
-			//if we have a query limit, we may be using a pager, get total count for pager display
-			if (!empty($aScene) && !empty($theQueryLimit)) {
-				$theCount = $theSql->getQueryTotals(array(
-						'count(*)' => 'total_rows',
-						':token' => 'ntmtl', //need to match token list
-				));
-				if (!empty($theCount)) {
-					$aScene->setPagerTotalRowCount($theCount['total_rows']);
-				}
-			}
-			//if we have not caused an exception yet, apply OrderBy and set QueryLimit
-			$theSql->applyOrderByListFromSanitizer();
-			if (!empty($theQueryLimit)) {
-				$theSql->add($theQueryLimit);
-			}
-			//return the executed query result
-			return $theSql->query();
-		} catch (PDOException $pdoe) {
-			throw $theSql->newDbException(__METHOD__, $pdoe);
+		if ( isset($aGroupId) )
+		{
+			$aFilter = SqlBuilder::withModel($this)
+				->startWhereClause()
+				->mustAddParam('group_id', $aGroupId)
+				->endWhereClause()
+				;
 		}
+		return $this->getAuthAccountsToDisplay($aScene, null, $aFilter);
 	}
 
 	/**

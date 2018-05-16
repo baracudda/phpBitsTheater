@@ -22,6 +22,7 @@ use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\AuthPasswordReset;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\HttpAuthHeader;
+use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthAccountSet;
 use BitsTheater\costumes\AuthGroup;
@@ -1058,27 +1059,6 @@ class AuthBasicAccount extends BaseActor
 	}
 
 	/**
-	 * Consumed by ajajGetAll().
-	 * @param integer $aGroupID the ID of the account group
-	 * @since BitsTheater 3.6.0
-	 */
-	protected function getAllInGroup( $aGroupID )
-	{
-		$dbGroups = $this->getProp('AuthGroups');
-		if( ! $dbGroups->groupExists($aGroupID) )
-			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aGroupID ) ;
-		$dbAuth = $this->getProp('Auth');
-		try {
-			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene, $aGroupID);
-			$this->scene->results = APIResponse::resultsWithData(
-					$this->getAuthAccountSet($theRowSet)
-			);
-		}
-		catch (Exception $x)
-		{ throw BrokenLeg::tossException( $this, $x ) ; }
-	}
-
-	/**
 	 * Allows a site administrator to view the details of all existing accounts
 	 * on the system, or all accounts in a particular "role" (permission group).
 	 * @param integer $aGroupID - (optional) the ID of a permission group
@@ -1088,18 +1068,72 @@ class AuthBasicAccount extends BaseActor
 	public function ajajGetAll( $aGroupID=null )
 	{
 		$this->checkAllowed( 'accounts', 'view' );
-		$theGroupID = $this->getEntityID( $aGroupID, 'group_id', false ) ;
-		if( ! empty($theGroupID) )
-			return $this->getAllInGroup( $theGroupID ) ; // instead of "get all"
-		$dbAuth = $this->getProp('Auth');
+		$theGroupID = $this->getRequestData( $aGroupID, 'group_id', false ) ;
+		if( ! empty($theGroupID) ) {
+			$dbGroups = $this->getProp('AuthGroups');
+			if( ! $dbGroups->groupExists($theGroupID) )
+			{ throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $theGroupID ); }
+		}
 		try {
-			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene);
-			$this->scene->results = APIResponse::resultsWithData(
-					$this->getAuthAccountSet($theRowSet)
-			);
+			$dbAuth = $this->getProp('Auth');
+			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene, $theGroupID);
+			$this->setApiResults( $this->getAuthAccountSet($theRowSet) );
 		}
 		catch (Exception $x)
 		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+
+	/**
+	 * Retrieves specific accounts by the given parameters.
+	 * @param string $aFilter - Filter string used to search for accounts
+	 *   by a certain subset of field/column values.
+	 */
+	public function ajajSearch( $aSearchText=null )
+	{
+		$v = $this->getMyScene();
+		$this->viewtoRender( 'results_as_json' );
+		// Ensure needed permissions are had, otherwise throw BrokenLeg.
+		$this->checkAllowed( 'accounts', 'view' );
+		// Reference db model objects.
+		$dbAuth = $this->getProp( 'Auth' );
+		$dbAccounts = $this->getCanonicalModel();
+
+		// Parse given request parameters.
+		$theSearchText = Strings::stripEnclosure(trim(
+				$this->getRequestData($aSearchText, 'search', false)
+		));
+		if ( !empty($theSearchText) )
+		{ $theSearchText = '%' . $theSearchText . '%'; }
+		$bAndSearchText = filter_var($v->andSearch, FILTER_VALIDATE_BOOLEAN);
+		$theAuthGroupsList = ( !empty($v->authgroups) ) ? $v->authgroups : array();
+		
+		$theFilterSql = SqlBuilder::withModel( $dbAuth )
+			->obtainParamsFrom( $v->filter )->add( '1' )
+			->setParamPrefix( ' AND ' )
+			->addFieldAndParam( 'acct.account_name', 'account_name' )
+			->addFieldAndParam( 'auth.email', 'email' )
+// 			->addParam( 'mapped_imei' )
+			->addFieldAndParam( 'auth.created_ts', 'created_ts' )
+			->addFieldAndParam( 'auth.updated_ts', 'updated_ts' )
+			->addFieldAndParam( 'auth.verified_ts', 'verified_ts' )
+			->add('AND (')->setParamOperator(' LIKE ')
+			->addFieldAndParam( 'acct.account_name', 'account_name', $theSearchText )
+			->addFieldAndParam( 'auth.email', 'email', $theSearchText )
+// 			->addParam( 'mapped_imei' )
+			->addFieldAndParam( 'auth.created_ts', 'created_ts', $theSearchText )
+			->addFieldAndParam( 'auth.updated_ts', 'updated_ts', $theSearchText )
+			->addFieldAndParam( 'auth.verified_ts', 'verified_ts', $theSearchText )
+			->add(')')
+			;
+		try
+		{
+			// Search db for accounts with scene-passed and explicit parameters.
+			$theRowSet = $dbAuth->getAccountsByFilter( $v, $theOrderByList, $theFilterSql );
+			// Return the set object for the retrieved accounts in the response.
+			$this->setApiResults( $this->getAuthAccountSet( $theRowSet ) );
+		}
+		catch ( Exception $ex )
+		{ throw BrokenLeg::tossException( $this, $ex ); }
 	}
 
 	/**
