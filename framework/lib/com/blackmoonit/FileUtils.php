@@ -232,6 +232,15 @@ class FileUtils {
 		}
 	}
 	
+	/**
+	 * Return the name of a temporary file whose existance is managed and
+	 * cleaned up by PHP when no longer needed.  Useful for creating files
+	 * that only exist long enough for a client to download.
+	 * @return string Returns the full file path to the temporary file.
+	 */
+	static public function getTempFileName()
+	{ return stream_get_meta_data(tmpfile())['uri']; }
+	
 }//end class FileUtils
 
 }//end namespace com\blackmoonit
