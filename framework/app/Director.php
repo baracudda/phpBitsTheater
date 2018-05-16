@@ -94,6 +94,7 @@ implements ArrayAccess, IDirected
 	protected $dbAuth = null;
 	/**
 	 * Cache of the config model in use.
+	 * NOTE: If set to FALSE, then model is unavailable, use defined defaults.
 	 * @var \BitsTheater\models\Config
 	 */
 	protected $dbConfig = null;
@@ -471,9 +472,9 @@ implements ArrayAccess, IDirected
 			foreach($this->_propMaster as $theModelRefCountCell) {
 				/* @var $theModel Model */
 				$theModel = $theModelRefCountCell['model'];
-				if ($theModel->dbConnName == $aDbConnInfo->dbConnName) {
-					$theModel->connect($aDbConnInfo->dbConnName);
-				}
+				if ( empty($theModel) ) continue; //trivial short-circuit
+				if ($theModel->dbConnName == $aDbConnInfo->dbConnName)
+				{ $theModel->connect($aDbConnInfo->dbConnName); }
 			}
 		}
 		if ( !empty($theOldDbConn) )
@@ -502,12 +503,15 @@ implements ArrayAccess, IDirected
 		$theModelClass = static::getModelClass($aModelClass);
 		if (class_exists($theModelClass)) {
 			if (empty($this->_propMaster[$theModelClass])) {
-				try {
+				//ensure we have a non-empty reference in case of a dbconn exception
+				//  so that nested infinite loops can be avoided
 					$this->_propMaster[$theModelClass] = array(
-							'model' => new $theModelClass($this),
+						'model' => null,
 							'ref_count' => 0,
 					);
-				} catch (Exception $e) {
+				try
+				{ $this->_propMaster[$theModelClass]['model'] = new $theModelClass($this); }
+				catch (Exception $e) {
 					$this->errorLog(__METHOD__.' '.$e->getMessage());
 					throw $e ;
 				}
