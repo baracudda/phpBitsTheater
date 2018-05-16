@@ -288,6 +288,13 @@ class Strings {
 		}
 		$theVar =& $aVar;
 		$theVarType = gettype($theVar);
+		//inline functions return their type as type 'object', however,
+		//  "Closure objects cannot have properties", so check for Closures.
+		if ( $theVarType==='object' && $theVar instanceof \Closure )
+		{
+			$theVarType = 'Closure';
+			$theVar = 'inline-function-definition';
+		}
 		
 		try {
 			if (is_null($theVar)) {
@@ -833,6 +840,18 @@ class Strings {
 		}
 		else
 			$aValue = stripslashes($aValue);
+	}
+	
+	/**
+	 * Sometimes while debugging it would be nice to just print out a stack trace.
+	 * @return string Returns the current stack trace.
+	 */
+	static public function getStackTrace()
+	{
+		try
+		{ throw new \Exception(); }
+		catch (\Exception $x)
+		{ return $x->getTraceAsString(); }
 	}
 	
 }//end class
