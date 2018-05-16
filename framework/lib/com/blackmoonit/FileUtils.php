@@ -16,7 +16,6 @@
 */
 
 namespace com\blackmoonit;
-use com\blackmoonit\FinallyBlock;
 {//begin namespace
 
 class FileUtils {
@@ -41,7 +40,7 @@ class FileUtils {
 	 * Similar to file_put_contents, but forces all parts of the folder path to exist first.
 	 * @param string $aDestFile - path and filename of destination.
 	 * @param string $aFileContents - contents to be saved in $aDestFile.
-	 * @return Returns false on failure, else num bytes stored.
+	 * @return int|boolean Returns false on failure, else num bytes stored.
 	 */
 	static public function file_force_contents($aDestFile, $aData, $aDataSize, $mode=0755, $flags=0) {
 		try {
@@ -57,7 +56,8 @@ class FileUtils {
 	 * @param string $aSrcFilePath - template source.
 	 * @param string $aDestFilePath - template destination.
 	 * @param array $aReplacements - (optional) replacement name=>value inside the template.
-	 * @throws Exception on failure.
+	 * @return int|boolean Returns false on failure, else num bytes stored.
+	 * @throws \Exception on failure.
 	 */
 	static public function copyFileContents($aSrcFilePath, $aDestFilePath, $aReplacements=array()) {
 		$theSrcContents = file_get_contents($aSrcFilePath);
@@ -80,7 +80,7 @@ class FileUtils {
 	/**
 	 * Writing to a network stream may end before the whole string is written.
 	 * Return value of fwrite() may be checked. Windows quirk handled as well.
-	 * @param file_stream $aFileStream - the file stream instance.
+	 * @param resource $aFileStream - the file stream instance.
 	 * @param string $aText - the string data to write out.
 	 * @param number $aRetryCount - number of attempts before giving up.
 	 * @return number - Returns the # of bytes written out.
@@ -155,7 +155,7 @@ class FileUtils {
 	 * individually, but all indicate that the line is generally unusable/empty
 	 * and should be skipped by any looping algorithm that is processing all
 	 * lines of a CSV file.
-	 * @param unknown $aInput the value returned by a call to
+	 * @param mixed $aInput the value returned by a call to
 	 *  <code>fgetcsv()</code>
 	 * @return boolean <code>true</code> if the return value can be considered
 	 *  "empty" in terms of CSV input

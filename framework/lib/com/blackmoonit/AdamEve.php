@@ -16,9 +16,8 @@
  */
 
 namespace com\blackmoonit;
-use com\blackmoonit\Strings;
-use \stdClass as BaseClass;
-use \ReflectionClass;
+use stdClass as BaseClass;
+use ReflectionClass;
 {//begin namespace
 
 /**

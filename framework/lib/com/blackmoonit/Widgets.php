@@ -16,8 +16,6 @@
  */
 
 namespace com\blackmoonit;
-use com\blackmoonit\Strings;
-use com\blackmoonit\Arrays;
 use DateTime;
 {//begin namespace
 

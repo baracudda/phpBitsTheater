@@ -4,7 +4,8 @@ use BitsTheater\res\BitsMenuInfo as BaseResources;
 use BitsTheater\costumes\MenuItemResEntry;
 {//begin namespace
 
-class MenuInfo extends BaseResources {
+class MenuInfo extends BaseResources
+{
 	//app-specific menu items
 	public $menu_item_a;
 	public $menu_item_b;

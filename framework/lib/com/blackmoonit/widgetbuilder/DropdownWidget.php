@@ -17,7 +17,6 @@
 
 namespace com\blackmoonit\widgetbuilder ;
 use com\blackmoonit\Widgets ;
-use com\blackmoonit\widgetbuilder\BlockWidget ;
 {
 
 class DropdownWidget extends BlockWidget

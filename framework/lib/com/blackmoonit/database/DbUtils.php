@@ -17,12 +17,11 @@
 
 namespace com\blackmoonit\database;
 use com\blackmoonit\Strings;
-use \PDO;
-use \PDOException;
-use \UnexpectedValueException;
-use \DateTime;
-use \DateTimeZone;
-use \DateInterval;
+use PDO;
+use PDOException;
+use UnexpectedValueException;
+use DateTime;
+use DateInterval;
 {//begin namespace
 
 class DbUtils {
@@ -120,7 +119,7 @@ class DbUtils {
 
 	/**
 	 * Check all columns listed in $aFieldSet of $aDataRow against the $aValidateMethod.
-	 * @param Class $aObj
+	 * @param object $aObj
 	 * @param array $aDataRow
 	 * @param array $aFieldSet
 	 * @param string $aValidateMethod
@@ -149,7 +148,7 @@ class DbUtils {
 
 	/**
 	 * Validates an array of row-arrays.
-	 * @param Class $aObj - class containing validation functions other than those provided in this class.
+	 * @param object $aObj - class containing validation functions other than those provided in this class.
 	 * @param array $aDataSet - array of row-arrays.
 	 * @param array $aFieldSet - array of fieldnames to determine which columns will be passed into the $aValidationMethod.
 	 * @param string $aValidateMethod - validation method to use.
@@ -180,7 +179,7 @@ class DbUtils {
 	
 	/**
 	 * In-place conversion from convertion from UUID string into 32char BINARY text field.
-	 * @param access $aDataRow
+	 * @param \ArrayAccess $aDataRow
 	 * @param string $aFieldName
 	 */
 	static public function cnvUUID2TextIdField(&$aDataRow, $aFieldName) {
@@ -191,7 +190,7 @@ class DbUtils {
 	
 	/**
 	 * In-place conversion from text field into a well-formed UTF8 string
-	 * @param access $aDataRow
+	 * @param \ArrayAccess $aDataRow
 	 * @param string $aFieldName
 	 */
 	static public function cnvToUTF8Field(&$aDataRow, $aFieldName) {
@@ -202,7 +201,7 @@ class DbUtils {
 	
 	/**
 	 * In-place conversion from UTF-8 text field into a string
-	 * @param access $aDataRow
+	 * @param \ArrayAccess $aDataRow
 	 * @param string $aFieldName
 	 */
 	static public function cnvFromUTF8Field(&$aDataRow, $aFieldName) {
@@ -213,7 +212,7 @@ class DbUtils {
 
 	/**
 	 * In-place conversion from Unix timestamp to MySQL timestamp string.
-	 * @param access $aDataRow
+	 * @param \ArrayAccess $aDataRow
 	 * @param string $aFieldName
 	 */
 	static public function cnvTimestampUnix2MySql(&$aDataRow, $aFieldName) {
@@ -243,7 +242,7 @@ class DbUtils {
 
 	/**
 	 * Convert unfetched rows from a result set and fetch them all into array form.
-	 * @param PDOStatement|array $aRowSet - result set or an array
+	 * @param \PDOStatement|array $aRowSet - result set or an array
 	 * @param string $aFieldNameKey - fieldname to use as key entries.
 	 * @param string $aFieldNameValue - fieldname to use as values, if omitted, use entire row array
 	 * @return array Returns the dataset as an array with keys based on $aFieldNameKey.
