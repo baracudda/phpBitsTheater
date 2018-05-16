@@ -17,9 +17,9 @@
 
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseActor;
+use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\Scene as MyScene;
-use BitsTheater\models\Config;
 use com\blackmoonit\exceptions\FourOhFourExit;
 use com\blackmoonit\exceptions\SystemExit;
 use com\blackmoonit\Strings;
@@ -59,11 +59,6 @@ implements IDirected
 	 */
 	public $director = null;
 	/**
-	 * Config model used essentially like an array (ie. config[some_key]; )
-	 * @var Config
-	 */
-	public $config = null;
-	/**
 	 * Scene interface used like properties (ie. scene->some_var; (which can be functions))
 	 * @var MyScene
 	 */
@@ -87,6 +82,21 @@ implements IDirected
 	protected $myPublicMethodsAccessControl = array();
 	
 	/**
+	 * PHP Magic method to get properties that do not exist.
+	 * @param string $aName - the property to get.
+	 * @return mixed Returns what is needed.
+	 */
+	public function __get($aName)
+	{
+		if ($this->director->canConnectDb() && $this->director->isInstalled())
+		{
+			//support legacy property removed.
+			if ($aName=='config')
+			{ return $this->getProp('Config'); }
+		}
+	}
+	
+	/**
 	 * Once created, set up the Actor object for use.
 	 * @param Director $aDirector - the Director object.
 	 * @param string $anAction - the method attempting to be called via URL.
@@ -96,9 +106,6 @@ implements IDirected
 		$this->action = $anAction;
 		$this->setupMethodAccessControl();
 		$this->scene = $this->createMyScene($anAction);
-		if ($this->director->canConnectDb() && $this->director->isInstalled()) {
-			$this->config = $this->director->getProp('Config');
-		}
 		$this->bHasBeenSetup = true;
 	}
 
@@ -107,7 +114,6 @@ implements IDirected
 	 * @see \com\blackmoonit\AdamEve::cleanup()
 	 */
 	public function cleanup() {
-		$this->director->returnProp($this->config);
 		unset($this->director);
 		unset($this->action);
 		unset($this->scene);
@@ -166,7 +172,20 @@ implements IDirected
 	/** @return MyScene Returns my scene object. */
 	public function getMyScene()
 	{ return $this->scene; }
-
+	
+	/**
+	 * Should the endpoint being rendered be considered an API endpoint for
+	 * returning the standard APIResponse/BrokenLeg results? Used by perform().
+	 * @param string $aAction - the endpoint method name.
+	 * @param string[] $aQuery - the endpoint parameters.
+	 * @return boolean Returns TRUE if the endpoint should be considered one
+	 *   for the purposes of returning an APIResponse.
+	 */
+	protected function isApiResult( $aAction, $aQuery )
+	{
+		return ( $this->renderThisView==='results_as_json' );
+	}
+	
 	/**
 	 * Once it has been determined that we wish to and are allowed to perform
 	 * an action, this method actually does the work calling the method.
@@ -207,12 +226,21 @@ implements IDirected
 			return false;
 		}
 		catch (BrokenLeg $e) {
-			if ($this->renderThisView==='results_as_json') {
+			if ( $this->isApiResult($anAction, $aQuery) ) {
 				//API calls need to eat the exception and give a sane HTTP Response
 				$e->setErrorResponse($this->scene);
 			} else {
 				//non-API calls need to bubble up the exception
 				throw $e;
+			}
+		}
+		catch (\Exception $x) {
+			if ( $this->isApiResult($anAction, $aQuery) ) {
+				//API calls need to eat the exception and give a sane HTTP Response
+				BrokenLeg::tossException($this, $x)->setErrorResponse($this->scene);
+			} else {
+				//non-API calls need to bubble up the exception
+				throw $x;
 			}
 		}
 		if (empty($theResult))
@@ -585,12 +613,8 @@ implements IDirected
 	 * @see Director::getSiteMode()
 	 * @return string Returns the site mode config setting.
 	 */
-	public function getSiteMode() {
-		if ($this->config)
-			return $this->config['site/mode'];
-		else
-			return self::SITE_MODE_NORMAL;
-	}
+	public function getSiteMode()
+	{ return $this->director->getSiteMode(); }
 	
 	/**
 	 * Gets a value from an incoming request, based on a value fetched from a
@@ -652,7 +676,19 @@ implements IDirected
 	 */
 	protected function getEntityID( $aValue=null, $aField=null, $isRequired=true )
 	{ return $this->getRequestData( $aValue, $aField, $isRequired ) ; }
-
+	
+	/**
+	 * Helper method to easily set the successful results of an API endpoint.
+	 * @param mixed $aResults - the result data you wish to return.
+	 * @return APIResponse Returns the response object so you can work with it
+	 *   if you have more to do.
+	 */
+	protected function setApiResults( $aResults )
+	{
+		$this->scene->results = APIResponse::resultsWithData($aResults);
+		return $this->scene->results;
+	}
+	
 }//end class
 
 }//end namespace
