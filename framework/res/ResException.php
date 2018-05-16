@@ -117,7 +117,10 @@ class ResException extends Exception implements IDebuggableException {
 	
 	public function debugPrint($aMsg=null) {
 		return $this->mDebuggableExceptionTrait->debugPrint($aMsg);
-	}	
+	}
+	
+	public function getException()
+	{ return $this->mDebuggableExceptionTrait->getException(); }
 	
 }//end class
 
