@@ -35,7 +35,17 @@ abstract class ABitsAccount extends BaseActor {
 	 */
 	protected function createMyScene($anAction)
 	{ return new MyScene($this, $anAction); }
-
+	
+	/**
+	 * {@inheritDoc}
+	 * @see \BitsTheater\Actor::isApiResult()
+	 */
+	protected function isApiResult( $aAction, $aQuery )
+	{
+		return ( parent::isApiResult($aAction, $aQuery) ||
+				$aAction == 'loginAs' );
+	}
+	
 	/**
 	 * View the currently logged in account information. (page render)
 	 * @param number $aAcctId - the account to view, if allowed to see one besides the current.
@@ -46,7 +56,7 @@ abstract class ABitsAccount extends BaseActor {
 		$v =& $this->scene;
 		
 		if ($this->isGuest() || empty($aAcctId)) {
-			return $v->getSiteUrl($this->config['auth/register_url']);
+			return $v->getSiteUrl($this->getConfigSetting('auth/register_url'));
 		}
 		$dbAccounts = $this->getProp('Accounts');
 		$v->dbAccounts = $dbAccounts;
@@ -124,7 +134,7 @@ abstract class ABitsAccount extends BaseActor {
 		$v =& $this->scene;
 		$this->setupLoginInfo($v);
 		$v->action_url_logout = $v->getSiteUrl(
-				$this->config['auth/logout_url']
+				$this->getConfigSetting('auth/logout_url')
 		);
 	}
 	
@@ -250,7 +260,7 @@ abstract class ABitsAccount extends BaseActor {
 
 		return $this ;
 	}
-
+	
 }//end class
 
 }//end namespace
