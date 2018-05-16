@@ -18,6 +18,7 @@
 namespace com\blackmoonit;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use Exception;
+use Normalizer ;
 use PDOStatement;
 {//begin namespace
 
@@ -158,6 +159,38 @@ class Strings {
 	static public $crypto_strength = '08';
 	
 	/**
+	 * A maximum length of a "secret" input. Designed to protect against overly-
+	 * long inputs and buffer overruns.
+	 *
+	 * While NIST standards dictate that password inputs shall not be truncated,
+	 * realistically speaking, they also acknowledge that there is a necessary
+	 * upper bound to inputs, and provide a "lowest maximum" of 64 characters as
+	 * a guideline. The Blowfish encryption algorithm will process only the
+	 * first 72 characters anyway. Who's going to use a longer password than
+	 * that? Randall Munroe? Well, when he enters an essay on
+	 * <tt>LlamaQuidditchGalaxyQuestCrossoverProjectWhatIf</tt> as a password,
+	 * we can update the algorithm. Until then, this will suffice.
+	 *
+	 * @var integer
+	 * @see \com\blackmoonit\Strings::hasher()
+	 */
+	const MAX_SECRET_INPUT_BUFFER = 999 ;
+	/**
+	 * If the length of the normalized secret is longer than this number, then
+	 * the characters after this position in the string will be replaced by the
+	 * count of all characters in the string.
+	 *
+	 * With this number set to 69, and an enforced maximum value of 999 (three
+	 * decimal digits), there is exactly enough room to have this many
+	 * characters, plus the count of all characters, within the 72-position
+	 * limit of Blowfish's algorithm. Nice.
+	 *
+	 * @var integer
+	 * @see \com\blackmoonit\Strings::hasher()
+	 */
+	const LENGTH_HASH_MARGIN = 69 ;
+
+	/**
 	 * Blowfish pw encryption mechanism: 76 chars long (60 char encryption + 16 char random salt)
 	 * <pre>
 	 * $pwhash = hasher($pwInput); //encrypts $pw and appends the generated random salt
@@ -170,14 +203,32 @@ class Strings {
 	 * If both the password and encrypted data are passed in, TRUE is returned if they "match",
 	 * else FALSE is returned.
 	 */
-	static public function hasher($aPwInput, $aEncryptedData = false) {
-		//only first 72 chars are encoded via blowfish,
-		//  and also try to protect against unseemly long string/time attacks
-		if (strlen($aPwInput)<64) {
-			$thePwInput = urlencode($aPwInput);
-		} else {
-			$thePwInput = urlencode(substr($aPwInput,0,64).min(array(999,strlen($aPwInput))));
+	static public function hasher($aPwInput, $aEncryptedData = false)
+	{
+		// Protect against buffer-overrun attacks or other overlong inputs.
+		$thePwInput = ( mb_strlen( $aPwInput, 'UTF-8' ) > self::MAX_SECRET_INPUT_BUFFER ?
+			mb_substr( $aPwInput, 0, self::MAX_SECRET_INPUT_BUFFER, 'UTF-8' ) :
+			$aPwInput ) ;
+		// Normalize the input string. See NIST 800-63-3 section 5.1.1.2.
+		$thePwInput = Normalizer::normalize( $thePwInput, Normalizer::FORM_KC );
+		$thePwInput = urlencode($thePwInput) ;     // ...and then URL-encode it.
+		// If, after all that, the string is longer than the margin, replace the
+		// trailing part of the string with the integer length of the whole
+		// string.
+		//
+		// Before: 78 characters
+		// abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz
+		// After: 71 characters (69+2)
+		// abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopq78
+		if( strlen($thePwInput) > self::LENGTH_HASH_MARGIN )
+		{
+			$thePwInput = substr( $thePwInput, 0, self::LENGTH_HASH_MARGIN )
+					. min(array( 999, strlen($thePwInput) )) ;
 		}
+		
+		// Un-comment this line to see the pre-processing logic in action:
+		// static::debugLog( __METHOD__ . ' [DEBUG] Pre-hash processed secret: ' . $thePwInput ) ;
+			
 		/* Security advisory from PHP.net:
 		 * Developers targeting PHP 5.3.7+ should use "$2y$" in preference to "$2a$".
 		 * Full details: http://php.net/security/crypt_blowfish.php
@@ -255,7 +306,7 @@ class Strings {
 				$aUUID
 		);
 	}
-
+	
 	const DEBUG_VAR_DUMP_FLAG = '__DEBUG_VAR_DUMP_FLAG';
 	/**
 	 * Recursive var dump that takes into account the magic method __debugInfo(). This method

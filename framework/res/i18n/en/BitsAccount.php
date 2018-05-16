@@ -97,6 +97,16 @@ class BitsAccount extends BaseResources
 		'Account cannot be updated to belong to the specified group.' ;
 	public $errmsg_cannot_create_account_titan =
 		'Account cannot be created belonging to the specified group.' ;
+	/**
+	 * Thrown when a user's input for a password change is shorter than the
+	 * minimum length set in the instance's configs.
+	 * This is the programmatic error token.
+	 * @var string
+	 * @since BitsTheater [NEXT]
+	 * @see \BitsTheater\outtakes\AccountAdminException::MSG_PASSWORD_MINIMUM_LENGTH
+	 */
+	public $errmsg_password_minimum_length =
+		'Passwords must be at least %1$s characters in length.' ;
 	
 	// "Help" messages should be initialized in the initHelpText() function that
 	// is invoked by the constructor.
