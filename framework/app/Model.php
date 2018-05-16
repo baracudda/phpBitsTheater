@@ -134,9 +134,9 @@ implements IDirected
 			{ unset($this->db); }
 			$this->db = $this->myDbConnInfo->connect();
 		} catch (PDOException $pdox) {
-			throw new DbException($pdox,
-					'Failed to connect to [' . $this->myDbConnInfo->dbName . ']'
-			);
+			throw BrokenLeg::tossException($this, $pdox)
+				->putExtra('dbconn', $this->myDbConnInfo->dbConnName)
+				;
 		}
 		if ( !empty($this->db) ) {
 			$this->setupAfterDbConnected();
