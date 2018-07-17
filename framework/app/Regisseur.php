@@ -427,9 +427,6 @@ class Regisseur
 	public function registerLibLoaders()
 	{
 		require_once( BITS_LIB_PATH .'autoloader.php' );
-		//phpmailer autoloader
-		require_once( BITS_LIB_PATH . 'phpmailer' . DIRECTORY_SEPARATOR
-				. 'PHPMailer' . DIRECTORY_SEPARATOR . 'PHPMailerAutoload.php' ) ;
 	}
 	
 	/**

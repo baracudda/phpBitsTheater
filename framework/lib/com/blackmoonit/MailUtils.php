@@ -17,8 +17,8 @@
 
 namespace com\blackmoonit ;
 //require_once( 'PHPMailerAutoload.php' ) ; // for outgoing mail features
-// ^^^ will be done via Regisseur::registerLibLoaders()
-use PHPMailer;
+// ^^^ will be done via lib/vendor/compose magic
+use PHPMailer\PHPMailer\PHPMailer;
 {//begin namespace
 
 /**
