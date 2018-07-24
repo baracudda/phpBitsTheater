@@ -30,6 +30,9 @@ class MailUtils
 {
 	private function __construct() {} // static invocation only
 	
+	/** @var string The fully qualified name of the object class we use. */
+	const CLASS_OF_MAILER = PHPMailer::class;
+	
 	/**
 	 * PCRE regex pattern to recognize an email address. This is actually a
 	 * narrowing of http://tools.ietf.org/html/rfc5322#section-3.4 which limits

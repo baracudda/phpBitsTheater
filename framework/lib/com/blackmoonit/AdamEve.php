@@ -126,6 +126,20 @@ class AdamEve extends BaseClass {
 	}
 	
 	/**
+	 * Static version of logStuff().
+	 * @see AdamEve::logStuff()
+	 */
+	static protected function debugOutput( $_ )
+	{
+		$theLogLine = '';
+		foreach (func_get_args() as $arg)
+		{
+			$theLogLine .= ( is_string($arg) ) ? $arg : Strings::debugStr($arg);
+		}
+		Strings::debugLog( $theLogLine );
+	}
+	
+	/**
 	 * If isDebugging, this function will print out $s, else it will
 	 * log as [dbg] instead.
 	 * @param string $s - string parameter to print out

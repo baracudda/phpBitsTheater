@@ -131,6 +131,39 @@ class FileUtils {
 	}
 	
 	/**
+	 * Delete a folder's contents and, optionally, the folder itself.
+	 * @param string $aFolderPath - the path of the folder.
+	 * @param boolean $bOnlyRemoveContents - (OPTIONAL) if TRUE, keep the
+	 *   folder but delete all its contents.
+	 * @return boolean Returns TRUE if successful.
+	 * @throws \UnexpectedValueException if the path cannot be found or is not
+	 *   a directory.
+	 */
+	static public function deleteFolder( $aFolderPath, $bOnlyRemoveContents=false )
+	{
+		$theFolderPath = realpath($aFolderPath);
+		$theFolderIterator = new \RecursiveDirectoryIterator(
+				$theFolderPath, \FilesystemIterator::SKIP_DOTS
+		);
+		$theFileIterator = new \RecursiveIteratorIterator($theFolderIterator,
+				\RecursiveIteratorIterator::CHILD_FIRST
+		);
+		$theResult = true;
+		$theFileIterator->rewind();
+		while ($theResult && $theFileIterator->valid()) {
+			// if we are supposed to delete everything, or all but root folder
+			if ( !$bOnlyRemoveContents || $theFileIterator->key() != $theFolderPath ) {
+				$theResult = ( $theFile->isDir() ) ? rmdir($theFile) : unlink($theFile);
+			}
+			// if we cannot remove even one of the contents, may as well stop
+			if ( !$theResult ) break;
+			// grab the next in the list
+			$theFileIterator->next();
+		}
+		return $theResult;
+	}
+	
+	/**
 	 * Appends a path segment onto an existing path which may or may not have
 	 * a directory separator already.
 	 * @param string $aExistingPath - the existing path string.
