@@ -552,12 +552,39 @@ class SqlBuilder extends BaseCostume {
 	
 	/**
 	 * Adds a string to the SQL prefixed with a space (just in case).
+	 *
+	 * <b><i><u>DO NOT</u></i></b> use this method to write values gathered from
+	 * user input directly into a query. <b><i><u>ALWAYS</u></i></b> use the
+	 * <code>addParam()</code> or similar methods, or pre-sanitize the data
+	 * value before writing it into the query.
+	 *
 	 * @param string $aStr - patial SQL sting to add.
 	 * @return \BitsTheater\costumes\SqlBuilder Returns $this for chaining.
 	 */
 	public function add($aStr) {
 		$this->mySql .= ' '.$aStr;
 		return $this;
+	}
+	
+	/**
+	 * Adds a string to the SQL, prefixed with a space, and wrapped in
+	 * single-quotes, representing a literal string in an SQL statement.
+	 *
+	 * <b><i><u>DO NOT</u></i></b> use this method to write values gathered from
+	 * user input directly into a query. <b><i><u>ALWAYS</u></i></b> use the
+	 * <code>addParam()</code> or similar methods, or pre-sanitize the data
+	 * value before writing it into the query.
+	 *
+	 * @param string $aStr the string to be wrapped and appended
+	 * @param boolean $bAndAComma (optional:false) also append a comma and an
+	 *  additional space. Useful for composing lists.
+	 * @return \BitsTheater\costumes\SqlBuilder $this
+	 * @since BitsTheater [NEXT]
+	 */
+	public function addQuoted( $aStr, $bAndAComma=false )
+	{
+		$this->mySql .= ' \'' . $aStr . ( $bAndAComma ? '\', ' : '\'' ) ;
+		return $this ;
 	}
 	
 	/**
