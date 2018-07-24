@@ -192,7 +192,7 @@ abstract class ABitsAccount extends BaseActor {
 	 */
 	public function ajajDelete( $aAccountID=null )
 	{
-		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$theAccountID = $this->getRequestData( $aAccountID, 'account_id' ) ;
 		if( $this->checkCanDeleteAccount( $theAccountID ) )
 			$this->deleteAccountData( $theAccountID ) ;
 		$this->scene->results = APIResponse::noContentResponse() ;
@@ -262,56 +262,16 @@ abstract class ABitsAccount extends BaseActor {
 	}
 	
 	/**
-	 * Executes a series of checks to validate an input received from a user as
-	 * part of a password change request.
-	 * Each check is a separate child function, and each may throw its own
-	 * sorts of exceptions.
-	 * An implementation/descendant class may override this method to select a
-	 * different list of checks, perform them in a different order, or add new
+	 * Executes a series of checks to validate an input received from a user
+	 * as part of a password change request. Default is to just approve it.
+	 * An implementation/descendant class may override this method to add new
 	 * custom checks.
-	 * @param string $aSecret the unencrypted user input
+	 * @param string $aSecret - the unencrypted user input
 	 * @since BitsTheater [NEXT]
-	 * @link https://pages.nist.gov/800-63-3/sp800-63b.html#memsecret NIST 800-63-3 Digital Identity Guidelines &sect;5.1.1 Memorized Secrets
 	 */
 	protected function validatePswdChangeInput( $aSecret )
-	{
-		$this->validatePswdMinLength($aSecret) ;
-		return true ;
-	}
+	{ return true ; }
 	
-	/**
-	 * Hard-coded minimum length for a new password.
-	 * @var integer
-	 * @since BitsTheater [NEXT]
-	 */
-	const PSWD_DEFAULT_MIN_LENGTH = 8 ;
-	/**
-	 * Configurable minimum length for a new password.
-	 * Initialized with PSWD_DEFAULT_MIN_LENGTH but may be overwritten by a
-	 * configuration item in in an implementation class.
-	 * @var integer
-	 * @since BitsTheater [NEXT]
-	 */
-	protected $myPswdMinLength = self::PSWD_DEFAULT_MIN_LENGTH ;
-	
-	/**
-	 * Verifies that a password input's length exceeds the minimum.
-	 * @param string $aSecret - the password.
-	 * @since BitsTheater [NEXT]
-	 */
-	protected function validatePswdMinLength( $aSecret )
-	{
-		$theLength = mb_strlen( $aSecret, 'UTF-8' ) ;
-		if( $theLength < $this->myPswdMinLength )
-		{
-			throw AccountAdminException::toss( $this,
-					AccountAdminException::ACT_PASSWORD_MINIMUM_LENGTH,
-					array( $this->myPswdMinLength )
-				);
-		}
-		return true ;
-	}
-
 }//end class
 
 }//end namespace
