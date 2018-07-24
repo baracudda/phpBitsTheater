@@ -55,7 +55,12 @@ trait WornForExportData
 		if (!empty($aExportData) && !empty($this->mExportTheseFields)) {
 			$o = new SimpleCostume();
 			foreach ($this->mExportTheseFields as $theField) {
-				$o->{$theField} = $aExportData->{$theField};
+				if ( isset($aExportData->{$theField}) ) {
+					$o->{$theField} = $aExportData->{$theField};
+				}
+				else {
+					$o->{$theField} = null;
+				}
 			}
 			return $o;
 		} else
