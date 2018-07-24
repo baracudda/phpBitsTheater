@@ -26,6 +26,9 @@ class Strings {
 
 	private function __construct() {} //do not instantiate
 
+	/** @var array Logging config information */
+	protected static $log_config = array();
+
 	/**
 	 * Return everything after $aNeedle is found in $aHaystack.
 	 * @param string $aHaystack - string to search through.
@@ -480,7 +483,9 @@ class Strings {
 		{
 			$theLogLine .= ( is_string($arg) ) ? $arg : self::debugStr($arg);
 		}
-		syslog(LOG_ERR, self::debugPrefix() . $theLogLine);
+		//TODO introduce more log levels beyond "debug" and "error" someday
+		//  until then, all "debugLog()" calls are informational
+		self::log(LOG_INFO, self::debugPrefix() . $theLogLine);
 	}
 	
 	/**
@@ -510,7 +515,75 @@ class Strings {
 		{
 			$theLogLine .= ( is_string($arg) ) ? $arg : self::debugStr($arg);
 		}
-		syslog(LOG_ERR, self::errorPrefix() . $theLogLine);
+		self::log(LOG_ERR, self::errorPrefix() . $theLogLine);
+	}
+
+	/**
+	 * Writes log messages to the logging destination
+	 * Defaults to syslog unless $_ENV['LOG_PATH'] is set
+	 * @param int $priority - log level
+	 * @param string $message - log message
+	 */
+	static public function log($level, $message)
+	{
+		// init log config if this is our first time through here
+		if (empty(self::$log_config)) {
+			// Encode all logs as simple JSON structure? accepts 1, 0, true, false, yes, no, etc.
+			self::$log_config['JSON'] = filter_var(getenv('LOG_JSON'), FILTER_VALIDATE_BOOLEAN);
+			// Force all logs into a particular log level? //legacy used to use 3, LOG_ERR
+			self::$log_config['LOG_LEVEL'] = filter_var(getenv('LOG_LEVEL'),
+					FILTER_VALIDATE_INT, array("options" => array(
+							'min_range' => 1, //LOG_ALERT
+							'max_range' => 7, //LOG_DEBUG
+					))
+			);
+			// Output logs to a custom file?
+			self::$log_config['PATH'] = false;
+			// ensure log path is not too wonky
+			$theLogPath = getenv('LOG_PATH');
+			if ( !empty($theLogPath) ) {
+				$theDrive = '';
+				$thePathSegs = explode(DIRECTORY_SEPARATOR, $theLogPath);
+				// if first segment is a Windows drive letter, preserve it
+				if ( preg_match('/^[A-Za-z]:$/', $thePathSegs[0]) ) {
+					$theDrive = strtoupper(array_shift($thePathSegs)) . DIRECTORY_SEPARATOR;
+				}
+				// sanitize each segment of the log path
+				foreach( $thePathSegs as &$theSeg ) {
+					$theSeg = self::sanitizeFilename($theSeg, '');
+					//if the path segment becomes empty after sanitization, remove it
+					if ( empty($theSeg) ) {
+						unset($theSeg);
+					}
+				}
+				// put it all back together
+				self::$log_config['PATH'] = $theDrive . implode(DIRECTORY_SEPARATOR, $thePathSegs);
+			}
+		}
+
+		// do we encode the log as JSON? Add a timestamp either way
+		$ts = gmdate("Y-m-d\TH:i:s\Z");
+		if (self::$log_config['JSON']) {
+			$theMsg = json_encode(array('level' => $level, 'message' => $message, 'timestamp' => $ts)) . PHP_EOL;
+		} else {
+			$theMsg = '[' . gmdate("Y-m-d\TH:i:s\Z") . ']: ' . $message . PHP_EOL;
+		}
+
+		// do we use a custom log file?
+		if (self::$log_config['PATH']) {
+			try {
+				$handle = fopen(self::$log_config['PATH'], 'a');
+				fwrite($handle, $theMsg);
+				fclose($handle);
+				return;
+			}
+			catch (\Exception $x) {
+				//eat any error and let code fall through to fallback log
+			}
+		}
+		// if custom log not used or fails, ensure we write to system log at least
+		$theLogLevel = (self::$log_config['LOG_LEVEL']) ? self::$log_config['LOG_LEVEL'] : $level;
+		syslog($theLogLevel, $message);
 	}
 	
 	/**
@@ -904,6 +977,20 @@ class Strings {
 	static public function createHttpHeader( $aName, $aValue )
 	{
 		return self::normalizeHttpHeaderName($aName) . ': ' . $aValue;
+	}
+	
+	/**
+	 * Splits out an HTTP header into its name and value.
+	 * @param string $aHeader - the entire header string, "some-name: value".
+	 * @return string[] Returns the raw header name and its raw header value.
+	 */
+	static public function splitHttpHeader( $aHeader )
+	{
+		$theNameValueSeparatorPos = strpos($aHeader, ':');
+		return ( $theNameValueSeparatorPos >= 0 ) ?
+			array( trim(substr($aHeader, 0, $theNameValueSeparatorPos)),
+					trim(substr($aHeader, $theNameValueSeparatorPos+1)) )
+			: trim($aHeader);
 	}
 	
 	/**
