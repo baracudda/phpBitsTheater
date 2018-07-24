@@ -70,7 +70,7 @@ class IteratedSet extends BaseCostume
 	 * fully-qualified class names.
 	 * @var string
 	 */
-	public $mItemClass;
+	public $mItemClass = self::DEFAULT_ITEM_CLASS;
 
 	/**
 	 * Optional arguments for the constructor of the class that contains a

@@ -20,6 +20,7 @@ use BitsTheater\costumes\ASimpleCostume as BaseCostume;
 use BitsTheater\costumes\WornForExportData;
 use BitsTheater\Model as MyModel;
 use BitsTheater\costumes\colspecs\CommonMySql;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
@@ -93,12 +94,25 @@ class ARecord extends BaseCostume
 	{
 		$o = (object) call_user_func('get_object_vars', $this);
 		$theModel = $this->getModel();
-		//convert all `*_ts` timestamp fields into ISO format
-		switch ($theModel->dbType()) {
-			case $theModel::DB_TYPE_MYSQL:
-				$o = CommonMySql::deepConvertSQLTimestampsToISOFormat($o);
-				break;
-		}//switch
+		try {
+			//convert all `*_ts` timestamp fields into ISO format
+			switch ($theModel->dbType()) {
+				case $theModel::DB_TYPE_MYSQL:
+					$o = CommonMySql::deepConvertSQLTimestampsToISOFormat($o);
+					break;
+			}//switch
+		}
+		catch(\Exception $x) {
+			if ( empty($theModel) ) {
+				Strings::debugLog(__METHOD__,
+						' setItemClassArgs() did not set model as first param: ',
+						$this
+				);
+			}
+			else {
+				Strings::errorLog(__METHOD__, ' ', $x);
+			}
+		}
 		return $o ;
 	}
 	
