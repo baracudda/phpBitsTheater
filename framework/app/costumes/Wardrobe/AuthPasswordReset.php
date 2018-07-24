@@ -285,8 +285,6 @@ class AuthPasswordReset extends BaseCostume
 	{
 		if( empty($this->myAccountID) && empty($this->myAuthID) )
 			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_OR_AUTH_ID' ) ;
-		if( empty( $this->myNewToken ) )
-			throw PasswordResetException::toss( $this, 'NO_NEW_TOKEN' ) ;
 		$theAuthFilter = $this->chooseIdentifierForSearch() ;
 		$theSql = SqlBuilder::withModel($this->model)
 			->startWith( 'DELETE FROM ' )->add( $this->model->tnAuthTokens )
@@ -298,7 +296,6 @@ class AuthPasswordReset extends BaseCostume
 		{
 			$theSql->execDML();
 			unset($this->myTokens) ;
-			unset($this->myNewToken) ;
 		}
 		catch( PDOException $pdoe )
 		{

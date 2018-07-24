@@ -2059,9 +2059,18 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$this->setAuditFieldsOnUpdate($theSql);
 		$theSql->mustAddParam('email');
 		$theSql->startWhereClause()->mustAddParam('account_id')->endWhereClause();
-		try { $theSql->execDML() ; }
+		try {
+			$theSql->beginTransaction();
+			$theSql->execDML() ;
+			$theResetUtils = AuthPasswordReset::withModel($this) ;
+			$theResetUtils->setAccountID($aAcctID)->deleteAllTokens();
+			$theSql->commitTransaction();
+		}
 		catch( PDOException $pdox )
-		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
+		{
+			$theSql->rollbackTransaction();
+			throw $theSql->newDbException( __METHOD__, $pdox ) ;
+		}
 	}
 	
 	/**
