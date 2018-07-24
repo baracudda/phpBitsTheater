@@ -70,10 +70,24 @@ abstract class ManagedMediaFile extends BaseCostume
 	public $bUseRegexReplacements = false;
 	
 	/**
+	 * This might return a physical file path (relative to some root) or
+	 * possibly an Amazon S3 key to use or the like. Useful in features that
+	 * need to archive these files with some kind of standard path format.
+	 * @return string Return the relative path to the media content.
+	 */
+	abstract public function getManagedMediaPath();
+	
+	/**
 	 * Return the file path to be used.
 	 * @return string Returns the full file path of the media.
 	 */
 	abstract public function getFile();
+	
+	/**
+	 * Get the media as a stream.
+	 * @return resource Returns the stream for use.
+	 */
+	abstract public function getMediaStream();
 	
 	/**
 	 * Take a combined key=>value array and set the Pattern/Values lists.
