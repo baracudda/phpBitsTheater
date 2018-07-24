@@ -50,13 +50,15 @@ use PDOException;
  */
 class BrokenLeg extends \Exception
 {
-	// Constants for a subset of standard HTTP error codes.
+	// Constants for a subset of standard HTTP status codes.
+	// Even "successful" codes are noted here, just to keep them all together.
 	// https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
 	const HTTP_OK = 200 ;
 	const HTTP_CREATED = 201 ;
 	const HTTP_ACCEPTED = 202 ; // A non-committal success response; stay tuned.
 	const HTTP_NO_CONTENT = 204 ;
 	const HTTP_MULTISTATUS = 207 ;           // Warns of only a partial success.
+	const HTTP_ALREADY_REPORTED = 208 ;
 	const HTTP_MULTIPLE_CHOICES = 300 ;
 	const HTTP_MOVED_PERMANENTLY = 301 ;                 // Deprecated? see 308.
 	const HTTP_SEE_OTHER = 303 ;
@@ -292,6 +294,30 @@ class BrokenLeg extends \Exception
 	 */
 	public function getConditionCode()
 	{ return $this->code ; }
+	
+	/**
+	 * Mutator for the integer condition code (usually an HTTP status code)
+	 * recorded in this object. The method uses <code>intval()</code> to force
+	 * the input to be an integer.
+	 * @param integer $aCode the condition code
+	 * @return \BitsTheater\BrokenLeg $this
+	 * @since BitsTheater [NEXT]
+	 */
+	public function setConditionCode( $aCode )
+	{ $this->code = intval($aCode) ; return $this ; }
+	
+	/**
+	 * Sets the literal error message text for the exception. This should not be
+	 * generally used; text resources (perhaps fetched using
+	 * <code>getMessageFromResource()</code>) should be used instead. This
+	 * method is applicable when using <code>BrokenLeg</code> or a descendant to
+	 * capture and relay error response messages from other downstream APIs.
+	 * @param string $aMessage the literal error message to be set
+	 * @return \BitsTheater\BrokenLeg $this
+	 * @since BitsTheater [NEXT]
+	 */
+	public function setMessage( $aMessage='' )
+	{ $this->message = $aMessage ; return $this ; }
 	
 	/**
 	 * Writes an "extra" property into the exception, which will be returned as
