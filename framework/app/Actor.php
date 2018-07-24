@@ -683,10 +683,25 @@ implements IDirected
 	 * @return APIResponse Returns the response object so you can work with it
 	 *   if you have more to do.
 	 */
-	protected function setApiResults( $aResults )
+	public function setApiResults( $aResults )
 	{
 		$this->scene->results = APIResponse::resultsWithData($aResults);
 		return $this->scene->results;
+	}
+	
+	/**
+	 * Helper method for a descendant actor to easily get the current results
+	 * of an API endpoint.
+	 * @return APIResponse Returns the response object.
+	 */
+	public function getApiResults()
+	{
+		if ( $this->scene->results instanceof APIResponse ) {
+			return $this->scene->results;
+		}
+		else {
+			return null;
+		}
 	}
 	
 }//end class
