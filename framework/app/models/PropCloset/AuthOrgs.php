@@ -611,6 +611,17 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		catch (PDOException $pdox)
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
+	
+	/**
+	 * Construct the Session Key used for what the current logged in user is
+	 *   using as an Org.
+	 * @param string $aAuthID - the auth_id of the logged in user.
+	 * @return string Returns the string to use in getDirector()[key].
+	 */
+	static public function getMyOrgSessionKey( $aAuthID )
+	{
+		return 'org4-' . $aAuthID;
+	}
 
 	/**
 	 * Event to be called immediately upon determining when a account is "logged in".
@@ -643,7 +654,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			if ( !empty($theOrgRow) && isset( $theOrgRow->dbconn ) )
 			{
 				//$this->logStuff(__METHOD__, ' switch2org=', $theOrgRow); //DEBUG
-				$myOrgSessionKey = 'org4-'.$aAuthAccount->auth_id;
+				$myOrgSessionKey = $this::getMyOrgSessionKey($aAuthAccount->auth_id);
 				$this->getDirector()[$myOrgSessionKey] = $theOrgRow->org_id;
 				try
 				{ $this->swapAppDataDbConnInfo($theOrgRow->dbconn); }
@@ -803,6 +814,39 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		{ return $theSql->getTheRow(); }
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+	}
+	
+	/**
+	 * For a given organization <i>name</i>, returns the record from the DB.
+	 * Note that the <code>org_name</code> column is defined as
+	 * <code>UNIQUE</code> in the DB schema, so this should not be a dangerous
+	 * search.
+	 * @param string $aName the organization name
+	 * @param string[] $aFieldList (optional) subset of fields to return;
+	 *  defaults to all fields
+	 * @return boolean|NULL|array the database row as an associative array if
+	 *  the org is found, or <code>null</code> if not found, or
+	 *  <code>false</code> under certain error conditions.
+	 * @since BitsTheater [NEXT]
+	 */
+	public function getOrgByName( $aName=null, $aFieldList=null )
+	{
+		if( $aName === null )
+		{
+			$this->errorLog( __METHOD__ . ' was called with no org name.' ) ;
+			return false ;
+		}
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT' )->addFieldList( $aFieldList )
+			->add( 'FROM' )->add( $this->tnAuthOrgs )
+			->startWhereClause()
+			->mustAddParam( 'org_name', $aName )
+			->endWhereClause()
+//			->logSqlDebug( __METHOD__, '[TRACE] ' )
+			;
+		try { return $theSql->getTheRow() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 
 	/**

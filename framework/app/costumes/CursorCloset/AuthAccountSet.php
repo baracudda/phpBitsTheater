@@ -16,10 +16,9 @@
  */
 
 namespace BitsTheater\costumes\CursorCloset;
-use BitsTheater\costumes\CursorCloset\ARecordSet as BaseCostume;
+use BitsTheater\costumes\CursorCloset\ARecordSetPaged as BaseCostume;
 use BitsTheater\costumes\ISqlSanitizer;
 use BitsTheater\costumes\WornForSqlSanitize;
-use BitsTheater\costumes\WornForPagerManagement;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\models\Auth as MyModel;
 use BitsTheater\costumes\AuthAccount as MyRecord;
@@ -39,7 +38,7 @@ use com\blackmoonit\Strings;
  */
 class AuthAccountSet extends BaseCostume
 implements ISqlSanitizer
-{ use WornForSqlSanitize, WornForPagerManagement;
+{ use WornForSqlSanitize;
 
 	/**
 	 * The name of the class that will be used by default to contain items of
@@ -140,25 +139,6 @@ implements ISqlSanitizer
 	 */
 	public function isFieldSortable($aFieldName)
 	{ return MyRecord::isFieldSortable($aFieldName); }
-	
-	/**
-	 * @return number Returns the total count for query
-	 *   regardless of paging.
-	 */
-	public function getPagerTotalRowCount()
-	{ return $this->total_count; }
-	
-	/**
-	 * Set the query total regardless of paging.
-	 * @param number $aTotalRowCount - the total.
-	 * @return $this Returns $this for chaining.
-	 */
-	public function setPagerTotalRowCount( $aTotalRowCount )
-	{
-		// protect against negative numbers/overflow
-		$this->total_count = max($aTotalRowCount, 0);
-		return $this;
-	}
 	
 	/** @return string[] Returns the list of fields we want to return. */
 	public function getExportFieldsList()

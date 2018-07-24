@@ -1095,15 +1095,28 @@ class AuthOrgAccount extends BaseActor
 	{
 		try
 		{
+			$theOrgs = array();
 			$dbOrgs = $this->getProp( 'Auth' ) ;
-			$theOrgs = $dbOrgs->getOrgsForAuthCursor( $aAuthID, $aFieldList )
-				->fetchAll() ;
-			if( !empty($theOrgs) && !empty($aFieldList) && count($aFieldList) == 1 )
-			{ // Caller wanted exactly one column; collapse it to an array.
-				return Arrays::array_column( $theOrgs, $aFieldList[0] ) ;
+			$theRowSet = AuthOrgSet::withContextAndColumns($this, $aFieldList)
+				->setDataFromPDO(
+						$dbOrgs->getOrgsForAuthCursor( $aAuthID )
+				);
+			$theRow = $theRowSet->fetch();
+			$theFieldList = $theRowSet->getExportFieldsList();
+			if( !empty($theFieldList) && count($theFieldList) == 1 )
+			{ // Caller wanted exactly one column; collapse it to a string[].
+				while ($theRow!==false) {
+					$theOrgs[] = $theRow->exportData()->{$theFieldList[0]};
+					$theRow = $theRowSet->fetch();
+				}
 			}
-			else
-				return $theOrgs ;
+			else {
+				while ($theRow!==false) {
+					$theOrgs[] = $theRow->exportData();
+					$theRow = $theRowSet->fetch();
+				}
+			}
+			return $theOrgs ;
 		}
 		catch( Exception $x )
 		{
@@ -1131,8 +1144,9 @@ class AuthOrgAccount extends BaseActor
 		$theAuthID = $this->getRequestData( $aAuthID, 'auth_id' ) ;
 		$theFieldList =
 				$this->getRequestData( $aFieldList, 'field_list', false ) ;
-		$this->scene->results = APIResponse::resultsWithData(
-				$this->getOrgsForAccount( $theAuthID, $theFieldList ) ) ;
+		$this->setApiResults(
+				$this->getOrgsForAccount( $theAuthID, $theFieldList )
+		);
 	}
 	
 	/**
@@ -1562,10 +1576,11 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-	 * Retrieve single site message for given message id. Can optionally
+	 * Retrieve single org for given id or all (paged) if null. Can optionally
 	 * supply a field list by supplying a 'field_list' array in the
 	 * request body.
 	 * @param string $aID - (optional) The ID of the record to be returned.
+	 * @return string Return the URL to redirect to, if any.
 	 * @throws BrokenLeg::ENTITY_NOT_FOUND if ID given but not found.
 	 */
 	public function ajajGetOrgs($aID=null)
