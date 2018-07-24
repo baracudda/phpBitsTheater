@@ -222,6 +222,7 @@ implements IDirected
 			$this->setupDefaults();
 			$this->setupGetVars();
 			$this->setupPostVars();
+			$this->setupPagerDataFromUserData($this);
 			$this->bHasBeenSetup = true;
 		}
 		else {
@@ -799,6 +800,8 @@ implements IDirected
 	 * on the "standard Scene variables" defined.
 	 * @param string $aDbType - one of the various PDO::DB_TYPE.
 	 * @return string Returns the LIMIT string to use, including prefix " LIMIT".
+	 * @deprecated refactor to use ISqlSanitizer interface.
+	 * @see \BitsTheater\costumes\ISqlSanitizer
 	 */
 	public function getQueryLimit($aDbType) {
 		$theResult = null;
