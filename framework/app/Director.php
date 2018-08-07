@@ -310,34 +310,110 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * Route the URL requested to the approprate actor.
-	 * @param string $aUrl - the URL to act upon.
-	 * @throws FourOhFourExit - 404 if $aUrl is not found.
+	 * Since the purpose of API virtual actor is to "redirect" the URL to the
+	 * actual actor/method being referenced, construct and return the list
+	 * of possible methods being called.
+	 * @param string $aPossibleAction - the action requested.
+	 * @return string[] Returns the list of possible matches to query.
 	 */
-	public function routeRequest( $aUrl )
+	protected function getPossibleApiMethodsList($aPossibleAction)
 	{
-//		if ($this->isDebugging()) $this->debugLog('aUrl='.$aUrl);  //DEBUG
-//		if ($this->isDebugging() && $aUrl=='phpinfo') { print(phpinfo()); return; } //DEBUG
-		if (!empty($aUrl)) {
-			$urlPathList = explode('/',$aUrl);
-			$theActorName = Strings::getClassName(array_shift($urlPathList));
-			$theAction = array_shift($urlPathList);
-			$theQuery = $urlPathList; //whatever is left
+		return array(
+				Strings::getMethodName($aPossibleAction),
+				Strings::getMethodName('ajaj_' . $aPossibleAction),
+				Strings::getMethodName('api_' . $aPossibleAction),
+				Strings::getMethodName('ajax_' . $aPossibleAction),
+		);
+	}
+	
+	/**
+	 * Route the URL requested to the approprate actor. However, this is a
+	 * special case to avoid requiring methods to specify ajaj|api|ajax prefix
+	 * and will determine which method to call by working through a list of
+	 * possible prefixes rather than exact matching.
+	 * @param string $aUrlPath - the URL path segments to act upon.
+	 * @throws FourOhFourExit - 404 if $aUrlPath is not found.
+	 */
+	protected function routeApiRequest( $aUrlPath )
+	{
+		if ( empty($aUrlPath) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('actor not found');
 		}
-		if (!empty($theActorName)) {
-			$theAction = Strings::getMethodName($theAction);
-			if (!$this->raiseCurtain($theActorName,$theAction,$theQuery)) {
-				throw new FourOhFourExit($aUrl);
+		$thePathSegments = explode('/', $aUrlPath);
+		$theActorName = array_shift($thePathSegments);
+		$theActorClass = $this::getActorClass($theActorName);
+		if ( !class_exists($theActorClass) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('actor not found');
+		}
+		if ( empty($thePathSegments) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('action not found');
+		}
+		$thePossibleMethodsList = $this->getPossibleApiMethodsList(
+				array_shift($thePathSegments)
+		);
+		$theParamSegments = trim('/' . implode('/', $thePathSegments), '/');
+		$theFailCount = 0;
+		foreach($thePossibleMethodsList as $thePossibleMethod) {
+			try {
+				$thePossibleUrl = $theActorName . '/' . $thePossibleMethod . $theParamSegments;
+				$this->raiseCurtain($thePossibleUrl);
+				break; //if we did not throw an exception, our job is done.
 			}
-		} elseif (!$this->isInstalled() && class_exists(BITS_NAMESPACE_ACTORS.'Install')) {
-			if (!$this->raiseCurtain('Install', 'install')) {
-				throw new FourOhFourExit($aUrl);
+			catch ( FourOhFourExit $fofx ) {
+				$theFailCount += 1;
 			}
-		} elseif ($this->isInstalled() && empty($aUrl)) {
-			$theSettingsClass = $this->getSiteSettingsClass();
-			header('Location: ' . $theSettingsClass::getLandingPage());
-		} else {
-			throw new FourOhFourExit($aUrl);
+		}
+		//if we fail to execute any of our possibilies, toss 404 error.
+		if ( $theFailCount>=count($thePossibleMethodsList) )
+		{ throw new FourOhFourExit($this->getSiteUrl($aUrlPath)); }
+	}
+	
+	
+	/**
+	 * Route the URL requested to the approprate actor.
+	 * @param string $aUrlPath - the URL path segments to act upon.
+	 * @throws FourOhFourExit - 404 if $aUrlPath is not found.
+	 */
+	public function routeRequest( $aUrlPath )
+	{
+		//if $this->debugLog('aUrl='.$aUrl);  //DEBUG
+		//if $aUrl=='phpinfo') { print(phpinfo()); return; } //DEBUG
+		if ( empty($aUrlPath) ) {
+			if ( $this->isInstalled() ) {
+				//if website has been installed, redirect to landing page
+				$theSettingsClass = $this->getSiteSettingsClass();
+				header('Location: ' . $theSettingsClass::getLandingPage());
+			}
+			//otherwise if we have an Install actor, open with install wizard
+			else if ( class_exists($this->getActorClass('Install')) ) {
+				$aUrlPath = 'install';
+			}
+		}
+		if ( !empty($aUrlPath) ) try {
+			$this->raiseCurtain($aUrlPath);
+		}
+		catch (FourOhFourExit $fofx)
+		{
+			//if 404, see if we should try a different parse of the URL
+			$thePathSegments = explode('/', $aUrlPath);
+			switch ( $thePathSegments[0] ) {
+				case 'api': try {
+					$this->routeApiRequest(Strings::strstr_after($aUrlPath, 'api/'));
+					break; //found an alternative that worked, do not toss 404 error.
+				}
+				catch ( FourOhFourExit $fofx ) {
+					//let fall through to default behavior
+				}
+				default:
+					//$this->logStuff(__METHOD__, ' ', $fofx); //DEBUG
+					if ( $this->getDirector()->isRunningUnderCLI() )
+					{ print('Endpoint not found: ' . $theUrlNotFound); }
+					else
+					{ throw new FourOhFourExit($this->getSiteUrl($aUrlPath)); }
+			}//switch
 		}
 	}
 	
@@ -360,26 +436,30 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * Start the show! Renders the defined view for the given Actor::method.
-	 * @param string $anActorName - Actor name typically from the URL.
-	 * @param string $anAction - the method to call on the Actor.
-	 * @param array $aQuery - (optional) additional parameters for the method.
-	 * @return boolean Return FALSE if a 404 should be thrown.
+	 * Determain what actor::method(args) to call based on the URL.
+	 * Render the defined view for the given Actor::method().
+	 * @param string $aUrlPath - the non-empty URL path segments to parse.
+	 * @throws FourOhFourExit if URL does not refer to a valid endpoint.
 	 */
-	public function raiseCurtain($anActorName, $anAction=null, $aQuery=array()) {
-		$theActorClass = static::getActorClass($anActorName);
-		//Strings::debugLog('rC: class='.$theActorClass.', exist?='.class_exists($theActorClass));
-		if (class_exists($theActorClass)) {
-			$theAction = $theActorClass::getDefaultAction($anAction);
-			$theActor = new $theActorClass($this, $theAction);
-			if ($theActor->isActionUrlAllowed($theAction)) {
-				return $theActor->perform($theAction, $aQuery);
-			} else {
-				return false;
-			}
-		} else {
-			//Strings::debugLog(__METHOD__.' cannot find Actor class: '.$theActorClass.' url='.$_GET['url']);
-			return false;
+	public function raiseCurtain( $aUrlPath )
+	{
+		if ( empty($aUrlPath) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('actor not found');
+		}
+		$thePathSegments = explode('/', $aUrlPath);
+		$theActorClass = $this::getActorClass(array_shift($thePathSegments));
+		if ( !class_exists($theActorClass) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('actor not found');
+		}
+		$theAction = array_shift($thePathSegments);
+		$theMethodName = $theActorClass::getMethodForAction($theAction);
+		//actor and action exist as public method, call it!
+		$theActor = new $theActorClass($this, $theAction);
+		if ( !$theActor->perform($theMethodName, $thePathSegments) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('method returned false');
 		}
 	}
 	
@@ -902,15 +982,14 @@ implements ArrayAccess, IDirected
 	 */
 	public function setMyAccountInfo( $aAcctInfo=null )
 	{
-		if ( !empty($this->dbAuth) && !empty($aAcctInfo) )
-		{
-			$this->account_info = $this->dbAuth->createAccountInfoObj($aAcctInfo);
-			$this[AuthDB::KEY_userinfo] =  $this->account_info->account_id;
+		if ( $aAcctInfo instanceof AccountInfoCache ) {
+			$this->account_info = $aAcctInfo;
 		}
-		else
-		{
+		else if ( !empty($this->dbAuth) && !empty($aAcctInfo) ) {
+			$this->account_info = $this->dbAuth->createAccountInfoObj($aAcctInfo);
+		}
+		else {
 			$this->account_info = null;
-			unset($this[AuthDB::KEY_userinfo]);
 		}
 		return $this->account_info;
 	}

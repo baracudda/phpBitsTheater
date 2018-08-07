@@ -18,7 +18,12 @@
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\AuthBase as BaseModel;
 use BitsTheater\costumes\colspecs\CommonMySql;
+use BitsTheater\costumes\venue\IWillCall;
+use BitsTheater\costumes\venue\TicketViaHttpHeader;
+use BitsTheater\costumes\venue\TicketViaRequest;
+use BitsTheater\costumes\venue\TicketViaURL;
 use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\costumes\AuthPasswordReset;
 use BitsTheater\costumes\DbAdmin;
 use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\HttpAuthHeader;
@@ -28,7 +33,6 @@ use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornByIDirectedForValidation;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\costumes\WornForFeatureVersioning;
-use BitsTheater\costumes\AuthPasswordReset;
 use BitsTheater\models\AuthGroups as AuthGroupsDB;
 use BitsTheater\outtakes\AccountAdminException;
 use BitsTheater\outtakes\PasswordResetException;
@@ -633,6 +637,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		if ( !empty($aAuthAccount) && //ensure we have a valid auth & account_id
 				!empty($aAuthAccount->auth_id) && $aAuthAccount->account_id > 0 )
 		{
+			$this->getDirector()->setMyAccountInfo($aAuthAccount);
 			//update last login info
 			$aAuthAccount->last_seen_dt = new \DateTime('now', new \DateTimeZone('UTC'));
 			$aAuthAccount->last_seen_ts = $this->getDateTimeAsDbTimestampFormat(
@@ -643,10 +648,16 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 					'last_seen_ts' => $aAuthAccount->last_seen_ts,
 			));
 			//determine what org to use (if did not specify, will use 1st org found)
+			$myOrgSessionKey = $this::getMyOrgSessionKey($aAuthAccount->auth_id);
 			$theFilter = null;
-			if ( !empty($aScene->org_id) ) {
-				$theFilter = SqlBuilder::withModel($this)->obtainParamsFrom($aScene)
-					->mustAddParam('org_id')
+			$theOrgID = ( !empty($aScene->org_id) ) ? $aScene->org_id :
+				( !empty($this->getDirector()[$myOrgSessionKey]) )
+					? $this->getDirector()[$myOrgSessionKey] : null;
+			if ( !empty($theOrgID) ) {
+				$theFilter = SqlBuilder::withModel($this)
+					->startWhereClause()->setParamPrefix('1 AND ')
+					->mustAddParam('org_id', $theOrgID)
+					->endWhereClause()
 					;
 			}
 			$theOrgCursor = $this->getOrgsForAuthCursor($aAuthAccount->auth_id, null, $theFilter);
@@ -654,7 +665,6 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			if ( !empty($theOrgRow) && isset( $theOrgRow->dbconn ) )
 			{
 				//$this->logStuff(__METHOD__, ' switch2org=', $theOrgRow); //DEBUG
-				$myOrgSessionKey = $this::getMyOrgSessionKey($aAuthAccount->auth_id);
 				$this->getDirector()[$myOrgSessionKey] = $theOrgRow->org_id;
 				try
 				{ $this->swapAppDataDbConnInfo($theOrgRow->dbconn); }
@@ -719,6 +729,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
+	
+	public function getAuthByName( $aName )
+	{ return $this->getByName($aName); }
 
 	public function getByExternalId($aExternalId)
 	{
@@ -1090,7 +1103,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 	
 	//=========================================================================
-	//===============        AuthBasic           ==============================
+	//===============    From AuthBasic          ==============================
 	//=========================================================================
 
 	public function getAuthByEmail($aEmail) {
@@ -1696,135 +1709,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Check PHP session data for account information.
-	 * @param AuthOrgs $dbAccounts - the accounts model.
-	 * @param object $aScene - var container object for user/pw info;
-	 * if account name is non-empty, skip session data check.
-	 * @return boolean Returns TRUE if account was found and successfully loaded.
-	 */
-	protected function checkSessionForTicket($dbAccounts, $aScene)
-	{
-		$theUserInput = $aScene->{self::KEY_userinfo};
-		//see if session remembers user
-		if( isset( $this->director[self::KEY_userinfo] ) && empty($theUserInput) )
-		{
-			$theAccountId = $this->director[self::KEY_userinfo] ;
-			$theAcctInfo = $this->getDirector()->setMyAccountInfo(
-					$this->getAccountInfoCache( $dbAccounts, $theAccountId )
-			);
-			if ( empty($theAcctInfo) )
-			{ // Either account info is in weird state, or account is inactive.
-				$this->ripTicket() ;
-			}
-		}
-		return ( $this->getDirector()->getMyAccountInfo() ) ;
-	}
-
-	/**
-	 * Check submitted webform data for account information.
-	 * @param AuthOrgs $dbAccounts - the accounts model.
-	 * @param object $aScene - var container object for user/pw info.
-	 * @return boolean Returns TRUE if account was found and successfully loaded.
-	 */
-	protected function checkWebFormForTicket($dbAccounts, $aScene) {
-		if (!empty($aScene->{self::KEY_userinfo}) && !empty($aScene->{self::KEY_pwinput}) ) {
-			$theUserInput = $aScene->{self::KEY_userinfo};
-			$theAuthInput = $aScene->{self::KEY_pwinput};
-			if (!empty($theUserInput) && !empty($theAuthInput)) {
-				$theAuthRow = null;
-				if ($theAccountRow = $dbAccounts->getByName($theUserInput)) {
-					$theAuthRow = $this->getAuthByAccountId($theAccountRow['account_id']);
-				} else {
-					$theAuthRow = $this->getAuthByEmail($theUserInput);
-				}
-				if (!empty($theAuthRow)) {
-					//check pwinput against crypted one
-					$pwhash = $theAuthRow['pwhash'];
-					if (Strings::hasher($theAuthInput,$pwhash)) {
-						//authorized, load account data
-						$theAcctInfo = $this->getDirector()->setMyAccountInfo(
-								$this->getAccountInfoCache($dbAccounts, $theAuthRow['account_id'])
-						);
-						if ( !empty($theAcctInfo) ) {
-							//if user asked to remember, save a cookie
-							if (!empty($aScene->{self::KEY_cookie})) {
-								$this->updateCookie($theAuthRow['auth_id'], $theAuthRow['account_id']);
-							}
-						}
-					} else {
-						//auth fail!
-						$this->getDirector()->setMyAccountInfo();
-						//if login failed, move closer to lockout
-						$this->updateFailureLockout($dbAccounts, $aScene);
-					}
-					unset($theAuthRow);
-					unset($pwhash);
-				} else {
-					//user/email not found, consider it a failure
-					$this->getDirector()->setMyAccountInfo();
-					//if login failed, move closer to lockout
-					$this->updateFailureLockout($dbAccounts, $aScene);
-				}
-			}
-			unset($theUserInput);
-			unset($theAuthInput);
-		}
-		unset($aScene->{self::KEY_pwinput});
-		unset($_GET[self::KEY_pwinput]);
-		unset($_POST[self::KEY_pwinput]);
-		unset($_REQUEST[self::KEY_pwinput]);
-
-		return ( $this->getDirector()->getMyAccountInfo()!=null );
-	}
-
-	/**
-	 * Cookies might remember our user if the session forgot and they have
-	 * not tried to login.
-	 * @param AuthOrgs $dbAccounts - the accounts model.
-	 * @param object $aCookieMonster - an object representing cookie keys and data.
-	 * @return boolean Returns TRUE if cookies successfully logged the user in.
-	 */
-	protected function checkCookiesForTicket($dbAccounts, $aCookieMonster) {
-		if (empty($aCookieMonster[self::KEY_userinfo]) || empty($aCookieMonster[self::KEY_token]))
-			return false;
-
-		$theAuthId = Strings::strstr_after($aCookieMonster[self::KEY_userinfo], $this->director->app_id.'-');
-		if (empty($theAuthId))
-			return false;
-
-		$theAuthToken = $aCookieMonster[self::KEY_token];
-		try {
-			//our cookie mechanism consumes cookie on use and creates a new one
-			//  by having rotating cookie tokens, stolen cookies have a limited window
-			//  in which to crack them before a new one is generated.
-			$theAuthTokenRow = $this->getAndEatCookie($theAuthId, $theAuthToken);
-			if (!empty($theAuthTokenRow)) {
-				$theAccountId = $theAuthTokenRow['account_id'];
-				//authorized, load account data
-				$this->getDirector()->setMyAccountInfo(
-						$this->getAccountInfoCache($dbAccounts, $theAccountId)
-				);
-				if (!empty($this->director->account_info)) {
-					//bake (create) a new cookie for next time
-					$this->updateCookie($theAuthId, $theAccountId);
-				}
-				unset($theAuthTokenRow);
-			}
-		} catch (DbException $e) {
-			//do not care if getting cookie fails, log it so admin knows about it, though
-			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
-		}
-		return (!empty($this->director->account_info));
-	}
-
-	/**
-	 * Descendants may wish to further scrutinize header information before allowing access.
+	 * Update the mobile record.
 	 * @param HttpAuthHeader $aAuthHeader - the header info.
 	 * @param array $aMobileRow - the mobile row data.
-	 * @param AccountInfoCache $aUserAccount - the user account data.
-	 * @return boolean Returns TRUE if access is allowed.
+	 * @return array Returns the data updated.
 	 */
-	protected function checkHeadersForMobileCircumstances(HttpAuthHeader $aAuthHeader, $aMobileRow, AccountInfoCache $aUserAccount) {
+	protected function updateMobileCircumstances(HttpAuthHeader $aAuthHeader, $aMobileRow)
+	{
 		//update device_name, if different
 		$theDeviceName = $aAuthHeader->getDeviceName();
 		if (!empty($theDeviceName) && (empty($aMobileRow['name']) || strcmp($aMobileRow['name'],$theDeviceName)!=0) ) {
@@ -1839,75 +1730,22 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$theSql->mustAddParam('device_name');
 			$theSql->addParam('latitude')->addParam('longitude');
 			$theSql->startWhereClause()->mustAddParam('mobile_id')->endWhereClause();
-			$theSql->execDML();
+			return $theSql->execDMLandGetParams();
 		}
-		//barring checking circumstances like is GPS outside pre-determined bounds, we authenticated!
-		return true;
 	}
 
 	/**
-	 * HTTP Headers may contain authorization information, check for that information and populate whatever we find
-	 * for subsequent auth mechanisms to find and evaluate.
-	 * @param AuthOrgs $dbAccounts - the accounts model.
-	 * @param object $aScene - var container object for user/pw info.
-	 * @return boolean Returns TRUE if account was found and successfully loaded.
+	 * Descendants may wish to further scrutinize header information before allowing access.
+	 * @param HttpAuthHeader $aAuthHeader - the header info.
+	 * @param array $aMobileRow - the mobile row data.
+	 * @param AccountInfoCache $aUserAccount - the user account data.
+	 * @return boolean Returns TRUE if access is allowed.
 	 */
-	protected function checkHeadersForTicket($dbAccounts, $aScene) {
-		//PHP has some built in auth vars, check them and use if not empty
-		if (!empty($_SERVER['PHP_AUTH_USER']) && !empty($_SERVER['PHP_AUTH_PW'])) {
-			$aScene->{self::KEY_userinfo} = $_SERVER['PHP_AUTH_USER'];
-			$aScene->{self::KEY_pwinput} = $_SERVER['PHP_AUTH_PW'];
-			unset($_SERVER['PHP_AUTH_PW']);
-			return $this->checkWebFormForTicket($dbAccounts, $aScene);
-		}
-		//check for HttpAuth header
-		$theAuthHeader = HttpAuthHeader::fromHttpAuthHeader(
-				$this->getDirector(), $aScene->HTTP_AUTHORIZATION
-		);
-		switch ($theAuthHeader->auth_scheme) {
-			case 'Basic':
-				$aScene->{self::KEY_userinfo} = $theAuthHeader->getHttpAuthBasicAccountName();
-				$aScene->{self::KEY_pwinput} = $theAuthHeader->getHttpAuthBasicAccountPw();
-				//keeping lightly protected pw in memory can be bad, clear out usage asap.
-				$theAuthHeader = null;
-				if (!empty($this->HTTP_AUTHORIZATION))
-					unset($this->HTTP_AUTHORIZATION);
-				else
-					unset($_SERVER['HTTP_AUTHORIZATION']);
-				return $this->checkWebFormForTicket($dbAccounts, $aScene);
-			case 'Broadway':
-				//$this->debugLog(__METHOD__.' chkhdr='.$this->debugStr($theAuthHeader));
-				if (!empty($theAuthHeader->auth_id) && !empty($theAuthHeader->auth_token)) {
-					$this->removeStaleMobileAuthTokens();
-					$theAuthTokenRow = $this->getAuthTokenRow($theAuthHeader->auth_id, $theAuthHeader->auth_token);
-					//$this->debugLog(__METHOD__.' arow='.$this->debugStr($theAuthTokenRow));
-					if (!empty($theAuthTokenRow)) {
-						$theAuthMobileRows = $this->getAuthMobilesByAuthId($theAuthHeader->auth_id);
-						//$this->debugLog(__METHOD__.' fp='.$theAuthHeader->fingerprints);
-						foreach ($theAuthMobileRows as $theMobileRow) {
-							//$this->debugLog(__METHOD__.' chk against mobile_id='.$theMobileRow['mobile_id']);
-							if (Strings::hasher($theAuthHeader->fingerprints, $theMobileRow['fingerprint_hash'])) {
-								//$this->debugLog(__METHOD__.' fmatch?=true');
-								$theUserAccount = $this->getAccountInfoCache($dbAccounts, $theAuthTokenRow['account_id']);
-								if (!empty($theUserAccount) &&
-										$this->checkHeadersForMobileCircumstances($theAuthHeader,
-												$theMobileRow, $theUserAccount) )
-								{
-									//$this->debugLog(__METHOD__.' save to session the mobile_id='.$theMobileRow['mobile_id']);
-									//succeeded, save the mobile id in session cache
-									$this->director[self::KEY_MobileInfo] = $theMobileRow['mobile_id'];
-									//authorized, cache the account data
-									$this->getDirector()->setMyAccountInfo( $theUserAccount );
-									return true;
-								}
-							}
-							//else $this->debugLog(__METHOD__.' no match against '.$theMobileRow['fingerprint_hash']);
-						}
-					}//if auth token row !empty
-				}
-				break;
-		}//end switch
-		return false;
+	protected function checkHeadersForMobileCircumstances(HttpAuthHeader $aAuthHeader,
+			$aMobileRow, AccountInfoCache $aUserAccount)
+	{
+		$this->updateMobileCircumstances($aAuthHeader, $aMobileRow);
+		return true;
 	}
 
 	/**
@@ -1987,7 +1825,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @param AuthOrgs $dbAccounts - the accounts model.
 	 * @param object $aScene - var container object for user/pw info.
 	 */
-	protected function updateFailureLockout($dbAccounts, Scene $aScene) {
+	public function updateFailureLockout($dbAccounts, Scene $aScene) {
 		//NOTE: code executing here means user is NOT LOGGED IN, but need to see if tried to do so.
 		$theMaxAttempts = ($this->director->isInstalled())
 				? intval($this->getConfigSetting('auth/login_fail_attempts'), 10)
@@ -2035,6 +1873,42 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		}
 		return $bAuthed;
 	}
+	
+	/**
+	 * Check a venue for ticket information (auth account).
+	 * @param object $aScene - the Scene object associated with an Actor.
+	 * @param IWillCall $aVenue - the mechanism to check.
+	 */
+	protected function checkVenueForTicket(Scene $aScene, IWillCall $aVenue)
+	{
+		$this->logStuff(__METHOD__, ' venue=', $aVenue); //DEBUG
+		$theAuthAccount = $aVenue->checkForTicket($aScene);
+		if ( !empty($theAuthAccount) ) {
+			if ( $theAuthAccount->is_active ) {
+				$aVenue->onTicketAccepted($aScene, $theAuthAccount);
+			}
+			else {
+				$aVenue->onTicketRejected($aScene, $theAuthAccount);
+			}
+		}
+		return $theAuthAccount;
+	}
+	
+	/**
+	 * What auth venues are applicable for us to check? Return the list of
+	 * classes that we will use, they must all implement IWillCall.
+	 * @param Scene $aScene - the parameters given to us, in case that affects
+	 *   what venues we wish to try.
+	 * @return string[] Returns the list of IWillCall classes to use for auth.
+	 */
+	protected function getVenuesToCheckForTickets($aScene)
+	{
+		return array(
+				TicketViaHttpHeader::class,
+				TicketViaURL::class,
+				TicketViaRequest::class,
+		);
+	}
 
 	/**
 	 * See if we can validate the api/page request with an account.
@@ -2044,53 +1918,29 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	public function checkTicket($aScene)
 	{
-//		$this->logStuff(__METHOD__, ' bOnlyCheckHdrs?=', $aScene->bCheckOnlyHeadersForAuth); //DEBUG
-//		try{throw new \Exception();}catch(\Exception $x){$this->logStuff(__METHOD__, ' stk=', $x->getTraceAsString());} //DEBUG
-		
+		//$this->logStuff(__METHOD__, ' stk=', Strings::getStackTrace()); //DEBUG
 		$bAuthorized = false;
-		if( $this->director->canConnectDb() )
+		if( $this->getDirector()->canConnectDb() )
 		try {
 			$this->removeStaleAuthLockoutTokens() ;
-
-			$bAuthorizedViaHeaders = false;
-			$bAuthorizedViaSession = false;
-			$bAuthorizedViaWebForm = false;
-			$bAuthorizedViaCookies = false;
-			$bCsrfTokenWasBaked = false;
-
-			$bAuthorizedViaHeaders = $this->checkHeadersForTicket($this, $aScene);
-//			if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth'); //DEBUG
-			$bAuthorized = $bAuthorized || $bAuthorizedViaHeaders;
-			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
-			{
-				$bAuthorizedViaSession = $this->checkSessionForTicket($this, $aScene);
-//				if ($bAuthorizedViaSession) $this->debugLog(__METHOD__.' session auth'); //DEBUG
-				$bAuthorized = $bAuthorized || $bAuthorizedViaSession;
-			}
-			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
-			{
-				$bAuthorizedViaWebForm = $this->checkWebFormForTicket($this, $aScene);
-//				if ($bAuthorizedViaWebForm) $this->debugLog(__METHOD__.' webform auth'); //DEBUG
-				$bAuthorized = $bAuthorized || $bAuthorizedViaWebForm;
-			}
-			if (!$bAuthorized && !$aScene->bCheckOnlyHeadersForAuth)
-			{
-				$bAuthorizedViaCookies = $this->checkCookiesForTicket($this, $_COOKIE);
-//				if ($bAuthorizedViaCookies) $this->debugLog(__METHOD__.' cookie auth'); //DEBUG
-				$bAuthorized = $bAuthorized || $bAuthorizedViaCookies;
-			}
-
-//			$this->logStuff(__METHOD__, ' bAuth=', $bAuthorized); //DEBUG
-			if ($bAuthorized)
-			{
-				if ($bAuthorizedViaSession || $bAuthorizedViaWebForm || $bAuthorizedViaCookies)
-				{
-//					$this->debugLog(__METHOD__.' setCsrfTokenCookie call.'); //DEBUG
-					$bCsrfTokenWasBaked = $this->setCsrfTokenCookie();
+			$theAuthAccount = null;
+			foreach( $this->getVenuesToCheckForTickets($aScene) as $theVenueClass ) {
+				if ( empty($theAuthAccount) ) {
+					$theAuthAccount = $this->checkVenueForTicket($aScene,
+							$theVenueClass::withAuthDB($this)
+					);
 				}
-				$this->onDetermineAuthAccount($aScene, $this->getDirector()->account_info);
 			}
-			
+			if ( !empty($theAuthAccount) )
+			{
+				if ( $theAuthAccount->is_active ) {
+					$bAuthorized = true;
+					$this->onDetermineAuthAccount($aScene, $theAuthAccount);
+				}
+				else {
+					$this->updateFailureLockout($this, $aScene);
+				}
+			}
 		}
 		catch ( DbException $dbx )
 		{ $bAuthorized = $this->checkInstallPwForMigration($aScene); }
@@ -2747,7 +2597,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
-		
+	
 }//end class
 
 }//end namespace

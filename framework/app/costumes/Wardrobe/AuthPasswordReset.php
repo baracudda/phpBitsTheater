@@ -19,7 +19,7 @@ use BitsTheater\costumes\ABitsCostume as BaseCostume ;
 use BitsTheater\costumes\WornByModel ;
 use BitsTheater\costumes\SqlBuilder ;
 use BitsTheater\outtakes\PasswordResetException ;
-use BitsTheater\models\PropCloset\AuthBasic as AuthDB ;
+use BitsTheater\models\Auth as AuthDB ;
 use com\blackmoonit\Strings ;
 use PDOException ;
 { // begin namespace

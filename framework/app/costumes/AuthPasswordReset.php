@@ -5,8 +5,7 @@ use BitsTheater\costumes\Wardrobe\AuthPasswordReset as BaseCostume ;
 { // begin namespace
 
 /**
- * Provides helper functions for dealing with password reset requests. This
- * costume applies to the AuthBasic model.
+ * Provides helper functions for dealing with password reset requests.
  */
 class AuthPasswordReset extends BaseCostume
 {

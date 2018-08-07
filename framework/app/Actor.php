@@ -187,6 +187,43 @@ implements IDirected
 	}
 	
 	/**
+	 * Director is trying to determine what Actor::method() to execute, it
+	 * will call this method to determine if an action/endpoint by the URL
+	 * is present and callable. Return the name of the method to call if so,
+	 * otherwise toss a 404.
+	 * @param string $aAction - action as encoded in the URL.
+	 * @return string Returns the method name to call for the given action.
+	 * @throws FourOhFourExit - if the action cannot be performed.
+	 */
+	static public function getMethodForAction( $aAction )
+	{
+		$myClass = get_called_class();
+		//normalize URL action to method name format and ensure non-empty
+		$theMethodName = static::getDefaultAction(
+				Strings::getMethodName($aAction)
+		);
+		//see if method exists and is scope public
+		try {
+			$theMethod = new \ReflectionMethod($myClass, $theMethodName);
+			if ( !$theMethod->isPublic() ) {
+				throw (new FourOhFourExit($myClass . '::' . $aAction))
+					->setContextMsg('action not accessible');
+			}
+		}
+		catch ( \ReflectionException $rx ) {
+			throw (new FourOhFourExit($myClass . '::' . $aAction))
+				->setContextMsg('action not found');
+		}
+		//ensure a public scope method is not restricted for some reason
+		if ( !static::isActionUrlAllowed($theMethodName) ) {
+			throw (new FourOhFourExit($myClass . '::' . $aAction))
+				->setContextMsg('action not a valid URL action');
+		}
+		//all good, return the actual method name to call.
+		return $theMethodName;
+	}
+	
+	/**
 	 * Once it has been determined that we wish to and are allowed to perform
 	 * an action, this method actually does the work calling the method.
 	 * @param string $aAction - method to be called.
@@ -347,16 +384,6 @@ implements IDirected
 		//  object needs to have this view before checking for the
 		//  CSRF protection token in the headers.
 		$this->viewToRender('results_as_json');
-
-		//if we try to call an ajaj* method without CSRF token header,
-		//  then treat as if api* method was called and check for
-		//  headers with auth credentials instead.
-		if ($this->getDirector()->isInstalled()) {
-			$dbAuth = $this->getProp('Auth');
-			if (!empty($dbAuth)) {
-				$this->scene->bCheckOnlyHeadersForAuth = (!$dbAuth->isCsrfTokenHeaderPresent());
-			}
-		}
 	}
 
 	/**
@@ -369,7 +396,7 @@ implements IDirected
 		//we need to have a prefix that does the opposite of AJAJ
 		//  and allow CORS, at the expense of always providing
 		//  any auth if needed.
-		$this->scene->bCheckOnlyHeadersForAuth = true;
+		$this->scene->bExplicitAuthRequired = true;
 	}
 
 	/**

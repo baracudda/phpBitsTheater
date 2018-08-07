@@ -26,13 +26,6 @@ abstract class AuthBase extends BaseModel {
 	const ALLOW_REGISTRATION = false; //only 1 type allows it, so far
 	const KEY_userinfo = 'ticketholder'; //var name in checkTicket($aScene) for username
 	const KEY_pwinput = 'pwinput'; //var name in checkTicket($aScene) for pw
-	protected $dbPermissions = null;
-	
-	public function cleanup() {
-		if (isset($this->director))
-			$this->director->returnProp($this->dbPermissions);
-		parent::cleanup();
-	}
 	
 	public function getType() {
 		return static::TYPE;

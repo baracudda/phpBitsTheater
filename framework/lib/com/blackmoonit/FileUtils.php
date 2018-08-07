@@ -149,16 +149,16 @@ class FileUtils {
 				\RecursiveIteratorIterator::CHILD_FIRST
 		);
 		$theResult = true;
-		$theFileIterator->rewind();
-		while ($theResult && $theFileIterator->valid()) {
-			// if we are supposed to delete everything, or all but root folder
-			if ( !$bOnlyRemoveContents || $theFileIterator->key() != $theFolderPath ) {
-				$theResult = ( $theFile->isDir() ) ? rmdir($theFile) : unlink($theFile);
-			}
+		foreach ($theFileIterator as $theFileInfo) {
+			$theFile = $theFileInfo->getRealPath();
+			$theResult = ( $theFileInfo->isDir() ) ? rmdir($theFile) : unlink($theFile);
 			// if we cannot remove even one of the contents, may as well stop
 			if ( !$theResult ) break;
-			// grab the next in the list
-			$theFileIterator->next();
+		}
+		if ( !$bOnlyRemoveContents && $theResult && is_dir($theFolderPath) ) {
+			//if all contents were removed successfully, and we should also be
+			//  removing the folder supplied to us, remove it as well
+			rmdir($theFolderPath);
 		}
 		return $theResult;
 	}
