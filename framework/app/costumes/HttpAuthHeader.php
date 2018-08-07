@@ -80,10 +80,10 @@ class HttpAuthHeader extends BaseCostume
 	protected function parseAuthData() {
 		$theAuthData = base64_decode(substr($this->auth_header, strlen($this->auth_scheme)+1));
 		switch ($this->auth_scheme) {
-			case 'Basic':
+			case self::AUTH_TYPE_BASIC:
 				$this->parseAuthHeaderAsAuthBasic($theAuthData);
 				break;
-			case 'Broadway':
+			case self::AUTH_TYPE_BROADWAY:
 				$this->parseAuthHeaderAsAuthBroadway($theAuthData);
 				break;
 		}//switch

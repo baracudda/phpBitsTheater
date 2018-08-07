@@ -24,6 +24,8 @@ namespace BitsTheater\costumes ;
  */
 trait WornForHttpAuthBasic
 {
+	/** @var string The HTTP Authorization type */
+	const AUTH_TYPE_BASIC = 'Basic';
 	/**
 	 * Basic HTTP Auth name of the account.
 	 * @var string

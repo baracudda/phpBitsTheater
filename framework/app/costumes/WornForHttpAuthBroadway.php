@@ -26,6 +26,8 @@ use com\blackmoonit\Strings;
  */
 trait WornForHttpAuthBroadway
 {
+	/** @var string The HTTP Authorization type. */
+	const AUTH_TYPE_BROADWAY = 'Broadway';
 	/**
 	 * Broadway http auth user auth_id.
 	 * @var string
