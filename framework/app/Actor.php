@@ -678,6 +678,20 @@ implements IDirected
 	{ return $this->getRequestData( $aValue, $aField, $isRequired ) ; }
 	
 	/**
+	 * Helper method to easily set a 204 no content response.
+	 * Alias for setNoContentResponse().
+	 */
+	public function setApiResultsAsNoContent()
+	{ $this->scene->results = APIResponse::noContentResponse(); }
+	
+	/**
+	 * Helper method to easily set a 204 no content response.
+	 * Alias for setApiResultsAsNoContent().
+	 */
+	public function setNoContentResponse()
+	{ $this->scene->results = APIResponse::noContentResponse(); }
+	
+	/**
 	 * Helper method to easily set the successful results of an API endpoint.
 	 * @param mixed $aResults - the result data you wish to return.
 	 * @return APIResponse Returns the response object so you can work with it
