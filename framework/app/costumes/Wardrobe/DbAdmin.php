@@ -307,7 +307,7 @@ class DbAdmin extends BaseCostume
 	public function setupNewDb( BasicScene $aScene, DbConnInfo $aDbConnInfo, $aDbConnName)
 	{
 		if ( empty($aDbConnName) )
-		{ throw new IllegalArgumentException('$aModelDbConn cannot be empty'); }
+		{ throw new IllegalArgumentException('$aDbConnName cannot be empty'); }
 		/* @var $theModelList \ReflectionClass[] */
 		$theModelList = BasicModel::getAllModelClassInfo(); //gets all non-abstract models
 		$theDbConn = $aDbConnInfo->connect();
@@ -359,6 +359,62 @@ class DbAdmin extends BaseCostume
 		{
 			$theDbConn->rollBack();
 			throw BrokenLeg::tossException($this, $x);
+		}
+	}
+	
+	/**
+	 * Given an AuthOrg record and a settings list, push the list of
+	 * settings into the org's config table.
+	 * @param string $aOrgID - the org_id of the dbconn to load.
+	 * @param string[] $aConfigList - [$settingNs/Key => $settingValue].
+	 */
+	public function pushOrgSetting( $aOrgID, $aConfigList )
+	{
+		if ( empty($aOrgID) )
+		{ throw new IllegalArgumentException('$aOrgID cannot be empty'); }
+		if ( empty($aConfigList) || !is_array($aConfigList) )
+		{ throw new IllegalArgumentException('$aConfigList must be non-empty array'); }
+		//the dbconn string is specifically excluded from AuthOrg class
+		//  as well as the return of addOrganization() method among others;
+		//  reach into the org record itself to grab it for use.
+		$theDbConn = null;
+		try {
+			$theDbConnStr = $this->getProp('Auth')->getOrganization($aOrgID)['dbconn'];
+			if ( !empty($theDbConnStr) ) {
+				$theDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
+				$theDbConnInfo->loadDbConnInfoFromString($theDbConnStr);
+				$theDbConn = $theDbConnInfo->connect();
+				if ( empty($theDbConn) )
+				{ throw new DbException('could not connect to org ['.$aOrgID.']'); }
+			}
+		}
+		catch (\Exception $x)
+		{ throw BrokenLeg::tossException($this, $x); }
+		//once we have the connection to the org's db, use it (transaction!)
+		$theDbConn->beginTransaction();
+		try {
+			$theConfigModelName = ConfigDB::MODEL_NAME;
+			/* @var $dbOrgConfig ConfigDB */
+			$dbOrgConfig = new $theConfigModelName( $this->getDirector() );
+			$dbOrgConfig->connectTo($theDbConnInfo);
+			foreach ($aConfigList as $theSettingKey => $theSettingValue) {
+				$dbOrgConfig[$theSettingKey] = $theSettingValue;
+				$this->logStuff(__METHOD__,
+						' config setting [', $theSettingKey, ']',
+						' updated for org_id [', $aOrgID, ']'
+				);
+			}
+			//might be garbage collected earlier if we specifically unset it
+			unset($dbOrgConfig);
+			$theDbConn->commit();
+		}
+		catch (\Exception $x) {
+			$theDbConn->rollBack();
+			throw BrokenLeg::tossException($this, $x);
+		}
+		finally {
+			//might be garbage collected earlier if we specifically unset it
+			unset($theDbConn);
 		}
 	}
 	

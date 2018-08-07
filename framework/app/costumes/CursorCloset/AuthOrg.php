@@ -42,13 +42,13 @@ class AuthOrg extends BaseCostume
 	 */
 	public static function forModelConnection( Model $aModel=null )
 	{
-		$theContext = $aModel->getDirector() ;
 		if( $aModel === null )
 		{
-			$theContext->errorLog( __METHOD__
+			Strings::errorLog( __METHOD__
 					. ' was called with no model reference.' ) ;
 			return false ;
 		}
+		$theContext = $aModel->getDirector() ;
 		$theDbName = $aModel->getDbConnInfo()->dbName ;
 		$dbOrgs = $theContext->getProp( 'Auth' ) ;     // descends from AuthOrgs
 		try
@@ -120,8 +120,13 @@ class AuthOrg extends BaseCostume
 	 */
 	public function loadParentOrg( $bForce=false )
 	{
-		if( !empty( $this->parent_org_id ) && ( $bForce || empty( $this->parent_org ) ) )
+		if( !empty( $this->parent_org_id ) )
 		{ // Try to load the parent org, if we haven't already.
+			if( !empty( $this->parent_org ) && !$bForce )
+			{
+//				Strings::debugLog( __METHOD__ . ' skipped; org already loaded.' ) ;
+				return $this ;
+			}
 			if( empty( $this->getModel() ) )
 			{ // ...but we can't, because we have no model.
 				Strings::errorLog( __METHOD__ . ' has no model to load orgs.' );
@@ -133,6 +138,7 @@ class AuthOrg extends BaseCostume
 			$this->parent_org = new $thisClass( $this->getModel(), null ) ;
 			$this->parent_org->setDataFrom( $theParentInfo ) ;
 		}
+		else $this->parent_org = null ;
 		
 		return $this ;
 	}

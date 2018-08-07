@@ -1661,9 +1661,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @return boolean Return TRUE if the permission is granted, FALSE otherwise.
 	 */
 	public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null) {
-		if (empty($this->dbPermissions))
-			$this->dbPermissions = $this->director->getProp('Permissions'); //cleanup will close this model
-		return $this->dbPermissions->isPermissionAllowed($aNamespace, $aPermission, $acctInfo);
+		$dbPermissions = $this->getProp('Permissions');
+		return $dbPermissions->isPermissionAllowed($aNamespace, $aPermission, $acctInfo);
 	}
 
 	/**

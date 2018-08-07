@@ -1680,7 +1680,58 @@ class AuthOrgAccount extends BaseActor
 		catch ( \Exception $x )
 		{ throw BrokenLeg::tossException($this, $x); }
 	}
-
+	
+	/**
+	 * Change the currently viewed org to a different one.
+	 * @param string $aOrgID - the org_id (if null, fetch from POST var
+	 *   <code>'org_id'</code> instead).
+	 * @throws BrokenLeg <ul>
+	 *  <li>'MISSING_ARGUMENT' - if the org ID is not specified.</li>
+	 *  <li>'ENTITY_NOT_FOUND' - if no org with that ID exists.</li>
+	 * </ul>
+	 * @since BitsTheater [NEXT]
+	 */
+	public function ajajChangeOrg( $aOrgID=null )
+	{
+		//guests cannot change what org they are looking at, ignore them
+		if ( $this->isGuest() )
+		{ throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED); }
+		//org_id is required request parameter (url/get/post)
+		$theOrgID = $this->getRequestData( $aOrgID, 'org_id', true ) ;
+		//get my auth_id
+		$myAuthID = $this->getDirector()->getMyAccountInfo()->auth_id;
+		//get our model
+		$dbAuth = $this->getMyModel();
+		//get our org data - do not use the AuthOrg costume as we need
+		//  the dbconn info which the costume does not provide (security
+		//  precaution against accidentally exporting back to a client).
+		$theOrg = $dbAuth->getOrganization($theOrgID);
+		//if org exists...
+		if ( !empty($theOrg) ) {
+			$theOrgList = $dbAuth->getOrgsForAuthCursor($myAuthID,
+					array('org_id')
+			)->fetchAll(\PDO::FETCH_COLUMN);
+			//... ensure it is one of logged in users mapped orgs
+			if ( !empty($theOrgList) &&
+					array_search($theOrgID, $theOrgList, true) !== false )
+			{
+				//ensure we are using the org's dbconn defined
+				$dbAuth->swapAppDataDbConnInfo($theOrg['dbconn']);
+				//ensure we store the current org in our session
+				$myOrgSessionKey = $dbAuth::getMyOrgSessionKey($myAuthID);
+				$this->getDirector()[$myOrgSessionKey] = $theOrgID;
+				//no need to return anything but a "yep, it worked" response
+				$this->setNoContentResponse();
+			}
+			else {
+				throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
+			}
+		}
+		else {
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_ENTITY_NOT_FOUND, $aOrgID);
+		}
+	}
+	
 }//end class
 
 }//end namespace

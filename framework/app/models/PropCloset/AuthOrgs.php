@@ -683,7 +683,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @param string $aNewDbConnString - the dbconn string to utilize.
 	 * @throws \InvalidArgumentException if the dbconn string fails somehow.
 	 */
-	protected function swapAppDataDbConnInfo($aNewDbConnString)
+	public function swapAppDataDbConnInfo($aNewDbConnString)
 	{
 		$theNewDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
 		$theNewDbConnInfo->loadDbConnInfoFromString($aNewDbConnString);
@@ -2295,10 +2295,10 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @param string $acctInfo - (optional) check this account instead of current user.
 	 * @return boolean Return TRUE if the permission is granted, FALSE otherwise.
 	 */
-	public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null) {
-		if (empty($this->dbPermissions))
-			$this->dbPermissions = $this->director->getProp('Permissions'); //cleanup will close this model
-		return $this->dbPermissions->isPermissionAllowed($aNamespace, $aPermission, $acctInfo);
+	public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null)
+	{
+		$dbPermissions = $this->getProp('AuthGroups');
+		return $dbPermissions->isPermissionAllowed($aNamespace, $aPermission, $acctInfo);
 	}
 
 	/**
