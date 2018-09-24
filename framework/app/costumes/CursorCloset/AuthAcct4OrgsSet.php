@@ -185,7 +185,8 @@ class AuthAcct4OrgsSet extends BaseCostume
 					->add('INNER JOIN')->add($dbAuthGroups->tnGroups)->add('USING(group_id)')
 					;
 				$aFilter->startWhereClause()->setParamOperator(' LIKE ')
-					->addParam($aFieldname, $aSearchText)
+					->setParamValueIfEmpty($aFieldname, $aSearchText)
+					->addParam($aFieldname)
 					->setParamOperator('=')
 					;
 				$aFilter->add(')');
@@ -200,7 +201,8 @@ class AuthAcct4OrgsSet extends BaseCostume
 					->add('INNER JOIN')->add($dbAuth->tnAuthOrgs)->add('USING(org_id)')
 					;
 				$aFilter->startWhereClause()->setParamOperator(' LIKE ')
-					->addParam($aFieldname, $aSearchText)
+					->setParamValueIfEmpty($aFieldname, $aSearchText)
+					->addParam($aFieldname)
 					->setParamOperator('=')
 					;
 				$aFilter->add(')');

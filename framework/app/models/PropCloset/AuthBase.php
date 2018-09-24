@@ -26,6 +26,13 @@ abstract class AuthBase extends BaseModel {
 	const ALLOW_REGISTRATION = false; //only 1 type allows it, so far
 	const KEY_userinfo = 'ticketholder'; //var name in checkTicket($aScene) for username
 	const KEY_pwinput = 'pwinput'; //var name in checkTicket($aScene) for pw
+	protected $dbPermissions = null;
+	
+	public function cleanup() {
+		if (isset($this->director))
+			$this->director->returnProp($this->dbPermissions);
+		parent::cleanup();
+	}
 	
 	public function getType() {
 		return static::TYPE;
@@ -54,7 +61,6 @@ abstract class AuthBase extends BaseModel {
 	public function ripTicket() {
 		$this->clearCsrfTokenCookie();
 		$this->director->account_info = null;
-		$this->director->resetSession();
 	}
 	
 	public function canRegister($aAcctName, $aEmailAddy) {
@@ -78,10 +84,12 @@ abstract class AuthBase extends BaseModel {
 	 * Check your authority mechanism to determine if a permission is allowed.
 	 * @param string $aNamespace - namespace of the permission.
 	 * @param string $aPermission - name of the permission.
-	 * @param string $acctInfo - (optional) check this account instead of current user.
+	 * @param AccountInfoCache $aAcctInfo - (optional) check this account
+	 *   instead of current user.
 	 * @return boolean Return TRUE if the permission is granted, FALSE otherwise.
 	 */
-	abstract public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null);
+	abstract public function isPermissionAllowed( $aNamespace, $aPermission,
+			AccountInfoCache $aAcctInfo=null );
 	
 	/**
 	 * Return the defined permission groups.
@@ -90,10 +98,10 @@ abstract class AuthBase extends BaseModel {
 	
 	/**
 	 * Checks the given account information for membership.
-	 * @param AccountInfoCache $aAccountInfo - the account info to check.
+	 * @param AccountInfoCache $aAcctInfo - the account info to check.
 	 * @return boolean Returns FALSE if the account info matches a member account.
 	 */
-	abstract public function isGuestAccount($aAccountInfo);
+	abstract public function isGuestAccount( AccountInfoCache $aAcctInfo=null );
 	
 	/**
 	 * Send an HTTPOnly cookie preset with out site information.

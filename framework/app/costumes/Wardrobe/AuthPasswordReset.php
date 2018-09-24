@@ -45,6 +45,10 @@ class AuthPasswordReset extends BaseCostume
 	protected $myNewToken ;
 	protected $myReentryURL = null ;
 	
+	/** @return AuthDB */
+	public function getMyModel()
+	{ return $this->getModel(); }
+	
 	/**
 	 * Clears all the data that has been recorded by this costume since it was
 	 * created (or last cleared). Useful only if the costume instance is being
@@ -210,30 +214,30 @@ class AuthPasswordReset extends BaseCostume
 			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_ID' ) ;
 		if( empty( $this->myAuthID ) )
 			throw PasswordResetException::toss( $this, 'NO_AUTH_ID' ) ;
-		$theToken = AuthDB::generatePrefixedAuthToken( self::TOKEN_PREFIX ) ;
+		$this->myNewToken = AuthDB::generatePrefixedAuthToken( self::TOKEN_PREFIX ) ;
 		$theSql = SqlBuilder::withModel($this->model)
 			->startWith( 'INSERT INTO ' )->add( $this->model->tnAuthTokens )
 			->add( 'SET ' )
-			->mustAddParam( 'auth_id', $this->myAuthID )
+			->mustAddParam('created_by', $_SERVER['REMOTE_ADDR'])
 			->setParamPrefix( ', ' )
+			->mustAddParam('created_ts', $this->model->utc_now())
+			->mustAddParam( 'auth_id', $this->myAuthID )
 			->mustAddParam( 'account_id', $this->myAccountID )
-			->mustAddParam( 'token', $theToken )
+			->mustAddParam( 'token', $this->myNewToken )
+			//->logSqlDebug(__METHOD__) //DEBUG
 			;
-//		$this->debugLog( $theSql->mySql ) ;
 		try
 		{
-			if( $theSql->execDML() )
-			{
-				$this->setDataFrom(array( 'myNewToken' => $theToken )) ;
-				return $this ;
-			}
-			else
-			{ $this->myNewToken = null ; }
+			//execDML() on parameterized queries ALWAYS returns true,
+			//  exceptions are the only means of detecting failure here.
+			$theSql->execDML() ;
+			return $this ;
 		}
 		catch( PDOException $pdoe )
-		{ $this->myNewToken = null ; }
-		
-		throw PasswordResetException::toss( $this, 'TOKEN_GENERATION_FAILED' ) ;
+		{
+			$this->myNewToken = null ;
+			throw PasswordResetException::toss( $this, 'TOKEN_GENERATION_FAILED' ) ;
+		}
 	}
 	
 	/**
@@ -247,13 +251,18 @@ class AuthPasswordReset extends BaseCostume
 			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_OR_AUTH_ID' ) ;
 		if( empty( $this->myNewToken ) )
 			throw PasswordResetException::toss( $this, 'NO_NEW_TOKEN' ) ;
+		$dbAuth = $this->getMyModel();
 		$theAuthFilter = $this->chooseIdentifierForSearch() ;
-		$theSql = SqlBuilder::withModel($this->model)
-			->startWith( 'DELETE FROM ' )->add( $this->model->tnAuthTokens )
+		//we need to remove only old pwreset tokens, not all but the new token
+		$theSql = SqlBuilder::withModel($dbAuth)
+			->startWith( 'DELETE FROM' )->add( $dbAuth->tnAuthTokens )
 			->startWhereClause()
 			->mustAddParam( $theAuthFilter['col'], $theAuthFilter['val'] )
 			->setParamPrefix( ' AND ' )
-			->setParamOperator('<>')->mustAddParam( 'token', $this->myNewToken )
+			->setParamOperator(' LIKE ') //" TOTALLY " ;)
+			->mustAddFieldAndParam( 'token', 'pwreset_tokens', $this::TOKEN_PREFIX . '%' )
+			->setParamOperator(SqlBuilder::OPERATOR_NOT_EQUAL)
+			->mustAddFieldAndParam( 'token', 'myNewToken', $this->myNewToken )
 			->endWhereClause()
 			;
 //		$this->debugLog( $theSql->mySql ) ;
@@ -285,11 +294,19 @@ class AuthPasswordReset extends BaseCostume
 	{
 		if( empty($this->myAccountID) && empty($this->myAuthID) )
 			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_OR_AUTH_ID' ) ;
+		$dbAuth = $this->getMyModel();
 		$theAuthFilter = $this->chooseIdentifierForSearch() ;
-		$theSql = SqlBuilder::withModel($this->model)
-			->startWith( 'DELETE FROM ' )->add( $this->model->tnAuthTokens )
+		//we need to remove _some_ of the tokens, not all of them
+		$theSql = SqlBuilder::withModel($dbAuth)
+			->startWith( 'DELETE FROM' )->add( $dbAuth->tnAuthTokens )
 			->startWhereClause()
 			->mustAddParam( $theAuthFilter['col'], $theAuthFilter['val'] )
+			->setParamPrefix( ' AND (' )
+			->setParamOperator(' LIKE ') //" TOTALLY " ;)
+			->mustAddFieldAndParam( 'token', 'pwreset_tokens', $this::TOKEN_PREFIX . '%' )
+			->setParamPrefix( ' OR ' )
+			->mustAddFieldAndParam( 'token', 'lockout_tokens', $dbAuth::TOKEN_PREFIX_LOCKOUT . '%' )
+			->add(')')
 			->endWhereClause()
 			;
 		try
@@ -400,7 +417,7 @@ class AuthPasswordReset extends BaseCostume
 		return $s ;
 	}
 	
-	public function authenticateForReentry( &$aAuthID, &$aAuthToken )
+	public function authenticateForReentry( $aAuthID, $aAuthToken )
 	{
 		if( empty( $aAuthID ) )
 			throw PasswordResetException::toss( $this, 'NO_AUTH_ID' ) ;

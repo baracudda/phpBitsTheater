@@ -17,17 +17,15 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
+use BitsTheater\BrokenLeg;
 use BitsTheater\scenes\Install as MyScene; /* @var $v MyScene */
+use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\DbAdmin;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\database\DbConnOptions;
 use com\blackmoonit\Strings;
 use com\blackmoonit\FileUtils;
-use PDOException;
-use Exception;
-use BitsTheater\BrokenLeg;
-use BitsTheater\costumes\APIResponse;
 {//namespace begin
 
 class BitsInstall extends BaseActor
@@ -77,16 +75,13 @@ class BitsInstall extends BaseActor
 	/**
 	 * First step in the install process. Try to prevent install from being run after install finishes.
 	 * @param string $aOverride - sometimes install is not smooth; provide means to force db setup.
-	 * @return string May return a redirect URL, otherwise NULL.
+	 * @return null|string May return a redirect URL, otherwise NULL.
 	 */
 	public function install($aOverride=null) {
 		//avoid installing more than once
 		if ($this->director->canCheckTickets() && $this->director->isInstalled() && $aOverride!==$this->director->app_id) {
 				return $this->getHomePage();
 		}
-	
-		//make sure we start off with a fresh session
-		$this->director->resetSession();
 		
 		//ask for something only installer would know, like detail of install file that cannot be accessed from web
 		
@@ -150,7 +145,8 @@ class BitsInstall extends BaseActor
 	 * and not call parent.
 	 * @return DbConnInfo[]
 	 */
-	public function getDbConns() {
+	public function getDbConns()
+	{
 		$db_conns = array();
 	
 		$theDbConnInfo = DbConnInfo::asSchemeINI('webapp');
@@ -162,20 +158,31 @@ class BitsInstall extends BaseActor
 		return $db_conns;
 	}
 	
-	public function db1() {
+	/**
+	 * Wizard page dedicated to gathering the database connection information.
+	 * @return null|string May return a redirect URL, otherwise NULL.
+	 */
+	public function db1()
+	{
 		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
-		if (!$v->checkInstallPw())
-			return $v->getSiteURL();
+		$v = $this->getMyScene();
+		if ( !$v->checkInstallPw() ) return $v->getSiteURL();
 		$v->next_action = $v->getSiteURL('install/db2');
 		$v->db_types = $v->getDbTypes();
 		$v->db_conns = $this->getDbConns();
 	}
 	
-	protected function installDbConns() {
-		$v =& $this->scene;
+	/**
+	 * Given the database connection form vars, test the connection(s) and
+	 * save the info in our special files protected from being downloaded.
+	 * @throws DbException if connection fails for whatever reason.
+	 */
+	protected function installDbConns()
+	{
+		$v = $this->getMyScene();
 		$v->db_conns = $this->getDbConns();
 		foreach ($v->db_conns as $theDbConnInfo) {
+			/* @var $theDbConnInfo DbConnInfo */
 			$theFormIdPrefix = $theDbConnInfo->myDbConnName;
 			
 			$theWidgetName = $theFormIdPrefix.'_table_prefix';
@@ -252,19 +259,26 @@ class BitsInstall extends BaseActor
 					'dbpwrd' => $theFormIdPrefix.'_dbpwrd',
 			);
 			$theDbConnFilePath = strtolower($theDbConnInfo->dbConnOptions->ini_filename);
-			if (!empty($theDbConnFilePath)) {
-				if (!Strings::endsWith($theDbConnFilePath, '.ini'))
+			if ( !empty($theDbConnFilePath) ) {
+				if ( !Strings::endsWith($theDbConnFilePath, '.ini') )
 					$theDbConnFilePath .= '.ini';
 			} else {
 				$theDbConnFilePath = 'dbconn-webapp.ini';
 			}
-			$theDbConnFilePath = BITS_CFG_PATH.$theDbConnFilePath;
-			if (file_exists($theDbConnFilePath))
+			$theDbConnFilePath = BITS_CFG_PATH . $theDbConnFilePath;
+			if ( is_file($theDbConnFilePath) )
 				continue; //skip to the next dbconn to be setup
-			if ($dst = $this->installTemplate('dbconn-webapp', $theDbConnFilePath, $theVarList)) {
+			if ( $dst = $this->installTemplate('dbconn-webapp', $theDbConnFilePath, $theVarList) ) {
+				$v->connected = false;
 				//copy completed, now try to connect to the db and prove it works
 				try {
 					$theDbConnInfo->loadDbConnInfoFromIniFile($theDbConnFilePath);
+					//test db conn
+					if ( !$theDbConnInfo->getPDOConnection() ) {
+						$this->logErrors(__METHOD__, $theDbConnFilePath . ' failed to connect.');
+						throw new DbException(null, $theDbConnFilePath . ' failed to connect.');
+					}
+					$v->connected = true;
 					//if connection works, see if we have DBA creds
 					$theWidgetName = $theFormIdPrefix.'_admin_dbuser';
 					$v->admin_dbuser = $v->$theWidgetName;
@@ -283,19 +297,18 @@ class BitsInstall extends BaseActor
 						$theDbAdmin = new DbAdmin($this);
 						$theDbAdmin->createDbFromUserInput($v, $theDbConnInfo);
 					}
-					
-					$thePdoConn = $theDbConnInfo->getPDOConnection();
-					$v->connected = !empty($thePdoConn);
-					$thePdoConn = null;
-				} catch (PDOException $pdox) {
-					throw new DbException($pdox, $theDbConnFilePath . ' caused: ');
 				}
-				if (!$v->connected) {
-					if ( filter_var($v->do_not_delete_failed_config, FILTER_VALIDATE_BOOLEAN) ) {
-						//if db connection failed, delete the file so it can be attempted again
-						$v->permission_denied = !unlink($dst);
+				catch ( \PDOException $pdox ) {
+					$this->logErrors(__METHOD__, ' ', $pdox);
+					throw new DbException($pdox, $theDbConnFilePath . ' failed to connect.');
+				}
+				finally {
+					if ( !$v->connected ) {
+						if ( !filter_var($v->do_not_delete_failed_config, FILTER_VALIDATE_BOOLEAN) ) {
+							//if db connection failed, delete the file so it can be attempted again
+							$v->permission_denied = !unlink($dst);
+						}
 					}
-					break; //break out of foreach loop
 				}
 			} else {
 				$v->permission_denied = true;
@@ -303,20 +316,23 @@ class BitsInstall extends BaseActor
 		}//foreach
 	}
 
-	public function db2() {
+	/**
+	 * Wizard page dedicated to testing the database connection information.
+	 * @return null|string May return a redirect URL, otherwise NULL.
+	 */
+	public function db2()
+	{
 		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
-		if (!$v->checkInstallPw()) {
-			return $v->getSiteURL();
-		}
+		$v = $this->getMyScene();
+		if ( !$v->checkInstallPw() ) return $v->getSiteURL();
 		try {
 			$this->installDbConns();
 			$v->next_action = $v->getSiteURL('install/auth1');
-		} catch (DbException $dbe) {
-			$dbe->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
+		} catch ( DbException $dbx ) {
+			$dbx->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
 			$v->next_action = $v->getSiteURL('install/db1');
 			$v->connected = false;
-			$v->_dbError = $dbe->getDebugDisplay('Connection error');
+			$v->_dbError = $dbx->getDebugDisplay('Connection error');
 		}
 	}
 
@@ -638,8 +654,8 @@ class BitsInstall extends BaseActor
 		} catch (BrokenLeg $bl) {
 			//API calls need to eat the exception and give a sane HTTP Response
 			$bl->setErrorResponse($v);
-		} catch (Exception $e) {
-			$bl = BrokenLeg::tossException($this, $e);
+		} catch ( \Exception $x ) {
+			$bl = BrokenLeg::tossException($this, $x);
 			$bl->setErrorResponse($v);
 		}
 	}

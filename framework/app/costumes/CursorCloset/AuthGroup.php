@@ -48,6 +48,8 @@ class AuthGroup extends BaseCostume
 		//BitsTheater\BitsGroups model does not have group_num like AuthGroups does.
 		if ( !isset($o->group_num) && is_int($o->group_id) )
 			unset($o->group_num);
+		else
+			$o->group_num = intval($o->group_num);
 		//only convert to INT if ID is int-based.
 		if ( is_int($o->parent_group_id) )
 			$o->parent_group_id = Strings::toInt($o->parent_group_id);

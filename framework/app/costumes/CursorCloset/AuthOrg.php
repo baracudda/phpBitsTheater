@@ -19,6 +19,7 @@ namespace BitsTheater\costumes\CursorCloset;
 use com\blackmoonit\Strings ;
 use com\blackmoonit\exceptions\DbException ;
 use BitsTheater\Model ;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\CursorCloset\ARecord as BaseCostume;
 {//namespace begin
 
@@ -30,6 +31,31 @@ class AuthOrg extends BaseCostume
 {
 	/** @var string My fully qualified classname. */
 	const ITEM_CLASS = __CLASS__;
+	
+	/**
+	 * Validates the input string as a potential "short name" for a new
+	 * organization.
+	 *
+	 * <ul>
+	 * <li>The string must be composed entirely of letters, digits, and
+	 *     underscores.</li>
+	 * <li>The string may not begin with an underscore.</li>
+	 * <li>The string may not begin with a digit. (#6268)</li>
+	 * </ul>
+	 *
+	 * @param string $aInput the input to be validated
+	 * @return boolean <code>true</code> iff the input is valid
+	 * @since BitsTheater [NEXT]
+	 */
+	public static function validateOrgShortName( $aInput )
+	{
+		if( ! preg_match( "/^((?![0-9_])\w)([\w_])*$/", $aInput ) )
+			return false ; // Must be letters, numbers, or underscores.
+		
+		// Future: Additional disqualification criteria here, returning false.
+			
+		return true ;
+	}
 
 	/**
 	 * Given a connected <code>Model</code>, determines the organization in
@@ -76,6 +102,7 @@ class AuthOrg extends BaseCostume
 	public $org_title;
 	public $org_desc;
 	public $parent_org_id;
+	public $parent_authgroup_id;
 	
 	//specifically excluded until we find a reason to include
 	//public $dbconn;
@@ -161,6 +188,20 @@ class AuthOrg extends BaseCostume
 				'dbconn',
 		));
 		return ( array_search($aFieldName, $theAllowedSorts)!==false );
+	}
+	
+	/**
+	 * Create this object given a context to grab the model and inital data.
+	 * @param IDirected $aContext - the context to use to get the model.
+	 * @param array|object $aData - the initial data to use.
+	 * @return $this Returns the new object.
+	 */
+	static public function getInstance( IDirected $aContext, $aData=null )
+	{
+		$o = static::withModel( $aContext->getProp('Auth') ) ;
+		if( $aData !== null )
+			$o->setDataFrom($aData) ;
+		return $o ;
 	}
 	
 }//end class

@@ -116,9 +116,6 @@ implements ISqlSanitizer
 	protected function printExtraJsonProperties( $aEncodeOptions )
 	{
 		if ( !empty($this->mGroupList) ) {
-			print(',"titan_group_id":"'
-					. $this->getAuthGroupsProp()->getTitanGroupID() . '"'
-			);
 			print(',"authgroups":');
 			$this->mGroupList->printAsJson( $aEncodeOptions );
 		}
@@ -187,7 +184,7 @@ implements ISqlSanitizer
 	{
 		switch ( $aFieldname ) {
 			case 'is_active':
-				$aFilter->addParam($aFieldname, null, \PDO::PARAM_INT);
+				$aFilter->addParamOfType($aFieldname, \PDO::PARAM_INT);
 				break;
 			case 'hardware_ids':
 			case 'mapped_imei':
@@ -198,7 +195,7 @@ implements ISqlSanitizer
 					->add('SELECT auth_id FROM')->add($dbAuth->tnAuthTokens)
 					;
 				$aFilter->startWhereClause()->setParamOperator(' LIKE ')
-					->addFieldAndParam('token', 'mapped_imei')
+					->addParamForColumn('mapped_imei', 'token')
 					->setParamOperator('=')
 					;
 				$aFilter->add(')');
@@ -258,7 +255,8 @@ implements ISqlSanitizer
 					->add('SELECT auth_id FROM')->add($dbAuth->tnAuthTokens)
 					;
 				$aFilter->startWhereClause()->setParamOperator(' LIKE ')
-					->addFieldAndParam('token', 'mapped_imei', $aSearchText)
+					->setParamValueIfEmpty('mapped_imei', $aSearchText)
+					->addParamForColumn('mapped_imei', 'token')
 					->setParamOperator('=')
 					;
 				$aFilter->add(')');
@@ -273,7 +271,8 @@ implements ISqlSanitizer
 					->add('INNER JOIN')->add($dbAuthGroups->tnGroups)->add('USING(group_id)')
 					;
 				$aFilter->startWhereClause()->setParamOperator(' LIKE ')
-					->addParam($aFieldname, $aSearchText)
+					->setParamValueIfEmpty($aFieldname, $aSearchText)
+					->addParam($aFieldname)
 					->setParamOperator('=')
 					;
 				$aFilter->add(')');
@@ -281,7 +280,8 @@ implements ISqlSanitizer
 				break;
 			default:
 				$aFilter->setParamOperator(' LIKE ')
-					->addParam($aFieldname, $aSearchText)
+					->setParamValueIfEmpty($aFieldname, $aSearchText)
+					->addParam($aFieldname)
 					->setParamOperator('=')
 					;
 		}//switch
@@ -377,7 +377,7 @@ implements ISqlSanitizer
 			$theFilterFieldList = $this->getItemFieldListForFilters();
 			foreach ($theFilterFieldList as $theField) {
 				//first, check to see if we _have any_ filtering (avoids subqueries)
-				$theFilterValue = $theFilter->getDataValue($theField);
+				$theFilterValue = $theFilter->getParamValue($theField);
 				if ( !isset($theFilterValue) ) continue;
 				//we have a filter with data, handle it
 				$this->handleFilterField($theFilter, $theField);

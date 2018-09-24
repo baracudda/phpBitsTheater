@@ -31,11 +31,6 @@ use BitsTheater\costumes\CursorCloset\ARecordList as BaseCostume;
 class AuthGroupList extends BaseCostume
 {
 	/**
-	 * NOTE: since group_id is an INTEGER, we need to PRESERVE KEYS
-	 */
-	const ID_IS_NUMERIC = true;
-
-	/**
 	 * Return the Model class or name to use in a getProp() call.
 	 * @return string
 	 */

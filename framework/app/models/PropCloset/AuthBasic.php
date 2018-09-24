@@ -596,59 +596,53 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * row in which a given value might actually be null/empty, but that should
 	 * be irrelevant, since no such row should ever exist in the database.
 	 *
-	 * @param string $aAuthID an authentication ID to include as a selection
-	 *  criterion, if any
-	 * @param string $aAccountID an account ID to include as a selection
-	 *  criterion, if any
-	 * @param string $aToken a specific token value, or a search filter pattern
-	 *  to limit the format of the tokens that are returned (use SQL "LIKE"
-	 *  syntax for the latter)
-	 * @param boolean $isTokenAFilter indicates whether $aToken is a literal
-	 *  token value, or a filter pattern
+	 * @param string $aAuthID - an auth_id to include as a selection
+	 *   criterion, if any
+	 * @param integer $aAccountID - an account_id to include as a selection
+	 *   criterion, if any
+	 * @param string $aToken - a specific token value, or a LIKE search filter
+	 *   pattern to limit the format of the tokens that are returned.
+	 *   Use SQL "LIKE" syntax for the latter.
+	 * @param boolean $bIsTokenFilterForLIKE - (OPTIONAL) indicates whether
+	 *   the $aToken param is a literal token value, or a LIKE filter pattern.
 	 * @return array the set of tokens, if any are found
 	 */
 	public function getAuthTokens( $aAuthID=null, $aAccountID=null,
-			$aToken=null, $isTokenAFilter=false )
+			$aToken=null, $bIsTokenFilterForLIKE=false )
 	{
+		$theOrderByField = ($this->myExistingFeatureVersionNum>5) ? 'updated_ts' : '_changed';
+		// token is a search pattern
+		$theTokenOperator = ( $bIsTokenFilterForLIKE ) ? ' LIKE ' : '=';
 		$theSql = SqlBuilder::withModel($this)
 			->startWith( 'SELECT * FROM' )->add( $this->tnAuthTokens )
-			->startWhereClause()
+			//since all params are optional, ensure we have a valid base
+			//  WHERE clause that works even if nothing gets added.
+			->add('WHERE 1')->startWhereClause()
+			//potentially filter by auth_id column
+			->setParamPrefix(' AND ')
+			->setParamValueIfEmpty('auth_id', $aAuthID)
+			->addParam( 'auth_id' )
+			//potentially filter by account_id column
+			->setParamPrefix(' AND ')
+			->setParamValueIfEmpty('account_id', $aAccountID)
+			->addParam( 'account_id' )
+			//potentially filter by token column
+			->setParamPrefix(' AND ')
+			->setParamOperator($theTokenOperator)
+			->setParamValueIfEmpty('token', $aToken)
+			->addParam( 'token' )
+			->setParamOperator('=') //ensure we reset back to '='
+			// future columns can be added here
+			->endWhereClause()
+			->applyOrderByList(array(
+					$theOrderByField => SqlBuilder::ORDER_BY_DESCENDING,
+			))
+			//->logSqlDebug(__METHOD__) //DEBUG
 			;
-		if( ! empty($aAuthID) )
-			$theSql->addParam( 'auth_id', $aAuthID )->setParamPrefix(' AND ') ;
-		if( ! empty($aAccountID) )
-			$theSql->addParam('account_id',$aAccountID)->setParamPrefix(' AND ') ;
-		if( ! empty($aToken) )
-		{ // also search based on a token value
-			if( $isTokenAFilter )
-			{ // token is a search pattern
-				$theSql->setParamOperator(' LIKE ')
-					->addParam( 'token', $aToken )
-					->setParamOperator('=')
-					;
-			}
-			else // token is a literal value
-				$theSql->addParam( 'token', $aToken ) ;
-
-			$theSql->setParamPrefix(' AND ') ;
-		}
-		// future columns can be added here
-
-		$theSql->endWhereClause();
-		$theOrderByField = ($this->myExistingFeatureVersionNum>5) ? 'updated_ts' : '_changed';
-		$theSql->applyOrderByList(array($theOrderByField => SqlBuilder::ORDER_BY_DESCENDING));
-		//$this->debugLog( __METHOD__.' getAuthTokens='.$this->debugStr($theSql) ) ;
 		try
-		{
-			$theSet = $theSql->query() ;
-			if (!empty($theSet))
-				return $theSet->fetchAll() ;
-		}
-		catch( PDOException $pdoe )
-		{
-			$theSql->logSqlFailure(__METHOD__, $pdoe);
-		}
-		return null ;
+		{ return $theSql->query()->fetchAll(); }
+		catch( PDOException $pdox )
+		{ $theSql->logSqlFailure(__METHOD__, $pdox); }
 	}
 
 	/**
@@ -1353,30 +1347,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * See if we are trying to migrate the Auth model.
-	 * @param object $aScene - the Scene object associated with an Actor.
-	 * @return boolean Returns TRUE if admitted.
-	 * @see BaseModel::checkTicket()
-	 */
-	protected function checkInstallPwForMigration($aScene)
-	{
-		$theInstallScene = new \BitsTheater\scenes\Install();
-		$theInstallScene->installpw = $aScene->{static::KEY_pwinput};
-		$bAuthed = $theInstallScene->checkInstallPw();
-		if ( $bAuthed )
-		{
-			//set my fake titan account info so we can migrate!
-			$this->getDirector()->setMyAccountInfo(array(
-					'auth_id' => 'ZOMG-n33dz-2-migratez!',
-					'account_id' => -1,
-					'account_name' => $aScene->{static::KEY_token},
-					'groups' => array( $this->getProp('AuthGroups')->getTitanGroupID() ),
-			));
-		}
-		return $bAuthed;
-	}
-
-	/**
 	 * See if we can validate the api/page request with an account.
 	 * @param object $aScene - the Scene object associated with an Actor.
 	 * @return boolean Returns TRUE if admitted.
@@ -1427,7 +1397,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->returnProp($dbAccounts);
 		}
 		catch ( DbException $dbx )
-		{ $bAuthorized = $this->checkInstallPwForMigration($aScene); }
+		{ $bAuthorized = false; }
 		return $bAuthorized;
 	}
 
@@ -1569,9 +1539,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		{
 			$this->db->beginTransaction() ;
 			try {
-				if ($this->isEmpty()) {
-					$aAuthGroups = AuthGroupsDB::TITAN_GROUP_ID;
-				}
 				$nowAsUTC = $this->utc_now();
 				$theVerifiedTS = ($aUserData['verified_timestamp']==='now')
 						? $nowAsUTC
@@ -1597,7 +1564,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				$theSql->mustAddParam('account_id', 0, PDO::PARAM_INT);
 				$theSql->mustAddParam('pwhash');
 				$theSql->addParam('verified_ts');
-				$theSql->addParam('is_active', 1, PDO::PARAM_INT);
+				$theSql->mustAddParam('is_active', 1, \PDO::PARAM_INT);
 				$theSql->execDML();
 				//group mapping
 				$dbAuthGroups = $this->getProp('AuthGroups');
@@ -1657,12 +1624,16 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * Check your authority mechanism to determine if a permission is allowed.
 	 * @param string $aNamespace - namespace of the permission.
 	 * @param string $aPermission - name of the permission.
-	 * @param string $acctInfo - (optional) check this account instead of current user.
+	 * @param AccountInfoCache $aAcctInfo - (optional) check this account
+	 *   instead of current user.
 	 * @return boolean Return TRUE if the permission is granted, FALSE otherwise.
 	 */
-	public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null) {
-		$dbPermissions = $this->getProp('Permissions');
-		return $dbPermissions->isPermissionAllowed($aNamespace, $aPermission, $acctInfo);
+	public function isPermissionAllowed( $aNamespace, $aPermission,
+			AccountInfoCache $aAcctInfo=null )
+	{
+		if (empty($this->dbPermissions))
+		{ $this->dbPermissions = $this->getProp('Permissions'); } //cleanup will close this model
+		return $this->dbPermissions->isPermissionAllowed($aNamespace, $aPermission, $aAcctInfo);
 	}
 
 	/**
@@ -1679,12 +1650,12 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 
 	/**
 	 * Checks the given account information for membership.
-	 * @param AccountInfoCache $aAccountInfo - the account info to check.
+	 * @param AccountInfoCache $aAcctInfo - the account info to check.
 	 * @return boolean Returns FALSE if the account info matches a member account.
 	 */
-	public function isGuestAccount($aAccountInfo) {
-		if (!empty($aAccountInfo) && !empty($aAccountInfo->account_id) && !empty($aAccountInfo->groups)) {
-			return ( array_search(0, $aAccountInfo->groups, true) !== false );
+	public function isGuestAccount( AccountInfoCache $aAcctInfo=null ) {
+		if ( !empty($aAcctInfo) && !empty($aAcctInfo->account_id) && !empty($aAcctInfo->groups) ) {
+			return ( in_array(0, $aAcctInfo->groups, true) );
 		} else {
 			return true;
 		}
