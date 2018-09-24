@@ -22,11 +22,10 @@ use BitsTheater\costumes\ABitsCostume as BaseCostume;
 /**
  * HTTP Authorization headers have different members based on the scheme
  * being utilized, but any common characterizitics/methods would go here.
+ * @deprecated venue auth mechanism supercedes the need for this class.
  */
 class HttpAuthHeader extends BaseCostume
 {
-	use WornForHttpAuthBasic, WornForHttpAuthBroadway;
-	
 	/**
 	 * The raw HTTP Auth header.
 	 * @var string
@@ -78,15 +77,6 @@ class HttpAuthHeader extends BaseCostume
 	 * Parse out the Auth data according to the Auth scheme.
 	 */
 	protected function parseAuthData() {
-		$theAuthData = base64_decode(substr($this->auth_header, strlen($this->auth_scheme)+1));
-		switch ($this->auth_scheme) {
-			case self::AUTH_TYPE_BASIC:
-				$this->parseAuthHeaderAsAuthBasic($theAuthData);
-				break;
-			case self::AUTH_TYPE_BROADWAY:
-				$this->parseAuthHeaderAsAuthBroadway($theAuthData);
-				break;
-		}//switch
 	}
 	
 }//end class

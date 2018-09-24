@@ -44,6 +44,14 @@ interface IWillCall {
 	 */
 	function onTicketRejected(Scene $aScene, AccountInfoCache $aAcctInfo);
 	
+	/**
+	 * Log the current user out and wipe the slate clean.
+	 * Each venue may cache specific items which this should clear out.
+	 * @param AccountInfoCache $aAcctInfo - the account info to use.
+	 * @return $this Returns $this for chaining.
+	 */
+	function ripTicket( AccountInfoCache $aAcctInfo );
+	
 }//end interface
 
 }//end namespace

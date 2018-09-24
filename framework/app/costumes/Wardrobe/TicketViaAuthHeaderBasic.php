@@ -17,15 +17,24 @@
 
 namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\Wardrobe\TicketViaRequest as BaseCostume;
+use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\Scene;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
- * Class used to help manage logging in via the URL.
+ * Class used to help manage logging in via HTTP "Basic" Authorization Header.
  * @since BitsTheater [NEXT]
  */
-class TicketViaURL extends BaseCostume
+class TicketViaAuthHeaderBasic extends BaseCostume
 {
+	/** @var string The HTTP Authorization scheme. */
+	const AUTH_SCHEME = 'Basic';
+	/** @var string The raw HTTP Auth header. */
+	protected $auth_header = null;
+	/** @var string The scheme name for the HTTP Auth header. */
+	protected $auth_scheme = null;
 	
 	/**
 	 * Tasks to complete before we even check to see if this ticket is for
@@ -35,15 +44,19 @@ class TicketViaURL extends BaseCostume
 	 */
 	protected function onBeforeCheckTicket( Scene $aScene )
 	{
-		$dbAuth = $this->getMyModel();
-		//PHP has some built in auth vars, check them and use if not empty
-		if ( !empty($_SERVER['PHP_AUTH_USER']) && !empty($_SERVER['PHP_AUTH_PW']) )
-		{
-			$this->ticket_name = $_SERVER['PHP_AUTH_USER'];
-			$this->ticket_secret = $_SERVER['PHP_AUTH_PW'];
-			unset($_SERVER['PHP_AUTH_PW']);
-			//ensure user:pw via URL is not cached long term
-			$this->bUpdateCookie = false;
+		$this->auth_header = Strings::getHttpHeaderValue('Authorization');
+		if ( !empty($this->auth_header) ) {
+			$this->auth_scheme = strstr($this->auth_header, ' ', true);
+			if ( $this->auth_scheme == $this::AUTH_SCHEME ) {
+				//decode the header data
+				$theAuthData = base64_decode(
+						substr($this->auth_header, strlen($this->auth_scheme)+1)
+				);
+				list($this->ticket_name, $this->ticket_secret) = explode(':', $theAuthData);
+				//keeping lightly protected pw in memory can be bad, clear out usage asap.
+				$theServerKey = Strings::httpHeaderNameToServerKey('Authorization');
+				unset($_SERVER[$theServerKey]);
+			}
 		}
 		return $this;
 	}

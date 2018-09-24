@@ -23,16 +23,13 @@ use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
- * Class used to help manage authentication via request parameters, whether
- * they are found in GET or POST.
+ * Class used to help manage logging in via a browser Cookie.
  * @since BitsTheater [NEXT]
  */
-class TicketViaRequest extends BaseCostume
+class TicketViaCookie extends BaseCostume
 {
-	/** @var string password for the account. */
-	public $ticket_secret;
-	/** @var boolean Update the cookie, if requested to do so. */
-	protected $bUpdateCookie = false;
+	/** @var string The cookie's token to match against the auth token. */
+	public $cookie_token;
 	
 	/**
 	 * Tasks to complete before we even check to see if this ticket is for
@@ -42,11 +39,16 @@ class TicketViaRequest extends BaseCostume
 	 */
 	protected function onBeforeCheckTicket( Scene $aScene )
 	{
-		$this->ticket_name = $this->getUserInput($aScene);
-		$this->ticket_secret = $this->getAuthInput($aScene);
 		$dbAuth = $this->getMyModel();
-		//UI might use "current time" rather than actual boolean-like value.
-		$this->bUpdateCookie = !empty($aScene->{$dbAuth::KEY_cookie});
+		if ( !empty($_COOKIE[$dbAuth::KEY_userinfo]) ) {
+			$this->ticket_name = Strings::strstr_after(
+					$_COOKIE[$dbAuth::KEY_userinfo],
+					$this->getDirector()->app_id . '-'
+			);
+		}
+		if ( !empty($_COOKIE[$dbAuth::KEY_token]) ) {
+			$this->cookie_token = $_COOKIE[$dbAuth::KEY_token];
+		}
 		return $this;
 	}
 	
@@ -57,7 +59,9 @@ class TicketViaRequest extends BaseCostume
 	 */
 	protected function isTicketForThisVenue( Scene $aScene )
 	{
-		return !empty($this->ticket_name) && !empty($this->ticket_secret);
+		//$this->logStuff(__METHOD__, ' this=', $this); //DEBUG
+		return !$aScene->bExplicitAuthRequired &&
+				!empty($this->ticket_name) && !empty($this->cookie_token) ;
 	}
 
 	/**
@@ -69,23 +73,25 @@ class TicketViaRequest extends BaseCostume
 	 */
 	protected function processTicket( Scene $aScene )
 	{
-		$theResult = null;
-		$dbAuth = $this->getMyModel();
-		$theAuthRow = $dbAuth->getAuthByName($this->ticket_name);
-		if ( empty($theAuthRow) ) {
-			$theAuthRow = $dbAuth->getAuthByEmail($this->ticket_name);
-		}
-		//see if we can successfully log in now that we know what auth record
-		if ( !empty($theAuthRow) ) {
-			$theResult = $dbAuth->createAccountInfoObj($theAuthRow);
-			//check pwinput against 1-way encrypted one
-			if ( !Strings::hasher($this->ticket_secret, $theAuthRow['pwhash']) ) {
-				//auth fail!
-				$theResult->is_active = false;
+		//our cookie mechanism consumes cookie on use and creates a new one
+		//  by having rotating cookie tokens, stolen cookies have a limited
+		//  window in which to crack them before a new one is generated.
+		try {
+			$dbAuth = $this->getMyModel();
+			$theResult = $dbAuth->getAndEatCookie(
+					$this->ticket_name, $this->cookie_token
+			);
+			if ( !empty($theResult) ) {
+				$theAuthRow = $dbAuth->getAuthByAuthId($this->ticket_name);
+				if ( !empty($theAuthRow) ) {
+					return $dbAuth->createAccountInfoObj($theAuthRow);
+				}
 			}
+		} catch ( \Exception $x) {
+			//do not care if the cookie crumbles,
+			//  log it so admin knows about it, though
+			$this->logStuff(__METHOD__, ' ', $x->getMessage());
 		}
-		//return our results
-		return $theResult;
 	}
 	
 	/**
@@ -98,21 +104,14 @@ class TicketViaRequest extends BaseCostume
 	{
 		parent::onTicketAccepted($aScene, $aAcctInfo);
 		$dbAuth = $this->getMyModel();
-		//clean up all possible places where the valid pw input might reside
-		unset($this->ticket_secret);
-		unset($aScene->{$dbAuth::KEY_pwinput});
-		unset($_GET[$dbAuth::KEY_pwinput]);
-		unset($_POST[$dbAuth::KEY_pwinput]);
-		unset($_REQUEST[$dbAuth::KEY_pwinput]);
 		//save ticket short term cache
 		$dbAuth->saveAccountToSessionCache($aAcctInfo);
 		//login success, bake our CSRF token cookie!
 		$bCsrfTokenWasBaked = $dbAuth->setCsrfTokenCookie();
-		//if we have been asked to remember the ticket long term, save a cookie
-		if ( $this->bUpdateCookie ) {
-			//bake (create) a new cookie for next time
-			$dbAuth->updateCookie($aAcctInfo->auth_id, $aAcctInfo->account_id);
-		}
+		//so updateCookie() has audit info
+		$this->getDirector()->account_info = $aAcctInfo;
+		//bake (re-create) a new cookie for next time
+		$dbAuth->updateCookie($aAcctInfo->auth_id, $aAcctInfo->account_id);
 		return $this;
 	}
 	
@@ -124,18 +123,20 @@ class TicketViaRequest extends BaseCostume
 	 */
 	public function ripTicket( AccountInfoCache $aAcctInfo )
 	{
+		//remove any browser cookies
+		$dbAuth = $this->getMyModel();
+		$dbAuth->setMySiteCookie($dbAuth::KEY_userinfo);
+		$dbAuth->setMySiteCookie($dbAuth::KEY_token);
 		try {
-			$dbAuth = $this->getMyModel();
-			//remove their anti-CSRF tokens
+			//remove their cookie tokens
 			$dbAuth->removeTokensFor($aAcctInfo->auth_id,
-					$aAcctInfo->account_id,
-					$dbAuth::TOKEN_PREFIX_ANTI_CSRF . '%'
+					$aAcctInfo->account_id, $dbAuth::TOKEN_PREFIX_COOKIE . '%'
 			);
 		}
 		catch (\Exception $x) {
 			//do not care if removing tokens fail, log it though
 			$this->logErrors(__METHOD__,
-					' removing anti-CSRF tokens during logout: ',
+					' removing cookie tokens during logout: ',
 					$x->getMessage()
 			);
 		}
