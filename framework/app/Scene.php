@@ -89,6 +89,7 @@ implements IDirected
 	const USER_MSG_NOTICE = 'notice';
 	const USER_MSG_WARNING = 'warning';
 	const USER_MSG_ERROR = 'error';
+	const USER_MSG_MAX_COUNT = 25;
 	
 	/**
 	 * Magic PHP method to limit what var_dump() shows.
@@ -611,33 +612,51 @@ implements IDirected
 	}
 
 	/**
+	 * Set the message queue. Avoids the "Indirect modification of overloaded
+	 * element of Director has no effect" issue.
+	 */
+	public function setUserMsgs( $aMsgList )
+	{ $this->getDirector()['user_msgs'] = $aMsgList; }
+	
+	/**
 	 * Push a message onto the UI message queue.
 	 * @param string $aMsgText - text of the message to display.
-	 * @param string $aMsgClass - class of the message, one of self::USER_MSG_* constants (default NOTICE).
+	 * @param string $aMsgClass - class of the message, one of the
+	 *   <code>self::USER_MSG_*</code> constants (default NOTICE).
 	 */
-	public function addUserMsg($aMsgText, $aMsgClass=self::USER_MSG_NOTICE) {
-		if (!isset($_SESSION['user_msgs'])) {
-			$this->clearUserMsgs();
+	public function addUserMsg( $aMsgText, $aMsgClass=self::USER_MSG_NOTICE )
+	{
+		$theMsgList = $this->getUserMsgs();
+		$theMsgList[] = array(
+				'msg_class'=>$aMsgClass,
+				'msg_text'=>$aMsgText,
+		);
+		//do not let msgs grow too big
+		if ( count($theMsgList) > self::USER_MSG_MAX_COUNT ) {
+			array_shift($theMsgList);
 		}
-		$_SESSION['user_msgs'][] = array('msg_class'=>$aMsgClass, 'msg_text'=>$aMsgText);
+		$this->setUserMsgs($theMsgList);
 	}
 	
 	/**
-	 * Clear out the message queue. Usually done after it is displayed in user_msgs.php view.
+	 * Clear out the message queue.
+	 * Usually done after it is displayed in user_msgs.php view.
 	 */
-	public function clearUserMsgs() {
-		$_SESSION['user_msgs'] = array();
-	}
+	public function clearUserMsgs()
+	{ $this->setUserMsgs(array()); }
 	
 	/**
 	 * Retrieve the messages to display.
-	 * @return array Returns an array of messages, each msg is an array of 'msg_text' and 'msg_class'.
+	 * @return array Returns an array of messages,
+	 *   each msg is an array of 'msg_text' and 'msg_class'.
 	 */
-	public function getUserMsgs() {
-		if (!isset($_SESSION['user_msgs'])) {
-			$this->clearUserMsgs();
+	public function getUserMsgs()
+	{
+		$theDirector = $this->getDirector();
+		if ( empty($theDirector['user_msgs']) ) {
+			$theDirector['user_msgs'] = array();
 		}
-		return $_SESSION['user_msgs'];
+		return $theDirector['user_msgs'];
 	}
 
 	/**
