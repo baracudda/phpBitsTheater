@@ -39,7 +39,10 @@ class AuthAccount extends BaseCostume
 	 */
 	static public function getSearchFieldList()
 	{
-		return array_merge(parent::getSearchFieldList(), array(
+		return array_merge(array_diff(parent::getSearchFieldList(), array(
+				'created_by', //we do not display this field (yet?)
+				'updated_by', //we do not display this field (yet?)
+		)), array(
 				'mapped_imei',
 		));
 	}

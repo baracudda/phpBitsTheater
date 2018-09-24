@@ -123,8 +123,8 @@ trait WornForFeatureVersioning
 			case static::DB_TYPE_MYSQL:
 			{
 				//for this particular operation, having the database prepended to the table name breaks the SQL
-				if (strpos($aTableName, $this->myDbConnInfo->dbName)!==false)
-					$aTableName = Strings::strstr_after($aTableName, '`'.$this->myDbConnInfo->dbName.'`.');
+				if ( strpos($aTableName, $this->myDbConnInfo->dbName)!==false )
+					$aTableName = Strings::strstr_after($aTableName, $theSql->getQuoted($this->myDbConnInfo->dbName) . '.');
 				$theSql->startWith( 'SELECT * FROM information_schema.COLUMNS' )
 					->startWhereClause()
 					->mustAddParam( 'TABLE_SCHEMA', $this->myDbConnInfo->dbName )
@@ -133,6 +133,28 @@ trait WornForFeatureVersioning
 					->mustAddParam( 'COLUMN_NAME', $aColumnName )
 					->endWhereClause()
 					;
+				/* Available fields for MySQL result:
+				 * TABLE_CATALOG
+				 * TABLE_SCHEMA
+				 * TABLE_NAME
+				 * COLUMN_NAME
+				 * ORDINAL_POSITION
+				 * COLUMN_DEFAULT
+				 * IS_NULLABLE
+				 * DATA_TYPE
+				 * CHARACTER_MAXIMUM_LENGTH
+				 * CHARACTER_OCTET_LENGTH
+				 * NUMERIC_PRECISION
+				 * NUMERIC_SCALE
+				 * DATETIME_PRECISION
+				 * CHARACTER_SET_NAME
+				 * COLLATION_NAME
+				 * COLUMN_TYPE
+				 * COLUMN_KEY
+				 * EXTRA
+				 * PRIVILEGES
+				 * COLUMN_COMMENT
+				 */
 				return ((object)($theSql->getTheRow())) ;
 			} break ;
 			default:

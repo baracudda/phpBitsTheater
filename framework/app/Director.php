@@ -21,7 +21,7 @@ use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\costumes\SiteSettings;
-use BitsTheater\models\Auth as AuthDB;
+use BitsTheater\costumes\venue\Usher;
 use BitsTheater\res\ResException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
@@ -87,11 +87,8 @@ implements ArrayAccess, IDirected
 	 * @var string[]
 	 */
 	protected $_logFilenameCache = array();
-	/**
-	 * Cache of the auth model in use.
-	 * @var AuthDB
-	 */
-	protected $dbAuth = null;
+	/** @var Usher The authorization costume used for permission checks. */
+	protected $mChiefUsher = null;
 	/**
 	 * Cache of the config model in use.
 	 * NOTE: If set to FALSE, then model is unavailable, use defined defaults.
@@ -167,13 +164,11 @@ implements ArrayAccess, IDirected
 		static::unregisterGlobals();
 		register_shutdown_function(array($this, 'onShutdown'));
 		try {
-			if (!$this->check_session_start()) {
-				session_id( uniqid() );
-				session_start();
-				session_regenerate_id();
+			if ( !$this->check_session_start() ) {
+				$this->regenerateSession();
 			}
 		} catch (Exception $e) {
-			$this->resetSession();
+			$this->regenerateSession();
 		}
 		
 		//if we are installing the website, check virtual-host-name-based session global
@@ -201,11 +196,7 @@ implements ArrayAccess, IDirected
 	 * @see \com\blackmoonit\AdamEve::cleanup()
 	 */
 	public function cleanup() {
-		if (session_id()!='') {
-			session_write_close();
-		}
 		unset($this->account_info);
-		$this->returnProp($this->dbAuth);
 		//destroy all cached models
 		array_walk($this->_propMaster, function(&$n) {$n['model'] = null;} );
 		unset($this->_propMaster);
@@ -272,19 +263,84 @@ implements ArrayAccess, IDirected
 			$theId = session_id();
 		}
 		if (!empty($theId) && preg_match('/^[a-zA-Z0-9,\-]{1,128}$/',$theId)) {
-			return session_start();
+			return $this->sessionStart();
 		}
 		return false;
 	}
-
-	public function resetSession() {
-		//throw new \Exception('resetSession');
-		session_unset();
-		session_destroy();
-		session_write_close();
-		session_regenerate_id(true);
+	
+	/**
+	 * Detect a destroyed session and wonky network conditions to either
+	 * replace or repair the current session, if need be.
+	 * Per PHP documentation:<br>
+	 * Warning: Current session_regenerate_id does not handle unstable network
+	 * well. e.g. Mobile and WiFi network. Therefore, you may experience lost
+	 * session by calling session_regenerate_id. You should not destroy the
+	 * old session data immediately, but should use destroy time-stamp and
+	 * control access to old session ID. Otherwise, concurrent access to page
+	 * may result in inconsistent state, or you may have lost session, or it
+	 * may cause client (browser) side race condition and may create many
+	 * session ID needlessly. Immediate session data deletion disables session
+	 * hijack attack detection and prevention also.
+	 */
+	protected function sessionStart()
+	{
+		session_start();
+		if ( isset($_SESSION['destroyed_ts']) ) {
+			if ( $_SESSION['destroyed_ts'] < time() ) {
+				//This could be an attack or due to an unstable network.
+				//Remove all authentication status of this users session.
+				$this->logout();
+				throw BrokenLeg::toss($this, BrokenLeg::ACT_SERVICE_UNAVAILABLE);
+			}
+			if ( isset($_SESSION['new_session_id']) ) {
+				//Not fully expired yet. Could be lost cookie by an unstable
+				//  network. Try again to set proper session ID cookie.
+				session_commit();
+				session_id($_SESSION['new_session_id']);
+				// New session ID should exist
+				session_start();
+			}
+		}
 	}
 	
+	/**
+	 * Follow PHP documentation and handle regenerating a session ourselves.
+	 * Per PHP documentation:<br>
+	 * Warning: Current session_regenerate_id does not handle unstable network
+	 * well. e.g. Mobile and WiFi network. Therefore, you may experience lost
+	 * session by calling session_regenerate_id. You should not destroy the
+	 * old session data immediately, but should use destroy time-stamp and
+	 * control access to old session ID. Otherwise, concurrent access to page
+	 * may result in inconsistent state, or you may have lost session, or it
+	 * may cause client (browser) side race condition and may create many
+	 * session ID needlessly. Immediate session data deletion disables session
+	 * hijack attack detection and prevention also.
+	 */
+	public function regenerateSession()
+	{
+		//A new_session_id is required to set proper session ID
+		//  when session ID is not set due to unstable network.
+		$theNewID = function_exists('session_create_id') ? session_create_id() : uniqid();
+		$_SESSION['new_session_id'] = $theNewID;
+		//Set destroyed error state timestamp to 1 min from now.
+		$_SESSION['destroyed_ts'] = time()+60;
+		//This can be used by forms to prevent cross-site forgery attempts
+		$_SESSION['nonce'] = bin2hex(openssl_random_pseudo_bytes(32));
+		//Create new session without destroying the old one.
+		session_regenerate_id(false);
+		//Grab current session ID and flush the memory cache.
+		$theCurrID = session_id();
+		session_write_close();
+		//Set the ID to the new one, and start it back up again
+		if ( !empty($theCurrID) )
+		{ session_id($theCurrID); }
+		else //occationally get an empty ID, cannot start a session with it.
+		{ session_id($theNewID); }
+		session_start();
+		//Do not want this session to expire, yet.
+		unset($_SESSION['destroyed_ts']);
+	}
+
 	public function isInstalled() {
 		return class_exists(BITS_NAMESPACE_CFGS.'Settings');
 	}
@@ -336,6 +392,7 @@ implements ArrayAccess, IDirected
 	 */
 	protected function routeApiRequest( $aUrlPath )
 	{
+		//$this->logStuff(__METHOD__, ' rerouting to ', $aUrlPath);//DEBUG
 		if ( empty($aUrlPath) ) {
 			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
 				->setContextMsg('actor not found');
@@ -354,11 +411,13 @@ implements ArrayAccess, IDirected
 		$thePossibleMethodsList = $this->getPossibleApiMethodsList(
 				array_shift($thePathSegments)
 		);
-		$theParamSegments = trim('/' . implode('/', $thePathSegments), '/');
+		$theParamSegments = trim(implode('/', $thePathSegments), '/');
 		$theFailCount = 0;
+		//$this->logStuff(__METHOD__, ' possible routes: ', $theActorClass, '::', $thePossibleMethodsList);//DEBUG
 		foreach($thePossibleMethodsList as $thePossibleMethod) {
 			try {
-				$thePossibleUrl = $theActorName . '/' . $thePossibleMethod . $theParamSegments;
+				$thePossibleUrl = $theActorName.'/'.$thePossibleMethod.'/'.$theParamSegments;
+				//$this->logStuff(__METHOD__, ' trying url=', $thePossibleUrl);//DEBUG
 				$this->raiseCurtain($thePossibleUrl);
 				break; //if we did not throw an exception, our job is done.
 			}
@@ -366,6 +425,7 @@ implements ArrayAccess, IDirected
 				$theFailCount += 1;
 			}
 		}
+		//$this->logStuff(__METHOD__, ' fails=', $theFailCount, ' list=', count($thePossibleMethodsList) );//DEBUG
 		//if we fail to execute any of our possibilies, toss 404 error.
 		if ( $theFailCount>=count($thePossibleMethodsList) )
 		{ throw new FourOhFourExit($this->getSiteUrl($aUrlPath)); }
@@ -775,11 +835,12 @@ implements ArrayAccess, IDirected
 	 * @param object $aScene - the Scene object associated with an Actor.
 	 * @return boolean Returns TRUE if admitted.
 	 */
-	public function admitAudience($aScene) {
-		if ($this->canCheckTickets()) {
-			$this->dbAuth = $this->getProp('Auth'); //director will close this on cleanup
-			if (!empty($this->dbAuth)) {
-				return $this->dbAuth->checkTicket($aScene);
+	public function admitAudience( $aScene )
+	{
+		if ( $this->canCheckTickets() ) {
+			$this->mChiefUsher = Usher::withContext($this);
+			if ( !empty($this->mChiefUsher) ) {
+				return $this->mChiefUsher->checkTicket($aScene);
 			} else {
 				return true;
 			}
@@ -791,14 +852,20 @@ implements ArrayAccess, IDirected
 	 * Determine if the current logged in user has a permission.
 	 * @param string $aNamespace - namespace of the permission to check.
 	 * @param string $aPermission - permission name to check.
-	 * @param array|NULL $acctInfo - (optional) check specified account instead of
-	 * currently logged in user.
+	 * @param array|NULL $aAcctInfo - (optional) check specified account instead of
+	 *   currently logged in user.
+	 * @return boolean Returns TRUE if allowed.
 	 */
-	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
-		if (isset($this->dbAuth))
-			return $this->dbAuth->isPermissionAllowed($aNamespace, $aPermission, $aAcctInfo);
-		else
-			return false;
+	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null)
+	{
+		if ( !empty($this->mChiefUsher) ) {
+			$theAcctInfo = ( empty($aAcctInfo) ) ? $this->getMyAccountInfo()
+				: $this->mChiefUsher->createAccountInfoObj($aAcctInfo);
+			return $this->mChiefUsher->isPermissionAllowed($aNamespace,
+					$aPermission, $theAcctInfo
+			);
+		}
+		return false;
 	}
 	
 	/**
@@ -807,9 +874,8 @@ implements ArrayAccess, IDirected
 	 */
 	public function isGuest()
 	{
-		if (isset($this->dbAuth))
-		{
-			return $this->dbAuth->isGuestAccount(
+		if ( !empty($this->mChiefUsher) ) {
+			return $this->mChiefUsher->isGuestAccount(
 					$this->getMyAccountInfo()
 			);
 		}
@@ -864,8 +930,8 @@ implements ArrayAccess, IDirected
 	 * @return string Returns the site URL.
 	 */
 	public function logout() {
-		if (!$this->isGuest() && isset($this->dbAuth)) {
-			$this->dbAuth->ripTicket();
+		if ( !$this->isGuest() && isset($this->mChiefUsher) ) {
+			$this->mChiefUsher->ripTicket();
 			unset($this->account_info);
 		}
 		return BITS_URL;
@@ -910,10 +976,8 @@ implements ArrayAccess, IDirected
 	 * @return string URL of the forum, if any.
 	 */
 	public function getForumUrl() {
-		if ($this->dbAuth->isCallable('getForumUrl')) {
-			return $this->dbAuth->getForumUrl();
-		} else {
-			return "";
+		if ( !empty($this->mChiefUsher) ) {
+			return $this->mChiefUsher->getForumUrl();
 		}
 	}
 	
@@ -969,9 +1033,7 @@ implements ArrayAccess, IDirected
 	 *    Returns NULL not logged in.
 	 */
 	public function getMyAccountInfo()
-	{
-		return $this->account_info;
-	}
+	{ return $this->account_info; }
 	
 	/**
 	 * Cache the non-sensitive account info for the currently
@@ -982,14 +1044,8 @@ implements ArrayAccess, IDirected
 	 */
 	public function setMyAccountInfo( $aAcctInfo=null )
 	{
-		if ( $aAcctInfo instanceof AccountInfoCache ) {
-			$this->account_info = $aAcctInfo;
-		}
-		else if ( !empty($this->dbAuth) && !empty($aAcctInfo) ) {
-			$this->account_info = $this->dbAuth->createAccountInfoObj($aAcctInfo);
-		}
-		else {
-			$this->account_info = null;
+		if ( !empty($this->mChiefUsher) ) {
+			$this->account_info = $this->mChiefUsher->createAccountInfoObj($aAcctInfo);
 		}
 		return $this->account_info;
 	}

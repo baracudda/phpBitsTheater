@@ -125,9 +125,8 @@ implements IDirected
 	 * @param string $anAction - action specified by URL.
 	 * @return string Return what action should be performed.
 	 */
-	static public function getDefaultAction($anAction=null) {
-		return (!empty($anAction)) ? $anAction : static::DEFAULT_ACTION;
-	}
+	static public function getDefaultAction( $anAction=null )
+	{ return ( !empty($anAction) ) ? $anAction : static::DEFAULT_ACTION; }
 	
 	/**
 	 * Default behavior is to prevent all public methods inherent in Actor class
@@ -280,8 +279,14 @@ implements IDirected
 				throw $x;
 			}
 		}
-		if (empty($theResult))
-			$this->renderView($this->renderThisView);
+		if ( empty($theResult) ) {
+			$theView = $this->viewToRender();
+			if ( empty($theView) ) {
+				$theView = $anAction;
+			}
+			//$this->debugLog(__METHOD__ . " theView=[{$theView}]"); //DEBUG
+			$this->renderView($theView);
+		}
 		else
 			header('Location: '.$theResult);
 		return true;
@@ -303,14 +308,21 @@ implements IDirected
 			$anAction = $this->action;
 		$recite =& $this->scene; $v =& $recite; //$this->scene, $recite, $v are all the same
 		$myView = $recite->getViewPath($recite->actor_view_path.$anAction);
-		if (file_exists($myView))
-			include($myView);
+		if ( is_file($myView) )
+		{ include($myView); }
 		else {
 			$theAppView = $recite->getViewPath($recite->view_path.$anAction);
-			if (file_exists($theAppView))
-				include($theAppView);
-			else
+			if ( is_file($theAppView) )
+			{ include($theAppView); }
+			else {
+				/* DEBUG
+				$this->debugLog(__METHOD__ . ' ' . $this->mySimpleClassName
+						. '->' . $anAction . ' NOT FOUND.'
+				);
+				$this->debugLog(__METHOD__ . ' ' . Strings::getStackTrace());
+				*/
 				throw new FourOhFourExit(str_replace(BITS_ROOT,'',$myView));
+			}
 		}
 	}
 	
