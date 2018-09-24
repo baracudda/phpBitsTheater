@@ -119,9 +119,9 @@ class AmazonS3Item extends BaseCostume
 	 * based on the array keys or object property names.
 	 * @param array|object $aThing - array or object to copy from.
 	 */
-	protected function copyFrom(&$aThing)
+	protected function copyFrom( $aThing )
 	{
-		parent::copyFrom( $aThing );
+		parent::copyFrom($aThing);
 		$this->Size = $this->Size+0;
 		if ( !is_null($this->Owner) )
 		{

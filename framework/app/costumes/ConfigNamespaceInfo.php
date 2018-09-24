@@ -43,7 +43,8 @@ class ConfigNamespaceInfo extends BaseCostume {
 	 * based on the array keys or object property names.
 	 * @param array|object $aThing - array or object to copy from.
 	 */
-	protected function copyFrom(&$aThing) {
+	protected function copyFrom( $aThing )
+	{
 		parent::copyFrom($aThing);
 		//TODO see @isNamespaceAllowed(), better way includes override by descendants
 		//$this->group_id = ($this->namespace=='auth') ? 1 : null;

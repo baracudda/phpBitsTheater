@@ -28,12 +28,23 @@ abstract class ASimpleCostume extends BaseCostume {
 	 * based on the array keys or object property names.
 	 * @param array|object $aThing - array or object to copy from.
 	 */
-	protected function copyFrom(&$aThing) {
+	protected function copyFrom( $aThing )
+	{
+		/* DEBUG
+		set_error_handler(function($errNum, $errMsg) use ($aThing) {
+			//a development error to catch and report since anything
+			//  getting to this point should be array|object.
+			\com\blackmoonit\Strings::errorLog(__METHOD__, ' thing=', $aThing);
+			throw new IllegalArgumentException($errMsg, $errNum);
+		}, E_WARNING);
+		try {
+		*/
 		foreach ($aThing as $theName => $theValue) {
 			if (property_exists($this, $theName)) {
 				$this->{$theName} = $theValue;
 			}
 		}
+		//} finally { restore_error_handler(); } //DEBUG
 	}
 	
 	/**
@@ -53,7 +64,7 @@ abstract class ASimpleCostume extends BaseCostume {
 	 * instance) and sets its properties to the values of the
 	 * array param.
 	 * @param array $anArray - associative array of data
-	 * @return ASimpleCostume Returns the new instance.
+	 * @return $this Returns the new instance.
 	 */
 	static public function fromArray($anArray) {
 		$theClassName = get_called_class();
@@ -67,7 +78,7 @@ abstract class ASimpleCostume extends BaseCostume {
 	 * instance) and sets its properties to the values of the
 	 * object param.
 	 * @param object $anObj - object to copy data from.
-	 * @return ASimpleCostume Returns the new instance.
+	 * @return $this Returns the new instance.
 	 */
 	static public function fromObj($anObj) {
 		$theClassName = get_called_class();
@@ -81,7 +92,7 @@ abstract class ASimpleCostume extends BaseCostume {
 	 * instance) and sets its properties to the values of the
 	 * JSON param.
 	 * @param string $asJson - JSON encoded string
-	 * @return ASimpleCostume Returns the new instance.
+	 * @return $this Returns the new instance.
 	 */
 	static public function fromJson($asJson) {
 		return static::fromArray(json_decode($asJson,true));
@@ -93,7 +104,7 @@ abstract class ASimpleCostume extends BaseCostume {
 	 * instance) and sets its properties to the values of the
 	 * object or array param.
 	 * @param array|object $aThing - thing to copy data from.
-	 * @return ASimpleCostume Returns the new instance.
+	 * @return $this Returns the new instance.
 	 */
 	static public function fromThing($aThing) {
 		$theClassName = get_called_class();
@@ -140,7 +151,7 @@ abstract class ASimpleCostume extends BaseCostume {
 	/**
 	 * Convert an instance of StdClass to this class.
 	 * @param StandardClass $aStdClass - the StdClass instance to convert from.
-	 * @return mixed Returns the converted class.
+	 * @return $this Returns the converted class.
 	 */
 	static public function fromStdClass(StandardClass $aStdClass) {
 		//Strings::debugLog('costume stdcls: '.Strings::debugStr($aStdClass));

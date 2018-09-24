@@ -73,6 +73,7 @@ abstract class ARecordSet extends BaseCostume
 	 * with the ARecordSet descendant and an export field/column name list.
 	 * @param IDirected $aContext - used to get the Director object.
 	 * @param string[] $aExportFieldList - fields we intend to export.
+	 * @return $this Returns $this for chaining.
 	 */
 	static public function withContextAndColumns( IDirected $aContext,
 			$aExportFieldList=null )

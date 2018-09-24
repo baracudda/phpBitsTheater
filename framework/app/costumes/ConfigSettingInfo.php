@@ -67,7 +67,8 @@ class ConfigSettingInfo extends BaseCostume
 	 * based on the array keys or object property names.
 	 * @param array|object $aThing - array or object to copy from.
 	 */
-	protected function copyFrom(&$aThing) {
+	protected function copyFrom( $aThing )
+	{
 		parent::copyFrom($aThing);
 		$this->config_key = $this->ns.'/'.$this->key;
 		if ( !empty($this->mSettingInfo) && (!$this->mSettingInfo instanceof ConfigResEntry) ) {

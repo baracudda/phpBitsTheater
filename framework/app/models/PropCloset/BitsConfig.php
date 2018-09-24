@@ -21,12 +21,16 @@ use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\ConfigNamespaceInfo;
 use BitsTheater\costumes\ConfigSettingInfo;
 use BitsTheater\costumes\ConfigResEntry;
+use BitsTheater\costumes\WornForFeatureVersioning;
 use BitsTheater\Scene;
 use com\blackmoonit\exceptions\DbException;
+use com\blackmoonit\Strings;
 use PDOException;
 {//namespace begin
 
-class BitsConfig extends BaseModel implements IFeatureVersioning {
+class BitsConfig extends BaseModel implements IFeatureVersioning
+{ use WornForFeatureVersioning;
+	
 	/**
 	 * Used by meta data mechanism to keep the database up-to-date with the code.
 	 * A non-NULL string value here means alter-db-schema needs to be managed.
@@ -90,19 +94,6 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 		return $theResults;
 	}
 
-	/**
-	 * Returns the current feature metadata for the given feature ID.
-	 * @param string $aFeatureId - the feature ID needing its current metadata.
-	 * @return array Current feature metadata.
-	 */
-	public function getCurrentFeatureVersion($aFeatureId=null) {
-		return array(
-				'feature_id' => self::FEATURE_ID,
-				'model_class' => $this->mySimpleClassName,
-				'version_seq' => self::FEATURE_VERSION_SEQ,
-		);
-	}
-	
 	/**
 	 * Meta data may be necessary to make upgrades-in-place easier. Check for
 	 * existing meta data and define if not present.
@@ -168,6 +159,12 @@ class BitsConfig extends BaseModel implements IFeatureVersioning {
 			return $theMapData;
 		} else {
 			$theConfigResEntry = $this->getConfigDefinition($aNsKey);
+			if ( empty($theConfigResEntry) ) {
+				$this->logErrors(__METHOD__, ' [', get_called_class(),
+						'] unknown configuration key [' . $aNsKey . ']'
+				);
+				$this->logErrors(Strings::getStackTrace());
+			}
 			return array(
 					'namespace' => $theConfigResEntry->config_namespace(),
 					static::MAPKEY_NAME => $theConfigResEntry->config_setting(),
