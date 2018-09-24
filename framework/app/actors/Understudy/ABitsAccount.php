@@ -157,20 +157,20 @@ abstract class ABitsAccount extends BaseActor {
 	 */
 	public function ajajGetAccountInfo()
 	{
-		$v =& $this->scene;
 		$this->viewToRender('results_as_json');
-		if( ! $this->isGuest() )
-		{
+		if ( !$this->isGuest() ) {
 			$theData = $this->getDirector()->getMyAccountInfo()->exportData() ;
-			if( !empty($theData->groups) ) try
-			{
+			if ( !empty($theData->rights) ) {
+				$theData->permissions = $theData->rights; //old alias
+				unset($theData->rights);
+			}
+			if( !empty($theData->groups) && empty($theData->permissions) ) try {
 				$dbPerms = $this->getProp( 'Permissions' ) ;
 				$theData->permissions = $dbPerms->getGrantedRights($theData->groups);
 			}
 			catch( Exception $x )
 			{ throw BrokenLeg::tossException( $this, $x ) ; }
-
-			$v->results = APIResponse::resultsWithData($theData) ;
+			$this->setApiResults($theData);
 		}
 		else
 		{ throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED) ; }
@@ -231,8 +231,6 @@ abstract class ABitsAccount extends BaseActor {
 		try { $theGroups = $dbGroups->getAcctGroups( $aAccountID ) ; }
 		catch( DbException $dbx )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_EXCEPTION, $dbx->getMessage() ) ; }
-		if( in_array( $dbGroups->getTitanGroupID(), $theGroups ) )
-			throw AccountAdminException::toss( $this, 'CANNOT_DELETE_TITAN' ) ;
 		$this->returnProp( $dbGroups ) ;
 
 		return true ;

@@ -24,17 +24,16 @@ use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthAccountSet;
 use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\AuthOrgSet;
-use BitsTheater\costumes\colspecs\CommonMySql;
-use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForAuditFields;
+use BitsTheater\costumes\colspecs\CommonMySql;
+use BitsTheater\costumes\CursorCloset\AuthOrg ;
 use BitsTheater\models\Auth as AuthDB; /* @var $dbAuth AuthDB */
 use BitsTheater\models\AuthGroups as AuthGroupsDB; /* @var $dbAuthGroups AuthGroupsDB */
 use BitsTheater\outtakes\AccountAdminException;
 use BitsTheater\outtakes\PasswordResetException;
 use BitsTheater\scenes\Account as MyScene;
 use com\blackmoonit\Arrays;
-use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\MailUtils;
 use com\blackmoonit\MailUtilsException;
 use com\blackmoonit\Strings;
@@ -60,7 +59,7 @@ class AuthOrgAccount extends BaseActor
 
 	/**
 	 * Token to use for "ping"; override in descendant.
-	 * @see AuthBasicAccount::requestMobileAuth()
+	 * @see requestMobileAuth()
 	 * @var string
 	 */
 	const MAGIC_PING_TOKEN = 'pInG';
@@ -166,6 +165,11 @@ class AuthOrgAccount extends BaseActor
 						$v->getPwInputKey() => $aAcctPw,
 						'verified_timestamp' => $theVerifiedTs,
 				);
+				// Also make sure we choose the correct org for this reg code.
+				$theGroup = $dbAuthGroups->getGroup($theDefaultGroup) ;
+				$theOrgToAdd = ( empty($theGroup['org_id']) ? null : $theGroup['org_id'] ) ;
+				if( !empty($theOrgToAdd) )
+					$theNewAcct['org_ids'] = array( $theOrgToAdd ) ;
 				$dbAuth->registerAccount($theNewAcct, $theDefaultGroup);
 				return $dbAuth::REGISTRATION_SUCCESS;
 			} else {
@@ -281,17 +285,16 @@ class AuthOrgAccount extends BaseActor
 		$bRegCodeOk = ( !empty($v->reg_code) );
 		if ( $bPwOk && $bRegCodeOk && $bPostKeyOldEnough ) {
 			$dbAuth = $this->getProp('Auth');
-			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey, $v->email,
-					$v->reg_code, false);
+			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey,
+					$v->email, $v->reg_code, false
+			);
 			//$this->debugLog(__METHOD__.' ['.$v->$userKey.'] code='.$theRegResult); //DEBUG
 			switch ($theRegResult) {
 				case $dbAuth::REGISTRATION_SUCCESS :
-					//registration succeeded, save the account in session cache
-					$this->getDirector()->setMyAccountInfo(
-							$dbAuth->getAccountInfoCacheByEmail($v->email)
-					);
-					//since we are "logged in" via a non-standard mechanism, create an anti-CSRF token
-					$dbAuth->setCsrfTokenCookie();
+					//registration succeeded, now pretend to login with it
+					$v->{$dbAuth::KEY_userinfo} = $v->{$userKey};
+					$v->{$dbAuth::KEY_pwinput} = $v->{$pwKey};
+					$dbAuth->checkTicket($v);
 					//we may wish to return the newly created account data
 					return $this->ajajGetAccountInfo();
 				case $dbAuth::REGISTRATION_REG_CODE_FAIL :
@@ -575,32 +578,47 @@ class AuthOrgAccount extends BaseActor
 	 */
 	public function registerViaMobile()
 	{
-		//shortcut variable $v also in scope in our view php file.
 		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
-		$dbAuth = $this->getProp('Auth');
+		$dbAuth = $this->getCanonicalModel();
 		//$this->debugLog('regargs='.$v->name.', '.$v->salt.', '.$v->email.', '.$v->code);
 		$theRegResult = $this->registerNewAccount($v->name, $v->salt, $v->email, $v->code, false);
-		if ($theRegResult===$dbAuth::REGISTRATION_SUCCESS) {
-			$theAuthHeader = HttpAuthHeader::fromHttpAuthHeader($this->getDirector(),
-					(!empty($v->auth_header_data)) ? $v->auth_header_data : null
-			);
-			$theMobileRow = $dbAuth->registerMobileFingerprints(
-					$dbAuth->getAuthByEmail($v->email), $theAuthHeader
-			);
-			$v->results = array(
-					'code' => $theRegResult,
-					'auth_id' => $theMobileRow['auth_id'],
-					'user_token' => $theMobileRow['account_token'],
-			);
-			$this->debugLog($v->name.' successfully registered an account via mobile: '.$theMobileRow['account_token']);
-		} else {
-			if (!isset($theRegResult))
-				$theRegResult = $dbAuth::REGISTRATION_UNKNOWN_ERROR;
-			$v->results = array('code' => $theRegResult);
-			$this->debugLog($v->name.' unsuccessfully tried to register an account via mobile. ('.$theRegResult.')');
+		if ( $theRegResult===$dbAuth::REGISTRATION_SUCCESS ) {
+			//pretend we are just now logging in with the newly registered account
+			$v->{$dbAuth::KEY_userinfo} = $v->name;
+			$v->{$dbAuth::KEY_pwinput} = $v->salt;
+			$dbAuth->checkTicket($v);
+			$theMobileRow = $this->getMyMobileRow();
+			if ( !empty($theMobileRow) ) {
+				$v->results = array(
+						'code' => $theRegResult,
+						'auth_id' => $theMobileRow['auth_id'],
+						'user_token' => $theMobileRow['account_token'],
+				);
+				$this->logStuff($v->name,
+						' successfully registered an account via mobile: [',
+						$theMobileRow['account_token'], ']'
+				);
+				return;
+			}
 		}
+		if ( !isset($theRegResult) )
+		{ $theRegResult = $dbAuth::REGISTRATION_UNKNOWN_ERROR; }
+		$v->results = array(
+				'code' => $theRegResult,
+		);
+		$this->logStuff($v->name,
+				' unsuccessfully tried to register an account via mobile. [',
+				$theRegResult, ']'
+		);
 	}
+	
+	/**
+	 * Get my mobile data, if known.
+	 * @return array Returns the mobile data as an array.
+	 */
+	protected function getMyMobileRow()
+	{ return $this->getCanonicalModel()->getMyMobileRow(); }
 	
 	/**
 	 * Mobile auth is a bit more involved than Basic HTTP auth, use this mechanism
@@ -614,27 +632,25 @@ class AuthOrgAccount extends BaseActor
 		//shortcut variable $v also in scope in our view php file.
 		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
-		if (empty($aPing)) {
-//			$this->debugLog(__METHOD__.$v->debugStr($v->auth_header_data)); //DEBUG
-			$theAuthHeader = HttpAuthHeader::fromHttpAuthHeader($this->getDirector(),
-					(!empty($v->auth_header_data)) ? $v->auth_header_data : null
-			);
-			$dbAuth = $this->getProp('Auth');
-			if (!$this->isGuest()) {
-//				$this->debugLog(__METHOD__.' login account found.'); //DEBUG
-				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
-						$this->director->account_info, $theAuthHeader
-				);
-			} else {
-//				$this->debugLog(__METHOD__.' login using broadway auth unsuccessful'); //DEBUG
-				$v->results = $dbAuth->requestMobileAuthAutomatedByTokens(
-						$v->auth_id, $v->user_token, $theAuthHeader
-				);
-			}
-			if (empty($v->results)) {
-//				$this->debugLog(__METHOD__.' mobile auth fail; logging out'); //DEBUG
-				$this->director->logout();
+		if ( empty($aPing) ) {
+			if ( $this->isGuest() ) {
 				throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED);
+			}
+			$theMobileRow = $this->getMyMobileRow();
+			if ( !empty($theMobileRow) ) {
+				$theMobileRow = (object)$theMobileRow;
+				$myAuth = $this->getDirector()->getMyAccountInfo();
+				$dbAuth = $this->getCanonicalModel();
+				$theAuthToken = $dbAuth->generateAuthTokenForMobile(
+						$myAuth->account_id, $myAuth->auth_id, $theMobileRow->mobile_id
+				);
+				$v->results = array(
+						'account_name' => $myAuth->account_name,
+						'auth_id' => $myAuth->auth_id,
+						'user_token' => $theMobileRow->account_token,
+						'auth_token' => $theAuthToken,
+						'api_version_seq' => $this->getRes('website/api_version_seq'),
+				);
 			}
 		} else if ($aPing===static::MAGIC_PING_TOKEN) {
 			$v->results = array(
@@ -727,19 +743,12 @@ class AuthOrgAccount extends BaseActor
 				$accountGroup = array();
 				foreach ($aGroupId as $anID) {
 					$theID = trim($anID);
-					//if not TITAN group and not already in group, add to group list
-					if ( ($theID!==$dbAuthGroups->getTitanGroupID()) &&
-						(array_search($theID, $accountGroup, true)===false) )
+					//if not already in group, add to group list
+					if ( !in_array($theID, $accountGroup, true) )
 					{ $accountGroup[] = $theID; }
 				}
-				// Ensure not trying to create an account affiliated with the special TITAN group.
-				if ( array_search( $dbAuthGroups->getTitanGroupID(), $accountGroup ) !== false )
-					throw AccountAdminException::toss( $this, 'CANNOT_CREATE_TITAN_ACCOUNT' );
 			} else {
 				$accountGroup = trim($aGroupId);
-				// Ensure not trying to create an account affiliated with the special TITAN group.
-				if ( $accountGroup == $dbAuthGroups->getTitanGroupID() )
-					throw AccountAdminException::toss( $this, 'CANNOT_CREATE_TITAN_ACCOUNT' );
 			}
 		}
 
@@ -811,9 +820,7 @@ class AuthOrgAccount extends BaseActor
 	 * <li><b>account_group_ids</b> - (optional)
 	 *   Array of authgroup ids to map to the account. All previous authgroup
 	 *   affiliations for this account will be removed and replaced with this
-	 *   list of group affiliations.<br>
-	 *   Be aware that attempting to update an account to the authgroup id of
-	 *   the TITAN group will result in an exception being thrown.
+	 *   list of group affiliations.
 	 * </li>
 	 * </ul>
 	 * @param integer|string $aID - (optional) the auth or account ID
@@ -823,7 +830,6 @@ class AuthOrgAccount extends BaseActor
 	 * <li>PERMISSION_DENIED - if user lacks permission to modify accounts.</li>
 	 * <li>UNIQUE_FIELD_ALREADY_EXISTS - if a unique field is specified to update,
 	 *   but already exists in the system.</li>
-	 * <li>CANNOT_UPDATE_TO_TITAN - if the TITAN group is specified.</li>
 	 * </ul>
 	 * @return string Returns the redirect URL, if defined.
 	 * @since BitsTheater 3.6
@@ -847,13 +853,7 @@ class AuthOrgAccount extends BaseActor
 		$aPassword 	= trim ( $v->account_password );
 		$aEmail 	= trim ( $v->email );
 		$aIsActive  = (isset($v->account_is_active)) ? $v->account_is_active : null;
-		
 		$aGroupIds  = $v->account_group_ids;
-		// Ensure not trying to set group affiliation to special TITAN group.
-		foreach ((array)$aGroupIds as $thisNewGroupId) {
-			if ( $thisNewGroupId == $dbAuthGroups->getTitanGroupID() )
-				throw AccountAdminException::toss($this, 'CANNOT_UPDATE_TO_TITAN');
-		}
 
 		try
 		{
@@ -916,7 +916,7 @@ class AuthOrgAccount extends BaseActor
 
 			//update is_active, if applicable
 			if ( isset($updatedIsActive) )
-				$dbAuth->setInvitation($theAcctInfo->account_id, $updatedIsActive);
+				$dbAuth->setInvitation($theAcctInfo, $updatedIsActive);
 
 			// Update account group, if applicable.
 			if ( isset ( $aGroupIds ))
@@ -924,9 +924,6 @@ class AuthOrgAccount extends BaseActor
 				// First we want to remove existing mappings of group ids for this account.
 				foreach ($theAcctInfo->groups as $thisGroupId)
 				{
-					// Ensure not trying to remove group affiliation to special TITAN group.
-					if ( $thisGroupId == $dbAuthGroups->getTitanGroupID() )
-						continue;
 					$dbAuthGroups->delMap(
 							$thisGroupId, $theAcctInfo->auth_id
 					);
@@ -1081,7 +1078,7 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-	 * Fetches the list of organizations to which an account belongs.
+	 * Fetches the list of organizations to which an account has membership in.
 	 * @param string $aAuthID an account's auth ID (a UUID)
 	 * @param string[] $aFieldList a subset of columns to return; if exactly one
 	 *  column is given, then the return value is a simple array of the values
@@ -1101,21 +1098,18 @@ class AuthOrgAccount extends BaseActor
 				->setDataFromPDO(
 						$dbOrgs->getOrgsForAuthCursor( $aAuthID )
 				);
-			$theRow = $theRowSet->fetch();
 			$theFieldList = $theRowSet->getExportFieldsList();
-			if( !empty($theFieldList) && count($theFieldList) == 1 )
-			{ // Caller wanted exactly one column; collapse it to a string[].
-				while ($theRow!==false) {
-					$theOrgs[] = $theRow->exportData()->{$theFieldList[0]};
-					$theRow = $theRowSet->fetch();
+			$theSimpleField = ( !empty($theFieldList) && count($theFieldList) == 1 )
+				? $theFieldList[0] : null;
+			foreach ($theRowSet as $theRow) {
+				if ( !empty($theSimpleField) )
+				{ // Caller wanted exactly one column; collapse it to a string[].
+					$theOrgs[] = $theRow->exportData()->{$theSimpleField};
 				}
-			}
-			else {
-				while ($theRow!==false) {
+				else {
 					$theOrgs[] = $theRow->exportData();
-					$theRow = $theRowSet->fetch();
 				}
-			}
+			};
 			return $theOrgs ;
 		}
 		catch( Exception $x )
@@ -1297,20 +1291,22 @@ class AuthOrgAccount extends BaseActor
 	{
 		$this->checkAllowed( 'accounts', 'activate' );
 		$dbAuth = $this->getProp( 'Auth' ) ;
-		$theAuth = null ;
-		try { $theAuth = $dbAuth->getAuthByAccountId($aAccountID) ; }
-		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
-		if( empty($theAuth) )
-			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aAccountID ) ;
-		try { $dbAuth->setInvitation( $aAccountID, $bActive ) ; }
-		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
+		try {
+			$theAuth = $dbAuth->getAuthByAccountId($aAccountID) ;
+			if ( !empty($theAuth) ) {
+				$dbAuth->setInvitation( $dbAuth->createAccountInfoObj($theAuth), $bActive ) ;
+			}
+			else {
+				throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aAccountID ) ;
+			}
+		}
+		catch (\Exception $x)
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
 
 		$theResponse = new \stdClass() ;
 		$theResponse->account_id = $aAccountID ;
 		$theResponse->is_active = $bActive ;
-		$this->scene->results = APIResponse::resultsWithData($theResponse) ;
+		$this->setApiResults($theResponse);
 	}
 
 	/**
@@ -1408,32 +1404,6 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-	 * Before a pairing of device to auth account is attempted, what should occur?
-	 * Default behavior is to delete stale tokens for enhanced security.
-	 * @param string $aDeviceTokenFilter - the particular token prefix used.
-	 */
-	protected function beforeRequestMobileAuthAccount($aDeviceTokenFilter)
-	{
-		$dbAuth = $this->getProp('Auth');
-		//remove any stale device tokens
-		$dbAuth->removeStaleTokens($aDeviceTokenFilter, '3 MONTH');
-		$this->returnProp($dbAuth);
-	}
-	
-	/**
-	 * Once a pairing of device to auth account succeeds, then what? Default behavior is to
-	 * delete the token for enhanced security.
-	 * @param string $aDeviceTokenFilter - the particular token prefix used.
-	 */
-	protected function afterSuccessfulRequestMobileAuthAccount($aDeviceTokenFilter)
-	{
-		$dbAuth = $this->getProp('Auth');
-		//remove any lingering device tokens unless one was JUST created
-		$dbAuth->removeStaleTokens($aDeviceTokenFilter, '1 SECOND');
-		$this->returnProp($dbAuth);
-	}
-	
-	/**
 	 * Mobile devices might ask the server for what account should be used
 	 * for authenticating mobile devices (which may be rooted).<br>
 	 * Returns JSON encoded array[account_name, auth_id, user_token, auth_token]
@@ -1444,30 +1414,20 @@ class AuthOrgAccount extends BaseActor
 		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
 		
-		//Auth Header IS NOT SET because we do not have an account, yet
-		//  Most of the Auth Header data is in a POST param
-		if (!empty($v->auth_header_data))
-		{
-			$theHttpAuthHeader = HttpAuthHeader::fromHttpAuthHeader(
-					$this->getDirector(), $v->auth_header_data
+		$dbAuth = $this->getProp('Auth');
+		$myAuth = $this->getDirector()->getMyAccountInfo();
+		$theMobileRow = $this->getMyMobileRow();
+		if ( !$this->isGuest() && !empty($theMobileRow) ) {
+			$theAuthToken = $dbAuth->generateAuthTokenForMobile(
+					$myAuth->account_id, $myAuth->auth_id, $theMobileRow['mobile_id']
 			);
-			$dbAuth = $this->getProp('Auth');
-			$theDeviceTokenFilter = $dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':';
-			$theDeviceTokenFilter .= $theHttpAuthHeader->device_id . ':%';
-			$this->beforeRequestMobileAuthAccount($theDeviceTokenFilter);
-			
-			$theTokenRows = $dbAuth->getAuthTokens(null, null, $theDeviceTokenFilter, true);
-			//$this->debugLog(__METHOD__.' rows='.$this->debugStr($theTokenRows));
-			if (!empty($theTokenRows)) {
-				//just use the first one found
-				$theID = $theTokenRows[0]['account_id'];
-				$theAccountInfoCache = $dbAuth->getAccountInfoCache($dbAuth, $theID);
-				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
-						$theAccountInfoCache, $theHttpAuthHeader
-				);
-				//$this->debugLog(__METHOD__.' results='.$this->debugStr($v->results));
-				$this->afterSuccessfulRequestMobileAuthAccount($theDeviceTokenFilter);
-			}
+			$v->results = array(
+					'account_name' => $myAuth->account_name,
+					'auth_id' => $myAuth->auth_id,
+					'user_token' => $theMobileRow['account_token'],
+					'auth_token' => $theAuthToken,
+					'api_version_seq' => $this->getRes('website/api_version_seq'),
+			);
 		}
 	}
 	
@@ -1514,13 +1474,21 @@ class AuthOrgAccount extends BaseActor
 	 */
 	public function ajajCreateOrg()
 	{
-		//by checking a non-existant permission, we regulate this ability to Titan users only.
-		$this->checkAllowed('auth', 'create_org');
+		$this->checkAllowed('auth_orgs', 'create');
+		$theOrgName = $this->getRequestData( null, 'org_name' ) ;
+		if( ! AuthOrg::validateOrgShortName( $theOrgName ) )
+		{ // Don't accept names that might cause trouble for the framework.
+			throw AccountAdminException::toss( $this,
+				AccountAdminException::ACT_INVALID_ORG_SHORT_NAME, $theOrgName ) ;
+		}
+		
 		$dbAuth = $this->getProp('Auth');
 		try {
-			$this->scene->results = APIResponse::resultsWithData(
-					$dbAuth->addOrganization($this->scene)
-			);
+			$theResults = $this->setApiResults($dbAuth->addOrganization($this->scene));
+			if ( !empty($theResults) && !empty($theResults->data) ) {
+				$dbAuthGroups = $this->getProp('AuthGroups');
+				$dbAuthGroups->setupDefaultDataForNewOrg($theResults->data);
+			}
 		}
 		catch ( Exception $x )
 		{ throw BrokenLeg::tossException($this, $x); }
@@ -1532,8 +1500,7 @@ class AuthOrgAccount extends BaseActor
 	 */
 	public function ajajUpdateOrg()
 	{
-		//by checking a non-existant permission, we regulate this ability to Titan users only.
-		$this->checkAllowed('auth', 'update_org');
+		$this->checkAllowed('auth_orgs', 'modify');
 		$dbAuth = $this->getProp('Auth');
 		try {
 			$this->scene->results = APIResponse::resultsWithData(
@@ -1697,38 +1664,63 @@ class AuthOrgAccount extends BaseActor
 		if ( $this->isGuest() )
 		{ throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED); }
 		//org_id is required request parameter (url/get/post)
-		$theOrgID = $this->getRequestData( $aOrgID, 'org_id', true ) ;
-		//get my auth_id
+		$theOrgID = $this->getRequestData( $aOrgID, 'org_id', false ) ;
+		//get my auth
 		$myAuthID = $this->getDirector()->getMyAccountInfo()->auth_id;
-		//get our model
-		$dbAuth = $this->getMyModel();
-		//get our org data - do not use the AuthOrg costume as we need
-		//  the dbconn info which the costume does not provide (security
-		//  precaution against accidentally exporting back to a client).
-		$theOrg = $dbAuth->getOrganization($theOrgID);
-		//if org exists...
-		if ( !empty($theOrg) ) {
-			$theOrgList = $dbAuth->getOrgsForAuthCursor($myAuthID,
-					array('org_id')
-			)->fetchAll(\PDO::FETCH_COLUMN);
-			//... ensure it is one of logged in users mapped orgs
-			if ( !empty($theOrgList) &&
-					array_search($theOrgID, $theOrgList, true) !== false )
-			{
-				//ensure we are using the org's dbconn defined
-				$dbAuth->swapAppDataDbConnInfo($theOrg['dbconn']);
-				//ensure we store the current org in our session
-				$myOrgSessionKey = $dbAuth::getMyOrgSessionKey($myAuthID);
-				$this->getDirector()[$myOrgSessionKey] = $theOrgID;
-				//no need to return anything but a "yep, it worked" response
-				$this->setNoContentResponse();
+		try {
+			//get our model
+			$dbAuth = $this->getMyModel();
+			if ( !empty($theOrgID) ) {
+				//get our org data - do not use the AuthOrg costume as we need
+				//  the dbconn info which the costume does not provide (security
+				//  precaution against accidentally exporting back to a client).
+				$theOrg = $dbAuth->getOrganization($theOrgID);
+				//if org exists...
+				if ( !empty($theOrg) ) {
+					if ( $this->isAllowed('auth_orgs', 'transcend') ) {
+						$theOrgList = array();
+						$theOrgSet = AuthOrgSet::withContextAndColumns($this, array('org_id'))
+							->setPagerEnabled(false)
+							->getOrganizationsToDisplay()
+							;
+						foreach ($theOrgSet as $anOrg) { //$theOrg var name already in use
+							$theOrgList[] = $anOrg->exportData()->org_id;
+						}
+					}
+					else {
+						$theOrgList = $dbAuth->getOrgsForAuthCursor($myAuthID, array('org_id'))
+							->fetchAll(\PDO::FETCH_COLUMN)
+							;
+					}
+					//... ensure it is one of logged in users mapped orgs
+					if ( !empty($theOrgList) &&
+							array_search($theOrgID, $theOrgList, true) !== false )
+					{
+						$dbAuth->setCurrentOrg($theOrg);
+						//no need to return anything but a "yep, it worked" response
+						$this->setNoContentResponse();
+					}
+					else {
+						throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
+					}
+				}
+				else {
+					throw BrokenLeg::toss($this, BrokenLeg::ACT_ENTITY_NOT_FOUND, $aOrgID);
+				}
 			}
-			else {
-				throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
+			else { //switching back to root, only allow if can transcend
+				if ( $this->isAllowed('auth_orgs', 'transcend') ) {
+					$dbAuth->setCurrentOrg();
+					//no need to return anything but a "yep, it worked" response
+					$this->setNoContentResponse();
+				}
+				else {
+					throw BrokenLeg::toss($this, BrokenLeg::ACT_MISSING_ARGUMENT, 'org ID');
+				}
 			}
 		}
-		else {
-			throw BrokenLeg::toss($this, BrokenLeg::ACT_ENTITY_NOT_FOUND, $aOrgID);
+		catch ( \Exception $x ) {
+			throw BrokenLeg::tossException($this, $x);
 		}
 	}
 	

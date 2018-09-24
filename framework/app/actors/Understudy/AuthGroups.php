@@ -19,6 +19,7 @@ namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
 use BitsTheater\BrokenLeg ;
 use BitsTheater\costumes\APIResponse;
+use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\RightsMatrixProcessor;
 use BitsTheater\outtakes\RightsException ;
 use com\blackmoonit\exceptions\DbException;
@@ -55,10 +56,8 @@ class AuthGroups extends BaseActor
 	public function ajajInsertGroup()
 	{
 		$this->viewToRender('results_as_json');
-		$this->checkAllowed( 'auth', 'create' );
-		$this->scene->results = APIResponse::resultsWithData(
-				$this->insertGroupData($this->scene)
-		);
+		$this->checkAllowed('auth', 'create');
+		$this->setApiResults($this->insertGroupData($this->scene));
 	}
 
 	/**
@@ -70,8 +69,6 @@ class AuthGroups extends BaseActor
 	protected function modifyGroupData( $aDataObject )
 	{
 		$dbAuthGroups = $this->getProp( 'AuthGroups' ) ;
-		if ( $aDataObject->group_id == $dbAuthGroups->getTitanGroupID() )
-		{ throw RightsException::toss($this, RightsException::ACT_CANNOT_MODIFY_TITAN); }
 		try
 		{
 			$theData = $dbAuthGroups->modifyGroup($aDataObject);
@@ -110,9 +107,7 @@ class AuthGroups extends BaseActor
 		$this->viewToRender('results_as_json');
 		$this->checkAllowed( 'auth', 'modify' );
 		$this->scene->group_id = trim($this->getRequestData( $aGroupID, 'group_id', true));
-		$this->scene->results = APIResponse::resultsWithData(
-				$this->modifyGroupData($this->scene)
-		);
+		$this->setApiResults($this->modifyGroupData($this->scene));
 	}
 
 	/**
@@ -126,41 +121,41 @@ class AuthGroups extends BaseActor
 	{
 		$theGroupID = trim($this->getRequestData( $aGroupID, 'group_id', false));
 		if ( empty($theGroupID) )
-		{ return $this->ajajInsertGroup(); }
+		{ $this->ajajInsertGroup(); }
 		else
-		{ return $this->ajajModifyGroup( $aGroupID ); }
+		{ $this->ajajModifyGroup( $theGroupID ); }
+		//see if we got a good response, then get the record from the db for
+		//  an even better response with properly formatted data
+		$theResults = $this->getApiResults();
+		if ( !empty($theResults) ) {
+			$theAuthGroup = AuthGroup::withModel($this->getProp('AuthGroups'));
+			$theAuthGroup->setDataFrom($theResults->data);
+			if ( !empty($theAuthGroup->group_id) ) {
+				$theAuthGroup->setDataFrom(
+						$theAuthGroup->getModel()->getGroup($theAuthGroup->group_id)
+				);
+				$theResults->data = $theAuthGroup->exportData();
+			}
+		}
 	}
 
 	/**
-	 * RESTful function to retrieve a "matrix" of user groups and their
-	 * permissions. The assembly of this matrix could get relatively expensive,
-	 * as there are several DB queries executed to merge the data together. This
-	 * method should not be used repeatedly to "refresh" the page.
+	 * Returns an APIResponse a matrix of user groups and their permissions.
 	 */
-	protected function getMatrix()
+	public function ajajGetMatrix()
 	{
-		$v =& $this->scene ;
-		$this->viewToRender('results_as_json') ;
-		$this->checkAllowed( 'auth', 'modify' ) ;
+		$v = $this->getMyScene();
+		$this->viewToRender('results_as_json');
+		$this->checkAllowed('auth', 'modify');
 		$bIncludeSystemGroups = filter_var($v->include_system_groups, FILTER_VALIDATE_BOOLEAN);
-		try
-		{
-			$theProc = new RightsMatrixProcessor($this) ;
-			$v->results = APIResponse::resultsWithData(
-					$theProc->process($bIncludeSystemGroups)
-			);
+		try {
+			$theProc = new RightsMatrixProcessor($this);
+			$theProc->process($bIncludeSystemGroups);
+			$this->setApiResults($theProc->exportData());
 		}
 		catch( Exception $x )
 		{ throw BrokenLeg::tossException( $this, $x ) ; }
 	}
-
-	/**
-	 * Alias for getMatrix() which will be granted to UI-backing functions.
-	 * @return \BitsTheater\costumes\APIResponse a matrix of user groups and
-	 *  their permissions
-	 */
-	public function ajajGetMatrix()
-	{ return $this->getMatrix() ; }
 
 	/**
 	 * Sets the value of a permission for a given group ID.
@@ -169,15 +164,19 @@ class AuthGroups extends BaseActor
 	 */
 	public function ajajSetPermission( $aGroupID=null )
 	{
-		$v =& $this->scene ;
-		$this->viewToRender('results_as_json') ;
-		$this->checkAllowed( 'auth', 'modify' ) ;
-		try
-		{
-			$dbPerms = $this->getProp( 'Permissions' ) ;
-			$v->results = APIResponse::resultsWithData(
-					$dbPerms->setPermission( $aGroupID, $v->namespace,
-							$v->permission, $v->value ) ) ;
+		$v = $this->getMyScene();
+		$this->viewToRender('results_as_json');
+		$this->checkAllowed('auth', 'modify');
+		$theGroupID = $this->getRequestData( $aGroupID, 'group_id', true);
+		try {
+			$dbAuthGroups = $this->getProp( 'AuthGroups' ) ;
+			$theResults = $dbAuthGroups->setPermission( $theGroupID,
+					$v->namespace, $v->permission, $v->value
+			);
+			if ( !empty($theResults) ) {
+				$theResults['value'] = $v->value;
+			}
+			$this->setApiResults($theResults);
 		}
 		catch( Exception $x )
 		{ throw BrokenLeg::tossException( $this, $x ) ; }

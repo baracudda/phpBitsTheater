@@ -35,6 +35,7 @@ use Exception;
  * Groups were made its own model so that you could have a
  * auth setup where groups and group memebership were
  * defined by another entity (BBS auth or WordPress or whatever).
+ * @deprecated since BitsTheater v4.0.0
  */
 class BitsGroups extends BaseModel implements IFeatureVersioning
 {
@@ -64,8 +65,6 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 
 	/** The constant, assumed ID of the "unregistered user" group. */
 	const UNREG_GROUP_ID = 0 ;
-	/** The constant, assumed ID of the "titan" superuser group. */
-	const TITAN_GROUP_ID = 1 ;
 	/** The constant, assumed ID of the "default APP_ID reg code group. */
 	const DEFAULT_REG_GROUP_ID = 2;
 
@@ -75,12 +74,6 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		$this->tnGroupMap = $this->tbl_.self::TABLE_GroupMap;
 		$this->tnGroupRegCodes = $this->tbl_.self::TABLE_GroupRegCodes;
 	}
-
-	/**
-	 * @return string Returns the ID of the "titan" superuser group.
-	 */
-	public function getTitanGroupID()
-	{ return self::TITAN_GROUP_ID; }
 
 	/**
 	 * Future db schema updates may need to create a temp table of one
@@ -173,13 +166,15 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			$theSql = SqlBuilder::withModel($this);
 			$theSql->startWith('UPDATE')->add($this->tnGroups);
 			$this->setAuditFieldsOnUpdate($theSql);
-			$theSql->mustAddParam('group_id', 0, PDO::PARAM_INT)
+			$theSql->setParamType(\PDO::PARAM_INT)
+				->setParamValue('group_id', 0)
+				->addParam('group_id')
 				->startWhereClause()
-				->mustAddFieldAndParam( 'group_id', 'fake_group_id',
-						count($theDefaultData), PDO::PARAM_INT )
+				->setParamValue('fake_group_id', count($theDefaultData))
+				->addParamForColumn('fake_group_id', 'group_id')
 				->endWhereClause()
+				//->logSqlDebug(__METHOD__) //DEBUG
 				;
-			$theSql->logSqlDebug(__METHOD__) ; // DEBUG
 			try
 			{
 				$theResult = $theSql->execDML() ;
@@ -381,8 +376,6 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	{
 		$theSql = SqlBuilder::withModel($this);
 		$theGroupID = intval($aGroupID);
-		if ( $theGroupID == self::TITAN_GROUP_ID )
-			return;  //trivially ignore attempts to delete the "Titan" group.
 		$bWasInTransaction = $this->db->inTransaction();
 		if ( !$bWasInTransaction )
 			$this->db->beginTransaction();
@@ -542,8 +535,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	public function createGroup( $aGroupName, $aGroupParentId=null, $aGroupRegCode=null, $aGroupCopyID=null )
 	{
 		$theGroupParentId = intval($aGroupParentId);
-		if ( $theGroupParentId<=self::UNREG_GROUP_ID ||
-				$theGroupParentId==self::TITAN_GROUP_ID )
+		if ( $theGroupParentId<=self::UNREG_GROUP_ID )
 		{ $theGroupParentId = null; }
 
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
@@ -627,8 +619,6 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException(__METHOD__, $pdox) ; }
 
-		$theRegCode = $this->getGroupRegCode( $theGroup->group_id ) ;
-
 		if( property_exists( $v, 'reg_code' ) )
 		{ // Modify the reg code only if specified in the request (BitsTheater 3.6.0)
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($v)
@@ -650,6 +640,13 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 
 			$theRegCode = $v->reg_code ;
 		}
+		else {
+			$theRegCodes = $this->getGroupRegCodes( $theGroup->group_id ) ;
+			if ( !empty($theRegCodes) ) {
+				//only return one, cannot support an array of them at this time in the UI.
+				$theRegCode = $theRegCodes[0];
+			}
+		}
 
 		return array(
 				'group_id' => $theGroup->group_id,
@@ -659,26 +656,6 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			);
 	}
 
-	/**
-	 * Fetches the registration code for a given group ID.
-	 * @param string $aGroupID the group ID
-	 * @throws DbException if something goes wrong while searching
-	 * @return string the registration code for that group
-	 */
-	protected function getGroupRegCode( $aGroupID )
-	{
-		$theSql = SqlBuilder::withModel($this)
-			->startWith( 'SELECT reg_code FROM ' . $this->tnGroupRegCodes )
-			->startWhereClause()
-			->mustAddParam( 'group_id', $aGroupID )
-			->endWhereClause()
-			;
-		try { $theRow = $theSql->getTheRow() ; }
-		catch( PDOException $pdox )
-		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
-		return $theRow['reg_code'] ;
-	}
-	
 	/**
 	 * Consumed by createGroup() and modifyGroup() to insert a new registration
 	 * code for an existing group ID.
@@ -690,7 +667,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		$theGroupId = intval($aGroupID);
 		$theRegCode = trim($aRegCode);
 		if ( empty($theGroupId) || $theGroupId == static::UNREG_GROUP_ID ||
-				$theGroupId == $this->getTitanGroupID() || empty($theRegCode) )
+				empty($theRegCode) )
 		{ return false; } //trivially reject bad data
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 				'group_id' => $theGroupId,
@@ -740,8 +717,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	/**
 	 * Returns a dictionary of all permission group data.
 	 * @param $bIncludeSystemGroups boolean indicates whether to include the
-	 *  "unregistered" and "titan" groups that are defined by default when the
-	 *  system is installed
+	 *   "unregistered" group.
 	 * @throws DbException if an error happens in the query itself
 	 */
 	public function getAllGroups( $bIncludeSystemGroups=false )
@@ -753,17 +729,13 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			->add( 'LEFT JOIN ' . $this->tnGroupRegCodes )
 			->add(   'AS GRC USING (group_id)' )
 			;
-		if( ! $bIncludeSystemGroups )
-		{
-			$theSql->startWhereClause()
-				->setParamOperator( '<>' )
-			 	->addFieldAndParam( 'group_id', 'unreg_group_id',
-			 			self::UNREG_GROUP_ID, PDO::PARAM_INT )
-			 	->setParamPrefix( ' AND ' )
-				->addFieldAndParam( 'group_id', 'titan_group_id',
-						self::TITAN_GROUP_ID, PDO::PARAM_INT )
-				->endWhereClause()
-				;
+		if ( !$bIncludeSystemGroups ) {
+			$theSql->startWhereClause();
+			$theSql->setParamOperator( SqlBuilder::OPERATOR_NOT_EQUAL )
+				->setParamValue('group_id', static::UNREG_GROUP_ID)
+				->addParamOfType('group_id', \PDO::PARAM_INT)
+			;
+			$theSql->endWhereClause();
 		}
 		$theSql->add( 'ORDER BY G.group_id' ) ;
 
@@ -822,8 +794,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	/**
 	 * Returns a dictionary of all permission groups IDs and names.
 	 * @param $bIncludeSystemGroups boolean indicates whether to include the
-	 *   "unregistered" and "titan" groups that are defined by default when the
-	 *   system is installed
+	 *   "unregistered" group.
 	 * @param string[]|string $aFieldList - (optional) which fields to return,
 	 *   the default is all of them.
 	 * @param bool[] $aSortList - (optional) how to sort the data, use array
@@ -839,12 +810,10 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 		;
 		if ( !$bIncludeSystemGroups ) {
 			$theSql->startWhereClause();
-			$theSql->setParamOperator( '<>' );
-			$theSql->addFieldAndParam( 'group_id', 'unreg_group_id',
-					self::UNREG_GROUP_ID, PDO::PARAM_INT );
-			$theSql->setParamPrefix( ' AND ' );
-			$theSql->addFieldAndParam( 'group_id', 'titan_group_id',
-					self::TITAN_GROUP_ID, PDO::PARAM_INT );
+			$theSql->setParamOperator( SqlBuilder::OPERATOR_NOT_EQUAL )
+				->setParamValue('group_id', static::UNREG_GROUP_ID)
+				->addParamOfType('group_id', \PDO::PARAM_INT)
+			;
 			$theSql->endWhereClause();
 		}
 		$theSql->applyOrderByList( $aSortList ) ;

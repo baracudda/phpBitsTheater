@@ -30,6 +30,9 @@ use BitsTheater\outtakes\RightsException ;
 use Exception;
 {//namespace begin
 
+/**
+ * @deprecated since BitsTheater v4.0.0
+ */
 class BitsGroups extends BaseActor {
 	const DEFAULT_ACTION = 'groups';
 	
@@ -64,7 +67,7 @@ class BitsGroups extends BaseActor {
 		//indicate what top menu we are currently in
 		$this->setCurrentMenuKey('admin');
 		
-		if (is_null($aGroupId) || $aGroupId==AuthGroups::TITAN_GROUP_ID)
+		if ( empty($aGroupId) )
 			return $this->getMyUrl('/rights');
 		if ($aGroupId==AuthGroups::UNREG_GROUP_ID) {
 			$v->group = null;
@@ -104,7 +107,7 @@ class BitsGroups extends BaseActor {
 		unset($this->director['post_key']); unset($this->director['post_key_ts']);
 		if (!$this->isAllowed('auth','modify') || !$bPostKeyOk || !$bPostKeyOldEnough)
 			return $this->getHomePage();
-		if (is_null($v->group_id) || $v->group_id==AuthGroups::TITAN_GROUP_ID)
+		if ( empty($v->group_id) )
 			return $this->getMyUrl('/rights');
 		$dbRights = $this->getProp('Permissions');
 		$dbRights->modifyGroupRights($v);
@@ -132,25 +135,20 @@ class BitsGroups extends BaseActor {
 			if( isset( $aGroupID ) )
 				$v->group_id = $aGroupID ;
 			
-			if( isset( $v->group_id ) && $v->group_id >= AuthGroups::UNREG_GROUP_ID )
+			if( isset( $v->group_id ) && $v->group_id != AuthGroups::UNREG_GROUP_ID )
 			{ // Update an existing group.
 				$this->checkAllowed( 'auth', 'modify' ) ;
-				if( $v->group_id == AuthGroups::TITAN_GROUP_ID )
-					throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' );
-
-				$v->results = APIResponse::resultsWithData(
+				$this->setApiResults(
 						$dbGroups->modifyGroup( $v )
 				) ;
 			}
 			else
 			{ // Create a new group.
 				$this->checkAllowed( 'auth', 'create' ) ;
-				if( $v->group_id == AuthGroups::TITAN_GROUP_ID )
-					throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' );
-
-				$v->results = APIResponse::resultsWithData(
+				$this->setApiResults(
 					$dbGroups->createGroup( $v->group_name, $v->group_parent,
-						$v->group_reg_code, $v->source_group_id ) ) ;
+						$v->group_reg_code, $v->source_group_id )
+				) ;
 			}
 		}
 		catch( Exception $x )
@@ -158,38 +156,22 @@ class BitsGroups extends BaseActor {
 	}
 
 	/**
-	 * RESTful function to retrieve a "matrix" of user groups and their
-	 * permissions. The assembly of this matrix could get relatively expensive,
-	 * as there are several DB queries executed to merge the data together. This
-	 * method should not be used repeatedly to "refresh" the page.
+	 * Returns an APIResponse a matrix of user groups and their permissions.
 	 */
-	protected function getMatrix()
+	public function ajajGetMatrix()
 	{
-		$v =& $this->scene ;
-
-		$bIncludeSystemGroups = false ;
-		if( isset( $v->include_system_groups ) && $v->include_system_groups == 'true' )
-			$bIncludeSystemGroups = true ;
-
-		$this->viewToRender('results_as_json') ;
-		$this->checkAllowed( 'auth', 'modify' ) ;
-		try
-		{
-			$theProc = new RightsMatrixProcessor($this->getDirector()) ;
-			$v->results = APIResponse::
-				resultsWithData( $theProc->process($bIncludeSystemGroups) ) ;
+		$v = $this->getMyScene();
+		$this->viewToRender('results_as_json');
+		$this->checkAllowed('auth', 'modify');
+		$bIncludeSystemGroups = filter_var($v->include_system_groups, FILTER_VALIDATE_BOOLEAN);
+		try {
+			$theProc = new RightsMatrixProcessor($this);
+			$theProc->process($bIncludeSystemGroups);
+			$this->setApiResults($theProc->exportData());
 		}
 		catch( Exception $x )
 		{ throw BrokenLeg::tossException( $this, $x ) ; }
 	}
-
-	/**
-	 * Alias for getMatrix() which will be granted to UI-backing functions.
-	 * @return \BitsTheater\costumes\APIResponse a matrix of user groups and
-	 *  their permissions
-	 */
-	public function ajajGetMatrix()
-	{ return $this->getMatrix() ; }
 
 	/**
 	 * Sets the value of a permission for a given group ID.
