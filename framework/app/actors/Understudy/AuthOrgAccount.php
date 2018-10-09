@@ -28,6 +28,7 @@ use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\CursorCloset\AuthOrg ;
+use BitsTheater\models\AccountPrefs as PrefsDB ;
 use BitsTheater\models\Auth as AuthDB; /* @var $dbAuth AuthDB */
 use BitsTheater\models\AuthGroups as AuthGroupsDB; /* @var $dbAuthGroups AuthGroupsDB */
 use BitsTheater\outtakes\AccountAdminException;
@@ -978,7 +979,7 @@ class AuthOrgAccount extends BaseActor
 	public function ajajGet( $aAccountID=null )
 	{
 		$this->checkAllowed( 'accounts', 'view' );
-		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$theAccountID = $this->getRequestData( $aAccountID, 'account_id', true ) ;
 		$dbAccounts = $this->getCanonicalModel() ;
 		try
 		{
@@ -1722,6 +1723,256 @@ class AuthOrgAccount extends BaseActor
 		catch ( \Exception $x ) {
 			throw BrokenLeg::tossException($this, $x);
 		}
+	}
+	
+	/**
+	 * Fetches a specific account preference for the given account.
+	 *
+	 * In addition to the function arguments, we support the Boolean query param
+	 * 'simple'; if true, then only the value will be returned, as plaintext.
+	 * If false, or not specified, the API sends back an object.
+	 *
+	 * <pre>
+	 * {
+	 *     "auth_id": (string),
+	 *     "namespace": (string),
+	 *     "pref_key": (string),
+	 *     "pref_value": (boolean|integer|string)
+	 * }
+	 * </pre>
+	 *
+	 * @param string $aAuthID the account ID
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 */
+	public function ajajGetPreferenceFor( $aAuthID, $aSpace, $aKey )
+	{
+		$theAuthID = $this->resolveTargetAuthID($aAuthID) ;
+		$theSpace = $this->getRequestData( $aSpace, 'namespace' ) ;
+		$theKey = $this->getRequestData( $aKey, 'pref_key' ) ;
+		$bSimple = $this->getRequestData( null, 'simple', false ) ;
+		if( $bSimple === null ) $bSimple = false ;
+		$dbPrefs = $this->getProp( PrefsDB::MODEL_NAME ) ;
+		try
+		{
+			$theValue = $dbPrefs->getPreference($theAuthID,$theSpace,$theKey) ;
+			if( $bSimple )
+			{ // print only the value, directly to the output stream
+				$this->viewToRender( 'results_as_txt' ) ;
+				print $theValue ;
+				return ;
+			} // otherwise, return a full API response
+			$this->setApiResults( array(
+					'auth_id' => $theAuthID,
+					'namespace' => $theSpace,
+					'pref_key' => $theKey,
+					'pref_value' => $theValue
+				));
+		}
+		catch( \Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+	
+	/**
+	 * Fetches a specified preference value for the current account.
+	 *
+	 * In addition to the function arguments, we support the Boolean query param
+	 * 'simple'; if true, then only the value will be returned, as plaintext.
+	 * If false, or not specified, the API sends back an object.
+	 *
+	 * <pre>
+	 * {
+	 *     "auth_id": (string),
+	 *     "namespace": (string),
+	 *     "pref_key": (string),
+	 *     "pref_value": (boolean|integer|string)
+	 * }
+	 * </pre>
+	 *
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 */
+	public function ajajGetPreference( $aSpace, $aKey )
+	{
+		$theAuthID = $this->getDirector()->account_info->auth_id ;
+		$this->ajajGetPreferenceFor( $theAuthID, $aSpace, $aKey ) ;
+	}
+	
+	/**
+	 * Sets the value of an account preference.
+	 * @param string $aAuthID the account ID
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 * @param string $aValue the value to set
+	 */
+	public function ajajSetPreferenceFor( $aAuthID, $aSpace, $aKey, $aValue=null )
+	{
+		$theAuthID = $this->resolveTargetAuthID($aAuthID) ;
+		$theSpace = $this->getRequestData( $aSpace, 'namespace' ) ;
+		$theKey = $this->getRequestData( $aKey, 'pref_key' ) ;
+		// Value isn't strictly required because we can allow null.
+		$theValue = $this->getRequestData( $aValue, 'pref_value', false ) ;
+		$theSummary = array(
+				'auth_id' => $theAuthID,
+				'namespace' => $theSpace,
+				'pref_key' => $theKey,
+				'pref_value' => $theValue
+			);
+		$dbPrefs = $this->getProp( PrefsDB::MODEL_NAME ) ;
+		try
+		{
+			$theResult = $dbPrefs->setPreference(
+					$theAuthID, $theSpace, $theKey, $theValue ) ;
+			$theSummary['pref_value'] = $theResult['value'] ;
+			if( $theResult['status'] == 200 || $theResult['status'] == 201 )
+			{
+				http_response_code($theResult['status']) ;
+				$this->setApiResults($theSummary) ;
+			}
+			else
+			{ // Some exception handler override returned some data to us.
+				$theError = AccountAdminException::toss( $this,
+						AccountAdminException::ACT_PREFERENCE_UPDATE_FAILED ) ;
+				$theError->putExtras($theSummary) ;
+				$theError->setConditionCode( $theResult['status'] ) ;
+				throw $theError ;
+			}
+		}
+		catch( \Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+	
+	/**
+	 * Sets the value of an account preference for the current account.
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 * @param string $aValue the value to set
+	 */
+	public function ajajSetPreference( $aSpace, $aKey, $aValue )
+	{
+		$theAuthID = $this->getDirector()->account_info->auth_id ;
+		$this->ajajSetPreferenceFor( $theAuthID, $aSpace, $aKey, $aValue ) ;
+	}
+	
+	/**
+	 * Resets an account's preference to its default value.
+	 * On success, we just return HTTP 204.
+	 * Operation is idempotent; if setting is already gone, we don't care.
+	 * @param string $aAuthID the account ID
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 */
+	public function ajajResetPreferenceFor( $aAuthID, $aSpace, $aKey )
+	{
+		$theAuthID = $this->resolveTargetAuthID($aAuthID) ;
+		$theSpace = $this->getRequestData( $aSpace, 'namespace' ) ;
+		$theKey = $this->getRequestData( $aKey, 'pref_key' ) ;
+		$dbPrefs = $this->getProp( PrefsDB::MODEL_NAME ) ;
+		try
+		{
+			$theResult = $dbPrefs->resetPreference(
+					$theAuthID, $theSpace, $theKey ) ;
+			if( $theResult )
+				$this->setApiResultsAsNoContent() ;
+			else
+			{ // Something failed and didn't throw an exception.
+				throw AccountAdminException::toss( $this,
+						AccountAdminException::ACT_PREFERENCE_UPDATE_FAILED ) ;
+			}
+		}
+		catch( \Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+	
+	/**
+	 * Resets the specified preference for the current account to its default
+	 * value.
+	 * On success, we just return HTTP 204.
+	 * Operation is idempotent; if setting is already gone, we don't care.
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 */
+	public function ajajResetPreference( $aSpace, $aKey )
+	{
+		$theAuthID = $this->getDirector()->account_info->auth_id ;
+		$this->ajajResetPreferenceFor( $theAuthID, $aSpace, $aKey ) ;
+	}
+	
+	/**
+	 * Gets all the preferences for an account.
+	 * @param string $aAuthID (optional) the account ID; if not supplied, then
+	 *  the current account's preferences are fetched
+	 */
+	public function ajajGetPreferencesFor( $aAuthID=null )
+	{
+		$theAuthID = $this->resolveTargetAuthID($aAuthID) ;
+		$dbPrefs = $this->getProp( PrefsDb::MODEL_NAME ) ;
+		try
+		{ $this->setApiResults( $dbPrefs->getPreferencesFor($theAuthID) ) ; }
+		catch( \Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+	
+	/**
+	 * Gets preferences for the current account.
+	 */
+	public function ajajGetPreferences()
+	{
+		$theAuthID = $this->getDirector()->account_info->auth_id ;
+		$this->ajajGetPreferencesFor($theAuthID) ;
+	}
+	
+	/**
+	 * Gets the preference <i>profile</i> for an account. This is a hierarchical
+	 * map of preferences namespaces and keys to values, where the value is
+	 * either an explicit value provisioned for the account, or the default
+	 * value specified in the application resources.
+	 * @param string $aAuthID (optional) the account ID; if not supplied, then
+	 *  the current account's preferences are fetched
+	 */
+	public function ajajGetPreferenceProfileFor( $aAuthID=null )
+	{
+		$theAuthID = $this->resolveTargetAuthID($aAuthID) ;
+		$dbPrefs = $this->getProp( PrefsDb::MODEL_NAME ) ;
+		try
+		{
+			$this->setApiResults(
+					$dbPrefs->getPreferenceProfileFor($theAuthID) ) ;
+		}
+		catch( \Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+	
+	/**
+	 * Gets the preference <i>profile</i> for this account. This is a
+	 * hierarchical map of preferences namespaces and keys to values, where the
+	 * value is either an explicit value provisioned for the account, or the
+	 * default value specified in the application resources.
+	 */
+	public function ajajGetPreferenceProfile()
+	{
+		$theAuthID = $this->getDirector()->account_info->auth_id ;
+		$this->ajajGetPreferenceProfileFor($theAuthID) ;
+	}
+		
+	/**
+	 * Reusable code to figure out which account we're working with. A requestor
+	 * may send a request with no auth ID supplied, in which case we should act
+	 * on the requestor's own account. If the requestor does supply an explicit
+	 * ID, then we must ensure that it matches
+	 * @param string $aAuthID (optional) the account ID; if not supplied, then
+	 *  the current account's preferences are fetched
+	 * @return string the resolved ID
+	 */
+	protected function resolveTargetAuthID( $aAuthID=null )
+	{
+		$theAuthID = $this->getRequestData( $aAuthID, 'auth_id', false ) ;
+		$theCurrentAuthID = $this->getDirector()->account_info->auth_id ;
+		if( empty($theAuthID) ) // No ID was supplied; use the current account.
+			$theAuthID = $theCurrentAuthID ;
+		else if( $theAuthID != $theCurrentAuthID ) // Requestor needs rights.
+			$this->checkAllowed( 'accounts', 'modify' ) ;
+		return $theAuthID ;
 	}
 	
 }//end class
