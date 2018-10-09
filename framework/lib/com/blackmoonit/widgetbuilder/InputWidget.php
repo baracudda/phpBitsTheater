@@ -16,7 +16,6 @@
  */
 
 namespace com\blackmoonit\widgetbuilder ;
-use com\blackmoonit\widgetbuilder\SingletonWidget ;
 {//begin namespace
 
 class InputWidget extends SingletonWidget

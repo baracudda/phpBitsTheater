@@ -18,6 +18,12 @@
 namespace BitsTheater\costumes;
 {//begin namespace
 
+/**
+ * UI defined values like sort order, pager info, and requested fields desired
+ * can be an attack vector (SQL Injection) if not properly sanitized.
+ * If your class can protect against such attack vectors, define this interface
+ * so that a SqlBuilder instance can query your object for sanitization methods.
+ */
 interface ISqlSanitizer
 {
 	/**

@@ -16,7 +16,6 @@
  */
 
 namespace com\blackmoonit\widgetbuilder ;
-use com\blackmoonit\widgetbuilder\BaseWidget ;
 use com\blackmoonit\Strings ;
 {
 

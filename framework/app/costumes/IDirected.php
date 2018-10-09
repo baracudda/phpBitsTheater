@@ -29,8 +29,8 @@ interface IDirected {
 	 * Determine if the current logged in user or guest has a permission.
 	 * @param string $aNamespace - namespace of the permission to check.
 	 * @param string $aPermission - permission name to check.
-	 * @param array|NULL $acctInfo - (optional) check specified account instead of
-	 *     currently logged in user.
+	 * @param array|NULL $acctInfo - (optional) check specified account
+	 *   instead of currently logged in user.
 	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 */
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null);
@@ -45,10 +45,11 @@ interface IDirected {
 	 * Determine if the current logged in user or guest has a permission.
 	 * @param string $aNamespace - namespace of the permission to check.
 	 * @param string $aPermission - permission name to check.
-	 * @param array|NULL $acctInfo - (optional) check specified account instead of
-	 *     currently logged in user.
+	 * @param array|NULL $acctInfo - (optional) check specified account
+	 *   instead of currently logged in user.
 	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @throws BrokenLeg 403 if not allowed and logged in or 401 if not allowed and guest.
+	 * @throws \BitsTheater\BrokenLeg 403 if not allowed and logged in or 401
+	 *   if not allowed and guest.
 	 */
 	public function checkAllowed($aNamespace, $aPermission, $acctInfo=null);
 	
@@ -56,10 +57,11 @@ interface IDirected {
 	 * Determine if the current logged in user or guest has a permission.
 	 * @param string $aNamespace - namespace of the permission to check.
 	 * @param string $aPermission - permission name to check.
-	 * @param array|NULL $acctInfo - (optional) check specified account instead of
-	 *     currently logged in user.
+	 * @param array|NULL $acctInfo - (optional) check specified account
+	 *   instead of currently logged in user.
 	 * @return $this Returns $this for chaining purposes.
-	 * @throws BrokenLeg 403 if not allowed and logged in or 401 if not allowed and guest.
+	 * @throws \BitsTheater\BrokenLeg 403 if not allowed and logged in or 401
+	 *   if not allowed and guest.
 	 */
 	public function checkPermission($aNamespace, $aPermission, $acctInfo=null);
 	
@@ -73,7 +75,8 @@ interface IDirected {
 	/**
 	 * Let the system know you do not need a Model anymore so it
 	 * can close the database connection as soon as possible.
-	 * @param \BitsTheater\Model $aProp - the Model object to be returned to the prop closet.
+	 * @param \BitsTheater\Model $aProp - the Model object to be returned to
+	 *   the prop closet.
 	 */
 	public function returnProp($aProp);
 
@@ -86,8 +89,8 @@ interface IDirected {
 	
 	/**
 	 * Returns the URL for this site appended with relative path info.
-	 * @param mixed $aRelativeUrl - array of path segments OR a bunch of string parameters
-	 * equating to path segments.
+	 * @param mixed $aRelativeUrl - array of path segments OR a bunch of
+	 *   string parameters equating to path segments.
 	 * @return string - returns the site domain + relative path URL.
 	 */
 	public function getSiteUrl($aRelativeUrl='', $_=null);

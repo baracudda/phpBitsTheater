@@ -17,6 +17,7 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\AuthBase as BaseModel;
+use BitsTheater\costumes\AccountInfoCache;
 {//namespace begin
 
 class AuthNone extends BaseModel {
@@ -53,10 +54,10 @@ class AuthNone extends BaseModel {
 	/**
 	 * Create an object representing auth account information.
 	 * @param array|object $aInitialData - (optional) include this data in the object.
-	 * @return Returns the object for the Auth model in use.
+	 * @return AccountInfoCache Returns the object for the Auth model in use.
 	 */
 	public function createAccountInfoObj( $aInitialData=null )
-	{ return new \stdClass(); }
+	{ return new AccountInfoCache($this); }
 	
 }//end class
 

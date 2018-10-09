@@ -181,7 +181,7 @@ class MenuItemResEntry extends BaseCostume {
 			$sa = explode('@',$aValue,2);
 			switch ($sa[0]) {
 				case '&res':
-					return $this->_scene->getRes($sa[1]);
+					return $this->getRes($sa[1]);
 				case '&method':
 					$args = explode('/',$sa[1]);
 					$theMethodName = array_shift($args);
@@ -190,7 +190,7 @@ class MenuItemResEntry extends BaseCostume {
 					$meth = explode('/',$sa[1]);
 					return $this->_scene->cueActor($meth[0],$meth[1]);
 				case '&config':
-					return $this->_scene->_config[$sa[1]];
+					return $this->getConfigSetting($sa[1]);
 			}//switch
 		} else
 			return $aValue;

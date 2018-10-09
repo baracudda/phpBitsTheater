@@ -159,7 +159,8 @@ implements IDirected
 	 * based on the array keys or object property names.
 	 * @param array|object $aThing - array or object to copy from.
 	 */
-	protected function copyFrom(&$aThing) {
+	protected function copyFrom( $aThing )
+	{
 		foreach ($aThing as $theName => $theValue) {
 			if (property_exists($this, $theName)) {
 				$this->{$theName} = $theValue;

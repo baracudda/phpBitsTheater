@@ -2,7 +2,6 @@
 use BitsTheater\scenes\Account as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
-use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
 use com\blackmoonit\FinallyBlock;
 

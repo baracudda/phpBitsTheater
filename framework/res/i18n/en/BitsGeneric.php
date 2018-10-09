@@ -56,6 +56,11 @@ class BitsGeneric extends BaseResources {
 	public $errmsg_not_acceptable =
 		'Content type [%1$s] not acceptable by client specification.' ;
 	public $errmsg_cli_not_authed = "Double-check your user/pw and/or the -h parameter.\n";
+	public $errmsg_could_not_create_file = 'Could not create file [%1$s].' ;
+	public $errmsg_could_not_read_file = 'Could not read from file [%1$s].' ;
+	public $errmsg_could_not_write_to_file = 'Failed to write into file [%1$s].' ;
+	public $errmsg_could_not_open_zip = 'Could not open ZIP archive [%1$s].' ;
+	public $errmsg_could_not_expand_zip = 'Could not expand ZIP archive [%1$s].' ;
 	
 	public $label_header_title_suffix_demo_mode = '(demo)';
 	public $label_jump_to_top = 'Jump to top';

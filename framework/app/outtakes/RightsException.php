@@ -9,23 +9,18 @@ use BitsTheater\BrokenLeg ;
 class RightsException
 extends BrokenLeg
 {
-
-	const ERR_CANNOT_MODIFY_TITAN = 403 ;
-	const ERR_CANNOT_COPY_FROM_TITAN = 403 ;
-	const ERR_CANNOT_COPY_TO_TITAN = 403 ;
-	const ERR_GROUP_NOT_FOUND = 404 ;
-
-	const MSG_CANNOT_MODIFY_TITAN = 'auth_groups/errmsg_cannot_modify_titan' ;
-	const MSG_CANNOT_COPY_FROM_TITAN =
-		'auth_groups/errmsg_cannot_copy_from_titan' ;
-	const MSG_CANNOT_COPY_TO_TITAN =
-		'auth_groups/errmsg_cannot_copy_to_titan' ;
+	const ACT_GROUP_NOT_FOUND = 'ACT_GROUP_NOT_FOUND' ;
+	const ERR_GROUP_NOT_FOUND = BrokenLeg::HTTP_NOT_FOUND ;
 	const MSG_GROUP_NOT_FOUND = 'auth_groups/errmsg_group_not_found' ;
 
-	const ACT_CANNOT_MODIFY_TITAN = 'CANNOT_MODIFY_TITAN' ;
-	const ACT_CANNOT_COPY_FROM_TITAN = 'CANNOT_COPY_FROM_TITAN' ;
-	const ACT_CANNOT_COPY_TO_TITAN = 'ACT_CANNOT_COPY_TO_TITAN' ;
-	const ACT_GROUP_NOT_FOUND = 'ACT_GROUP_NOT_FOUND' ;
+	/**
+	 * Throw when trying to find a group that has site administration privileges
+	 * but none seem to exist.
+	 * @var string
+	 */
+	const ACT_WILD_WEST = 'WILD_WEST' ;
+	const ERR_WILD_WEST = BrokenLeg::HTTP_NOT_IMPLEMENTED ;
+	const MSG_WILD_WEST = 'auth_groups/errmsg_wild_west' ;
 
 } // end class RightsException
 

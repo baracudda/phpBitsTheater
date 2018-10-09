@@ -18,13 +18,13 @@
 namespace BitsTheater\scenes\Closet;
 use BitsTheater\Scene as BaseScene;
 use BitsTheater\costumes\DbConnInfo;
+use BitsTheater\costumes\venue\TicketViaInstallPw;
 use com\blackmoonit\database\DbConnOptions;
 use com\blackmoonit\Widgets;
 {//namespace begin
 
-class Install extends BaseScene {
-	const INSTALL_PW_FILENAME = 'install.pw';
-
+class Install extends BaseScene
+{
 	protected function setupDefaults() {
 		parent::setupDefaults();
 		$this->defineProperty('installpw',null,$this->on_set_session_var,$this->_director['installpw']);
@@ -48,24 +48,12 @@ class Install extends BaseScene {
 		$this->auth_type = 'Basic';
 	}
 	
-	protected function getDefinedPw() {
-		$thePW = BITS_ROOT; //default pw is the folder path (since outsiders should not know it)
-		$thePwFilePath = BITS_ROOT.¦.self::INSTALL_PW_FILENAME;
-		if (file_exists($thePwFilePath)) {
-			//load as pw
-			$thePW = trim(file_get_contents($thePwFilePath));
-		}
-		//Strings::debugLog('file:'.$aPwFile.', '.$thePW);
-		return $thePW;
-	}
-	
-	public function checkInstallPw() {
-		//check to see if posted the correct pw
-		$theDefinedPw = $this->getDefinedPw();
-		$theInputPw = $this->installpw;
-		//print('args: '.$theDefinedPw.', '.$theInputPw.' = '.($theDefinedPw===$theInputPw?'true':'false')); exit;
-		return ($theDefinedPw===$theInputPw);
-	}
+	/**
+	 * Check to see if we have a valid install passphrase submitted.
+	 * @return boolean Returns TRUE if input matches the defined passphrase.
+	 */
+	public function checkInstallPw()
+	{ return TicketViaInstallPw::checkInstallPwVsInput($this->installpw); }
 	
 	//jquery form validation rules - not really needed with html5
 	public function validate_form_db1() {

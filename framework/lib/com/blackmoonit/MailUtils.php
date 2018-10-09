@@ -17,8 +17,8 @@
 
 namespace com\blackmoonit ;
 //require_once( 'PHPMailerAutoload.php' ) ; // for outgoing mail features
-// ^^^ will be done via Regisseur::registerLibLoaders()
-use PHPMailer;
+// ^^^ will be done via lib/vendor/compose magic
+use PHPMailer\PHPMailer\PHPMailer;
 {//begin namespace
 
 /**
@@ -29,6 +29,9 @@ use PHPMailer;
 class MailUtils
 {
 	private function __construct() {} // static invocation only
+	
+	/** @var string The fully qualified name of the object class we use. */
+	const CLASS_OF_MAILER = PHPMailer::class;
 	
 	/**
 	 * PCRE regex pattern to recognize an email address. This is actually a
@@ -106,7 +109,7 @@ class MailUtils
 	/**
 	 * Extracts config settings from a BitsTheater config array in which the
 	 * elements are addressed at the specified config setting path.
-	 * @param ArrayAccess $aBitsConfig a BitsTheater config
+	 * @param \ArrayAccess $aBitsConfig a BitsTheater config
 	 * @param string $aPath a path to the email settings
 	 * @return array a config settings array
 	 */
@@ -192,7 +195,7 @@ class MailUtils
 	 * Because of the way that IDs are programmatically generated as paths
 	 * in BitsTheater config settings, this function is specially designed to
 	 * extract those settings from a particular config group.
-	 * @param ArrayAccess $aBitsConfig the configuration
+	 * @param \ArrayAccess $aBitsConfig the configuration
 	 *   settings; this is the whole array for the whole app, not just a section
 	 * @param string $aPath the path to be prepended to the name of every
 	 *   email host configuration setting

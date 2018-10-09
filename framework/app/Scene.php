@@ -18,7 +18,7 @@
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseScene;
 use BitsTheater\costumes\IDirected;
-use BitsTheater\models\Config;
+use BitsTheater\costumes\WornForPagerManagement;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
@@ -50,7 +50,7 @@ use Traversable;
  */
 class Scene extends BaseScene
 implements IDirected
-{
+{ use WornForPagerManagement;
 	const _SetupArgCount = 2; //number of args required to call the setup() method.
 	
 	/**
@@ -81,10 +81,6 @@ implements IDirected
 	 * @var Director
 	 */
 	public $_director = null;
-	/**
-	 * @var Config
-	 */
-	public $_config = null;
 	public $_action = '';
 	public $_dbError = false;
 	protected $_methodList = array(); // list of all custom added methods
@@ -93,17 +89,7 @@ implements IDirected
 	const USER_MSG_NOTICE = 'notice';
 	const USER_MSG_WARNING = 'warning';
 	const USER_MSG_ERROR = 'error';
-	
-	/**
-	 * Total row count used for data pager.
-	 * @var number
-	 */
-	public $_pager_total_row_count = null;
-	/**
-	 * Paged data results when TRUE.
-	 * @var boolean
-	 */
-	public $_pager_enabled = true;
+	const USER_MSG_MAX_COUNT = 25;
 	
 	/**
 	 * Magic PHP method to limit what var_dump() shows.
@@ -113,12 +99,9 @@ implements IDirected
 		unset($vars['me']);
 		unset($vars['_actor']);
 		unset($vars['_director']);
-		unset($vars['_config']);
 		unset($vars['_methodList']);
 		unset($vars['_properties']);
 		unset($vars['_dbResNames']);
-		unset($vars['_pager_total_row_count']);
-		unset($vars['_pager_enabled']);
 		unset($vars['myIconStyle']);
 		unset($vars['is_mobile']);
 		unset($vars['view_path']);
@@ -151,6 +134,10 @@ implements IDirected
 			} else {
 				$prop['value'] = $aValue;
 			}
+		} elseif ( $aName == '_pager_enabled' ) {
+			$this->setPagerEnabled($aValue);
+		} elseif ( $aName == '_pager_total_row_count' ) {
+			$this->setPagerTotalRowCount($aValue);
 		} else {
 			$this->$aName = $aValue;
 		}
@@ -169,6 +156,12 @@ implements IDirected
 			return $this->_methodList[$aName];
 		//} elseif (property_exists($this,$aName)) {  __get not called if property_exists in first place
 		//	return $this->$aName;
+		} elseif ($aName=='_config') {
+			return $this->getProp('Config'); //support legacy property removed.
+		} elseif ( $aName == '_pager_enabled' ) {
+			return $this->isPagerEnabled();
+		} elseif ( $aName == '_pager_total_row_count' ) {
+			return $this->getPagerTotalRowCount();
 		} else {
 			return null; //value not set yet, no need to toss an exception unless debugging something special
 			//throw new IllegalArgumentException("Property {$aName} does not exist.");
@@ -206,20 +199,37 @@ implements IDirected
 		unset($this->_properties[$aName]);
 	}
 
+	/**
+	 * Typically, a Scene is created with two arguments, an Actor and its
+	 * method called.
+	 * @param Actor $anActor - the actor object.
+	 * @param string $anAction - the method being called.
+	 */
 	public function setup($anActor, $anAction) {
-		$this->me = new ReflectionClass($this);
 		$this->_actor = $anActor;
-		$this->_director = $anActor->director;
-		if ($this->_director->canConnectDb() && $this->_director->isInstalled()) {
-			$this->_config = $this->_director->getProp('Config');
-		}
 		$this->_action = $anAction;
-		$this->_dbError = false;
-		$this->setupDefaults();
-		$this->setupGetVars();
-		$this->setupPostVars();
-
-		$this->bHasBeenSetup = true;
+		$this->setup1($anActor);
+	}
+	
+	/**
+	 * Ensure when constructing a scene object that the first (or only)
+	 * parameter implements IDirected interface.
+	 * @param IDirected $aContext - the object that implements IDirected.
+	 */
+	public function setup1($aContext) {
+		if ($aContext instanceof IDirected) {
+			$this->me = new ReflectionClass($this);
+			$this->_director = $aContext->getDirector();
+			$this->setupDefaults();
+			$this->setupGetVars();
+			$this->setupPostVars();
+			$this->setupPagerDataFromUserData($this);
+			$this->bHasBeenSetup = true;
+		}
+		else {
+			throw IllegalArgumentException(__CLASS__ .
+					' first constructor param needs to implement IDirected');
+		}
 	}
 
 	public function cleanup() {
@@ -244,7 +254,10 @@ implements IDirected
 
 		$this->form_name = 'form_'.$this->_action;
 		$this->view_path = BITS_APP_PATH.'views'.DIRECTORY_SEPARATOR;
-		$this->actor_view_path = $this->view_path.$this->_actor->mySimpleClassName.DIRECTORY_SEPARATOR;
+		if ( !empty($this->_actor) ) {
+			$this->actor_view_path = $this->view_path .
+					$this->_actor->mySimpleClassName . DIRECTORY_SEPARATOR;
+		}
 		$this->page_header = $this->getViewPath($this->actor_view_path.'header');
 		$this->page_footer = $this->getViewPath($this->actor_view_path.'footer');
 		$this->page_user_msgs = $this->getViewPath($this->actor_view_path.'user_msgs');
@@ -287,7 +300,7 @@ implements IDirected
 	 * grab all $_POST vars and incorporate them
 	 */
 	protected function setupPostVars() {
-		//$this->debugLog(__METHOD__.' server='.$this->debugStr($_SERVER));
+		//$this->logStuff(__METHOD__, ' server=', $_SERVER);//DEBUG
 		//Retro-fit REST library client seen sending: CONTENT_TYPE = "application/json; charset=UTF-8"
 		if (!empty($_SERVER['CONTENT_TYPE']) && Strings::beginsWith($_SERVER['CONTENT_TYPE'], 'application/json')) {
 			$this->setupJsonVars(file_get_contents('php://input'));
@@ -522,12 +535,8 @@ implements IDirected
 	 * @see Director::getSiteMode()
 	 * @return string Returns the site mode config setting.
 	 */
-	public function getSiteMode() {
-		if ($this->_config) {
-			return $this->_config['site/mode'];
-		} else
-			return self::SITE_MODE_NORMAL;
-	}
+	public function getSiteMode()
+	{ return $this->getDirector()->getSiteMode(); }
 	
 	/**
 	 * Same as cueActor() but for myself.
@@ -603,33 +612,51 @@ implements IDirected
 	}
 
 	/**
+	 * Set the message queue. Avoids the "Indirect modification of overloaded
+	 * element of Director has no effect" issue.
+	 */
+	public function setUserMsgs( $aMsgList )
+	{ $this->getDirector()['user_msgs'] = $aMsgList; }
+	
+	/**
 	 * Push a message onto the UI message queue.
 	 * @param string $aMsgText - text of the message to display.
-	 * @param string $aMsgClass - class of the message, one of self::USER_MSG_* constants (default NOTICE).
+	 * @param string $aMsgClass - class of the message, one of the
+	 *   <code>self::USER_MSG_*</code> constants (default NOTICE).
 	 */
-	public function addUserMsg($aMsgText, $aMsgClass=self::USER_MSG_NOTICE) {
-		if (!isset($_SESSION['user_msgs'])) {
-			$this->clearUserMsgs();
+	public function addUserMsg( $aMsgText, $aMsgClass=self::USER_MSG_NOTICE )
+	{
+		$theMsgList = $this->getUserMsgs();
+		$theMsgList[] = array(
+				'msg_class'=>$aMsgClass,
+				'msg_text'=>$aMsgText,
+		);
+		//do not let msgs grow too big
+		if ( count($theMsgList) > self::USER_MSG_MAX_COUNT ) {
+			array_shift($theMsgList);
 		}
-		$_SESSION['user_msgs'][] = array('msg_class'=>$aMsgClass, 'msg_text'=>$aMsgText);
+		$this->setUserMsgs($theMsgList);
 	}
 	
 	/**
-	 * Clear out the message queue. Usually done after it is displayed in user_msgs.php view.
+	 * Clear out the message queue.
+	 * Usually done after it is displayed in user_msgs.php view.
 	 */
-	public function clearUserMsgs() {
-		$_SESSION['user_msgs'] = array();
-	}
+	public function clearUserMsgs()
+	{ $this->setUserMsgs(array()); }
 	
 	/**
 	 * Retrieve the messages to display.
-	 * @return array Returns an array of messages, each msg is an array of 'msg_text' and 'msg_class'.
+	 * @return array Returns an array of messages,
+	 *   each msg is an array of 'msg_text' and 'msg_class'.
 	 */
-	public function getUserMsgs() {
-		if (!isset($_SESSION['user_msgs'])) {
-			$this->clearUserMsgs();
+	public function getUserMsgs()
+	{
+		$theDirector = $this->getDirector();
+		if ( empty($theDirector['user_msgs']) ) {
+			$theDirector['user_msgs'] = array();
 		}
-		return $_SESSION['user_msgs'];
+		return $theDirector['user_msgs'];
 	}
 
 	/**
@@ -782,88 +809,18 @@ implements IDirected
 	}
 	
 	/**
-	 * @return number Returns the total count for query
-	 *   regardless of paging.
-	 */
-	public function getPagerTotalRowCount() {
-		return $this->_pager_total_row_count;
-	}
-	
-	/**
-	 * Models can set the query total regardless of paging.
-	 * @param number $aTotalRowCount - the total.
-	 * @return \BitsTheater\Scene
-	 */
-	public function setPagerTotalRowCount($aTotalRowCount) {
-		$this->_pager_total_row_count = max($aTotalRowCount,0);
-		return $this;
-	}
-	
-	/**
-	 * Check to see if the pager is enabled.
-	 * @return boolean - returns the state of the pager.
-	 */
-	public function isPagerEnabled() {
-		return $this->_pager_enabled;
-	}
-	
-	/**
-	 * Enable/disable the pager.
-	 * @param boolean $aEnabled - desired state of pager.
-	 * @return \BitsTheater\Scene
-	 */
-	public function setPagerEnabled($aEnabled) {
-		$this->_pager_enabled = !empty($aEnabled);
-		return $this;
-	}
-	
-	/**
-	 * Get the defined maximum row count for a page in a pager.
-	 * @param int $aDefaultPageSize - (optional) override the default page size of 25.
-	 * @return int Returns the max number of rows shown for a single pager page;
-	 * guaranteed to be 1 or greater.
-	 */
-	public function getPagerPageSize() {
-		if (!$this->isPagerEnabled())
-			return 0;
-		//TODO $this->_config['disply/query_limit'];
-		$theLimit = max(25,1);
-		if (!empty($this->query_limit) && is_numeric($this->query_limit))
-			$theLimit = min(max($this->query_limit,1),1000);
-		else if (!empty($this->pagesz) && is_numeric($this->pagesz))
-			$theLimit = min(max($this->pagesz,1),1000);
-		return $theLimit;
-	}
-	
-	/**
 	 * @return int Returns the current pager page.
 	 */
-	public function getPagerCurrPage() {
-		$thePage = 1;
-		if (!empty($this->page) && is_numeric($this->page))
-			$thePage = max($this->page,1);
-		return $thePage;
-	}
-	
-	/**
-	 * Get the SQL query offset based on pager page size and page desired.
-	 * @return int Returns the query offset to use.
-	 */
-	public function getPagerQueryOffset() {
-		$theOffset = 0;
-		$thePageSize = $this->getPagerPageSize();
-		if ( !empty($this->query_offset) && is_numeric($this->query_offset) )
-			$theOffset = $this->query_offset;
-		else if ( ($thePageSize>0) )
-			$theOffset = ($this->getPagerCurrPage()-1) * $thePageSize;
-		return $theOffset;
-	}
+	public function getPagerCurrPage()
+	{ return $this->getPagerCurrentPage(); }
 	
 	/**
 	 * Return the SQL "LIMIT" expression for the given Database type based
 	 * on the "standard Scene variables" defined.
 	 * @param string $aDbType - one of the various PDO::DB_TYPE.
 	 * @return string Returns the LIMIT string to use, including prefix " LIMIT".
+	 * @deprecated refactor to use ISqlSanitizer interface.
+	 * @see \BitsTheater\costumes\ISqlSanitizer
 	 */
 	public function getQueryLimit($aDbType) {
 		$theResult = null;

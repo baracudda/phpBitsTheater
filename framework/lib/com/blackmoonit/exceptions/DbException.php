@@ -28,9 +28,16 @@ class DbException extends PDOException implements IDebuggableException
 {
 	private $mDebuggableExceptionTrait;
 	
-	public function __construct($e, $aMsg='') {
+	/**
+	 * Construct our PDOException wrapper so it will implement our
+	 * IDebuggableException interface.
+	 * @param PDOException $e - (OPTIONAL) the PDOException to wrap or NULL.
+	 * @param string $aMsg - (OPTIONAL) the context for the error message.
+	 */
+	public function __construct(PDOException $e=null, $aMsg='')
+	{
 		$this->mDebuggableExceptionTrait = new DebuggableExceptionTrait($this);
-		if (isset($e) && $e instanceof PDOException) {
+		if ( isset($e) ) {
 			if ( !empty($e->errorInfo) && !empty($e->errorInfo[0]) ) {
 				$errCode = $e->errorInfo[0];
 				$errMsg = (!empty($e->errorInfo[2])) ? $e->errorInfo[2] : $e->getMessage();
@@ -38,13 +45,27 @@ class DbException extends PDOException implements IDebuggableException
 				list($errMsg, $errCode) = self::parseSqlStateMsg($e->getMessage());
 			}
 			parent::__construct($errMsg, 0, $e->getPrevious());
-			$this->code = $errCode; //PDOException::code is string, but constructor is INT param
+			$this->setCode($errCode); //PDOException::code is string, but constructor is INT param
 			if ( !empty($e->errorInfo) )
 				$this->errorInfo = $e->errorInfo;
 			$this->setContextMsg($aMsg);
 		} else {
 			parent::__construct($aMsg);
 		}
+	}
+	
+	/**
+	 * Set the error code value.
+	 * @param string|number $aCode - the code to set.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setCode( $aCode )
+	{
+		if ( !empty($aCode) )
+		{ $this->code = $aCode; }
+		else
+		{ $this->code = 0; }
+		return $this;
 	}
 	
 	static public function parseSqlStateMsg($aMsg) {

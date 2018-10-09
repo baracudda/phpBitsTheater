@@ -20,6 +20,7 @@ use BitsTheater\costumes\ASimpleCostume as BaseCostume;
 use BitsTheater\costumes\WornForExportData;
 use BitsTheater\Model as MyModel;
 use BitsTheater\costumes\colspecs\CommonMySql;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
@@ -74,7 +75,37 @@ class ARecord extends BaseCostume
 	 * @return $this Returns the updated costume
 	 */
 	public function setModel( $aModel )
-	{ $this->dbModel = $aModel ; return $this ; }
+	{
+		//cannot use WornByModel due to constructors passing NULL to this
+		//  function and it expects constructor to require Director as
+		//  first param, which this set of classes do not have.
+		//  This method accepts NULL and legacy code takes advantage of that
+		//  so we cannot just force the param to type hint, HOWEVER, if you
+		//  pass in a non-null value, it better by a proper model reference
+		//  and that we WILL test and report a coding error with stack trace
+		//  so it can easily be found and fixed.
+		if ( !empty($aModel) && !($aModel instanceof MyModel) ) {
+			Strings::errorLog(__METHOD__, ' [', get_called_class(),
+					'] object created with wrong ref to a model.'
+			);
+			Strings::errorLog(Strings::getStackTrace());
+		}
+		$this->dbModel = $aModel;
+		return $this;
+	}
+	
+	/**
+	 * Static builder method to return an instance of the costume pre-bound
+	 * to a model instance.
+	 * @param MyModel $aModel the model instance to bind
+	 * @param string[] $aFieldList - (OPTIONAL) the field list to return.
+	 * @return static Returns an instance of the costume
+	 */
+	public static function withModel( MyModel $aModel, $aFieldList=null )
+	{
+		$theClassName = get_called_class() ;
+		return new $theClassName($aModel, $aFieldList);
+	}
 	
 	/**
 	 * Constructor for an ARecord entails a Model reference and a fieldset
@@ -84,7 +115,7 @@ class ARecord extends BaseCostume
 	 */
 	public function __construct($aDbModel=null, $aFieldList=null)
 	{ $this->setModel($aDbModel)->setExportFieldList($aFieldList); }
-		
+	
 	/**
 	 * Construct the standard object with all data fields worth exporting defined.
 	 * @return object Returns a standard object with the properties to export defined.
@@ -93,12 +124,33 @@ class ARecord extends BaseCostume
 	{
 		$o = (object) call_user_func('get_object_vars', $this);
 		$theModel = $this->getModel();
-		//convert all `*_ts` timestamp fields into ISO format
-		switch ($theModel->dbType()) {
-			case $theModel::DB_TYPE_MYSQL:
-				$o = CommonMySql::deepConvertSQLTimestampsToISOFormat($o);
-				break;
-		}//switch
+		if ( empty($theModel) ) {
+			//PHP < 7, cannot catch "Call to a member function on NULL"
+			Strings::errorLog(__METHOD__, ' [', get_called_class(),
+					'] object created without a ref to a model.'
+			);
+			Strings::errorLog(Strings::getStackTrace());
+		}
+		try {
+			//convert all `*_ts` timestamp fields into ISO format
+			switch ($theModel->dbType()) {
+				case $theModel::DB_TYPE_MYSQL:
+					$o = CommonMySql::deepConvertSQLTimestampsToISOFormat($o);
+					break;
+			}//switch
+		}
+		catch(\Exception $x) {
+			if ( empty($theModel) ) {
+				//fires if PHP 7+
+				Strings::errorLog(__METHOD__, ' [', get_called_class(),
+						'] object created without a ref to a model.'
+				);
+				Strings::errorLog(Strings::getStackTrace());
+			}
+			else {
+				Strings::errorLog(__METHOD__, ' ', $x);
+			}
+		}
 		return $o ;
 	}
 	

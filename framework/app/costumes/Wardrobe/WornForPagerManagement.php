@@ -180,9 +180,9 @@ trait WornForPagerManagement
 	{
 		// see if we have a defined page size
 		if ( !empty($aScene->query_limit) && is_numeric($aScene->query_limit) )
-		{ $this->setPagerPageSize($aScene->query_limit); }
+		{ $this->setPagerSize($aScene->query_limit); }
 		else if ( !empty($aScene->pagesz ) && is_numeric( $aScene->pagesz) )
-		{ $this->setPagerPageSize($aScene->pagesz); }
+		{ $this->setPagerSize($aScene->pagesz); }
 		// see if we have a defined current page, explicit or via offset
 		if ( $this->getPagerSize() > 0 ) {
 			if ( !empty($aScene->query_offset) && is_numeric($aScene->query_offset) )

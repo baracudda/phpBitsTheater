@@ -17,6 +17,8 @@
 
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\AuthAccountSet as BaseCostume;
+use BitsTheater\costumes\AuthOrgList;
+use BitsTheater\costumes\SqlBuilder;
 {//namespace begin
 
 /**
@@ -30,6 +32,7 @@ use BitsTheater\costumes\CursorCloset\AuthAccountSet as BaseCostume;
  */
 class AuthAcct4OrgsSet extends BaseCostume
 {
+	
 	/**
 	 * Org data to be returned.
 	 * @var AuthOrgList
@@ -37,18 +40,23 @@ class AuthAcct4OrgsSet extends BaseCostume
 	public $mOrgList = null;
 	
 	/**
-	 * The name of the class that will be used by default to contain items of
-	 * the set.
-	 * @var string
+	 * Sets the construction arguments for our Item Class.
+	 * @param mixed $_ - arguments to pass to the class's constructor.
+	 * @return $this Returns $this for chaining.
 	 */
-	const DEFAULT_ITEM_CLASS = 'AuthAcct4Orgs';
-
-	/**
-	 * Return the Model class or name to use in a getProp() call.
-	 * @return string
-	 */
-	protected function getModelClassToUse() {
-		return 'Auth';
+	public function setItemClassArgs( ...$args )
+	{
+		// check field list argument of MyRecord for extended info we need to retrieve.
+		if ( !empty($args[1]) ) {
+			//the field list arg
+			$theFieldList =& $args[1];
+			$theIndex = array_search('with_map_info', $theFieldList);
+			$bAddAllMaps = ( $theIndex!==false );
+			if ( $bAddAllMaps || array_search('org_ids', $theFieldList)!==false ) {
+				$this->mOrgList = AuthOrgList::create($this->getMyModel());
+			}
+		}
+		return parent::setItemClassArgs(...$args);
 	}
 	
 	/**
@@ -68,12 +76,141 @@ class AuthAcct4OrgsSet extends BaseCostume
 	 * print() out extra properties besides the set of records here, if any.
 	 * @param string $aEncodeOptions options for `json_encode()`
 	 */
-	protected function printExtraJsonProperties( $aEncodeOptions ) {
+	protected function printExtraJsonProperties( $aEncodeOptions )
+	{
 		if (!empty($this->mOrgList)) {
 			print( ',"authorgs":');
 			$this->mOrgList->printAsJson( $aEncodeOptions );
 		}
 		parent::printExtraJsonProperties($aEncodeOptions);
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @see \BitsTheater\costumes\CursorCloset\AuthAccountSet::getItemFieldListForFilters()
+	 */
+	public function getItemFieldListForFilters()
+	{
+		$theList = parent::getItemFieldListForFilters();
+		if ( !empty($this->mOrgList) )
+		{
+			$theList = array_merge($theList, array(
+					'org_id',
+					'org_name',
+					'org_title',
+					'org_desc',
+					'parent_org_id',
+			));
+		}
+		return $theList;
+	}
+	
+	/**
+	 * Given the filter and fieldname, apply the proper query filter.
+	 * @param SqlBuilder $aFilter - the filter object.
+	 * @param string $aFieldname - the fieldname.
+	 */
+	protected function handleFilterField( SqlBuilder $aFilter, $aFieldname )
+	{
+		switch ( $aFieldname ) {
+			case 'group_id':
+			case 'group_name':
+				$theSavedPrefix = $aFilter->myParamPrefix;
+				$dbAuthGroups = $this->getAuthGroupsProp();
+				$aFilter->add($aFilter->myParamPrefix . 'auth_id IN (');
+				$aFilter->endWhereClause()
+					->add('SELECT auth_id FROM')->add($dbAuthGroups->tnGroupMap)
+					;
+				if ( $aFieldname!=='group_id') {
+					$aFilter->add('INNER JOIN')->add($dbAuthGroups->tnGroups)
+						->add('USING(group_id)')
+						;
+				}
+				$aFilter	->startWhereClause()->addParam($aFieldname);
+				$aFilter->add(')');
+				$aFilter->setParamPrefix($theSavedPrefix);
+				break;
+			case 'org_id':
+			case 'org_name':
+			case 'org_title':
+			case 'org_desc':
+			case 'parent_org_id':
+				$theSavedPrefix = $aFilter->myParamPrefix;
+				$dbAuth = $this->getMyModel();
+				$aFilter->add($aFilter->myParamPrefix . 'auth_id IN (');
+				$aFilter->endWhereClause()
+					->add('SELECT auth_id FROM')->add($dbAuth->tnAuthOrgMap)
+					;
+				if ( $aFieldname!=='org_id') {
+					$aFilter->add('INNER JOIN')->add($dbAuth->tnAuthOrgs)
+						->add('USING(org_id)')
+						;
+				}
+				$aFilter->startWhereClause()->addParam($aFieldname);
+				$aFilter->add(')');
+				$aFilter->setParamPrefix($theSavedPrefix);
+				break;
+			default:
+				parent::handleFilterField($aFilter, $aFieldname);
+		}//switch
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * @see \BitsTheater\costumes\CursorCloset\AuthAccountSet::getItemFieldListForSearch()
+	 */
+	public function getItemFieldListForSearch()
+	{
+		$theList = parent::getItemFieldListForSearch();
+		if ( !empty($this->mOrgList) )
+		{ $theList[] = 'org_title'; }
+		return $theList;
+	}
+	
+	/**
+	 * Given the filter and fieldname, apply the proper query filter.
+	 * @param SqlBuilder $aFilter - the filter object.
+	 * @param string $aFieldname - the fieldname.
+	 * @param string $aSearchText - the text to search for.
+	 */
+	protected function handleSearchField( SqlBuilder $aFilter, $aFieldname, $aSearchText )
+	{
+		switch ( $aFieldname ) {
+			case 'group_name':
+				$theSavedPrefix = $aFilter->myParamPrefix;
+				$dbAuthGroups = $this->getAuthGroupsProp();
+				$aFilter->add($aFilter->myParamPrefix . 'auth_id IN (');
+				$aFilter->endWhereClause()
+					->add('SELECT auth_id FROM')->add($dbAuthGroups->tnGroupMap)
+					->add('INNER JOIN')->add($dbAuthGroups->tnGroups)->add('USING(group_id)')
+					;
+				$aFilter->startWhereClause()->setParamOperator(' LIKE ')
+					->setParamValueIfEmpty($aFieldname, $aSearchText)
+					->addParam($aFieldname)
+					->setParamOperator('=')
+					;
+				$aFilter->add(')');
+				$aFilter->setParamPrefix($theSavedPrefix);
+				break;
+			case 'org_title':
+				$theSavedPrefix = $aFilter->myParamPrefix;
+				$dbAuth = $this->getMyModel();
+				$aFilter->add($aFilter->myParamPrefix . 'auth_id IN (');
+				$aFilter->endWhereClause()
+					->add('SELECT auth_id FROM')->add($dbAuth->tnAuthOrgMap)
+					->add('INNER JOIN')->add($dbAuth->tnAuthOrgs)->add('USING(org_id)')
+					;
+				$aFilter->startWhereClause()->setParamOperator(' LIKE ')
+					->setParamValueIfEmpty($aFieldname, $aSearchText)
+					->addParam($aFieldname)
+					->setParamOperator('=')
+					;
+				$aFilter->add(')');
+				$aFilter->setParamPrefix($theSavedPrefix);
+				break;
+			default:
+				parent::handleSearchField($aFilter, $aFieldname, $aSearchText);
+		}//switch
 	}
 	
 }//end class

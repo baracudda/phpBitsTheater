@@ -39,7 +39,7 @@ class APIResponse extends BaseCostume {
 	/**
 	 * Everything went OK, respond with data attached to the standard
 	 * API response object.
-	 * @param unknown $aData - the data to return.
+	 * @param mixed $aData - the data to return.
 	 * @param integer $aRespCode (optional) an HTTP response code to be set; if
 	 *  omitted, then the current response code will be retained
 	 * @return \BitsTheater\costumes\APIResponse Returns the created

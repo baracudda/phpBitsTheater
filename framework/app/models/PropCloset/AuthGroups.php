@@ -18,15 +18,18 @@
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use BitsTheater\costumes\colspecs\CommonMySql;
+use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\costumes\AuthGroup;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\costumes\WornForFeatureVersioning;
+use BitsTheater\models\Auth as AuthDB;
 use BitsTheater\outtakes\RightsException ;
 use BitsTheater\BrokenLeg ;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Arrays;
-use com\blackmoonit\FinallyBlock;
 use com\blackmoonit\Strings;
 use PDOException;
 use Exception;
@@ -57,10 +60,19 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 *  <li value="1">
 	 *   Initial schema design.
 	 *  </li>
+	 *  <li value="2">
+	 *   Add org_id to tnGroups, replace Titan group with "org-parent", and
+	 *   change group_num to be auto-inc just like account_id is defined.
+	 *   Also, tnGroupRegCodes needs new indexes to make reg_code unique.
+	 *  </li>
+	 *  <li value="3">
+	 *   Change group_num to be auto-inc if it is not already.
+	 *   Not sure how this did not happen during v2.
+	 *  </li>
 	 * </ol>
 	 * @var integer
 	 */
-	const FEATURE_VERSION_SEQ = 1; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 3; //always ++ when making db schema changes
 	
 	/**
 	 * Add our database name before the defined table prefix so we can work
@@ -74,7 +86,10 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	public $tnGroupRegCodes;	const TABLE_GroupRegCodes = 'authgroup_reg_codes';
 	public $tnPermissions;		const TABLE_Permissions = 'authgroup_permissions';
 	
-	/** @var string The constant, assumed ID of the "unregistered user" group. */
+	/** @var string The error code to notify callers to maybe check for migration. */
+	const ERR_CODE_EMPTY_AUTHGROUP_TABLE = '6x9=42';
+	
+	/** @var string The ID of the "unregistered user" group. */
 	const UNREG_GROUP_ID = 'UNKNOWN' ;
 	
 	/** @var string The DB value meaning "allow" is '+'. */
@@ -82,7 +97,8 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	/** @var string The DB value meaning "forbid" is 'x'. */
 	const VALUE_Deny = 'x';
 	/**
-	 * If the value is missing from TABLE_Permissions, then it also means VALUE_Disallow.
+	 * If the value is missing from TABLE_Permissions, then it also means
+	 * VALUE_Disallow.
 	 * @var string The DB value meaning "disallow" is '-'.
 	 */
 	const VALUE_Disallow = '-';
@@ -108,58 +124,93 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 * @var string Defined as 'deny-disable'
 	 */
 	const FORM_VALUE_DoNotShow = 'deny-disable';
+	/**
+	 * The UI form value for "parent allows"
+	 * @var string Defined as 'parent-allow'
+	 */
+	const FORM_VALUE_ParentAllowed = 'parent-allow';
 	
 	/**
-	 * Keep a live cache while the current script runs to avoid hitting the db too often.
-	 * @var array Stores "namespace/permission" as key to the permission value.
+	 * Overridden method to handle additional logic after a successful
+	 * database connection is made.
 	 */
-	public $_permCache = array();
-
 	public function setupAfterDbConnected()
 	{
 		parent::setupAfterDbConnected();
-		$this->tnGroups = $this->tbl_.self::TABLE_Groups;
-		$this->tnGroupMap = $this->tbl_.self::TABLE_GroupMap;
-		$this->tnGroupRegCodes = $this->tbl_.self::TABLE_GroupRegCodes;
-		$this->tnPermissions = $this->tbl_.self::TABLE_Permissions;
+		$this->tnGroups = $this->tbl_ . self::TABLE_Groups;
+		$this->tnGroupMap = $this->tbl_ . self::TABLE_GroupMap;
+		$this->tnGroupRegCodes = $this->tbl_ . self::TABLE_GroupRegCodes;
+		$this->tnPermissions = $this->tbl_ . self::TABLE_Permissions;
 	}
 	
 	/**
-	 * @return string Returns the ID of the "titan" superuser group.
-	 */
-	public function getTitanGroupID()
-	{ return $this->getDirector()->app_id; }
+	 * Overridden method that returns the SQL code needed to create the table as
+	 * specified.
+	 * @param string $aTableConst - the const name of a table to be defined.
+	 * @param string $aTableNameOverride - (OPTIONAL) a custom name for the
+	 *   table in case schema upgrades require cloning a table or two.
+	 * @return string|NULL Return the SQL code to create the specified table.
+	*/
+	protected function getTableDefSql($aTableConst, $aTableNameOverride=null)
+	{
+		switch($aTableConst)
+		{
+			case self::TABLE_Groups:
+				return $this->getTableDefSqlForGroups($aTableNameOverride);
+			case self::TABLE_GroupMap:
+				return $this->getTableDefSqlForGroupMap($aTableNameOverride);
+			case self::TABLE_GroupRegCodes:
+				return $this->getTableDefSqlForGroupRegCodes($aTableNameOverride);
+			case self::TABLE_Permissions:
+				return $this->getTableDefSqlForPermissions($aTableNameOverride);
+		}
+	}
 
 	/**
-	 * Future db schema updates may need to create a temp table of one
-	 * of the table definitions in order to update the contained data,
-	 * putting schema here and supplying a way to provide a different name
-	 * allows this process.
-	 * @param string $aTABLEconst - one of the defined table name consts.
-	 * @param string $aTableNameToUse - (optional) alternate name to use.
+	 * Returns the SQL code to create the "groups" table.
+	 * Called by getTableDefSql().
+	 * @param string $aTableNameOverride - (OPTIONAL) a custom name for the
+	 *   table in case schema upgrades require cloning a table or two.
+	 * @return string Returns the SQL code to create the table.
 	 */
-	protected function getTableDefSql($aTABLEconst, $aTableNameToUse=null)
+	protected function getTableDefSqlForGroups($aTableNameOverride=null)
 	{
-		switch($aTABLEconst) {
-		case self::TABLE_Groups:
-			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnGroups;
-			switch ($this->dbType()) {
-			case self::DB_TYPE_MYSQL: default:
-				return "CREATE TABLE IF NOT EXISTS {$theTableName} " .
-						'( group_id ' . CommonMySQL::TYPE_UUID . ' NOT NULL' .
-						', group_num INT NULL' .
-						', group_name VARCHAR(60) NOT NULL' .
-						', parent_group_id ' . CommonMySql::TYPE_UUID . ' NULL' .
-						', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
-						', PRIMARY KEY (group_id)' .
-						', KEY (parent_group_id)' .
-						', UNIQUE KEY (group_num)' .
-						') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE;
+			$theTableName = $this->tnGroups;
+			if ( !empty($aTableNameOverride) )
+			{ $theTableName = $aTableNameOverride; }
+			switch ( $this->dbType() ) {
+				case self::DB_TYPE_MYSQL:
+				default:
+					return "CREATE TABLE IF NOT EXISTS {$theTableName} " .
+							'( group_id ' . CommonMySQL::TYPE_UUID . ' NOT NULL' .
+							', group_num INT NOT NULL AUTO_INCREMENT' . " COMMENT 'user-friendly ID'" .
+							', group_name VARCHAR(60) NOT NULL' .
+							', parent_group_id ' . CommonMySql::TYPE_UUID . ' NULL' .
+							', org_id ' . CommonMySql::TYPE_UUID . ' NULL' .
+							', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
+							', PRIMARY KEY (group_id)' .
+							', KEY (parent_group_id)' .
+							', KEY (org_id)' .
+							', UNIQUE KEY (group_num)' .
+							') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE;
 			}//switch dbType
-		case self::TABLE_GroupMap:
-			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnGroupMap;
-			switch ($this->dbType()) {
-			case self::DB_TYPE_MYSQL: default:
+	}
+	
+	/**
+	 * Returns the SQL code to create the "group_map" table.
+	 * Called by getTableDefSql().
+	 * @param string $aTableNameOverride - (OPTIONAL) a custom name for the
+	 *   table in case schema upgrades require cloning a table or two.
+	 * @return string Returns the SQL code to create the table.
+	 */
+	protected function getTableDefSqlForGroupMap($aTableNameOverride=null)
+	{
+		$theTableName = $this->tnGroupMap;
+		if ( !empty($aTableNameOverride) )
+		{ $theTableName = $aTableNameOverride; }
+		switch ( $this->dbType() ) {
+			case self::DB_TYPE_MYSQL:
+			default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} " .
 						'( auth_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
 						', group_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
@@ -167,23 +218,47 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 						', PRIMARY KEY (auth_id, group_id)' .
 						', UNIQUE KEY (group_id, auth_id)' .
 						')';
-			}//switch dbType
-		case self::TABLE_GroupRegCodes:
-			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnGroupRegCodes;
-			switch ($this->dbType()) {
+		}//switch dbType
+	}
+
+	/**
+	 * Returns the SQL code to create the "group_reg_codes" table.
+	 * Called by getTableDefSql().
+	 * @param string $aTableNameOverride - (OPTIONAL) a custom name for the
+	 *   table in case schema upgrades require cloning a table or two.
+	 * @return string Returns the SQL code to create the table.
+	 */
+	protected function getTableDefSqlForGroupRegCodes($aTableNameOverride=null)
+	{
+		$theTableName = $this->tnGroupRegCodes;
+		if ( !empty($aTableNameOverride) )
+		{ $theTableName = $aTableNameOverride; }
+		switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} " .
 						'( group_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
 						', reg_code VARCHAR(64) NOT NULL' .
 						', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
-						', PRIMARY KEY (group_id, reg_code)' .
-						', UNIQUE KEY (reg_code, group_id)' .
+						', PRIMARY KEY (reg_code)' .
+						', KEY (group_id, created_ts)' .
 						') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE .
 						" COMMENT='Auto-assign group_id if Registration Code matches reg_code'";
-			}//switch dbType
-		case self::TABLE_Permissions:
-			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnPermissions;
-			switch ($this->dbType()) {
+		}//switch dbType
+	}
+	
+	/**
+	 * Returns the SQL code to create the "permissions" table.
+	 * Called by getTableDefSql().
+	 * @param string $aTableNameOverride - (OPTIONAL) a custom name for the
+	 *   table in case schema upgrades require cloning a table or two.
+	 * @return string Returns the SQL code to create the table.
+	 */
+	protected function getTableDefSqlForPermissions($aTableNameOverride=null)
+	{
+		$theTableName = $this->tnPermissions;
+		if ( !empty($aTableNameOverride) )
+		{ $theTableName = $aTableNameOverride; }
+		switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
 						'( namespace VARCHAR(40) NOT NULL' .
@@ -194,8 +269,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 						', PRIMARY KEY (namespace, permission, group_id)' .
 						', UNIQUE KEY IdxGroupPermissions (group_id, namespace, permission)' .
 						') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE;
-			}//switch dbType
-		}//switch TABLE const
+		}//switch dbType
 	}
 
 	/**
@@ -211,11 +285,43 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * If the groups table is empty, supply some default starter-data.
+	 * Constructs the group information for insertion into the database.
+	 * @param array $aAuditFields - A map of audit fields for the row.
+	 * @see AuthGroups::setupDefaultDataForGroups()
 	 */
-	protected function setupDefaultDataForGroups()
+	protected function buildDefaultGroupDataArray( $aAuditFields )
 	{
-		if ($this->isEmpty($this->tnGroups)) {
+		$theGroupNames = $this->getRes('AuthGroups/group_names');
+		$theDefaultData = array() ;
+		$theIdx = 0 ;
+		foreach( $theGroupNames as $theGroupName )
+		{ // Construct value set for each row with group data and audit fields.
+			switch ( $theIdx ) {
+				case 0:
+					$theGroupID = static::UNREG_GROUP_ID;
+					$theGroupNum = count($theGroupNames);
+					break;
+				default:
+					$theGroupID = Strings::createUUID();
+					$theGroupNum = $theIdx;
+			}//end switch
+			$theDefaultData[$theIdx++] = array_merge( $aAuditFields, array(
+					'group_id' => $theGroupID,
+					'group_num' => $theGroupNum,
+					'group_name' => $theGroupName,
+			) );
+		}
+		return $theDefaultData ;
+	}
+	
+	/**
+	 * If the groups table is empty, supply some default starter-data.
+	 * @param object $aScene - (optional) extra data may be supplied
+	 * @return array Return the default data added, indexed by group_num.
+	 */
+	protected function setupDefaultDataForAuthGroups( $aScene=null )
+	{
+		if ( $this->isEmpty($this->tnGroups) ) {
 			// Start building the query until we have the audit field values...
 			$theSql = SqlBuilder::withModel($this);
 			$theSql->startWith('INSERT INTO')->add($this->tnGroups);
@@ -229,52 +335,189 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			// SqlBuilder, from setAuditFieldsOnInsert().
 			$theDefaultData =
 					$this->buildDefaultGroupDataArray( $theSql->myParams ) ;
-			
+
 			try
-			{ $theSql->execMultiDML( $theDefaultData ); }
+			{
+				$theSql->execMultiDML( $theDefaultData );
+				//since group_num is an auto-inc field, 0 might get
+				//  auto-changed to be the next auto-inc value instead
+				//  of 0, which is what we actually want. UPDATE should
+				//  fix that for us.
+				switch ($this->dbType()) {
+					case self::DB_TYPE_MYSQL:
+					default:
+						$theSql->reset()
+							->startWith('UPDATE')->add($this->tnGroups)
+							->add('SET')
+							->mustAddParam('group_num', 0, \PDO::PARAM_INT)
+							->startWhereClause()
+							->mustAddParam('group_id', $theDefaultData[0]['group_id'])
+							->endWhereClause()
+							->execDML()
+						;
+				}//switch
+			}
+			catch (PDOException $pdox)
+			{ throw $theSql->newDbException(__METHOD__, $pdox); }
+			return $theDefaultData;
+		}
+	}
+	
+	/**
+	 * If the group registration code table is empty, add the site ID to admin.
+	 * @param array $aAuthGroups - the auth groups added.
+	 */
+	protected function setupDefaultDataForAuthGroupRegCodes( $aAuthGroups )
+	{
+		if ( $this->isEmpty($this->tnGroupRegCodes) && !empty($aAuthGroups) ) {
+			// Start building the query until we have the audit field values...
+			$theSql = SqlBuilder::withModel($this);
+			$theSql->startWith('INSERT INTO')->add($this->tnGroupRegCodes);
+			$this->setAuditFieldsOnInsert($theSql);
+			//admin group defaults to the site ID on initial install
+			$theSql->mustAddParam('group_id', $aAuthGroups[2]['group_id']);
+			$theSql->mustAddParam('reg_code', $this->getDirector()->app_id);
+			try
+			{ $theSql->execDML(); }
 			catch (PDOException $pdox)
 			{ throw $theSql->newDbException(__METHOD__, $pdox); }
 		}
+		
 	}
 	
 	/**
-	 * Constructs the group information for insertion into the database.
-	 * @param array $aAuditFields A map of audit fields for the row.
-	 * @see AuthGroups::setupDefaultDataForGroups()
+	 * Return an array that would grant all rights for a given namespace to a
+	 * particular auth group.
+	 * @param string $aNamespace - the namespace to use.
+	 * @param string $aGroupID - the ID to assign rights to.
+	 * @param string $aRightValue - (OPTIONAL) default to Allow, but can
+	 *   supply Disallow or Deny, if desired.
+	 * @param string[] $aSkipPermissionList - (OPTIONAL) a list of permissions
+	 *   to skip assignment.
+	 * @return array Returns 2D array of permission rows to insert.
 	 */
-	protected function buildDefaultGroupDataArray( $aAuditFields )
+	protected function assignAllRightsInANamespace($aNamespace, $aGroupID,
+			$aRightValue=null, $aSkipPermissionList=null)
 	{
-		$theGroupNames = $this->getRes('AuthGroups/group_names');
-		$theDefaultData = array() ;
-		$theIdx = 0 ;
-		foreach( $theGroupNames as $theGroupName )
-		{ // Construct value set for each row with group data and audit fields.
-			switch ( $theIdx ) {
-				case 0:
-					$theGroupID = static::UNREG_GROUP_ID;
-					break;
-				case 1:
-					$theGroupID = $this->getTitanGroupID();
+		$theResults = array();
+		if ( empty($aRightValue) )
+		{ $aRightValue = static::VALUE_Allow; }
+		$thePerms = $this->getRes( 'permissions', $aNamespace );
+		foreach ( $thePerms as $thePerm => $thePermInfo ) {
+			if ( empty($aSkipPermissionList) ||
+					!in_array($thePerm, $aSkipPermissionList) )
+			{
+				$theResults[] = array(
+						'namespace' => $aNamespace,
+						'permission' => $thePerm,
+						'group_id' => $aGroupID,
+						'value' => $aRightValue,
+				);
+			}
+		}
+		return $theResults;
+	}
+	
+	/**
+	 * Default rights for a guest account.
+	 * @param string $aGroupID - the group ID to use.
+	 * @return array Returns 2D array of permission rows to insert.
+	 */
+	protected function getDefaultRightsForGuest( $aGroupID )
+	{
+		$theResults = array();
+		return $theResults;
+	}
+	
+	/**
+	 * Default rights for a sub-org account.
+	 * @param string $aGroupID - the group ID to use.
+	 * @return array Returns 2D array of permission rows to insert.
+	 */
+	protected function getDefaultRightsForOrgParent( $aGroupID )
+	{
+		$theResults = array();
+		$theNamespaceList = $this->getRes('permissions', 'namespace');
+		foreach ( $theNamespaceList as $theNS => $theNSInfo ) {
+			switch ( $theNS ) {
+				case 'auth_orgs':
+				case 'config':
+					$theResults = array_merge( $theResults,
+							$this->assignAllRightsInANamespace($theNS,
+									$aGroupID, static::VALUE_Deny)
+					);
 					break;
 				default:
-					$theGroupID = Strings::createUUID();
-			}//end switch
-			$theDefaultData[] = array_merge( $aAuditFields, array(
-					'group_id' => $theGroupID,
-					'group_num' => $theIdx++,
-					'group_name' => $theGroupName,
-			) );
-		}
-		return $theDefaultData ;
+			}//switch
+		}//foreach
+		return $theResults;
 	}
 	
 	/**
-	 * If the group registration code table is empty,
-	 * supply some default starter-data.
+	 * Default rights for an admin account.
+	 * @param string $aGroupID - the group ID to use.
+	 * @return array Returns 2D array of permission rows to insert.
 	 */
-	protected function setupDefaultDataForGroupRegCodes()
+	protected function getDefaultRightsForAdmin( $aGroupID )
 	{
-		//no default reg codes
+		$theResults = array();
+		$theNamespaceList = $this->getRes('permissions', 'namespace');
+		foreach ( $theNamespaceList as $theNS => $theNSInfo ) {
+			$theResults = array_merge( $theResults,
+					$this->assignAllRightsInANamespace($theNS, $aGroupID)
+			);
+		}
+		return $theResults;
+	}
+	
+	/**
+	 * Default rights for a privileged account.
+	 * @param string $aGroupID - the group ID to use.
+	 * @return array Returns 2D array of permission rows to insert.
+	 */
+	protected function getDefaultRightsForPrivileged( $aGroupID )
+	{
+		$theResults = array();
+		return $theResults;
+	}
+	
+	/**
+	 * Default rights for a restricted account.
+	 * @param string $aGroupID - the group ID to use.
+	 * @return array Returns 2D array of permission rows to insert.
+	 */
+	protected function getDefaultRightsForRestricted( $aGroupID )
+	{
+		$theResults = array();
+		return $theResults;
+	}
+	
+	/**
+	 * When tables are created, default data may be needed in them. Check
+	 * the table(s) for isEmpty() before filling it with default data.
+	 * @param array $aAuthGroups - the auth groups added.
+	 */
+	protected function setupDefaultDataForAuthPermissions( $aAuthGroups )
+	{
+		//only want default data if the table is empty
+		if ( $this->isEmpty($this->tnPermissions) ) {
+			$this->insertDataForAuthPermissionGroup(
+					$this->getDefaultRightsForGuest($aAuthGroups[0]['group_id'])
+			);
+			$this->insertDataForAuthPermissionGroup(
+					$this->getDefaultRightsForOrgParent($aAuthGroups[1]['group_id'])
+			);
+			$this->insertDataForAuthPermissionGroup(
+					$this->getDefaultRightsForAdmin($aAuthGroups[2]['group_id'])
+			);
+			$this->insertDataForAuthPermissionGroup(
+					$this->getDefaultRightsForPrivileged($aAuthGroups[3]['group_id'])
+			);
+			$this->insertDataForAuthPermissionGroup(
+					$this->getDefaultRightsForRestricted($aAuthGroups[4]['group_id'])
+			);
+			$this->logStuff(__METHOD__, ' Default permissions assigned.');
+		}
 	}
 	
 	/**
@@ -287,32 +530,94 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		//only want default data if the groups table is empty
 		if ( $this->isEmpty($this->tnGroups) )
 		{
-			$this->setupDefaultDataForGroups();
-			$this->setupDefaultDataForGroupRegCodes();
+			$theAuthGroups = $this->setupDefaultDataForAuthGroups($aScene);
+			$this->setupDefaultDataForAuthGroupRegCodes($theAuthGroups);
+			$this->setupDefaultDataForAuthPermissions($theAuthGroups);
 		}
+	}
+	
+	/**
+	 * Setup the default auth group data for a new org.
+	 * @param string $aOrgID - the new org ID.
+	 */
+	public function setupDefaultDataForNewOrg( $aOrgData )
+	{
+		$theGroupNames = $this->getRes('AuthGroups/group_names');
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('INSERT INTO')->add($this->tnGroups);
+		$this->setAuditFieldsOnInsert($theSql);
+		$theSql->mustAddParam('group_id')
+			->mustAddParam('group_name')
+			->mustAddParam('parent_group_id')
+			->mustAddParam('org_id')
+			//->logSqlDebug(__METHOD__, 'DEBUG')
+		;
+		$theDefaultData = array() ;
+		$theIdx = 0;
+		foreach ($theGroupNames as $theGroupName)
+		{
+			//avoid "guest" and "org parent" default roles
+			if ( $theIdx++ < 2 ) continue;
+			$theDefaultData[$theIdx-1] = array_merge($theSql->myParams, array(
+					'group_id' => Strings::createUUID(),
+					'group_name' => $theGroupName,
+					'parent_group_id' => $aOrgData['parent_authgroup_id'],
+					'org_id' => $aOrgData['org_id'],
+			));
+		}
+		try
+		{ $theSql->execMultiDML($theDefaultData); }
+		catch (PDOException $pdox)
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+		//now that we have the default groups, define their permissions.
+		$this->insertDataForAuthPermissionGroup(
+				$this->getDefaultRightsForAdmin($theDefaultData[2]['group_id'])
+		);
+		$this->insertDataForAuthPermissionGroup(
+				$this->getDefaultRightsForPrivileged($theDefaultData[3]['group_id'])
+		);
+		$this->insertDataForAuthPermissionGroup(
+				$this->getDefaultRightsForRestricted($theDefaultData[4]['group_id'])
+		);
 	}
 
 	/**
-	 * Other models may need to query ours to determine our version number
-	 * during Site Update. Without checking SetupDb, determine what version
-	 * we may be running as.
-	 * @param object $aScene - (optional) extra data may be supplied
+	 * Overridden method that returns the existing feature version for this
+	 * model. Other models may need to query ours to determine our version
+	 * number during Site Update. Without checking SetupDb, this method
+	 * determines what version we may be running as.
+	 * @param \BitsTheater\Scene $aScene - (optional) extra context may be supplied.
+	 * @return integer - the current version number.
 	 */
-	public function determineExistingFeatureVersion( $aScene )
+	public function determineExistingFeatureVersion($aScene)
 	{
+		if ( !$this->exists($this->tnGroups) )
+		{ return 0; }
+		if ( !$this->exists($this->tnGroupMap) )
+		{ return 0; }
+		if ( !$this->exists($this->tnGroupRegCodes) )
+		{ return 0; }
+		if ( !$this->exists($this->tnPermissions) )
+		{ return 0; }
 		switch ($this->dbType())
 		{
 			case self::DB_TYPE_MYSQL:
 			default:
-				if ( !$this->exists($this->tnGroups) ||
-					!$this->exists($this->tnGroupMap) ||
-					!$this->exists($this->tnGroupRegCodes) ||
-					!$this->exists($this->tnPermissions)
-				) return 0;
-		}//switch
-		return self::FEATURE_VERSION_SEQ ;
+				if ( !$this->isFieldExists('org_id', $this->tnGroups) )
+				{ return 1; }
+				$bIsV2 = filter_var(
+						$this->describeColumn(
+								$this->tnGroups, 'group_num'
+						)->IS_NULLABLE, FILTER_VALIDATE_BOOLEAN
+				);
+				if ( $bIsV2 )
+				{ return 2; }
+				
+		}
+		return self::FEATURE_VERSION_SEQ;
 	}
 
+	
 	/**
 	 * Check current feature version and compare it to the
 	 * current version, upgrading the db schema as needed.
@@ -343,8 +648,91 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				// For every other $theSeq case, it needs to fall through to the next.
 			}
 			case ( $theSeq < 2 ):
+				$this->upgradeFeatureVersionTo2();
+			case ( $theSeq < 3 ):
 			{
-				//next update goes here
+				//for some reason or other, the v2 upgrade code may not have
+				//  actually changed the group_num column to be NON NULL and
+				//  auto-inc.  So v3 will just focus on fixing that.
+				$bIsV2 = filter_var(
+						$this->describeColumn(
+								$this->tnGroups, 'group_num'
+						)->IS_NULLABLE, FILTER_VALIDATE_BOOLEAN
+				);
+				//$this->logStuff(__METHOD__, $bIsV2?'v2':'v3+');//DEBUG
+				$theSql = SqlBuilder::withModel($this);
+				if ( $bIsV2 ) try {
+					$theAutoInc = $theSql->reset()
+						->startWith('SELECT MAX(group_num)')
+						->add('FROM')->add($this->tnGroups)
+						->query()->fetch(\PDO::FETCH_COLUMN)
+						;
+					$theAutoInc += 1; //we want to start with the next val
+					//existing NULLs must be hand-updated else DUPLICATE key errors
+					$theSql->reset()
+						->startWith('UPDATE')->add($this->tnGroups)
+						->add('SET group_num=')
+						->add('(SELECT @row := @row + 1 as group_num')
+						->add(" FROM (SELECT @row := {$theAutoInc}) AS c")
+						->add(')')
+						->startWhereClause()
+						->mustAddParam('group_num', null)
+						->endWhereClause()
+						->applyOrderByList(array(
+								'updated_ts' => SqlBuilder::ORDER_BY_ASCENDING
+						))
+						//->logSqlDebug(__METHOD__) //DEBUG
+						->execDML()
+						;
+					$this->logStuff('v3: ensure group_num not null and unique.');
+					$theSql->reset()
+						->startWith('ALTER TABLE')->add($this->tnGroups)
+						->add('MODIFY')->add('`group_num` INT NOT NULL AUTO_INCREMENT')
+						->add(" COMMENT 'user-friendly ID'")
+						//->logSqlDebug(__METHOD__) //DEBUG
+						->execDML()
+						;
+					$this->logStuff('v3: group_num NOT NULL and auto-inc');
+					//since group_num is an auto-inc field, 0 might get
+					//  auto-changed to be the next auto-inc value instead
+					//  of 0, which is what we actually want. UPDATE should
+					//  fix that for us.
+					$theDefaultData =
+							$this->buildDefaultGroupDataArray(array());
+					$theSql->reset()
+						->startWith('UPDATE')->add($this->tnGroups)
+						->add('SET')
+						->mustAddParam('group_num', 0, \PDO::PARAM_INT)
+						->startWhereClause()
+						->mustAddParam('group_id', $theDefaultData[0]['group_id'])
+						->endWhereClause()
+						->execDML()
+					;
+					$this->logStuff('v3: reset group_num 0 back to 0.');
+					$theAutoInc = $theSql->reset()
+						->startWith('SELECT MAX(group_num)')
+						->add('FROM')->add($this->tnGroups)
+						->query()->fetch(\PDO::FETCH_COLUMN)
+						;
+					$theAutoInc += 1; //we want to start with the next val
+					$theSql->reset()
+						->startWith('ALTER TABLE')->add($this->tnGroups)
+						->add('AUTO_INCREMENT=' . $theAutoInc)
+						//->logSqlDebug(__METHOD__) //DEBUG
+						->execDML()
+						;
+					$this->logStuff('v3: group_num auto-inc should now start at ['
+							. $theAutoInc . ']'
+					);
+				}
+				catch ( \PDOException $pdox ) {
+					throw $theSql->newDbException('v3 failed to update', $pdox);
+				}
+				$this->logStuff('v3: finished updating.');
+			}
+			case ( $theSeq < 4 ):
+			{
+				// Next version's changes go here.
 			}
 		}//switch
 	}
@@ -398,7 +786,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				);
 				//parent_group_id
 				if ( isset($theItem['parent_group_id']) &&
-						$theItem['parent_group_id'] > $dbOldAuthGroups::TITAN_GROUP_ID )
+						$theItem['parent_group_id'] > 0 )
 				{
 					if ( !array_key_exists($theItem['parent_group_id'], $theIDList) )
 					{
@@ -415,9 +803,6 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				{
 					case $dbOldAuthGroups::UNREG_GROUP_ID:
 						$theNewRow['group_id'] = static::UNREG_GROUP_ID;
-						break;
-					case $dbOldAuthGroups::TITAN_GROUP_ID:
-						$theNewRow['group_id'] = $this->getTitanGroupID();
 						break;
 					default:
 						if ( !array_key_exists($theItem['group_id'], $theIDList) )
@@ -485,9 +870,6 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 					case $dbOldAuthGroups::UNREG_GROUP_ID:
 						$theNewRow['group_id'] = static::UNREG_GROUP_ID;
 						break;
-					case $dbOldAuthGroups::TITAN_GROUP_ID:
-						$theNewRow['group_id'] = $this->getTitanGroupID();
-						break;
 					default:
 						$theMigrateIdRow = $theIdSql->setParam('group_num', $theItem['group_id'])
 							->getTheRow();
@@ -545,9 +927,6 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				{
 					case $dbOldAuthGroups::UNREG_GROUP_ID:
 						$theNewRow['group_id'] = static::UNREG_GROUP_ID;
-						break;
-					case $dbOldAuthGroups::TITAN_GROUP_ID:
-						$theNewRow['group_id'] = $this->getTitanGroupID();
 						break;
 					default:
 						$theMigrateIdRow = $theIdSql->setParam('group_num', $theItem['group_id'])
@@ -610,8 +989,6 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 					case $dbOldAuthGroups::UNREG_GROUP_ID:
 						$theAddSql->setParam('group_id', static::UNREG_GROUP_ID);
 						break;
-					case $dbOldAuthGroups::TITAN_GROUP_ID:
-						continue; //useless to assign rights to the Titan group, throw it away
 					default:
 						$theMigrateIdRow = $theIdSql->setParam('group_num', $theItem['group_id'])
 							->getTheRow();
@@ -669,11 +1046,173 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$this->logStuff(' dropped old table ', $dbOldAuthGroups->tnGroups);
 	}
 	
+	protected function upgradeFeatureVersionTo2ForRegCodes()
+	{
+		$theSql = SqlBuilder::withModel($this)
+			->startWith(CommonMySql::getIndexDefinitionSql($this->tnGroupRegCodes))
+			->startWhereClause()
+			->mustAddParam('Seq_in_index', 1, \PDO::PARAM_INT)
+			->endWhereClause()
+		;
+		$theIndexRows = $theSql->query()->fetchAll();
+		$theIndexNames = Arrays::array_column($theIndexRows, 'Key_name');
+		//add a unique key to see if it works first
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('ALTER TABLE')->add($this->tnGroupRegCodes);
+		$theSql->add('  ADD UNIQUE KEY `test-4-unique` (reg_code)');
+		$theSql->execDML();
+		$this->logStuff('v2: all reg_code values are unique!');
+		//once we know the unique index can be defined, drop all indexes
+		//  and re-add the ones we really want defined.
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('ALTER TABLE')->add($this->tnGroupRegCodes);
+		foreach ($theIndexNames as $theIndexName) {
+			if ( $theIndexName=='PRIMARY' )
+			{ $theSql->add('DROP PRIMARY KEY,'); }
+			else
+			{
+				$theSql->add('DROP KEY')->add(
+					$theSql->getQuoted($theIndexName)
+				)->add(',');
+			}
+		}
+		$theSql->add('DROP KEY `test-4-unique`');
+		$theSql->execDML();
+		$this->logStuff('v2: ', $this->tnGroupRegCodes,
+				' had its indexes dropped.');
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('ALTER TABLE')->add($this->tnGroupRegCodes);
+		$theSql->add('  ADD PRIMARY KEY (reg_code)');
+		$theSql->add(', ADD KEY (group_id)');
+		$theSql->execDML();
+		$this->logStuff('v2: ', $this->tnGroupRegCodes,
+				' had its indexes recreated correctly.');
+	}
+	
+	protected function upgradeFeatureVersionTo2()
+	{
+		$theTransactionSql = SqlBuilder::withModel($this);
+		$theTransactionSql->beginTransaction();
+		try {
+			//deliberately remove the Titan UUID so it can never be used
+			//  to potentially login again as a faux-admin.
+			//get data for the former Titan group
+			$theGroup1 = AuthGroup::fromThing($this->getGroupByNum(1));
+			//replace former titan group with current group 2 ID in map
+			//  so that current titan accounts will be admins (best guess)
+			$theGroup2 = AuthGroup::fromThing($this->getGroupByNum(2));
+			$theSql = SqlBuilder::withModel($this)
+				->startWith('UPDATE')->add($this->tnGroupMap);
+			$this->setAuditFieldsOnUpdate($theSql)
+				->mustAddParam('group_id', $theGroup2->group_id)
+				->startWhereClause()
+				->setParamValueIfEmpty('oldgroup_id', $theGroup1->group_id)
+				->addParamForColumn('oldgroup_id', 'group_id')
+				->endWhereClause()
+				->execDML()
+			;
+			//remove group 1 (former Titan group) AFTER we remapped members
+			$this->del($theGroup1->group_id);
+			//re-add default group 1 (org-parent)
+			$theGroupNames = $this->getRes('AuthGroups', 'group_names');
+			$theGroup1->group_id = Strings::createUUID();
+			$theGroup1->group_num = 1;
+			$theGroup1->group_name = $theGroupNames[1];
+			$theSql = SqlBuilder::withModel($this)
+				->obtainParamsFrom($theGroup1)
+				->startWith('INSERT INTO')->add($this->tnGroups)
+			;
+			$this->setAuditFieldsOnInsert($theSql);
+			$theSql->mustAddParam('group_id')
+				->mustAddParam('group_num')
+				->mustAddParam('group_name')
+				->execDML()
+			;
+			//set default permissions for group 1.
+			$this->insertDataForAuthPermissionGroup(
+					$this->getDefaultRightsForOrgParent($theGroup1->group_id)
+			);
+			$this->logStuff('v2: group 1 migrated to be "org-parent".');
+			//add org_id field to the groups table.
+			$this->addFieldToTable(2, 'org_id', $this->tnGroups,
+					'org_id ' . CommonMySql::TYPE_UUID . ' NULL',
+					'parent_group_id'
+			);
+			//alter table to add index for new org_id field and change group_num def.
+			$theSql = SqlBuilder::withModel($this)->startWith('ALTER TABLE')->add($this->tnGroups);
+			$theSql->add('  ADD KEY')->add('(org_id)');
+			$theSql->add(', MODIFY')->add('`group_num` INT NOT NULL AUTO_INCREMENT')
+				->add(" COMMENT 'user-friendly ID'");
+			$theSql->execDML();
+			$this->logStuff('v2: added index for org_id and auto-inc group_num');
+			
+			try {
+				$this->upgradeFeatureVersionTo2ForRegCodes();
+			}
+			catch ( \PDOException $pdox ) {
+				$this->logErrors('v2: updating indexes on reg codes failed: ', $pdox);
+				//PITA, but gotta force unique-ness
+				//remove any orphans
+				$theSql = SqlBuilder::withModel($this)
+					->startWith('DELETE r.* FROM')->add($this->tnGroupRegCodes)->add('AS r')
+					->add('LEFT JOIN')->add($this->tnGroups)->add('AS g USING (group_id)')
+					->add('WHERE g.group_id IS NULL')
+					//->logSqlDebug(__METHOD__) //DEBUG
+					->execDML();
+				$this->logStuff('v2: removing any reg_code orphans first.');
+				//now force remainder to be unique via their group_num
+				$theSql = SqlBuilder::withModel($this)
+					->startWith('UPDATE')->add($this->tnGroupRegCodes)->add('AS r')
+					->add('INNER JOIN')->add($this->tnGroups)->add('AS g USING (group_id)')
+					->setParamPrefix('SET r.')
+					->mustAddParam('updated_ts', $this->utc_now())
+					->setParamPrefix(', r.')
+					->mustAddParam('updated_by', $this->getDirector()->getMyUsername())
+					->add(", r.reg_code=CONCAT(r.reg_code, '-', g.group_num)")
+					//->logSqlDebug(__METHOD__) //DEBUG
+					->execDML();
+				$this->logStuff('v2: forcing all reg_code values to be unique.');
+				$this->upgradeFeatureVersionTo2ForRegCodes();
+			}
+			$theTransactionSql->commitTransaction();
+			$this->logStuff('v2: ', self::FEATURE_ID, ' finished its schema update.');
+		}
+		catch ( \Exception $x ) {
+			$theTransactionSql->rollbackTransaction();
+			throw $x; //caller handles exceptions
+		}
+	}
+	
 	protected function exists($aTableName=null)
 	{ return parent::exists( empty($aTableName) ? $this->tnGroups : $aTableName ); }
 
 	public function isEmpty($aTableName=null)
 	{ return parent::isEmpty( empty($aTableName) ? $this->tnGroups : $aTableName ); }
+	
+	/**
+	 * Insert the data into the permissions table.
+	 * @param array $aRightsData - the rights data; ensure each entry has the
+	 *   following keys: 'namespace', 'permission', 'group_id', and 'value'.
+	 */
+	public function insertDataForAuthPermissionGroup( $aRightsData )
+	{
+		if ( empty($aRightsData) ) return; //trivial
+		$theSql = SqlBuilder::withModel($this);
+		$theSql->startWith('INSERT INTO')->add($this->tnPermissions);
+		$this->setAuditFieldsOnInsert($theSql);
+		$theSql->mustAddParam('namespace', '__PLACEHOLDER__')
+			->mustAddParam('permission', '__PLACEHOLDER__')
+			->mustAddParam('group_id', '__PLACEHOLDER__')
+			->mustAddParam('value', static::VALUE_Disallow, \PDO::PARAM_INT)
+		;
+		//merge our audit field data with passed in rights data
+		foreach( $aRightsData as $theRowData ) {
+			$theParamData[] = array_merge($theSql->myParams, $theRowData);
+		}
+		try { $theSql->execMultiDML($theParamData); }
+		catch (PDOException $pdox)
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+	}
 	
 	/**
 	 * Retrieve a single group row by its group_num rather than group_id.
@@ -717,7 +1256,47 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		catch (PDOException $pdox)
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
-
+	
+	/**
+	 * Ensure the given parent_group_id is valid for the org
+	 * @param SqlBuilder $aSqlBuilder - the SqlBuilder instance.
+	 * @param \BitsTheater\costumes\AuthOrg $aAuthOrg - (OPTIONAL) validate
+	 *   against this org, else use the current org.
+	 */
+	protected function validateAuthGroupDataForOrg( SqlBuilder $aSqlBuilder,
+			$aAuthOrg=null )
+	{
+		$theSql = $aSqlBuilder;
+		$theAuthOrg = ( empty($aAuthOrg) ) ? AuthDB::getCurrentOrg($this) : $aAuthOrg;
+		if ( !empty($theAuthOrg) ) {
+			$theSql->setParamValue('org_id', $theAuthOrg->org_id);
+		}
+		else {
+			$theSql->setParamValue('org_id', null);
+		}
+		$theParentID = $theSql->getParamValue('parent_group_id');
+		//ensure parent_group_id is not the unregistered authgroup ID.
+		if ( $theParentID == static::UNREG_GROUP_ID ) $theParentID = null;
+		//ensure parent_group_id is one of the our defined authgroups.
+		if ( !empty($theParentID) ) {
+			$theParentGroup = $this->getGroup($theParentID);
+			//if parent not found, clear it out
+			if ( empty($theParentGroup) )
+			{ $theParentID = null; }
+		}
+		//if still not empty, then parent is legit; otherwise check config
+		if ( empty($theParentID) && !empty($theAuthOrg) &&
+				!empty($theAuthOrg->parent_authgroup_id) )
+		{
+			// No parent was found, or the ID didn't match anything.
+			// Instead, ensure that the current org's parent authgroup is
+			// carried down to this group, to preserve whatever restrictions are
+			// mandated by that hierarchy.
+			$theParentID = $theAuthOrg->parent_authgroup_id ;
+		}
+		$theSql->setParamValue( 'parent_group_id', $theParentID ) ;
+	}
+	
 	/**
 	 * Insert a group record.
 	 * @param array|object $aDataObject - the (usually Scene) object containing
@@ -727,22 +1306,17 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	public function add($aDataObject)
 	{
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
+		$this->validateAuthGroupDataForOrg($theSql);
+		//now we can insert our new record.
 		$theSql->startWith('INSERT INTO')->add($this->tnGroups);
 		$this->setAuditFieldsOnInsert($theSql);
-		$theSql->addParam('group_id', Strings::createUUID())
+		$theSql->mustAddParam('group_id', Strings::createUUID())
 			->mustAddParam('group_name', $theSql->getParam('group_id'))
-			->mustAddParam('parent_group_id')
-			->addParamIfDefined('group_num', null, \PDO::PARAM_INT)
+			->addParam('parent_group_id')
+			->addParam('org_id')
+			->addParamOfType('group_num', \PDO::PARAM_INT)
+			//->logSqlDebug(__METHOD__, 'DEBUG')
 			;
-		//ensure parent_group_id is not "bad data"
-		$theParentID = trim($theSql->getParam('parent_group_id'));
-		if ( empty($theParentID) ||
-				$theParentID == static::UNREG_GROUP_ID ||
-				$theParentID == $this->getTitanGroupID()
-		) {
-			$theSql->setParam('parent_group_id', null);
-		}
-		//$theSql->logSqlDebug(__METHOD__);
 		try
 		{ return $theSql->execDMLandGetParams(); }
 		catch (PDOException $pdox)
@@ -754,42 +1328,61 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 * @param string $aGroupID - the group ID.
 	 * @return array Returns an array('group_id'=>$aGroupID).
 	 */
-	public function del($aGroupID)
+	public function del( $aGroupID )
 	{
-		$theSql = SqlBuilder::withModel($this);
 		$theGroupID = trim($aGroupID);
-		if ( $theGroupID == $this->getTitanGroupID() )
-			return;  //trivially ignore attempts to delete the "Titan" group.
-		$bWasInTransaction = $this->db->inTransaction();
-		if ( !$bWasInTransaction )
-			$this->db->beginTransaction();
+		$theSql = SqlBuilder::withModel($this);
+		//prevent delete if any child group found
+		$theParentCheck = $theSql->startWith('SELECT group_id')
+			->add('FROM')->add($this->tnGroups)
+			->startWhereClause()
+			->mustAddParam('parent_group_id', $theGroupID)
+			->endWhereClause()
+			->add('LIMIT 1')
+			->getTheRow()
+		;
+		if ( !empty($theParentCheck) ) {
+			throw BrokenLeg::pratfallRes($this,
+					'FORBIDDEN', BrokenLeg::ERR_FORBIDDEN,
+					'AuthGroups/errmsg_group_is_parent'
+			);
+		}
+		$theSql->beginTransaction();
 		try {
+			$theSql->reset();
+			$theSql->startWith('DELETE FROM')->add($this->tnPermissions);
+			$theSql->startWhereClause();
+			$theSql->mustAddParam('group_id', $theGroupID);
+			$theSql->endWhereClause();
+			$theSql->execDML();
+			
+			$theSql->reset();
 			$theSql->startWith('DELETE FROM')->add($this->tnGroupRegCodes);
 			$theSql->startWhereClause();
 			$theSql->mustAddParam('group_id', $theGroupID);
 			$theSql->endWhereClause();
 			$theSql->execDML();
 			
+			$theSql->reset();
 			$theSql->startWith('DELETE FROM')->add($this->tnGroupMap);
 			$theSql->startWhereClause();
 			$theSql->mustAddParam('group_id', $theGroupID);
 			$theSql->endWhereClause();
 			$theSql->execDML();
 			
-			$theSql->reset()->startWith('DELETE FROM')->add($this->tnGroups);
+			$theSql->reset();
+			$theSql->startWith('DELETE FROM')->add($this->tnGroups);
 			$theSql->startWhereClause();
 			$theSql->mustAddParam('group_id', $theGroupID);
 			$theSql->endWhereClause();
 			$theSql->execDML();
-
-			if ( !$bWasInTransaction )
-				$this->db->commit();
+			
+			$theSql->commitTransaction();
 			return $theSql->myParams;
 		}
 		catch (PDOException $pdox)
 		{
-			if ( !$bWasInTransaction )
-				$this->db->rollBack();
+			$theSql->rollbackTransaction();
 			throw $theSql->newDbException(__METHOD__, $pdox);
 		}
 	}
@@ -868,7 +1461,47 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		catch (PDOException $pdox)
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
+	
+	/**
+	 * Replace any UUID tokens with a generated UUID.
+	 * @param string $aRegCode - the registration code to process.
+	 * @return string Returns the string after replacements were made.
+	 */
+	protected function processRegCodeUUID( $aRegCode )
+	{
+		return str_replace('~~uuid~~', Strings::createUUID(), $aRegCode);
+	}
 
+	/**
+	 * Replace any UUID tokens with a generated UUID.
+	 * @param string $aRegCode - the registration code to process.
+	 * @return string Returns the string after replacements were made.
+	 */
+	protected function processRegCodeWiggler( $aRegCode )
+	{
+		$theFoundGroup = static::UNREG_GROUP_ID;
+		do
+		{
+//			$this->debugLog( __METHOD__ . ' [TRACE] theFoundGroup [' . $theFoundGroup . ']' ) ;
+			$aNewRegCode = preg_replace_callback('/~{3,}|$/',
+				function($matches) use ($theFoundGroup)
+				{
+					$len = strlen($matches[0]);
+					if ( !empty($len) )
+					{ return Strings::urlSafeRandomChars($len); }
+					else if ( $theFoundGroup != static::UNREG_GROUP_ID )
+					//first time through will not trigger random end chars,
+					//  only if we find a conflict and no wigglers will
+					//  we tack on some random stuff.
+					{ return '.' . Strings::urlSafeRandomChars(); }
+				},
+				$aRegCode
+			);
+			$theFoundGroup = $this->findGroupIdByRegCode($aNewRegCode);
+		} while ( $theFoundGroup != static::UNREG_GROUP_ID );
+		return $aNewRegCode;
+	}
+	
 	/**
 	 * Add a reg code record for a group.
 	 * @param string $aGroupID - the group ID.
@@ -878,50 +1511,38 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function addRegCode($aGroupID, $aRegCode)
 	{
-		if ( $aGroupID == $this->getTitanGroupID() )
-		{ throw new \InvalidArgumentException('invalid $aGroupID param'); }
+		$theGroupID = trim($aGroupID);
+		$theRegCode = trim($aRegCode);
+		if ( empty($theGroupID) ||
+				$theGroupID == static::UNREG_GROUP_ID ||
+				empty($theRegCode)
+			)
+		{ return false; } //trivially reject bad data
+		$theRegCode = $this->processRegCodeWiggler(
+				$this->processRegCodeUUID($theRegCode)
+		);
 		$theSql = SqlBuilder::withModel($this);
 		$theSql->startWith('INSERT INTO')->add($this->tnGroupRegCodes);
 		$this->setAuditFieldsOnInsert($theSql);
-		$theSql->mustAddParam('group_id', $aGroupID);
-		$theSql->mustAddParam('reg_code', $aRegCode);
+		$theSql->mustAddParam('group_id', $theGroupID);
+		$theSql->mustAddParam('reg_code', $theRegCode);
 		try
 		{ return $theSql->execDMLandGetParams(); }
-		catch (PDOException $pdox)
+		catch ( \PDOException $pdox )
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
 
 	/**
-	 * Add a reg code record for a group.
+	 * Add a set of reg codes for a group.
 	 * @param string $aGroupID - the group ID.
 	 * @param string[] $aRegCodes - the registration codes.
-	 * @throws DbException if an error happens in the query itself
 	 */
 	public function addRegCodes($aGroupID, $aRegCodes)
 	{
 		if ( empty($aRegCodes) ) return; //trivial, nothing to insert
-		if ( $aGroupID == $this->getTitanGroupID() )
-		{ throw new \InvalidArgumentException('invalid $aGroupID param'); }
-		$theSql = SqlBuilder::withModel($this);
-		$theSql->startWith('INSERT INTO')->add($this->tnGroupRegCodes);
-		$this->setAuditFieldsOnInsert($theSql);
-		$theSql->mustAddParam('group_id', $aGroupID);
-		$theSql->mustAddParam('reg_code', 'id-list');
-		$theListToInsert = array();
 		foreach ($aRegCodes as $theCode) {
-			$theListToInsert[] = array(
-					'created_ts' => $theSql->getParam('created_ts'),
-					'created_by' => $theSql->getParam('created_by'),
-					'updated_ts' => $theSql->getParam('updated_ts'),
-					'updated_by' => $theSql->getParam('updated_by'),
-					'group_id' => $theSql->getParam('group_id'),
-					'reg_code' => $theCode,
-			);
+			$this->addRegCode($aGroupID, $theCode);
 		}
-		try
-		{ $theSql->execMultiDML($theListToInsert); }
-		catch (PDOException $pdox)
-		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
 
 	/**
@@ -933,8 +1554,6 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function delRegCode($aGroupID, $aRegCode)
 	{
-		if ( $aGroupID == $this->getTitanGroupID() )
-		{ throw new \InvalidArgumentException('invalid $aGroupID param'); }
 		$theSql = SqlBuilder::withModel($this);
 		$theSql->startWith('DELETE FROM')->add($this->tnGroupRegCodes);
 		$theSql->startWhereClause()
@@ -956,8 +1575,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function clearRegCodes($aGroupID)
 	{
-		if ( $aGroupID == $this->getTitanGroupID() )
-		{ throw new \InvalidArgumentException('invalid $aGroupID param'); }
+		if ( empty($aGroupID) ) return; //trivial protection
 		$theSql = SqlBuilder::withModel($this);
 		$theSql->startWith('DELETE FROM')->add($this->tnGroupRegCodes);
 		$theSql->startWhereClause()
@@ -973,20 +1591,64 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	/**
 	 * Get the groups a particular auth_id belongs to.
 	 * @param string $aAuthID - the auth account ID.
+	 * @param string $aOrgID - (OPTIONAL) the org ID to limit results for.
 	 * @return string[] Returns the array of group IDs.
 	 */
-	public function getGroupIDListForAuth( $aAuthID )
+	public function getGroupIDListForAuthAndOrg( $aAuthID, $aOrgID )
 	{
 		if ( empty($aAuthID) )
 		{ throw new \InvalidArgumentException('invalid $aAuthID param'); }
 		$theSql = SqlBuilder::withModel($this);
-		$theSql->startWith('SELECT group_id FROM')->add($this->tnGroupMap);
-		$theSql->startWhereClause()
+		$theSql->startWith('SELECT group_id FROM')->add($this->tnGroupMap)
+			->add('INNER JOIN')->add($this->tnGroups)->add('AS g USING (group_id)')
+			->startWhereClause()
 			->mustAddParam('auth_id', $aAuthID)
+			->setParamPrefix(' AND (g.')
+			->mustAddParam('org_id', $aOrgID)
+			->setParamPrefix(' OR ')
+			;
+		// OR a group that has the transcend permission
+		$theSubQuery = SqlBuilder::withModel($this)
+			->startWith('SELECT group_id FROM')->add($this->tnPermissions)
+			->add('INNER JOIN')->add($this->tnGroups)->add('AS g2 USING (group_id)')
+			->startWhereClause('g2.')
+			->mustAddParamForColumn('subquery.org_id', 'org_id', null)
+			->setParamPrefix(' AND ')
+			->mustAddParam('namespace', 'auth_orgs')
+			->setParamPrefix(' AND ')
+			->mustAddParam('permission', 'transcend')
+			->setParamPrefix(' AND ')
+			->mustAddParam('value', static::VALUE_Allow)
 			->endWhereClause()
 			;
+		$theSql->addSubQueryForColumn($theSubQuery, 'group_id');
+		$theSql->add(')');
+		//$theSql->logSqlDebug(__METHOD__); //DEBUG
 		try
-		{ return Arrays::array_column($theSql->query()->fetchAll(), 'group_id'); }
+		{
+			$theIDList = $theSql->query()->fetchAll(\PDO::FETCH_COLUMN);
+			//former Titan account would not be able to log in to run
+			//  schema update if we didn't map the former UUID to
+			//  something else already known. Once schema is updated, the
+			//  former Titan UUID is removed from the auth groups table
+			//  thus rendering it impossible to login as a Titan (where
+			//  UUID = app_id) once upgrade is complete (unless some funny
+			//  business occurs via manual db manipulation itself, in which
+			//  case no protection is sufficient).
+			$isFormerTitan = false;
+			if ( !empty($theIDList) ) {
+				$isFormerTitan = in_array($this->getDirector()->app_id,
+					$theIDList, true
+				);
+			}
+			if ( $isFormerTitan ) {
+				//replace former titan group with current group 2 ID in map
+				//  so that current titan accounts will be admins (best guess)
+				$theGroup2 = AuthGroup::fromThing($this->getGroupByNum(2));
+				$theIDList[$isFormerTitan] = $theGroup2->group_id;
+			}
+			return $theIDList;
+		}
 		catch (PDOException $pdox)
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
@@ -1003,31 +1665,58 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			/* @var $dbAuth \BitsTheater\models\Auth */
 			$dbAuth = $this->getProp('Auth');
 			$theAuthRow = $dbAuth->getAuthByAccountId($aAcctId);
-			if ( !empty($theAuthRow) )
-			{ return $this->getGroupIDListForAuth($theAuthRow['auth_id']); }
+			if ( !empty($theAuthRow) ) {
+				return $this->getGroupIDListForAuthAndOrg(
+						$theAuthRow['auth_id'], $dbAuth->getCurrentOrgID()
+				);
+			}
 			else
 			{ return array( static::UNREG_GROUP_ID ); }
 		}
 		else //we may be in a state before migration took place
 		{
-			//NOTE: UNTIL MIGRATION TAKES PLACE, ONLY A TITAN CAN LOGIN
-			//      AS WE HAVE NO DATA YET!
 			/* @var $dbOldAuthGroups \BitsTheater\models\PropCloset\BitsGroups */
 			$dbOldAuthGroups = $this->getProp(
 					'\BitsTheater\models\PropCloset\BitsGroups'
 			);
 			//when return to caller, ensure we free up the old model object
-			$theFinalBlock = new FinallyBlock(function($aContext, $aProp) {
-				$aContext->returnProp($aProp);
-			}, $this, $dbOldAuthGroups);
-			if ( $dbOldAuthGroups->exists() && !$dbOldAuthGroups->isEmpty() )
-			{
-				$theList = $dbOldAuthGroups->getAcctGroups($aAcctId);
-				//$this->logStuff(__METHOD__, ' ', $theList); //DEBUG
-				if ( in_array($dbOldAuthGroups::TITAN_GROUP_ID, $theList) )
-				{ return array( $this->getTitanGroupID() ); }
+			try {
+				if ( $dbOldAuthGroups->exists() && !$dbOldAuthGroups->isEmpty() )
+				{
+					$theList = $dbOldAuthGroups->getAcctGroups($aAcctId);
+					//$this->logStuff(__METHOD__, ' ', $theList); //DEBUG
+					if ( in_array($dbOldAuthGroups::TITAN_GROUP_ID, $theList) )
+					{
+						//group 2 is default admin group, best we can do
+						$theGroup2Row = $this->getGroupByNum(2);
+						return array( $theGroup2Row['group_id'] );
+					}
+				}
+			}
+			finally {
+				$this->returnProp($dbOldAuthGroups);
 			}
 		}
+	}
+
+	/**
+	 * Get the groups a particular account belongs to filtered by org.
+	 * The current org is used if none is supplied.
+	 * @param string $aAuthID - the auth ID for the account.
+	 * @return string[] Returns the array of group IDs.
+	 */
+	public function getAcctGroupsForOrg($aAuthID, $aOrgID=null)
+	{
+		if ( !$this->exists($this->tnGroups) || $this->isEmpty($this->tnGroups) )
+		{
+			$err = new DbException(null, 'parent table is empty');
+			$err->setCode(static::ERR_CODE_EMPTY_AUTHGROUP_TABLE);
+			throw $err;
+		}
+		if ( !empty($aAuthID) )
+		{ return $this->getGroupIDListForAuthAndOrg($aAuthID, $aOrgID); }
+		else
+		{ return array( static::UNREG_GROUP_ID ); }
 	}
 
 	/**
@@ -1056,11 +1745,11 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			$aGroupRegCode=null, $aGroupCopyID=null )
 	{
 		$theGroupParentId = trim($aGroupParentID);
-		if ( $theGroupParentId == static::UNREG_GROUP_ID ||
-				$theGroupParentId == $this->getTitanGroupID() )
+		if ( $theGroupParentId == static::UNREG_GROUP_ID )
 		{ $theGroupParentId = null; }
-		if ( !($aGroupNum >= 0) )
-			$aGroupNum = null;
+		$theGroupNum = filter_var($aGroupNum, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+		if ( $theGroupNum < 0 )
+		{ $theGroupNum = null; }
 		
 		$theNewGroupID = Strings::createUUID();
 		$theResults = $this->add(array(
@@ -1071,14 +1760,15 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		));
 
 		$theNewRegCodeRow = $this->insertGroupRegCode($theNewGroupID, $aGroupRegCode);
-		$theResults = array_merge($theResults, $theNewRegCodeRow);
+		if ( is_array($theNewRegCodeRow) ) {
+			$theResults = array_merge($theResults, $theNewRegCodeRow);
+		}
 
 		if ( !empty($aGroupCopyID) )
 		{
-			$dbPerms = $this->getProp('Permissions') ;
 			try
 			{
-				$theCopyResult = $dbPerms->copyPermissions($aGroupCopyID, $theNewGroupID);
+				$theCopyResult = $this->copyPermissions($aGroupCopyID, $theNewGroupID);
 				$theResults['copied_group'] = $aGroupCopyID ;
 				$theResults['copied_perms'] = $theCopyResult['count'] ;
 			}
@@ -1099,10 +1789,11 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Updates an existing group.
+	 * Updates an existing group. Notable exceptions: cannot update the
+	 * parent_group_id, nor the org_id.
 	 * @param object $aDataObject - the (usually Scene) object containing
 	 *   the data to be used.
-	 * @return array|boolean Returns FALSE if not found or array of updated data.
+	 * @return array|boolean Returns FALSE if not found, else array of updated data.
 	 * @throws DbException if an error happens in the query itself
 	 */
 	public function modifyGroup( $aDataObject )
@@ -1112,9 +1803,8 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
 		$theSql->startWith('UPDATE')->add($this->tnGroups);
 		$this->setAuditFieldsOnUpdate($theSql);
-		$theSql->addParamIfDefined('group_name');
-		$theSql->addParamIfDefined('parent_group_id');
-		$theSql->addParamIfDefined('group_num', \PDO::PARAM_INT);
+		$theSql->addParam('group_name');
+		$theSql->addParamOfType('group_num', \PDO::PARAM_INT);
 		$theSql->startWhereClause()
 			->mustAddParam('group_id')
 			->endWhereClause()
@@ -1126,26 +1816,6 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Fetches the registration code for a given group ID.
-	 * @param string $aGroupID the group ID
-	 * @return string Returns the registration code for that group
-	 * @throws DbException if an error happens in the query itself
-	 */
-	protected function getGroupRegCode( $aGroupID )
-	{
-		$theSql = SqlBuilder::withModel($this)
-			->startWith( 'SELECT reg_code FROM ' . $this->tnGroupRegCodes )
-			->startWhereClause()
-			->mustAddParam( 'group_id', $aGroupID )
-			->endWhereClause()
-			;
-		try { $theRow = $theSql->getTheRow() ; }
-		catch( PDOException $pdox )
-		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
-		return $theRow['reg_code'] ;
-	}
-
-	/**
 	 * Insert a new registration code for an existing group ID.
 	 * @param string $aGroupID - the group ID.
 	 * @param string $aRegCode - the new registration code.
@@ -1153,24 +1823,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 * @throws DbException if an error happens in the query itself
 	 */
 	public function insertGroupRegCode( $aGroupID, $aRegCode )
-	{
-		$theGroupID = trim($aGroupID);
-		$theRegCode = trim($aRegCode);
-		if ( empty($theGroupID) || $theGroupID == static::UNREG_GROUP_ID ||
-				$theGroupID == $this->getTitanGroupID() || empty($theRegCode) )
-		{ return false; } //trivially reject bad data
-		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
-				'group_id' => $theGroupID,
-				'reg_code' => $theRegCode,
-		));
-		$theSql->startWith('INSERT INTO')->add($this->tnGroupRegCodes);
-		$this->setAuditFieldsOnInsert($theSql);
-		$theSql->mustAddParam('group_id');
-		$theSql->mustAddParam('reg_code');
-		try { return $theSql->execDMLandGetParams(); }
-		catch( PDOException $pdox )
-		{ throw $theSql->newDbException( __METHOD__, $pdox ); }
-	}
+	{ return $this->addRegCode($aGroupID, $aRegCode); }
 
 	/**
 	 * Get the list of reg code for a given group.
@@ -1179,15 +1832,17 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	public function getGroupRegCodes( $aGroupID=null )
 	{
 		$theSql = SqlBuilder::withModel($this);
-		$theSql->startWith('SELECT * FROM')->add($this->tnGroupRegCodes);
-		$theSql->startWhereClause()
+		$theSql->startWith('SELECT reg_code')
+			->add('FROM')->add($this->tnGroupRegCodes)
+			->startWhereClause()
 			->mustAddParam('group_id', $aGroupID)
 			->endWhereClause()
-			;
-		try {
-			$ps = $theSql->query();
-			return Arrays::array_column($ps->fetchAll(), 'reg_code');
-		}
+			->applyOrderByList(array(
+					'created_ts' => SqlBuilder::ORDER_BY_ASCENDING
+			))
+		;
+		try
+		{ return $theSql->query()->fetchAll(\PDO::FETCH_COLUMN); }
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException( __METHOD__, $pdox ); }
 	}
@@ -1199,47 +1854,22 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function findGroupIdByRegCode( $aRegCode )
 	{
-		$theSql = SqlBuilder::withModel($this);
-		$theSql->startWith('SELECT group_id FROM')->add($this->tnGroupRegCodes);
-		$theSql->startWhereClause()
-			->mustAddParam('reg_code', trim($aRegCode))
-			->endWhereClause()
-			;
-		$theRow = $theSql->getTheRow();
-		return (!empty($theRow)) ? $theRow['group_id'] : static::UNREG_GROUP_ID;
-	}
-
-	/**
-	 * Returns a dictionary of all permission group data.
-	 * @param $bIncludeSystemGroups boolean indicates whether to include the
-	 *  "unregistered" and "titan" groups that are defined by default when the
-	 *  system is installed
-	 * @throws DbException if an error happens in the query itself
-	 */
-	public function getAllGroups( $bIncludeSystemGroups=false )
-	{
+		$theRegCode = trim($aRegCode);
+		if ( empty($theRegCode) ) return static::UNREG_GROUP_ID; //trivial
 		$theSql = SqlBuilder::withModel($this)
-			->startWith( 'SELECT G.group_id, G.group_name,' )
-			->add( 'G.parent_group_id, GRC.reg_code' )
-			->add( 'FROM ' . $this->tnGroups . ' AS G' )
-			->add( 'LEFT JOIN ' . $this->tnGroupRegCodes )
-			->add(   'AS GRC USING (group_id)' )
-			;
-		if ( !$bIncludeSystemGroups )
+			->startWith('SELECT group_id FROM')->add($this->tnGroupRegCodes)
+			->startWhereClause()
+			->mustAddParam('reg_code', $theRegCode)
+			->endWhereClause()
+			->add('LIMIT 1')
+		;
+		try
 		{
-			$theSql->startWhereClause()
-				->setParamOperator(SqlBuilder::OPERATOR_NOT_EQUAL)
-			 	->addFieldAndParam('group_id', 'unreg_group_id', static::UNREG_GROUP_ID)
-			 	->setParamPrefix(' AND ')
-				->addFieldAndParam('group_id', 'titan_group_id', $this->getTitanGroupID())
-				->endWhereClause()
-				;
+			$theRow = $theSql->query()->fetchAll(\PDO::FETCH_COLUMN);
+			return ( !empty($theRow) ) ? $theRow[0] : static::UNREG_GROUP_ID;
 		}
-		$theSql->add( 'ORDER BY G.group_name' ) ;
-
-		try { return $theSql->query()->fetchAll() ; }
 		catch( PDOException $pdox )
-		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
+		{ throw $theSql->newDbException( __METHOD__, $pdox ); }
 	}
 
 	/**
@@ -1264,8 +1894,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	/**
 	 * Returns a dictionary of all permission groups IDs and names.
 	 * @param $bIncludeSystemGroups boolean indicates whether to include the
-	 *   "unregistered" and "titan" groups that are defined by default when the
-	 *   system is installed
+	 *   "unregistered" group.
 	 * @param string[]|string $aFieldList - (optional) which fields to return,
 	 *   the default is all of them.
 	 * @param bool[] $aSortList - (optional) how to sort the data, use array
@@ -1275,18 +1904,21 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	public function getListForPicker( $bIncludeSystemGroups=false,
 			$aFieldList=null, $aSortList=null )
 	{
+		//get our current org ID
+		$theOrgID = $this->getProp('Auth')->getCurrentOrgID();
+		//now get our list of groups restricted by org
 		$theSql = SqlBuilder::withModel($this)
 			->startWith('SELECT')->addFieldList($aFieldList)
 			->add('FROM')->add($this->tnGroups)
+			->startWhereClause()
+			->mustAddParam('org_id', $theOrgID)
 		;
 		if ( !$bIncludeSystemGroups ) {
-			$theSql->startWhereClause();
-			$theSql->setParamOperator(SqlBuilder::OPERATOR_NOT_EQUAL);
-			$theSql->addFieldAndParam('group_id', 'unreg_group_id', static::UNREG_GROUP_ID);
 			$theSql->setParamPrefix(' AND ');
-			$theSql->addFieldAndParam('group_id', 'titan_group_id', $this->getTitanGroupID());
-			$theSql->endWhereClause();
+			$theSql->setParamOperator(SqlBuilder::OPERATOR_NOT_EQUAL);
+			$theSql->mustAddParam('group_id', static::UNREG_GROUP_ID);
 		}
+		$theSql->endWhereClause();
 		$theSql->applyOrderByList( $aSortList ) ;
 		//$theSql->logSqlDebug(__METHOD__);
 		try { return $theSql->query() ; }
@@ -1294,278 +1926,300 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 	
+	/**
+	 * Check group permissions for user account.
+	 * @param string $aNamespace - namespace of permission.
+	 * @param string $aPermission - permission to test against.
+	 * @param AccountInfoCache $aAcctInfo - (optional) check this account
+	 *   instead of current user.
+	 * @return boolean Returns TRUE if allowed, else FALSE.
+	 */
+	public function isPermissionAllowed($aNamespace, $aPermission,
+			AccountInfoCache $aAcctInfo=null)
+	{
+		if ( empty($aAcctInfo) ) return false; //trivial
+		//$this->logStuff(__METHOD__, ' acctinfo=', $aAcctInfo); //DEBUG
+		//NULL means we have not even tried to check permissions.
+		if ( is_null($aAcctInfo->groups) )
+		{
+			$theOrgID = null;
+			if ( !empty($aAcctInfo->mSeatingSection) ) {
+				$theOrgID = $aAcctInfo->mSeatingSection->org_id;
+			}
+			$aAcctInfo->groups = $this->getGroupIDListForAuthAndOrg(
+					$aAcctInfo->auth_id, $theOrgID
+			);
+			if ( empty($aAcctInfo->groups) )
+			{ $aAcctInfo->groups = array(static::UNREG_GROUP_ID); }
+		}
+		//NULL means we have not even tried to check permissions.
+		if ( is_null($aAcctInfo->rights) ) try
+		{
+			$aAcctInfo->rights = (object)$this->getGrantedRights($aAcctInfo->groups);
+			//cast to an object because session restore will restore as object
+			foreach ($aAcctInfo->rights as $theNS => $thePerms) {
+				if ( !is_object($thePerms) ) {
+					$aAcctInfo->rights->{$theNS} = (object)$thePerms;
+				}
+			}
+		} catch (DbException $dbx) {
+			$aAcctInfo->rights = array();
+		}
+		//$this->logStuff(__METHOD__, ' acctInfo=', $aAcctInfo); //DEBUG
+		return ( !empty($aAcctInfo->rights->{$aNamespace}) &&
+				!empty($aAcctInfo->rights->{$aNamespace}->{$aPermission})
+		);
+	}
+
 	//=========================================================================
 	//===============  AuthPermissions           ==============================
 	//=========================================================================
 	
 	/**
-	 * Check group permissions to see if current user account (or passed in one) is allowed.
-	 * @param string $aNamespace - namespace of permission.
-	 * @param string $aPermission - permission to test against.
-	 * @param array $acctInfo - account information (optional, defaults current user).
-	 * @return boolean Returns TRUE if allowed, else FALSE.
+	 * Build up a giant tree of all the permissions, all marked as the param.
+	 * @param IDirected $aContext - the context to use.
+	 * @param boolean|string $aRightGranted - (OPTIONAL) the default value is
+	 *   FALSE, but can supply it with FORM_* values as well as boolean.
+	 * @return array Returns a 2D bool|string leaf of namespace[permission[]].
 	 */
-	public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null) {
-		if ( empty($acctInfo) ) {
-			$acctInfo = $this->getDirector()->getMyAccountInfo();
-		}
-		if ( empty($acctInfo) )
+	static public function getDefinedRights( IDirected $aContext,
+			$aRightGranted=false )
+	{
+		$theResults = array() ;
+		$theNSList = $aContext->getRes( 'permissions/namespace' ) ;
+		foreach( $theNSList as $theNS => $theNSInfo )
 		{
-			$acctInfo = $this->getProp('Auth')->createAccountInfoObj(array(
-					'auth_id' => '',
-					'groups' => array( static::UNREG_GROUP_ID ),
-			));
+			$theResults[$theNS] = array() ;
+			$thePerms = $aContext->getRes( 'permissions/' . $theNS ) ;
+			foreach( $thePerms as $thePerm => $thePermInfo )
+				$theResults[$theNS][$thePerm] = $aRightGranted ;
 		}
-		//$this->logStuff(__METHOD__, ' acctinfo=', $acctInfo); //DEBUG
-		if ( !empty($acctInfo->groups) &&
-				(array_search($this->getTitanGroupID(), $acctInfo->groups, true) !== false) )
-		{ return true; } //Titan group is always allowed everything
-		//cache the current users permissions
-		if ( empty($this->_permCache[$acctInfo->auth_id]) )
+		//$aContext->getDirector()->logStuff(__METHOD__, $theResults); //DEBUG
+		return $theResults ;
+	}
+
+	/**
+	 * Build up a giant tree of all the permissions, all marked as true.
+	 * @return array Returns a 2D boolean leaf of namespace[permission[]].
+	 */
+	public function getAllAccessPass()
+	{ return $this::getDefinedRights($this, true); }
+
+	/**
+	 * Given a list of groups, load them up into an array.
+	 * @param string|string[] $aGroupIDorList - (optional) a group ID or an
+	 *  array of IDs; null value returns all groups
+	 * @param string[] $aFieldList - the list of fields to retrieve.
+	 * @return AuthGroup[] Returns the loaded groups keyed by group_id.
+	 */
+	public function getAuthGroupList( $aGroupIDorList=null, $aFieldList=null )
+	{
+		$theResults = array();
+		$theSql = SqlBuilder::withModel($this);
+		try
 		{
-			$this->_permCache[$acctInfo->auth_id] = array();
-			try {
-				foreach ($acctInfo->groups as $theGroupId) {
-					$this->_permCache[$acctInfo->auth_id][$theGroupId] =
-							$this->getAssignedRights($theGroupId);
-				}
-			} catch (DbException $dbe) {
-				//use default empty arrays which will mean all permissions will be not allowed
+			$theRowSet = $theSql
+				->startWith('SELECT')->addFieldList($aFieldList)
+				->add('FROM')->add($this->tnGroups)
+				;
+			if( !empty($aGroupIDorList) )
+			{
+				$theSql->startWhereClause()
+					->mustAddParam('group_id', $aGroupIDorList)
+					->endWhereClause()
+					;
+			}
+			$theRowSet = $theSql->query() ;
+			$theRowSet->setFetchMode(
+					\PDO::FETCH_CLASS|\PDO::FETCH_PROPS_LATE,
+					AuthGroup::class, array($this)
+			);
+			while ( ($theAuthGroup = $theRowSet->fetch()) !== false ) {
+				/* @var $theAuthGroup AuthGroup */
+				$theResults[$theAuthGroup->group_id] = $theAuthGroup;
 			}
 		}
-		//$this->debugLog('perms:'.$this->debugStr($this->_permCache));
-        //$this->debugLog(__METHOD__.' '.memory_get_usage(true));
-
-		//if any group allows the permission, then we allow it.
-		foreach ($this->_permCache[$acctInfo->auth_id] as $theGroupId => $theAssignedRights)
-		{
-			$theResult = static::FORM_VALUE_Disallow;
-			if ( !empty($theAssignedRights[$aNamespace]) &&
-					!empty($theAssignedRights[$aNamespace][$aPermission]) )
-			{ $theResult = $theAssignedRights[$aNamespace][$aPermission]; }
-			//if any group the user is a member of allows the permission, then return true
-			if ( $theResult==static::FORM_VALUE_Allow )
-			{ return true; }
-		}
-		//if neither denied, nor allowed, then it is not allowed
-		return false;
-	}
-
-	/**
-	 * Query the permissions table for group rights.
-	 * @param string $aGroupID - the group id to load.
-	 * @return \PDOStatement Returns the executed query statement.
-	 * $throws \PDOException if query causes an exception
-	 */
-	protected function getGroupRightsCursor( $aGroupID )
-	{
-		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
-				'group_id' => $aGroupID,
-		));
-		$theSql->startWith('SELECT namespace, permission, value')
-			->add('FROM')->add($this->tnPermissions)
-			->startWhereClause()
-			->mustAddParam('group_id', static::UNREG_GROUP_ID)
-			->endWhereClause()
-			;
-		return $theSql->query();
-	}
-
-	/**
-	 * Load the group rights and merge it into the passed in array;
-	 * loaded "deny" rights will trump array param.
-	 * @param string $aGroupID - the group id
-	 * @param array $aRightsToMerge - the already defined rights.
-	 */
-	protected function loadAndMergeRights( $aGroupID, &$aRightsToMerge, $bIsFirstSet )
-	{
-		$rs = $this->getGroupRightsCursor($aGroupID);
-		while ( $rs!=null && ($theRow = $rs->fetch())!==false )
-		{
-			//what is the current value, if any?
-			$theCurrValue =& $aRightsToMerge[$theRow['namespace']][$theRow['permission']];
-			switch ( $theCurrValue ) {
-				case static::FORM_VALUE_Deny:
-				case static::FORM_VALUE_DoNotShow:
-				{
-					if ( $bIsFirstSet ) {
-						//a new parent group may permit a once denied permission, reset to Disallow
-						$theCurrValue = static::FORM_VALUE_Disallow;
-					}
-					else {
-						//once denied, futher parent merges will be ignored
-						continue;
-					}
-					break;
-				}
-				case static::FORM_VALUE_Allow:
-				{
-					//once a group-with-parents allows a permission, another
-					//  group membership will not revoke it.
-					if ( $bIsFirstSet )
-					{ continue; }
-					break;
-				}
-				default:
-					//do nothing, check out the new value
-			}//switch
-			//what will the new value be, if any?
-			switch ( $theRow['value'] ) {
-				case static::VALUE_Allow:
-					$theCurrValue = static::FORM_VALUE_Allow;
-					break;
-				case static::VALUE_Deny:
-					$theCurrValue = ($bIsFirstSet)
-							? static::FORM_VALUE_Deny : static::FORM_VALUE_DoNotShow;
-					break;
-				case static::VALUE_Disallow:
-				default:
-					//only set to "disallow" if empty as it will not overwrite other values
-					if ( empty($theCurrValue) )
-					{ $theCurrValue = static::FORM_VALUE_Disallow; }
-					break;
-			}//switch
-		}//while
+		catch ( \PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox); }
+		//$this->logStuff(__METHOD__, ' groups=', $theResults); //DEBUG
+		return ( !empty($theResults) ) ? $theResults : array();
 	}
 	
 	/**
-	 * Given a list of groups and a groupID, return it and its list of parents.
-	 * The resulant list will be the groupID, followed by entries for each parent.
-	 * @param string $aGroupID - the ID of the group.
-	 * @param array $aGroupList - the group row list with group_id as key.
-	 * @return string[] Returns a list of IDs whose first entry is the $aGroupID
-	 *   parameter followed by each parent, in turn.
+	 * Given a list of groups, load them, and their parents up into an array.
+	 * @param string|string[] $aGroupIDorList - a group ID or an array of IDs.
+	 * @param string[] $aFieldList - the list of fields to retrieve.
+	 * @return AuthGroup[] Returns the loaded groups keyed by group_id.
 	 */
-	protected function getGroupParentsFromList($aGroupID, &$aGroupList)
+	public function getAuthGroupsAndParents( $aGroupIDorList,
+			$aFieldList=null  )
 	{
-		if ( is_null($aGroupID) ) return array(); //trivial
-		$theResultList = array($aGroupID);
-		$theGroupID = $aGroupID;
-		while ( !empty($aGroupList[$theGroupID]) &&
-				!empty($aGroupList[$theGroupID]['parent_group_id']) )
-		{
-			$theParentGroupID = $aGroupList[$theGroupID]['parent_group_id'];
-			if ( empty($theParentGroupID) ) break; //found them all, done!
-			//avoid circular parent references (infinite loop)
-			if ( array_search($theParentGroupID, $theResultList) !== false )
+		$theGroupIDsToSearch = $aGroupIDorList ;
+		$theGroupsToReturn = array() ;
+		//NOTE: getAuthGroupList() got changed from a required parameter to
+		//  an optional param of IDs, so now we must check to ensure we do
+		//  not send in a blank list which would return all of them whereas
+		//  before the change it would return none of them and we depended on
+		//  that fact. No big deal, just means we reverse our do/while loop.
+		while ( !empty($theGroupIDsToSearch) )
+		{ // Search one level of groups, add them, then search their parents.
+			$theGroupsSearched = $this->getAuthGroupList( $theGroupIDsToSearch, $aFieldList ) ;
+			$theGroupsToReturn = array_merge( $theGroupsToReturn, $theGroupsSearched ) ;
+			$theGroupIDsToSearch = array() ;
+			foreach( $theGroupsSearched as $theGroup )
 			{
-				//break the circular link to avoid future issues
-				$aGroupList[$theGroupID]['parent_group_id'] = null;
-				$this->modifyGroup($aGroupList[$theGroupID]);
-				break;
+				if( !empty( $theGroup->parent_group_id )
+						&& !in_array( $theGroup->parent_group_id, $theGroupsToReturn ) )
+				{ // We haven't traced this path up the hierarchy yet.
+					$theGroupIDsToSearch[] = $theGroup->parent_group_id ;
+				}
 			}
-			//ok, parent is found, add to list
-			$theResultList[] = $theParentGroupID;
-			//now let us find its parent next
-			$theGroupID = $theParentGroupID;
+//			$this->debugLog( __METHOD__ . ' [TRACE] Groups to search on next iteration: ' . json_encode($theGroupIDsToSearch) ) ;
 		}
-		return $theResultList;
+//		$this->debugLog( __METHOD__ . ' [TRACE] Final group set: ' . json_encode($theGroupsToReturn) ) ;
+		return $theGroupsToReturn ;
 	}
 	
 	/**
 	 * Load up all rights assigned to this group as well as parent groups.
-	 * @param string|array $aGroupIDorList - a group ID or an array of IDs.
-	 * @return array Returns the assigned rights for a given group.
+	 * @param string|string[] $aGroupIDorList - a group ID or an array of IDs.
+	 * @return array Returns 2D boolean leaf array of [namespace[permission]].
 	 */
 	public function getAssignedRights( $aGroupIDorList )
 	{
-		if ( is_string($aGroupIDorList) )
-		{ $theGroups = array($aGroupIDorList); }
-		else
-		{ $theGroups = $aGroupIDorList; }
-		//$this->logStuff(__METHOD__, ' groupsToCheck=', $theGroups); //DEBUG
+		//get list of defined rights
+		$theResults = $this::getDefinedRights($this, false);
+		//get list of auth groups and their parents
+		$theGroups = $this->getAuthGroupsAndParents($aGroupIDorList, array(
+				'group_id', 'group_num', 'group_name', 'parent_group_id',
+		));
+		$theCompleteList = array_keys($theGroups);
+		//now that we have all pertinent groups in memory, lets process!
+		$theMemberList = ( !empty($aGroupIDorList) )
+			? ( is_string($aGroupIDorList) ? array($aGroupIDorList) : $aGroupIDorList )
+			: array()
+			;
+		//array_values because array_diff keeps the keys intact and we do not wish that here.
+		$theParentList = array_values(array_diff($theCompleteList, $theMemberList));
 		
-		//is Titan one of the groups?
-		if ( array_search($this->getTitanGroupID(), $theGroups) !== false )
-		{ return $this->getTitanRights(); } //trivial shortcut
-		
-		//get all defined groups in an ID list (Titan is never a defined group).
-		$theGroupList = Arrays::array_column_as_key(
-				SqlBuilder::withModel($this)
-					->startWith('SELECT * FROM')->add($this->tnGroups)
-					->query()->fetchAll(),
-				'group_id'
-		);
-		//$this->logStuff(__METHOD__, ' grouplist=', $theGroupList); //DEBUG
-		
-		//merge list: [group_id=>string, bIsParentOfPreviousEntry=>boolean]
-		$theMergeList = array();
-		foreach ( $theGroups as $theGroupID )
-		{
-			$theGroupAndParents = $this->getGroupParentsFromList($theGroupID, $theGroupList);
-			$i = -1; //start off negative; naturally works out as <0 is orig, >=0 is parent
-			foreach( $theGroupAndParents as $theGroupIDToMerge)
-			{
-				//check rights for group, and then all its parents
-				$theMergeList[] = array(
-						'group_id' => $theGroupID,
-						'bIsParentOfPreviousEntry' => ($i++ < 0),
-				);
-				
-			}
+		//auth model is IF ONE PARENT DENIES IT, THE RIGHT IS NOT ALLOWED
+		if ( !empty($theParentList) ) {
+			$theForbiddenRights = SqlBuilder::withModel($this)
+				->startWith('SELECT DISTINCT namespace, permission')
+				->add('FROM')->add($this->tnPermissions)
+				->startWhereClause()
+				->mustAddParam('group_id', $theParentList)
+				->setParamPrefix(' AND ')
+				->mustAddParam('value', static::VALUE_Deny)
+				->endWhereClause()
+				//->logSqlDebug(__METHOD__) //DEBUG
+				->query()
+				->fetchAll()
+			;
 		}
-		//$this->logStuff(__METHOD__, ' merge=', $theMergeList); //DEBUG
+		else $theForbiddenRights = array();
 		
-		$theAssignedRights = array();
 		//auth model is IF ONE GROUP ALLOWS IT, THE RIGHT IS ALLOWED
-		foreach ($theMergeList as $theMergeEntry)
+		if ( !empty($theCompleteList) )
 		{
-			$this->loadAndMergeRights($theMergeEntry['group_id'],
-					$theAssignedRights, $theMergeEntry['bIsParentOfPreviousEntry']
-			);
+			$theCurrOrgID = $this->getProp('Auth')->getCurrentOrgID();
+			$theSql = SqlBuilder::withModel($this)
+				->startWith('SELECT DISTINCT namespace, permission')
+				->add('FROM')->add($this->tnPermissions)->add('AS p')
+				->add('LEFT JOIN')->add($this->tnGroups)->add('AS g USING (group_id)')
+				->startWhereClause(' p.')
+				->mustAddParam('group_id', $theCompleteList)
+				->setParamPrefix(' AND p.')
+				->mustAddParam('value', static::VALUE_Allow)
+				;
+			if( $this->isFieldExists( 'org_id', $this->tnGroups ) )
+			{ // Don't look for an org ID if we haven't yet updated the table.
+				$theSql->setParamPrefix(' AND (g.')
+					->mustAddParam('org_id', $theCurrOrgID)
+					->setParamPrefix(' OR g.')
+					->mustAddParamForColumn('null_org_id', 'org_id', null)
+					->add(')')
+					;
+			}
+			$theSql->endWhereClause()
+//				->logSqlDebug(__METHOD__) //DEBUG
+				;
+			$theAssignedRights = $theSql->query()->fetchAll() ;
 		}
-		return $theAssignedRights;
+		else
+		{ $theAssignedRights = array(); }
+
+		//$this->logStuff(__METHOD__, ' loaded rights=', $theAssignedRights); //DEBUG
+		foreach ((array)$theAssignedRights as $theGrantedRight) {
+			$theResults[$theGrantedRight['namespace']][$theGrantedRight['permission']] = true;
+		}
+		//$this->logStuff(__METHOD__, ' loaded denies=', $theForbiddenRights); //DEBUG
+		foreach ((array)$theForbiddenRights as $theRevokedRight) {
+			unset($theResults[$theRevokedRight['namespace']][$theRevokedRight['permission']]);
+		}
+		//$this->logStuff(__METHOD__, ' rights=', $theResults); //DEBUG
+		return $theResults;
 	}
 
 	/**
 	 * Like getAssignedRights(), but returns only the rights that are allowed
 	 * for the group, as a Boolean "true"; any right that is in 'disallow' or
 	 * 'deny' state is omitted from the result set.
-	 * @param string|array $aGroupID - a group ID or an array of IDs.
-	 * @return object Return an object with just TRUE permissions.
+	 * @param string|string[] $aGroupIDorList - a group ID or an array of IDs.
+	 * @return array Returns 2D boolean leaf array of [namespace[permission]].
 	 */
-	public function getGrantedRights( $aGroupID=null )
+	public function getGrantedRights( $aGroupIDorList=null )
 	{
-		$theAssignedRights = $this->getAssignedRights($aGroupID);
-		//$this->logStuff(__METHOD__, ' getAR=', $theAssignedRights); //DEBUG
-		// Now go back and remove everything that's not allowed and set allowed to TRUE.
-		foreach( $theAssignedRights as $theSpace => &$theSpacePerms )
-		{
-			foreach( $theSpacePerms as $thePerm => &$theVal )
-			{
-				switch ( $theVal ) {
-					case static::FORM_VALUE_Allow:
-						$theVal = true;
-						break;
-					default:
-						unset( $theSpacePerms[$thePerm] ) ;
-						break;
-				}//switch
+		$theResults = $this->getAssignedRights($aGroupIDorList);
+		// Now go back and remove everything that's not allowed.
+		foreach ($theResults as $theNS => $thePerms ) {
+			foreach($thePerms as $thePerm => $theVal ) {
+				if ( !$theVal ) {
+					unset($theResults[$theNS][$thePerm]);
+				}
 			}
-			if ( count($theSpacePerms) == 0  )
-				unset( $theAssignedRights[$theSpace] ) ;
+			if ( count($theResults[$theNS]) == 0 ) {
+				unset($theResults[$theNS]);
+			}
 		}
-		return ((object)($theAssignedRights)) ;
+		//$this->logStuff(__METHOD__, ' rights=', $theResults); //DEBUG
+		return $theResults;
 	}
 
 	/**
-	 * Build up a giant tree of all the permissions, all marked as true.
+	 * Returns a dictionary of all permission group data.
+	 * @param boolean $bIncludeSystemGroups - (OPTIONAL) indicates whether to
+	 *   include the "unregistered" group, defaults to FALSE.
+	 * @param string|null $aOrgID - the org to use besides the current one.
+	 * @return \PDOStatement Returns the query results unfetched.
+	 * @throws DbException if an error happens in the query itself
 	 */
-	protected function getTitanRights()
+	public function getAuthGroupsForOrg( $bIncludeSystemGroups=false,
+			$aOrgID=null )
 	{
-		$theTitanPerms = array() ;
-		$theSpaces = $this->getRes( 'permissions/namespace' ) ;
-		foreach( $theSpaces as $theSpace => $theNSInfo )
-		{
-			$theTitanPerms[$theSpace] = array() ;
-			$thePerms = $this->getRes( 'permissions/' . $theSpace ) ;
-			foreach( $thePerms as $thePerm => $thePermInfo )
-				$theTitanPerms[$theSpace][$thePerm] = true ;
+		$theOrgID = ( empty($aOrgID) )
+				? $this->getProp('Auth')->getCurrentOrgID() : $aOrgID;
+		//now get our list of groups restricted by org
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('SELECT')
+			->add('group_id, group_num, group_name, parent_group_id')
+			->add('FROM')->add($this->tnGroups)
+			->startWhereClause()
+			->mustAddParam('org_id', $theOrgID)
+		;
+		if ( !$bIncludeSystemGroups ) {
+			$theSql->setParamPrefix(' AND ');
+			$theSql->setParamOperator(SqlBuilder::OPERATOR_NOT_EQUAL);
+			$theSql->mustAddParam('group_id', static::UNREG_GROUP_ID);
 		}
-		//$this->logStuff(__METHOD__, $theTitanPerms); //DEBUG
-		return $theTitanPerms ;
+		$theSql->endWhereClause();
+		$theSql->add( 'ORDER BY group_num' ) ;
+		try { return $theSql->query(); }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 
+		
 	/**
 	 * Remove existing permissions for a particular group.
 	 * @param string $aGroupId - the group ID.
@@ -1612,56 +2266,40 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 						$theValue = static::VALUE_Disallow;
 				}//switch
 				$theRightsList[] = array(
-						'ns' => $ns,
-						'perm' => $theRight,
+						'namespace' => $ns,
+						'permission' => $theRight,
 						'group_id' => $aDataObject->group_id,
 						'value' => $theValue,
 				);
 			}//end foreach
 		}//end foreach
-		if ( !empty($theRightsList) )
-		{
-			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
-			$theSql->startWith('INSERT INTO')->add($this->tnPermissions);
-			$this->setAuditFieldsOnInsert($theSql);
-			$theSql->mustAddFieldAndParam('namespace', 'ns')
-				->mustAddFieldAndParam('permission', 'perm')
-				->mustAddParam('group_id')
-				->mustAddParam('value')
-				->execMultiDML($theRightsList)
-				;
-		}
+		$this->insertDataForAuthPermissionGroup($theRightsList);
 	}
 
 	/**
-	 * Returns a raw SELECT * from the permission/group mapping table.
-	 * @param $bIncludeSystemGroups boolean indicates whether to include the
-	 *  "unregistered" and "titan" groups that are defined by default when the
-	 *  system is installed
+	 * Returns a set of permission rows from the permission/group mapping
+	 * table that are distinct values for each namespace/permission.
+	 * @param string|string[] $aGroupIDorList - a group ID or an array of IDs.
 	 * @throws DbException if a problem occurs during DB query execution
-	 * @return array a table of rows from the DB
+	 * @return \PDOStatement Returns the query.
 	 */
-	public function getPermissionMap( $bIncludeSystemGroups=false )
+	public function getAssignedPermissionMap( $aGroupIDorList )
 	{
+		if ( empty($aGroupIDorList) ) return; //trivial
 		$theSql = SqlBuilder::withModel($this)
-			->startWith('SELECT')
-			->add('group_id, namespace AS ns, permission, value')
+			->startWith('SELECT DISTINCT namespace, permission, value')
 			->add('FROM')->add($this->tnPermissions)
-			;
-		if( ! $bIncludeSystemGroups )
-		{
-			$theSql->startWhereClause()
-				->setParamOperator( SqlBuilder::OPERATOR_NOT_EQUAL )
-			 	->addFieldAndParam( 'group_id', 'unreg_group_id', static::UNREG_GROUP_ID )
-			 	->setParamPrefix( ' AND ' )
-				->addFieldAndParam( 'group_id', 'titan_group_id', $this->getTitanGroupID() )
-				->endWhereClause()
-				;
-		}
-		$theSql->add( ' ORDER BY group_id, namespace, permission' ) ;
-		try { return $theSql->query()->fetchAll() ; }
-		catch( PDOException $pdox )
-		{ throw $theSql->newDbException(__METHOD__, $pdox) ; }
+			->startWhereClause()
+			->mustAddParam('group_id', $aGroupIDorList)
+			->setParamPrefix(' AND ')
+			->setParamOperator(SqlBuilder::OPERATOR_NOT_EQUAL)
+			->mustAddParam('value', static::VALUE_Disallow)
+			->endWhereClause()
+		;
+		try
+		{ return $theSql->query(); }
+		catch ( \PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox); }
 	}
 
 	/**
@@ -1672,26 +2310,25 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 * @return array indication of the result
 	 * @throws DbException if a problem occurs during DB query execution
 	 * @throws RightsException if either source or target is not specified, or
-	 *  not found, or is the "titan" group
+	 *   not found
 	 */
 	public function copyPermissions( $aSourceGroupID, $aTargetGroupID )
 	{
 		//source group ID
 		if( ! isset( $aSourceGroupID ) )
 		{ throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', '$aSourceGroupID' ) ; }
-		if( $aSourceGroupID == $this->getTitanGroupID() )
-		{ throw RightsException::toss( $this, 'CANNOT_COPY_FROM_TITAN' ) ; }
 		$theSourceGroupRow = $this->getGroup($aSourceGroupID, 'group_name');
 		if ( empty($theSourceGroupRow) )
 		{ throw RightsException::toss( $this, 'GROUP_NOT_FOUND', $aSourceGroupID ) ; }
 		//target group ID
 		if( ! isset( $aTargetGroupID ) )
 		{ throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', '$aTargetGroupID' ) ; }
-		if( $aTargetGroupID == $this->getTitanGroupID() )
-		{ throw RightsException::toss( $this, 'CANNOT_COPY_TO_TITAN' ) ; }
 		$theTargetGroupRow = $this->getGroup($aTargetGroupID, 'group_name');
 		if ( empty($theTargetGroupRow) )
 		{ throw RightsException::toss( $this, 'GROUP_NOT_FOUND', $aTargetGroupID ) ; }
+		//ensure source and target share the same org_id
+		if ( $theSourceGroupRow['org_id'] != $theTargetGroupRow['org_id'] )
+		{ throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN); }
 		//remove any target permissions
 		try { $this->removeGroupPermissions($aTargetGroupID); }
 		catch( PDOException $pdox )
@@ -1761,19 +2398,19 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 
 	/**
 	 * Sets one of the ternary flags for a given group/namespace/permission
-	 * triple. The values are '+' for "always allow", null for "inherit", and
-	 * '-' for "always deny".
-	 * @param string $aGroupID the ID of the group whose permissions will be
-	 *  modified
-	 * @param string $aNamespace the namespace of the permission
-	 * @param string $aPerm the name of the permission
-	 * @param string $aValue the value: one of '+', '-', or null
+	 * triple. The values are VALUE_Allow const for "always allow",
+	 * VALUE_Deny const for "always deny", and VALUE_Disallow or null
+	 * for "inherit" (defaulting to not allowed).
+	 * @param string $aGroupID - the ID of the group whose permissions will be
+	 *   modified
+	 * @param string $aNamespace - the namespace of the permission
+	 * @param string $aPerm - the name of the permission
+	 * @param string $aValue - the value: one of '+', 'x', '-', or null.
 	 * @return array a dictionary of namespace, permission, group ID, and value
-	 *  for the updated permission, in the order that those columns appear in
-	 *  the database
+	 *   for the updated permission, in the order that those columns appear in
+	 *   the database.
 	 * @throws DbException if something goes wrong in the DB
 	 * @throws BrokenLeg if one of the parameters is missing
-	 * @throws RightsException if the group ID is that of the "titan" group
 	 */
 	public function setPermission( $aGroupID, $aNamespace, $aPerm, $aValue=null )
 	{
@@ -1783,8 +2420,6 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'namespace' ) ;
 		if( empty( $aPerm ) )
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'permission' ) ;
-		if( $aGroupID == $this->getTitanGroupID() )
-			throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' ) ;
 		//what db value should be stored?
 		switch( $aValue ) {
 			case static::VALUE_Allow:
@@ -1800,7 +2435,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				break ;
 		}//switch
 		//NOTE: PDO requires the parameter name be unique in parameterized queries; since
-		//  SqlBuilder uses the "datakey" as the parameter name. See use of "ns2".
+		//  SqlBuilder uses the "datakey" as the parameter name. See use of "name2".
 		$theInsertParams = array(
 			'namespace' => $aNamespace,
 			'permission' => $aPerm,
@@ -1808,46 +2443,47 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			'value' => $theDBValue,
 		);
 		$theUpdateParams = array(
-			'ns2' => $aNamespace,
+			'name2' => $aNamespace,
 			'perm2' => $aPerm,
-			'gid2' => $aGroupID,
-			'val2' => $theDBValue,
+			'gpid2' => $aGroupID,
+			'valu2' => $theDBValue,
 		);
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array_merge(
 				$theInsertParams, $theUpdateParams
 		));
+		//SQL statement can assume no value is NULL.
 		switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: //MySQL uses "INSERT ... ON DUPLICATE KEY UPDATE"
 				$theSql->startWith('INSERT INTO')->add($this->tnPermissions);
 				$this->setAuditFieldsOnInsert($theSql)
-					->mustAddParam('namespace')
-					->mustAddParam('permission')
-					->mustAddParam('group_id')
-					->mustAddParam('value')
+					->addParam('namespace')
+					->addParam('permission')
+					->addParam('group_id')
+					->addParam('value')
 					;
 				$theSql->add('ON DUPLICATE KEY UPDATE');
 				$this->addAuditFieldsForUpdate($theSql->setParamPrefix(' '))
-					->mustAddFieldAndParam('namespace', 'ns2')
-					->mustAddFieldAndParam('permission', 'perm2')
-					->mustAddFieldAndParam('group_id', 'gid2')
-					->mustAddFieldAndParam('value', 'val2')
+					->addParamForColumn('name2', 'namespace')
+					->addParamForColumn('perm2', 'permission')
+					->addParamForColumn('gpid2', 'group_id')
+					->addParamForColumn('valu2', 'value')
 					;
 				break;
 			default:
 				$theSql->startWith('MERGE')->add($this->tnPermissions);
 				$theSql->add('WHEN NOT MATCHED BY TARGET')->add('INSERT');
 				$this->setAuditFieldsOnInsert($theSql)
-					->mustAddParam('namespace')
-					->mustAddParam('permission')
-					->mustAddParam('group_id')
-					->mustAddParam('value')
+					->addParam('namespace')
+					->addParam('permission')
+					->addParam('group_id')
+					->addParam('value')
 					;
 				$theSql->add('WHEN MATCHED THEN')->add('UPDATE');
 				$this->addAuditFieldsForUpdate($theSql->setParamPrefix(' '))
-					->mustAddFieldAndParam('namespace', 'ns2')
-					->mustAddFieldAndParam('permission', 'perm2')
-					->mustAddFieldAndParam('group_id', 'gid2')
-					->mustAddFieldAndParam('value', 'val2')
+					->addParamForColumn('name2', 'namespace')
+					->addParamForColumn('perm2', 'permission')
+					->addParamForColumn('gpid2', 'group_id')
+					->addParamForColumn('valu2', 'value')
 					;
 				break;
 		}//end switch
@@ -1868,9 +2504,9 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		));
 		$theSql->startWith('UPDATE')->add($this->tnPermissions);
 		$this->setAuditFieldsOnUpdate($theSql);
-		$theSql->mustAddFieldAndParam('namespace', 'namespace_new');
+		$theSql->addParamForColumn('namespace_new', 'namespace');
 		$theSql->startWhereClause();
-		$theSql->mustAddFieldAndParam('namespace', 'namespace_old');
+		$theSql->addParamForColumn('namespace_old', 'namespace');
 		$theSql->endWhereClause();
 		try
 		{ $theSql->execDML(); }
@@ -1880,8 +2516,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			);
 		}
 		//after changing permissions, affect the cache too
-		$this->_permCache = array();
-		$this->isPermissionAllowed($aNewNamespace, '');
+		$this->getDirector()->account_info->rights = null;
 	}
 	
 }//end class

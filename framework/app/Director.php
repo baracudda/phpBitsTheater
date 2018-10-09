@@ -20,7 +20,8 @@ use com\blackmoonit\AdamEve as BaseDirector;
 use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\AccountInfoCache;
-use BitsTheater\models\Auth as AuthDB;
+use BitsTheater\costumes\SiteSettings;
+use BitsTheater\costumes\venue\Usher;
 use BitsTheater\res\ResException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
@@ -74,7 +75,7 @@ implements ArrayAccess, IDirected
 	protected $_propMaster = array();
 	/**
 	 * Resource manager class (@var may not apply during installation).
-	 * @var configs\I18N
+	 * @var res\ResI18N
 	 */
 	protected $_resManager = null;
 	/**
@@ -86,13 +87,11 @@ implements ArrayAccess, IDirected
 	 * @var string[]
 	 */
 	protected $_logFilenameCache = array();
-	/**
-	 * Cache of the auth model in use.
-	 * @var AuthDB
-	 */
-	protected $dbAuth = null;
+	/** @var Usher The authorization costume used for permission checks. */
+	protected $mChiefUsher = null;
 	/**
 	 * Cache of the config model in use.
+	 * NOTE: If set to FALSE, then model is unavailable, use defined defaults.
 	 * @var \BitsTheater\models\Config
 	 */
 	protected $dbConfig = null;
@@ -165,13 +164,11 @@ implements ArrayAccess, IDirected
 		static::unregisterGlobals();
 		register_shutdown_function(array($this, 'onShutdown'));
 		try {
-			if (!$this->check_session_start()) {
-				session_id( uniqid() );
-				session_start();
-				session_regenerate_id();
+			if ( !$this->check_session_start() ) {
+				$this->regenerateSession();
 			}
 		} catch (Exception $e) {
-			$this->resetSession();
+			$this->regenerateSession();
 		}
 		
 		//if we are installing the website, check virtual-host-name-based session global
@@ -179,7 +176,8 @@ implements ArrayAccess, IDirected
 		//APP_ID is important since it is used for creating unique session variables
 		if ($this->isInstalled()) {
 			//website is installed, always get app_id from the Settings class.
-			$this->app_id = configs\Settings::APP_ID;
+			$theSettingsClass = $this->getSiteSettingsClass();
+			$this->app_id = $theSettingsClass::getAppId();
 		} else if (!empty($_SESSION[$theSessionGlobalVarName])) {
 			//website is being installed, grab app_id from session global.
 			$this->app_id = $_SESSION[$theSessionGlobalVarName];
@@ -198,11 +196,7 @@ implements ArrayAccess, IDirected
 	 * @see \com\blackmoonit\AdamEve::cleanup()
 	 */
 	public function cleanup() {
-		if (session_id()!='') {
-			session_write_close();
-		}
 		unset($this->account_info);
-		$this->returnProp($this->dbAuth);
 		//destroy all cached models
 		array_walk($this->_propMaster, function(&$n) {$n['model'] = null;} );
 		unset($this->_propMaster);
@@ -269,19 +263,84 @@ implements ArrayAccess, IDirected
 			$theId = session_id();
 		}
 		if (!empty($theId) && preg_match('/^[a-zA-Z0-9,\-]{1,128}$/',$theId)) {
-			return session_start();
+			return $this->sessionStart();
 		}
 		return false;
 	}
-
-	public function resetSession() {
-		//throw new \Exception('resetSession');
-		session_unset();
-		session_destroy();
-		session_write_close();
-		session_regenerate_id(true);
+	
+	/**
+	 * Detect a destroyed session and wonky network conditions to either
+	 * replace or repair the current session, if need be.
+	 * Per PHP documentation:<br>
+	 * Warning: Current session_regenerate_id does not handle unstable network
+	 * well. e.g. Mobile and WiFi network. Therefore, you may experience lost
+	 * session by calling session_regenerate_id. You should not destroy the
+	 * old session data immediately, but should use destroy time-stamp and
+	 * control access to old session ID. Otherwise, concurrent access to page
+	 * may result in inconsistent state, or you may have lost session, or it
+	 * may cause client (browser) side race condition and may create many
+	 * session ID needlessly. Immediate session data deletion disables session
+	 * hijack attack detection and prevention also.
+	 */
+	protected function sessionStart()
+	{
+		session_start();
+		if ( isset($_SESSION['destroyed_ts']) ) {
+			if ( $_SESSION['destroyed_ts'] < time() ) {
+				//This could be an attack or due to an unstable network.
+				//Remove all authentication status of this users session.
+				$this->logout();
+				throw BrokenLeg::toss($this, BrokenLeg::ACT_SERVICE_UNAVAILABLE);
+			}
+			if ( isset($_SESSION['new_session_id']) ) {
+				//Not fully expired yet. Could be lost cookie by an unstable
+				//  network. Try again to set proper session ID cookie.
+				session_commit();
+				session_id($_SESSION['new_session_id']);
+				// New session ID should exist
+				session_start();
+			}
+		}
 	}
 	
+	/**
+	 * Follow PHP documentation and handle regenerating a session ourselves.
+	 * Per PHP documentation:<br>
+	 * Warning: Current session_regenerate_id does not handle unstable network
+	 * well. e.g. Mobile and WiFi network. Therefore, you may experience lost
+	 * session by calling session_regenerate_id. You should not destroy the
+	 * old session data immediately, but should use destroy time-stamp and
+	 * control access to old session ID. Otherwise, concurrent access to page
+	 * may result in inconsistent state, or you may have lost session, or it
+	 * may cause client (browser) side race condition and may create many
+	 * session ID needlessly. Immediate session data deletion disables session
+	 * hijack attack detection and prevention also.
+	 */
+	public function regenerateSession()
+	{
+		//A new_session_id is required to set proper session ID
+		//  when session ID is not set due to unstable network.
+		$theNewID = function_exists('session_create_id') ? session_create_id() : uniqid();
+		$_SESSION['new_session_id'] = $theNewID;
+		//Set destroyed error state timestamp to 1 min from now.
+		$_SESSION['destroyed_ts'] = time()+60;
+		//This can be used by forms to prevent cross-site forgery attempts
+		$_SESSION['nonce'] = bin2hex(openssl_random_pseudo_bytes(32));
+		//Create new session without destroying the old one.
+		session_regenerate_id(false);
+		//Grab current session ID and flush the memory cache.
+		$theCurrID = session_id();
+		session_write_close();
+		//Set the ID to the new one, and start it back up again
+		if ( !empty($theCurrID) )
+		{ session_id($theCurrID); }
+		else //occationally get an empty ID, cannot start a session with it.
+		{ session_id($theNewID); }
+		session_start();
+		//Do not want this session to expire, yet.
+		unset($_SESSION['destroyed_ts']);
+	}
+
 	public function isInstalled() {
 		return class_exists(BITS_NAMESPACE_CFGS.'Settings');
 	}
@@ -307,33 +366,114 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * Route the URL requested to the approprate actor.
-	 * @param string $aUrl - the URL to act upon.
-	 * @throws FourOhFourExit - 404 if $aUrl is not found.
+	 * Since the purpose of API virtual actor is to "redirect" the URL to the
+	 * actual actor/method being referenced, construct and return the list
+	 * of possible methods being called.
+	 * @param string $aPossibleAction - the action requested.
+	 * @return string[] Returns the list of possible matches to query.
 	 */
-	public function routeRequest( $aUrl )
+	protected function getPossibleApiMethodsList($aPossibleAction)
 	{
-//		if ($this->isDebugging()) $this->debugLog('aUrl='.$aUrl);  //DEBUG
-//		if ($this->isDebugging() && $aUrl=='phpinfo') { print(phpinfo()); return; } //DEBUG
-		if (!empty($aUrl)) {
-			$urlPathList = explode('/',$aUrl);
-			$theActorName = Strings::getClassName(array_shift($urlPathList));
-			$theAction = array_shift($urlPathList);
-			$theQuery = $urlPathList; //whatever is left
+		return array(
+				Strings::getMethodName($aPossibleAction),
+				Strings::getMethodName('ajaj_' . $aPossibleAction),
+				Strings::getMethodName('api_' . $aPossibleAction),
+				Strings::getMethodName('ajax_' . $aPossibleAction),
+		);
+	}
+	
+	/**
+	 * Route the URL requested to the approprate actor. However, this is a
+	 * special case to avoid requiring methods to specify ajaj|api|ajax prefix
+	 * and will determine which method to call by working through a list of
+	 * possible prefixes rather than exact matching.
+	 * @param string $aUrlPath - the URL path segments to act upon.
+	 * @throws FourOhFourExit - 404 if $aUrlPath is not found.
+	 */
+	protected function routeApiRequest( $aUrlPath )
+	{
+		//$this->logStuff(__METHOD__, ' rerouting to ', $aUrlPath);//DEBUG
+		if ( empty($aUrlPath) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('actor not found');
 		}
-		if (!empty($theActorName)) {
-			$theAction = Strings::getMethodName($theAction);
-			if (!$this->raiseCurtain($theActorName,$theAction,$theQuery)) {
-				throw new FourOhFourExit($aUrl);
+		$thePathSegments = explode('/', $aUrlPath);
+		$theActorName = array_shift($thePathSegments);
+		$theActorClass = $this::getActorClass($theActorName);
+		if ( !class_exists($theActorClass) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('actor not found');
+		}
+		if ( empty($thePathSegments) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('action not found');
+		}
+		$thePossibleMethodsList = $this->getPossibleApiMethodsList(
+				array_shift($thePathSegments)
+		);
+		$theParamSegments = trim(implode('/', $thePathSegments), '/');
+		$theFailCount = 0;
+		//$this->logStuff(__METHOD__, ' possible routes: ', $theActorClass, '::', $thePossibleMethodsList);//DEBUG
+		foreach($thePossibleMethodsList as $thePossibleMethod) {
+			try {
+				$thePossibleUrl = $theActorName.'/'.$thePossibleMethod.'/'.$theParamSegments;
+				//$this->logStuff(__METHOD__, ' trying url=', $thePossibleUrl);//DEBUG
+				$this->raiseCurtain($thePossibleUrl);
+				break; //if we did not throw an exception, our job is done.
 			}
-		} elseif (!$this->isInstalled() && class_exists(BITS_NAMESPACE_ACTORS.'Install')) {
-			if (!$this->raiseCurtain('Install', 'install')) {
-				throw new FourOhFourExit($aUrl);
+			catch ( FourOhFourExit $fofx ) {
+				$theFailCount += 1;
 			}
-		} elseif ($this->isInstalled() && empty($aUrl)) {
-			header('Location: ' . configs\Settings::getLandingPage());
-		} else {
-			throw new FourOhFourExit($aUrl);
+		}
+		//$this->logStuff(__METHOD__, ' fails=', $theFailCount, ' list=', count($thePossibleMethodsList) );//DEBUG
+		//if we fail to execute any of our possibilies, toss 404 error.
+		if ( $theFailCount>=count($thePossibleMethodsList) )
+		{ throw new FourOhFourExit($this->getSiteUrl($aUrlPath)); }
+	}
+	
+	
+	/**
+	 * Route the URL requested to the approprate actor.
+	 * @param string $aUrlPath - the URL path segments to act upon.
+	 * @throws FourOhFourExit - 404 if $aUrlPath is not found.
+	 */
+	public function routeRequest( $aUrlPath )
+	{
+		//if $this->debugLog('aUrl='.$aUrl);  //DEBUG
+		//if $aUrl=='phpinfo') { print(phpinfo()); return; } //DEBUG
+		if ( empty($aUrlPath) ) {
+			if ( $this->isInstalled() ) {
+				//if website has been installed, redirect to landing page
+				$theSettingsClass = $this->getSiteSettingsClass();
+				header('Location: ' . $theSettingsClass::getLandingPage());
+			}
+			//otherwise if we have an Install actor, open with install wizard
+			else if ( class_exists($this->getActorClass('Install')) ) {
+				$aUrlPath = 'install';
+			}
+		}
+		if ( !empty($aUrlPath) ) try {
+			$this->raiseCurtain($aUrlPath);
+		}
+		catch (FourOhFourExit $fofx)
+		{
+			//if 404, see if we should try a different parse of the URL
+			$thePathSegments = explode('/', $aUrlPath);
+			switch ( $thePathSegments[0] ) {
+				case 'api': try {
+					$this->routeApiRequest(Strings::strstr_after($aUrlPath, 'api/'));
+					break; //found an alternative that worked, do not toss 404 error.
+				}
+				catch ( FourOhFourExit $fofx ) {
+					//let fall through to default behavior
+				}
+				default:
+					//$this->logStuff(__METHOD__, ' ', $fofx); //DEBUG
+					if ( $this->getDirector()->isRunningUnderCLI() )
+					{ print('Endpoint not found: ' . $theUrlNotFound); }
+					else
+					{ throw new FourOhFourExit($this->getSiteUrl($aUrlPath)); }
+			}//switch
 		}
 	}
 	
@@ -356,26 +496,30 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * Start the show! Renders the defined view for the given Actor::method.
-	 * @param string $anActorName - Actor name typically from the URL.
-	 * @param string $anAction - the method to call on the Actor.
-	 * @param array $aQuery - (optional) additional parameters for the method.
-	 * @return boolean Return FALSE if a 404 should be thrown.
+	 * Determain what actor::method(args) to call based on the URL.
+	 * Render the defined view for the given Actor::method().
+	 * @param string $aUrlPath - the non-empty URL path segments to parse.
+	 * @throws FourOhFourExit if URL does not refer to a valid endpoint.
 	 */
-	public function raiseCurtain($anActorName, $anAction=null, $aQuery=array()) {
-		$theActorClass = static::getActorClass($anActorName);
-		//Strings::debugLog('rC: class='.$theActorClass.', exist?='.class_exists($theActorClass));
-		if (class_exists($theActorClass)) {
-			$theAction = $theActorClass::getDefaultAction($anAction);
-			$theActor = new $theActorClass($this, $theAction);
-			if ($theActor->isActionUrlAllowed($theAction)) {
-				return $theActor->perform($theAction, $aQuery);
-			} else {
-				return false;
-			}
-		} else {
-			//Strings::debugLog(__METHOD__.' cannot find Actor class: '.$theActorClass.' url='.$_GET['url']);
-			return false;
+	public function raiseCurtain( $aUrlPath )
+	{
+		if ( empty($aUrlPath) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('actor not found');
+		}
+		$thePathSegments = explode('/', $aUrlPath);
+		$theActorClass = $this::getActorClass(array_shift($thePathSegments));
+		if ( !class_exists($theActorClass) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('actor not found');
+		}
+		$theAction = array_shift($thePathSegments);
+		$theMethodName = $theActorClass::getMethodForAction($theAction);
+		//actor and action exist as public method, call it!
+		$theActor = new $theActorClass($this, $theAction);
+		if ( !$theActor->perform($theMethodName, $thePathSegments) ) {
+			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
+				->setContextMsg('method returned false');
 		}
 	}
 	
@@ -468,9 +612,9 @@ implements ArrayAccess, IDirected
 			foreach($this->_propMaster as $theModelRefCountCell) {
 				/* @var $theModel Model */
 				$theModel = $theModelRefCountCell['model'];
-				if ($theModel->dbConnName == $aDbConnInfo->dbConnName) {
-					$theModel->connect($aDbConnInfo->dbConnName);
-				}
+				if ( empty($theModel) ) continue; //trivial short-circuit
+				if ($theModel->dbConnName == $aDbConnInfo->dbConnName)
+				{ $theModel->connect($aDbConnInfo->dbConnName); }
 			}
 		}
 		if ( !empty($theOldDbConn) )
@@ -480,7 +624,7 @@ implements ArrayAccess, IDirected
 	/**
 	 * Retrieve the connection information for a specific connection name.
 	 * @param string $aDbConnName - (optional) dbconn name, default="webapp".
-	 * @return \BitsTheater\DbConnInfo
+	 * @return DbConnInfo
 	 */
 	public function getDbConnInfo($aDbConnName='webapp')
 	{
@@ -499,12 +643,15 @@ implements ArrayAccess, IDirected
 		$theModelClass = static::getModelClass($aModelClass);
 		if (class_exists($theModelClass)) {
 			if (empty($this->_propMaster[$theModelClass])) {
-				try {
-					$this->_propMaster[$theModelClass] = array(
-							'model' => new $theModelClass($this),
-							'ref_count' => 0,
-					);
-				} catch (Exception $e) {
+				//ensure we have a non-empty reference in case of a dbconn exception
+				//  so that nested infinite loops can be avoided
+				$this->_propMaster[$theModelClass] = array(
+						'model' => null,
+						'ref_count' => 0,
+				);
+				try
+				{ $this->_propMaster[$theModelClass]['model'] = new $theModelClass($this); }
+				catch (Exception $e) {
 					$this->errorLog(__METHOD__.' '.$e->getMessage());
 					throw $e ;
 				}
@@ -595,7 +742,8 @@ implements ArrayAccess, IDirected
 		if (empty($this->_resManager)) {
 			if ($this->canGetRes()) {
 				//TODO create a user config for "en/US" and pass that into the constructor. (lang/region)
-				$this->_resManager = new configs\I18N();
+				$theSiteLangClass = $this->getSiteLanguageClass();
+				$this->_resManager = new $theSiteLangClass();
 			} else {
 				$theInstallResMgr = BITS_NAMESPACE_RES.'ResI18N';
 				$this->_resManager = new $theInstallResMgr('en/US');
@@ -687,11 +835,12 @@ implements ArrayAccess, IDirected
 	 * @param object $aScene - the Scene object associated with an Actor.
 	 * @return boolean Returns TRUE if admitted.
 	 */
-	public function admitAudience($aScene) {
-		if ($this->canCheckTickets()) {
-			$this->dbAuth = $this->getProp('Auth'); //director will close this on cleanup
-			if (!empty($this->dbAuth)) {
-				return $this->dbAuth->checkTicket($aScene);
+	public function admitAudience( $aScene )
+	{
+		if ( $this->canCheckTickets() ) {
+			$this->mChiefUsher = Usher::withContext($this);
+			if ( !empty($this->mChiefUsher) ) {
+				return $this->mChiefUsher->checkTicket($aScene);
 			} else {
 				return true;
 			}
@@ -703,14 +852,20 @@ implements ArrayAccess, IDirected
 	 * Determine if the current logged in user has a permission.
 	 * @param string $aNamespace - namespace of the permission to check.
 	 * @param string $aPermission - permission name to check.
-	 * @param array|NULL $acctInfo - (optional) check specified account instead of
-	 * currently logged in user.
+	 * @param array|NULL $aAcctInfo - (optional) check specified account instead of
+	 *   currently logged in user.
+	 * @return boolean Returns TRUE if allowed.
 	 */
-	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
-		if (isset($this->dbAuth))
-			return $this->dbAuth->isPermissionAllowed($aNamespace, $aPermission, $aAcctInfo);
-		else
-			return false;
+	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null)
+	{
+		if ( !empty($this->mChiefUsher) ) {
+			$theAcctInfo = ( empty($aAcctInfo) ) ? $this->getMyAccountInfo()
+				: $this->mChiefUsher->createAccountInfoObj($aAcctInfo);
+			return $this->mChiefUsher->isPermissionAllowed($aNamespace,
+					$aPermission, $theAcctInfo
+			);
+		}
+		return false;
 	}
 	
 	/**
@@ -719,9 +874,8 @@ implements ArrayAccess, IDirected
 	 */
 	public function isGuest()
 	{
-		if (isset($this->dbAuth))
-		{
-			return $this->dbAuth->isGuestAccount(
+		if ( !empty($this->mChiefUsher) ) {
+			return $this->mChiefUsher->isGuestAccount(
 					$this->getMyAccountInfo()
 			);
 		}
@@ -776,8 +930,8 @@ implements ArrayAccess, IDirected
 	 * @return string Returns the site URL.
 	 */
 	public function logout() {
-		if (!$this->isGuest() && isset($this->dbAuth)) {
-			$this->dbAuth->ripTicket();
+		if ( !$this->isGuest() && isset($this->mChiefUsher) ) {
+			$this->mChiefUsher->ripTicket();
 			unset($this->account_info);
 		}
 		return BITS_URL;
@@ -822,10 +976,8 @@ implements ArrayAccess, IDirected
 	 * @return string URL of the forum, if any.
 	 */
 	public function getForumUrl() {
-		if ($this->dbAuth->isCallable('getForumUrl')) {
-			return $this->dbAuth->getForumUrl();
-		} else {
-			return "";
+		if ( !empty($this->mChiefUsher) ) {
+			return $this->mChiefUsher->getForumUrl();
 		}
 	}
 	
@@ -835,10 +987,21 @@ implements ArrayAccess, IDirected
 	 * @throws \Exception
 	 */
 	public function getConfigSetting($aSetting) {
-		if (empty($this->dbConfig))
-			$this->dbConfig = $this->getProp('Config');
-		if (!empty($this->dbConfig)) {
-			return $this->dbConfig[$aSetting];
+		if ( is_null($this->dbConfig) )
+		{ $this->dbConfig = $this->getProp('Config'); }
+		if ( !empty($this->dbConfig) )
+		{ return $this->dbConfig[$aSetting]; }
+		else {
+			//if dbConfig is empty, means dbconn error
+			//  return the pre-defined default value, if any
+			list($theAreaName, $theSettingName) = explode('/', $aSetting, 2);
+			$res = $this->getRes('config/' . $theAreaName);
+			if ( array_key_exists($theSettingName, $res) )
+			{
+				/* @var $theConfigRes \BitsTheater\costumes\ConfigResEntry */
+				$theConfigRes = $res[$theSettingName];
+				return $theConfigRes->default_value;
+			}
 		}
 	}
 
@@ -870,9 +1033,7 @@ implements ArrayAccess, IDirected
 	 *    Returns NULL not logged in.
 	 */
 	public function getMyAccountInfo()
-	{
-		return $this->account_info;
-	}
+	{ return $this->account_info; }
 	
 	/**
 	 * Cache the non-sensitive account info for the currently
@@ -883,15 +1044,8 @@ implements ArrayAccess, IDirected
 	 */
 	public function setMyAccountInfo( $aAcctInfo=null )
 	{
-		if ( !empty($this->dbAuth) && !empty($aAcctInfo) )
-		{
-			$this->account_info = $this->dbAuth->createAccountInfoObj($aAcctInfo);
-			$this[AuthDB::KEY_userinfo] =  $this->account_info->account_id;
-		}
-		else
-		{
-			$this->account_info = null;
-			unset($this[AuthDB::KEY_userinfo]);
+		if ( !empty($this->mChiefUsher) ) {
+			$this->account_info = $this->mChiefUsher->createAccountInfoObj($aAcctInfo);
 		}
 		return $this->account_info;
 	}
@@ -978,6 +1132,28 @@ implements ArrayAccess, IDirected
 	{
 		global $theStageManager;
 		return $theStageManager->isRunningUnderCLI();
+	}
+	
+	/**
+	 * Method to use instead of 'use \BitsTheater\configs\I18N;' since the
+	 * class itself does not exist until runtime installation creates it.
+	 * @return \BitsTheater\res\ResI18N Return the SiteLangauges class.
+	 */
+	public function getSiteLanguageClass()
+	{
+		$theInstalledLangClass = BITS_NAMESPACE_RES . 'ResI18N';
+		return $theInstalledLangClass;
+	}
+	
+	/**
+	 * Method to use instead of 'use \BitsTheater\configs\Settings;' since the
+	 * class itself does not exist until runtime installation creates it.
+	 * @return SiteSettings Return the SiteSettings class.
+	 */
+	public function getSiteSettingsClass()
+	{
+		$theInstalledSettingsClass = BITS_NAMESPACE_CFGS . 'Settings';
+		return $theInstalledSettingsClass;
 	}
 	
 }//end class

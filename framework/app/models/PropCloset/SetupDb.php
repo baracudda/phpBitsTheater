@@ -16,6 +16,8 @@
  */
 
 namespace BitsTheater\models\PropCloset;
+use BitsTheater\costumes\AuthOrgSet;
+use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\Model as BaseModel;
 use BitsTheater\Scene ;
 use BitsTheater\costumes\SqlBuilder;
@@ -214,7 +216,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 			case ($theSeq<4):
 				//AuthGroups is a default framework class, but may not be there
 				//  in actual website, so check for !empty() before "fixing" it.
-				/* @var $dbAuthGroups BitsTheater\models\AuthGroups */
+				/* @var $dbAuthGroups \BitsTheater\models\AuthGroups */
 				$dbAuthGroups = $this->getProp('AuthGroups');
 				if (!empty($dbAuthGroups)) {
 					$this->updateFeature($dbAuthGroups->getCurrentFeatureVersion());
@@ -244,7 +246,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	
 	/**
 	 * Calls all models to create their tables and insert default data, if necessary.
-	 * @param $aScene - the currently running page's Scene object.
+	 * @param object $aScene - the currently running page's Scene object or generic object.
 	 */
 	public function setupModels($aScene) {
 		$this->setupModel($aScene);
@@ -256,6 +258,23 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 
 		$this->callModelMethod($this->director, $models,'setupModel',$aScene);
 		$this->callModelMethod($this->director, $models,'setupDefaultData',$aScene);
+
+		$theOrgList = AuthOrgSet::withContextAndColumns($this)
+			->setPagerEnabled(false)
+			->getOrganizationsToDisplay();
+		if ( !empty($theOrgList) ) {
+			foreach ($theOrgList as $theOrg) {
+				$this->debugLog("Create missing tables on org: " . $theOrg->org_name);
+
+				$theNewDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
+				$theNewDbConnInfo->loadDbConnInfoFromString($theOrg->dbconn);
+				$this->getDirector()->setDbConnInfo($theNewDbConnInfo);
+
+				$this->callModelMethod($this->director, $models,'setupModel',$aScene);
+				$this->callModelMethod($this->director, $models,'setupDefaultData',$aScene);
+			}
+		}
+
 		$this->callModelMethod($this->director, $models,'setupFeatureVersion',$aScene);
 		
 		array_walk($models, function(&$n) { unset($n); } );
@@ -417,7 +436,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 		$theSql->mustAddParam('version_seq');
 		$theSql->mustAddParam('version_display', 'v'.$theSql->getParam('version_seq'));
 		$theSql->addParam('model_class');
-		$theSql->addFieldAndParam('feature_id', 'new_feature_id');
+		$theSql->addParamForColumn('new_feature_id', 'feature_id');
 		$theSql->startWhereClause()->mustAddParam('feature_id')->endWhereClause();
 		try { return $theSql->execDMLandGetParams(); }
 		catch (PDOException $pdoe)
@@ -467,6 +486,31 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 				try {
 					$dbModel = $this->getProp($theFeatureData['model_class']);
 					$dbModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
+
+					//If the model uses the app db, loop through all orgs to ensure they are updated.
+					if ($dbModel->dbConnName == APP_DB_CONN_NAME) {
+						$theOrgList = AuthOrgSet::withContextAndColumns($this)
+							->setPagerEnabled(false)
+							->getOrganizationsToDisplay();
+						if ( !empty($theOrgList) ) {
+							foreach ($theOrgList as $theOrg) {
+								$this->debugLog("Attempting feature upgrade: " .
+									$theOrg->org_name . " - " . $theFeatureData['feature_id']);
+
+								$theNewDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
+								$theNewDbConnInfo->loadDbConnInfoFromString($theOrg->dbconn);
+								$this->getDirector()->setDbConnInfo($theNewDbConnInfo);
+
+								$dbModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
+
+								$theMsg = $this->getRes('admin', 'msg_update_success',
+									$theFeatureData['feature_id']
+								);
+								$this->outputUserMsg($aDataObject, $theMsg, Scene::USER_MSG_NOTICE);
+							}
+						}
+					}
+
 					//if no exception occurs, all went well
 					$this->updateFeature($dbModel->getCurrentFeatureVersion($theFeatureData['feature_id']));
 					$theMsg = $this->getRes('admin', 'msg_update_success',

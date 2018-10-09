@@ -18,7 +18,7 @@
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\ARecordList as BaseCostume;
 use BitsTheater\models\Auth as MyModel;
-use BitsTheater\costumes\AuthAccount as MyRecord;
+use BitsTheater\costumes\AuthOrg as MyRecord;
 {//namespace begin
 
 /**

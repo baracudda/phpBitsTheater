@@ -65,7 +65,7 @@ class Regisseur
 	
 	/**
 	 * Determine which Regisseur to create for the job.
-	 * @return BitsTheater\Regisseur
+	 * @return Regisseur Returns this class or one of the App* derivatives.
 	 */
 	static public function requisition()
 	{
@@ -283,6 +283,7 @@ class Regisseur
 	 */
 	public function classNameToPath( $aClassName, $aRootNamespace=null, $aRootPath=null )
 	{
+		//print __METHOD__ . ": classname=[{$aClassName}], ns=[{$aRootNamespace}]\n"; //DEBUG
 		$theRootNamespaceLen = strlen($aRootNamespace);
 		//if root namespace does not end in \, ensure it does.
 		if ( $theRootNamespaceLen>0 && $aRootNamespace{$theRootNamespaceLen-1}!='\\')
@@ -308,6 +309,7 @@ class Regisseur
 	 */
 	public function classNameToResPath( $aClassName, $aRootNamespace=null )
 	{
+		//print __METHOD__ . ": classname=[{$aClassName}], ns=[{$aRootNamespace}]\n"; //DEBUG
 		$theRootPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'res' . DIRECTORY_SEPARATOR ;
 		if ( is_null($aRootNamespace) )
 			$aRootNamespace = 'res\\' ;
@@ -326,10 +328,16 @@ class Regisseur
 	 */
 	public function loadClass( $aClassWithFullPath )
 	{
-		if ( is_file( $aClassWithFullPath ) )
+		//print "checking to see if [{$aClassWithFullPath}] is a file...\n"; //DEBUG
+		if ( is_file( $aClassWithFullPath ) ) {
+			//print "yep, including it...\n"; //DEBUG
+			//error_reporting(E_ALL); ini_set('display_errors', 1); //DEBUG
 			return include_once( $aClassWithFullPath );
-		else
+		}
+		else {
+			//print "nope.\n"; //DEBUG
 			return false;
+		}
 	}
 	
 	/**
@@ -338,6 +346,7 @@ class Regisseur
 	 */
 	protected function appLoaderForBITS( $aClassName )
 	{
+		//print __METHOD__ . PHP_EOL; //DEBUG
 		return $this->loadClass(
 				$this->classNameToPath( $aClassName, BITS_NAMESPACE, BITS_APP_PATH )
 		);
@@ -349,6 +358,7 @@ class Regisseur
 	 */
 	protected function appLoaderForWebApp( $aClassName )
 	{
+		//print __METHOD__ . PHP_EOL; //DEBUG
 		return $this->loadClass(
 				$this->classNameToPath( $aClassName, WEBAPP_NAMESPACE, BITS_APP_PATH )
 		);
@@ -363,6 +373,7 @@ class Regisseur
 	 */
 	protected function configLoader( $aClassName )
 	{
+		//print __METHOD__ . PHP_EOL; //DEBUG
 		return $this->loadClass(
 				$this->classNameToPath( $aClassName, BITS_NAMESPACE_CFGS, BITS_CFG_PATH )
 		);
@@ -374,6 +385,7 @@ class Regisseur
 	 */
 	protected function resLoaderForBITS( $aClassName )
 	{
+		//print __METHOD__ . PHP_EOL; //DEBUG
 		return $this->loadClass(
 				$this->classNameToResPath( $aClassName, BITS_NAMESPACE_RES )
 		);
@@ -385,6 +397,7 @@ class Regisseur
 	 */
 	protected function resLoaderForWebApp( $aClassName )
 	{
+		//print __METHOD__ . PHP_EOL; //DEBUG
 		return $this->loadClass(
 				$this->classNameToResPath( $aClassName, WEBAPP_NAMESPACE . 'res\\' )
 		);
@@ -414,9 +427,6 @@ class Regisseur
 	public function registerLibLoaders()
 	{
 		require_once( BITS_LIB_PATH .'autoloader.php' );
-		//phpmailer autoloader
-		require_once( BITS_LIB_PATH . 'phpmailer' . DIRECTORY_SEPARATOR
-				. 'PHPMailer' . DIRECTORY_SEPARATOR . 'PHPMailerAutoload.php' ) ;
 	}
 	
 	/**

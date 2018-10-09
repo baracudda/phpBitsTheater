@@ -18,12 +18,16 @@
 namespace com\blackmoonit;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use Exception;
+use Normalizer ;
 use PDOStatement;
 {//begin namespace
 
 class Strings {
 
 	private function __construct() {} //do not instantiate
+
+	/** @var array Logging config information */
+	protected static $log_config = array();
 
 	/**
 	 * Return everything after $aNeedle is found in $aHaystack.
@@ -158,6 +162,38 @@ class Strings {
 	static public $crypto_strength = '08';
 	
 	/**
+	 * A maximum length of a "secret" input. Designed to protect against overly-
+	 * long inputs and buffer overruns.
+	 *
+	 * While NIST standards dictate that password inputs shall not be truncated,
+	 * realistically speaking, they also acknowledge that there is a necessary
+	 * upper bound to inputs, and provide a "lowest maximum" of 64 characters as
+	 * a guideline. The Blowfish encryption algorithm will process only the
+	 * first 72 characters anyway. Who's going to use a longer password than
+	 * that? Randall Munroe? Well, when he enters an essay on
+	 * <tt>LlamaQuidditchGalaxyQuestCrossoverProjectWhatIf</tt> as a password,
+	 * we can update the algorithm. Until then, this will suffice.
+	 *
+	 * @var integer
+	 * @see \com\blackmoonit\Strings::hasher()
+	 */
+	const MAX_SECRET_INPUT_BUFFER = 999 ;
+	/**
+	 * If the length of the normalized secret is longer than this number, then
+	 * the characters after this position in the string will be replaced by the
+	 * count of all characters in the string.
+	 *
+	 * With this number set to 69, and an enforced maximum value of 999 (three
+	 * decimal digits), there is exactly enough room to have this many
+	 * characters, plus the count of all characters, within the 72-position
+	 * limit of Blowfish's algorithm. Nice.
+	 *
+	 * @var integer
+	 * @see \com\blackmoonit\Strings::hasher()
+	 */
+	const LENGTH_HASH_MARGIN = 69 ;
+
+	/**
 	 * Blowfish pw encryption mechanism: 76 chars long (60 char encryption + 16 char random salt)
 	 * <pre>
 	 * $pwhash = hasher($pwInput); //encrypts $pw and appends the generated random salt
@@ -170,14 +206,32 @@ class Strings {
 	 * If both the password and encrypted data are passed in, TRUE is returned if they "match",
 	 * else FALSE is returned.
 	 */
-	static public function hasher($aPwInput, $aEncryptedData = false) {
-		//only first 72 chars are encoded via blowfish,
-		//  and also try to protect against unseemly long string/time attacks
-		if (strlen($aPwInput)<64) {
-			$thePwInput = urlencode($aPwInput);
-		} else {
-			$thePwInput = urlencode(substr($aPwInput,0,64).min(array(999,strlen($aPwInput))));
+	static public function hasher($aPwInput, $aEncryptedData = false)
+	{
+		// Protect against buffer-overrun attacks or other overlong inputs.
+		$thePwInput = ( mb_strlen( $aPwInput, 'UTF-8' ) > self::MAX_SECRET_INPUT_BUFFER ?
+			mb_substr( $aPwInput, 0, self::MAX_SECRET_INPUT_BUFFER, 'UTF-8' ) :
+			$aPwInput ) ;
+		// Normalize the input string. See NIST 800-63-3 section 5.1.1.2.
+		$thePwInput = Normalizer::normalize( $thePwInput, Normalizer::FORM_KC );
+		$thePwInput = urlencode($thePwInput) ;     // ...and then URL-encode it.
+		// If, after all that, the string is longer than the margin, replace the
+		// trailing part of the string with the integer length of the whole
+		// string.
+		//
+		// Before: 78 characters
+		// abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz
+		// After: 71 characters (69+2)
+		// abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopq78
+		if( strlen($thePwInput) > self::LENGTH_HASH_MARGIN )
+		{
+			$thePwInput = substr( $thePwInput, 0, self::LENGTH_HASH_MARGIN )
+					. min(array( 999, strlen($thePwInput) )) ;
 		}
+		
+		// Un-comment this line to see the pre-processing logic in action:
+		// static::debugLog( __METHOD__ . ' [DEBUG] Pre-hash processed secret: ' . $thePwInput ) ;
+			
 		/* Security advisory from PHP.net:
 		 * Developers targeting PHP 5.3.7+ should use "$2y$" in preference to "$2a$".
 		 * Full details: http://php.net/security/crypt_blowfish.php
@@ -239,8 +293,21 @@ class Strings {
 	 * @return string - Returns the generated UUID (36 chars).
 	 * @see Strings::createTextId()
 	 */
-	static public function createUUID() {
-		return Strings::createGUID();
+	static public function createUUID()
+	{ return Strings::createGUID(); }
+	
+	/**
+	 * Checks a UUID string (36 chars with dashes, no "{}") to see if it is a
+	 * Type 4 UUID.
+	 * @param string $aUUID - the UUID string to check.
+	 * @return int Returns 1 if the string is a Type 4 UUID,
+	 *   0 if it is not, or false if an error occurred.
+	 */
+	static public function isUUIDtype4( $aUUID )
+	{
+		return preg_match('/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}/i',
+				$aUUID
+		);
 	}
 	
 	const DEBUG_VAR_DUMP_FLAG = '__DEBUG_VAR_DUMP_FLAG';
@@ -275,6 +342,13 @@ class Strings {
 		}
 		$theVar =& $aVar;
 		$theVarType = gettype($theVar);
+		//inline functions return their type as type 'object', however,
+		//  "Closure objects cannot have properties", so check for Closures.
+		if ( $theVarType==='object' && $theVar instanceof \Closure )
+		{
+			$theVarType = 'Closure';
+			$theVar = 'inline-function-definition';
+		}
 		
 		try {
 			if (is_null($theVar)) {
@@ -409,7 +483,9 @@ class Strings {
 		{
 			$theLogLine .= ( is_string($arg) ) ? $arg : self::debugStr($arg);
 		}
-		syslog(LOG_ERR, self::debugPrefix() . $theLogLine);
+		//TODO introduce more log levels beyond "debug" and "error" someday
+		//  until then, all "debugLog()" calls are informational
+		self::log(LOG_INFO, self::debugPrefix() . $theLogLine);
 	}
 	
 	/**
@@ -439,7 +515,75 @@ class Strings {
 		{
 			$theLogLine .= ( is_string($arg) ) ? $arg : self::debugStr($arg);
 		}
-		syslog(LOG_ERR, self::errorPrefix() . $theLogLine);
+		self::log(LOG_ERR, self::errorPrefix() . $theLogLine);
+	}
+
+	/**
+	 * Writes log messages to the logging destination
+	 * Defaults to syslog unless $_ENV['LOG_PATH'] is set
+	 * @param int $priority - log level
+	 * @param string $message - log message
+	 */
+	static public function log($level, $message)
+	{
+		// init log config if this is our first time through here
+		if (empty(self::$log_config)) {
+			// Encode all logs as simple JSON structure? accepts 1, 0, true, false, yes, no, etc.
+			self::$log_config['JSON'] = filter_var(getenv('LOG_JSON'), FILTER_VALIDATE_BOOLEAN);
+			// Force all logs into a particular log level? //legacy used to use 3, LOG_ERR
+			self::$log_config['LOG_LEVEL'] = filter_var(getenv('LOG_LEVEL'),
+					FILTER_VALIDATE_INT, array("options" => array(
+							'min_range' => 1, //LOG_ALERT
+							'max_range' => 7, //LOG_DEBUG
+					))
+			);
+			// Output logs to a custom file?
+			self::$log_config['PATH'] = false;
+			// ensure log path is not too wonky
+			$theLogPath = getenv('LOG_PATH');
+			if ( !empty($theLogPath) ) {
+				$theDrive = '';
+				$thePathSegs = explode(DIRECTORY_SEPARATOR, $theLogPath);
+				// if first segment is a Windows drive letter, preserve it
+				if ( preg_match('/^[A-Za-z]:$/', $thePathSegs[0]) ) {
+					$theDrive = strtoupper(array_shift($thePathSegs)) . DIRECTORY_SEPARATOR;
+				}
+				// sanitize each segment of the log path
+				foreach( $thePathSegs as &$theSeg ) {
+					$theSeg = self::sanitizeFilename($theSeg, '');
+					//if the path segment becomes empty after sanitization, remove it
+					if ( empty($theSeg) ) {
+						unset($theSeg);
+					}
+				}
+				// put it all back together
+				self::$log_config['PATH'] = $theDrive . implode(DIRECTORY_SEPARATOR, $thePathSegs);
+			}
+		}
+
+		// do we encode the log as JSON? Add a timestamp either way
+		$ts = gmdate("Y-m-d\TH:i:s\Z");
+		if (self::$log_config['JSON']) {
+			$theMsg = json_encode(array('level' => $level, 'message' => $message, 'timestamp' => $ts)) . PHP_EOL;
+		} else {
+			$theMsg = '[' . gmdate("Y-m-d\TH:i:s\Z") . ']: ' . $message . PHP_EOL;
+		}
+
+		// do we use a custom log file?
+		if (self::$log_config['PATH']) {
+			try {
+				$handle = fopen(self::$log_config['PATH'], 'a');
+				fwrite($handle, $theMsg);
+				fclose($handle);
+				return;
+			}
+			catch (\Exception $x) {
+				//eat any error and let code fall through to fallback log
+			}
+		}
+		// if custom log not used or fails, ensure we write to system log at least
+		$theLogLevel = (self::$log_config['LOG_LEVEL']) ? self::$log_config['LOG_LEVEL'] : $level;
+		syslog($theLogLevel, $message);
 	}
 	
 	/**
@@ -759,6 +903,97 @@ class Strings {
 	}
 	
 	/**
+	 * Get the HTTP header value given to us.
+	 * @param string $aHeaderName - the header name.
+	 * @param string $aDefaultValue - (optional) default value if not in $_SERVER[].
+	 * @return string The HTTP header value to use.
+	 */
+	static public function getHttpHeaderValue( $aHeaderName, $aDefaultValue=null )
+	{
+		$theKey = self::httpHeaderNameToServerKey($aHeaderName);
+		if ( isset($_SERVER[$theKey]) && ($_SERVER[$theKey] != '') )
+		{ return $_SERVER[$theKey]; }
+		else
+		{ return $aDefaultValue; }
+	}
+	
+	/**
+	 * HTTP headers are famous for being mixed bag of upper and lower case
+	 * names, but this will normalize them to their standard Camel-Case format.
+	 * @param string $aHeaderName - a header name.
+	 * @return string Returns the header converted to its proper Camel-Case name.
+	 */
+	static public function normalizeHttpHeaderName( $aHeaderName )
+	{
+		return str_replace(' ', '-', ucwords(strtolower(
+				str_replace(array('_','-'), ' ', trim($aHeaderName))
+		)));
+	}
+	
+	/**
+	 * HTTP headers are famous for being mixed bag of upper and lower case
+	 * names, but this will normalize them to their standard Camel-Case format.
+	 * @param string $aHeader - the entire header string, "some-name: value".
+	 * @return string Returns the normalized header.
+	 */
+	static public function normalizeHttpHeader( $aHeader )
+	{
+		$theNameValueSeparatorPos = strpos($aHeader, ':');
+		return ( $theNameValueSeparatorPos >= 0 ) ?
+			self::normalizeHttpHeaderName(
+					substr($aHeader, 0, $theNameValueSeparatorPos)
+			) . substr($aHeader, $theNameValueSeparatorPos)
+			: self::normalizeHttpHeaderName($aHeader);
+	}
+	
+	/**
+	 * FastCGI may not have the global function getallheaders() defined,
+	 * so we define it here just in case it does not exist elsewhere.
+	 */
+	static public function getAllHttpHeaders()
+	{
+		if (function_exists('getallheaders'))
+		{ return getallheaders(); }
+		else
+		{
+			$theHeaders = array();
+			foreach ($_SERVER as $theKey => $theVal) {
+				if (substr($theKey, 0, 5) == 'HTTP_') {
+					$theHeaders[self::normalizeHttpHeaderName(
+							substr($theKey, 5)
+					)] = $theVal;
+				}
+		   }
+		   return $theHeaders;
+		}
+	}
+	
+	/**
+	 * Normalize and create an HTTP header.
+	 * @param string $aName - the header name.
+	 * @param string $aValue - the value of the header.
+	 * @return string Returns the header string.
+	 */
+	static public function createHttpHeader( $aName, $aValue )
+	{
+		return self::normalizeHttpHeaderName($aName) . ': ' . $aValue;
+	}
+	
+	/**
+	 * Splits out an HTTP header into its name and value.
+	 * @param string $aHeader - the entire header string, "some-name: value".
+	 * @return string[] Returns the raw header name and its raw header value.
+	 */
+	static public function splitHttpHeader( $aHeader )
+	{
+		$theNameValueSeparatorPos = strpos($aHeader, ':');
+		return ( $theNameValueSeparatorPos >= 0 ) ?
+			array( trim(substr($aHeader, 0, $theNameValueSeparatorPos)),
+					trim(substr($aHeader, $theNameValueSeparatorPos+1)) )
+			: trim($aHeader);
+	}
+	
+	/**
 	 * Recombine the array made by parse_url() into a string.
 	 * @param array $aParsedUrl
 	 * @return string Returns the url string.
@@ -820,6 +1055,18 @@ class Strings {
 		}
 		else
 			$aValue = stripslashes($aValue);
+	}
+	
+	/**
+	 * Sometimes while debugging it would be nice to just print out a stack trace.
+	 * @return string Returns the current stack trace.
+	 */
+	static public function getStackTrace()
+	{
+		try
+		{ throw new \Exception(); }
+		catch (\Exception $x)
+		{ return $x->getTraceAsString(); }
 	}
 	
 }//end class

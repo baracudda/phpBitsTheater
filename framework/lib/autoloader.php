@@ -71,14 +71,19 @@ function autoloader($aClassName) {
 			$theFileName = sprintf($theFileNameFormat,$theClassName);
 			$theClassPath = $theRootLibFolder.$theClassFolder.$theFileName;
 			$theClassPathAlt = $theRootLibFolder.$theFileName;
+			//print "checking to see if [{$theClassPath}] or [{$theClassPathAlt}] is a file...\n"; //DEBUG
 			if (is_file($theClassPath) || is_file($theClassPathAlt)) {
+				//print "yep, including it...\n"; //DEBUG
 				if (include_once($theClassPath)) return true;
 				if (include_once($theClassPathAlt)) return true;
+				//print "hrm, including it failed.\n"; //DEBUG
 			}
+			//else print "nope.\n"; //DEBUG
 		}
 	}
 	
 	//class not found
+	//print "[{$aClassName}] not found.\n";
 	return false;
 }
 

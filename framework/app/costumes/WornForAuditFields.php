@@ -34,17 +34,24 @@ trait WornForAuditFields
 	 */
 	protected function addAuditFieldsForInsert(SqlBuilder $aSqlBuilder) {
 		$nowAsUTC = $aSqlBuilder->myModel->utc_now();
-		$fn = 'created_ts';
-		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn), $nowAsUTC);
+		$theParamKey = $aSqlBuilder->getUniqueDataKey('created_ts');
+		$aSqlBuilder->setParamValueIfEmpty($theParamKey, $nowAsUTC)
+			->mustAddParamForColumn($theParamKey, 'created_ts')
+		;
 		$aSqlBuilder->setParamPrefix(', ');
-		$fn = 'updated_ts';
-		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn), $nowAsUTC);
-		$fn = 'created_by';
-		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn),
+		$theParamKey = $aSqlBuilder->getUniqueDataKey('updated_ts');
+		$aSqlBuilder->setParamValueIfEmpty($theParamKey, $nowAsUTC)
+			->mustAddParamForColumn($theParamKey, 'updated_ts')
+		;
+		$theParamKey = $aSqlBuilder->getUniqueDataKey('created_by');
+		$aSqlBuilder->setParamValueIfEmpty($theParamKey,
 				$aSqlBuilder->getDirector()->getMyUsername()
-		);
-		$fn = 'updated_by';
-		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn));
+			)
+			->mustAddParamForColumn($theParamKey, 'created_by')
+		;
+		$theParamKey = $aSqlBuilder->getUniqueDataKey('updated_by');
+		//add param even if value is NULL so we always have the audit params.
+		$aSqlBuilder->mustAddParamForColumn($theParamKey, 'updated_by');
 		return $aSqlBuilder;
 	}
 	
@@ -58,13 +65,17 @@ trait WornForAuditFields
 	 */
 	protected function addAuditFieldsForUpdate(SqlBuilder $aSqlBuilder) {
 		$nowAsUTC = $aSqlBuilder->myModel->utc_now();
-		$fn = 'updated_ts';
-		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn), $nowAsUTC);
+		$theParamKey = $aSqlBuilder->getUniqueDataKey('updated_ts');
+		$aSqlBuilder->setParamValueIfEmpty($theParamKey, $nowAsUTC)
+			->addParamForColumn($theParamKey, 'updated_ts')
+		;
 		$aSqlBuilder->setParamPrefix(', ');
-		$fn = 'updated_by';
-		$aSqlBuilder->mustAddFieldAndParam($fn, $aSqlBuilder->getUniqueDataKey($fn),
+		$theParamKey = $aSqlBuilder->getUniqueDataKey('updated_by');
+		$aSqlBuilder->setParamValueIfEmpty($theParamKey,
 				$aSqlBuilder->getDirector()->getMyUsername()
-		);
+			)
+			->addParamForColumn($theParamKey, 'updated_by')
+		;
 		return $aSqlBuilder;
 	}
 	

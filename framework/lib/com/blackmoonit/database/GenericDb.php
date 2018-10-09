@@ -70,7 +70,7 @@ class GenericDb extends BaseDbClass {
 
 	/**
 	 * Used in base connect() implementation.
-	 * @return DbConnInfo the database connection info.
+	 * @return \com\blackmoonit\database\DbConnInfo the database connection info.
 	 */
 	public function getDbConnInfo() {
 		//let descendants handle
@@ -240,7 +240,7 @@ class GenericDb extends BaseDbClass {
 	}
 	
 	/**
-	 * @return Returns a SQL datetime string representing now() in UTC.
+	 * @return string Returns a SQL datetime string representing now() in UTC.
 	 */
 	public function getDateTimeAsDbTimestampFormat( \DateTime $aDateTime )
 	{

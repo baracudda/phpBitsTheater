@@ -142,7 +142,7 @@ class BitsAccounts extends BaseModel {
 	/**
 	 * Gets the set of all account records.
 	 * TODO - Add paging someday.
-	 * @return PDOStatement - the iterable result of the SELECT query
+	 * @return \PDOStatement - the iterable result of the SELECT query
 	 * @throws DbException if something goes wrong
 	 * @since BitsTheater 3.6
 	 */

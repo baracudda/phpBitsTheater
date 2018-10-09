@@ -26,7 +26,7 @@ use com\blackmoonit\FinallyBlock;
  * Acts as a container for, and iterator over, a set of records.
  *
  * <pre>
- * $theSet = RecordSet::create($this->getDirector())
+ * $theSet = RecordSet::withContextAndColumns($this, $theFieldList)
  *     ->setDataFromPDO($pdo)
  *     ;
  * </pre>
@@ -37,7 +37,18 @@ abstract class ARecordSet extends BaseCostume
 {
 	use WornByModel;
 	
+	/**
+	 * Not used, currently. Future feature.
+	 * @var mixed
+	 */
 	public $filter = null;
+	/**
+	 * Legacy variable for total query count (not returned result set).
+	 * New code should refer to properties of WornForPagerManagement trait.
+	 * <br><code>WornForPagerManagement::mPagerTotalRowCount</code>
+	 * <br><code>WornForPagerManagement::getPagerTotalRowCount()</code>
+	 * @var integer
+	 */
 	public $total_count = 0;
 	
 	/**
@@ -54,6 +65,24 @@ abstract class ARecordSet extends BaseCostume
 		$this->setModel( $aContext->getProp( $this->getModelClassToUse() ) );
 		$this->mItemClassArgs = array( $this->getModel() );
 		parent::setup($aContext);
+	}
+	
+	/**
+	 * ARecord descendants need at least a model and an export field list.
+	 * Helper factory method designed to promote using the defined model
+	 * with the ARecordSet descendant and an export field/column name list.
+	 * @param IDirected $aContext - used to get the Director object.
+	 * @param string[] $aExportFieldList - fields we intend to export.
+	 * @return $this Returns $this for chaining.
+	 */
+	static public function withContextAndColumns( IDirected $aContext,
+			$aExportFieldList=null )
+	{
+		$theClassName = get_called_class();
+		$o = new $theClassName($aContext); //which will run self::setup()
+		//once we have an object, set our default item class constructor args.
+		$o->setItemClassArgs($o->getModel(), $aExportFieldList);
+		return $o;
 	}
 	
 	/**
@@ -108,7 +137,7 @@ abstract class ARecordSet extends BaseCostume
 		}
 		return $this ;
 	}
-
+	
 }//end class
 
 }//end namespace

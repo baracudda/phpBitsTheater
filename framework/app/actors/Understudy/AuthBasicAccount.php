@@ -22,13 +22,17 @@ use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\AuthPasswordReset;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\HttpAuthHeader;
+use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthAccountSet;
 use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\WornForAuditFields;
+use BitsTheater\models\Accounts;
+use BitsTheater\models\Auth as AuthDB; /* @var $dbAuth AuthDB */
 use BitsTheater\outtakes\AccountAdminException;
 use BitsTheater\outtakes\PasswordResetException;
+use BitsTheater\scenes\Account as MyScene;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\MailUtils;
@@ -58,9 +62,27 @@ class AuthBasicAccount extends BaseActor
 	const MAGIC_PING_TOKEN = 'pInG';
 
 	/**
+	 * {@inheritDoc}
+	 * @return MyScene Returns a newly created scene descendant.
+	 * @see \BitsTheater\Actor::createMyScene()
+	 */
+	protected function createMyScene($anAction)
+	{ return new MyScene($this, $anAction); }
+
+	/** @return MyScene Returns my scene object. */
+	public function getMyScene()
+	{ return $this->scene; }
+
+	/**
+	 * @return AuthDB Returns the database model reference.
+	 */
+	protected function getAuthModel()
+	{ return $this->getProp(AuthDB::MODEL_NAME); }
+
+	/**
 	 * Fetches an instance of the model usually accessed by this actor, granting
 	 * access to account data.
-	 * @return Model - an instance of the model
+	 * @return Accounts - an instance of the model
 	 * @throws BrokenLeg - 'DB_CONNECTION_FAILED' if the model can't connect to
 	 *  the database
 	 * @since BitsTheater 3.6
@@ -524,9 +546,10 @@ class AuthBasicAccount extends BaseActor
 	}
 	
 	/**
-     * Register a user via mobile app rather than on web page.
-	 * POST vars expected: name, salt, email, code, fingerprints
-     * @return Returns JSON encoded array[code, user_token, auth_token]
+     * Register a user via mobile app rather than on web page.<br>
+	 * POST vars expected: name, salt, email, code, fingerprints.<br>
+     * Response is a JSON encoded array[code, user_token, auth_token].<br>
+	 * @return string Returns the redirect URL, if defined.
 	 */
 	public function registerViaMobile() {
 		//shortcut variable $v also in scope in our view php file.
@@ -558,9 +581,10 @@ class AuthBasicAccount extends BaseActor
 	
 	/**
 	 * Mobile auth is a bit more involved than Basic HTTP auth, use this mechanism
-	 * for authenticating mobile devices (which may be rooted).
+	 * for authenticating mobile devices (which may be rooted).<br>
+     * Returns JSON encoded array[account_name, user_token, auth_token, api_version_seq]
 	 * @param string $aPing - (optional) ping string which could be used to pong a response.
-     * @return Returns JSON encoded array[account_name, user_token, auth_token, api_version_seq]
+	 * @return string Returns the redirect URL, if defined.
 	 */
 	public function requestMobileAuth($aPing=null) {
 		//shortcut variable $v also in scope in our view php file.
@@ -1035,27 +1059,6 @@ class AuthBasicAccount extends BaseActor
 	}
 
 	/**
-	 * Consumed by ajajGetAll().
-	 * @param integer $aGroupID the ID of the account group
-	 * @since BitsTheater 3.6.0
-	 */
-	protected function getAllInGroup( $aGroupID )
-	{
-		$dbGroups = $this->getProp('AuthGroups');
-		if( ! $dbGroups->groupExists($aGroupID) )
-			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aGroupID ) ;
-		$dbAuth = $this->getProp('Auth');
-		try {
-			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene, $aGroupID);
-			$this->scene->results = APIResponse::resultsWithData(
-					$this->getAuthAccountSet($theRowSet)
-			);
-		}
-		catch (Exception $x)
-		{ throw BrokenLeg::tossException( $this, $x ) ; }
-	}
-
-	/**
 	 * Allows a site administrator to view the details of all existing accounts
 	 * on the system, or all accounts in a particular "role" (permission group).
 	 * @param integer $aGroupID - (optional) the ID of a permission group
@@ -1065,18 +1068,72 @@ class AuthBasicAccount extends BaseActor
 	public function ajajGetAll( $aGroupID=null )
 	{
 		$this->checkAllowed( 'accounts', 'view' );
-		$theGroupID = $this->getEntityID( $aGroupID, 'group_id', false ) ;
-		if( ! empty($theGroupID) )
-			return $this->getAllInGroup( $theGroupID ) ; // instead of "get all"
-		$dbAuth = $this->getProp('Auth');
+		$theGroupID = $this->getRequestData( $aGroupID, 'group_id', false ) ;
+		if( ! empty($theGroupID) ) {
+			$dbGroups = $this->getProp('AuthGroups');
+			if( ! $dbGroups->groupExists($theGroupID) )
+			{ throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $theGroupID ); }
+		}
 		try {
-			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene);
-			$this->scene->results = APIResponse::resultsWithData(
-					$this->getAuthAccountSet($theRowSet)
-			);
+			$dbAuth = $this->getProp('Auth');
+			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene, $theGroupID);
+			$this->setApiResults( $this->getAuthAccountSet($theRowSet) );
 		}
 		catch (Exception $x)
 		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+
+	/**
+	 * Retrieves specific accounts by the given parameters.
+	 * @param string $aFilter - Filter string used to search for accounts
+	 *   by a certain subset of field/column values.
+	 */
+	public function ajajSearch( $aSearchText=null )
+	{
+		$v = $this->getMyScene();
+		$this->viewtoRender( 'results_as_json' );
+		// Ensure needed permissions are had, otherwise throw BrokenLeg.
+		$this->checkAllowed( 'accounts', 'view' );
+		// Reference db model objects.
+		$dbAuth = $this->getProp( 'Auth' );
+		$dbAccounts = $this->getCanonicalModel();
+
+		// Parse given request parameters.
+		$theSearchText = Strings::stripEnclosure(trim(
+				$this->getRequestData($aSearchText, 'search', false)
+		));
+		if ( !empty($theSearchText) )
+		{ $theSearchText = '%' . $theSearchText . '%'; }
+		$bAndSearchText = filter_var($v->andSearch, FILTER_VALIDATE_BOOLEAN);
+		$theAuthGroupsList = ( !empty($v->authgroups) ) ? $v->authgroups : array();
+		
+		$theFilterSql = SqlBuilder::withModel( $dbAuth )
+			->obtainParamsFrom( $v->filter )->add( '1' )
+			->setParamPrefix( ' AND ' )
+			->addFieldAndParam( 'acct.account_name', 'account_name' )
+			->addFieldAndParam( 'auth.email', 'email' )
+// 			->addParam( 'mapped_imei' )
+			->addFieldAndParam( 'auth.created_ts', 'created_ts' )
+			->addFieldAndParam( 'auth.updated_ts', 'updated_ts' )
+			->addFieldAndParam( 'auth.verified_ts', 'verified_ts' )
+			->add('AND (')->setParamOperator(' LIKE ')
+			->addFieldAndParam( 'acct.account_name', 'account_name', $theSearchText )
+			->addFieldAndParam( 'auth.email', 'email', $theSearchText )
+// 			->addParam( 'mapped_imei' )
+			->addFieldAndParam( 'auth.created_ts', 'created_ts', $theSearchText )
+			->addFieldAndParam( 'auth.updated_ts', 'updated_ts', $theSearchText )
+			->addFieldAndParam( 'auth.verified_ts', 'verified_ts', $theSearchText )
+			->add(')')
+			;
+		try
+		{
+			// Search db for accounts with scene-passed and explicit parameters.
+			$theRowSet = $dbAuth->getAccountsByFilter( $v, $theOrderByList, $theFilterSql );
+			// Return the set object for the retrieved accounts in the response.
+			$this->setApiResults( $this->getAuthAccountSet( $theRowSet ) );
+		}
+		catch ( Exception $ex )
+		{ throw BrokenLeg::tossException( $this, $ex ); }
 	}
 
 	/**
@@ -1091,7 +1148,7 @@ class AuthBasicAccount extends BaseActor
 	 */
 	public function ajajActivate( $aAccountID=null )
 	{
-		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$theAccountID = $this->getRequestData( $aAccountID, 'account_id' ) ;
 		$this->setActiveStatus( $theAccountID, true ) ;
 	}
 
@@ -1107,9 +1164,20 @@ class AuthBasicAccount extends BaseActor
 	 */
 	public function ajajDeactivate( $aAccountID=null )
 	{
-		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$theAccountID = $this->getRequestData( $aAccountID, 'account_id' ) ;
 		$this->setActiveStatus( $theAccountID, false ) ;
-		//TODO also remove tokens
+		$dbAuth = $this->getAuthModel();
+		$theAuthRow = $dbAuth->getAuthByAccountId( $aAccountID );
+		$theTokensToRemove = array(
+				$dbAuth::TOKEN_PREFIX_ANTI_CSRF . '%',
+				$dbAuth::TOKEN_PREFIX_COOKIE . '%',
+				$dbAuth::TOKEN_PREFIX_LOCKOUT . '%',
+		);
+		foreach ($theTokensToRemove as $theTokenPattern) {
+			$dbAuth->removeTokensFor($theAuthRow['auth_id'],
+					$theAuthRow['account_id'], $theTokenPattern
+			);
+		}
 	}
 
 	/**
@@ -1198,7 +1266,8 @@ class AuthBasicAccount extends BaseActor
 
 	/**
 	 * Map a mobile device with an account to auto-login once configured.
-	 * @return Returns NO CONTENT.
+	 * Returns NO CONTENT.
+	 * @return string Returns the redirect URL, if defined.
 	 * @since BitsTheater 3.6.1
 	 */
 	public function ajajMapMobileToAccount() {
@@ -1258,8 +1327,9 @@ class AuthBasicAccount extends BaseActor
 	
 	/**
 	 * Mobile devices might ask the server for what account should be used
-	 * for authenticating mobile devices (which may be rooted).
-	 * @return Returns JSON encoded array[account_name, auth_id, user_token, auth_token]
+	 * for authenticating mobile devices (which may be rooted).<br>
+	 * Returns JSON encoded array[account_name, auth_id, user_token, auth_token]
+	 * @return string Returns the redirect URL, if defined.
 	 */
 	public function requestMobileAuthAccount() {
 		$v =& $this->scene;

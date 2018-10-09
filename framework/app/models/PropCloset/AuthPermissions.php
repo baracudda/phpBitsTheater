@@ -17,16 +17,16 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\costumes\SqlBuilder;
-use BitsTheater\models\Auth;
-use BitsTheater\models\PropCloset\BitsGroups ;
+use BitsTheater\outtakes\RightsException ;
+use BitsTheater\BrokenLeg ;
+use BitsTheater\Scene;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Arrays;
 use PDO;
 use PDOStatement;
 use PDOException;
-use BitsTheater\BrokenLeg ;
-use BitsTheater\outtakes\RightsException ;
 {//namespace begin
 
 class AuthPermissions extends BaseModel {
@@ -45,8 +45,6 @@ class AuthPermissions extends BaseModel {
 	const TABLE_PREFIX_INCLUDES_DB_NAME = true;
 
 	public $tnPermissions; const TABLE_Permissions = 'permissions';
-
-	public $_permCache = array();
 
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
@@ -113,18 +111,17 @@ class AuthPermissions extends BaseModel {
 	 * Check group permissions to see if current user account (or passed in one) is allowed.
 	 * @param string $aNamespace - namespace of permission.
 	 * @param string $aPermission - permission to test against.
-	 * @param array $acctInfo - account information (optional, defaults current user).
+	 * @param AccountInfoCache $acctInfo - (optional) check this account
+	 *   instead of current user.
 	 * @return boolean Returns TRUE if allowed, else FALSE.
 	 */
-	public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null) {
+	public function isPermissionAllowed($aNamespace, $aPermission,
+			AccountInfoCache $acctInfo=null)
+	{
 		if (empty($acctInfo)) {
 			$acctInfo = $this->getDirector()->getMyAccountInfo();
 		}
 		//$this->debugLog('acctinfo:'.$this->debugStr($acctInfo));
-		if ( !empty($acctInfo) && !empty($acctInfo->groups) &&
-				(array_search( BitsGroups::TITAN_GROUP_ID,$acctInfo->groups,true)!==false) ) {
-			return true; //group 1 is always allowed everything
-		}
 		if ( empty($acctInfo) )
 		{
 			$acctInfo = $this->getProp('Auth')->createAccountInfoObj(array(
@@ -133,21 +130,21 @@ class AuthPermissions extends BaseModel {
 			));
 		}
 		//cache the current users permissions
-		if (empty($this->_permCache[$acctInfo->account_id])) {
+		if ( empty($acctInfo->rights) ) {
 			try {
-				$this->_permCache[$acctInfo->account_id] = array();
+				$acctInfo->rights = array();
 				foreach ($acctInfo->groups as $theGroupId) {
-					$this->_permCache[$acctInfo->account_id][$theGroupId] = $this->getAssignedRights($theGroupId);
+					$acctInfo->rights[$theGroupId] = $this->getAssignedRights($theGroupId);
 				}
 			} catch (DbException $dbe) {
 				//use default empty arrays which will mean all permissions will be not allowed
 			}
 		}
-		//$this->debugLog('perms:'.$this->debugStr($this->_permCache));
+		//$this->debugLog('perms:'.$this->debugStr($acctInfo->rights));
         //$this->debugLog(__METHOD__.' '.memory_get_usage(true));
 
 		//if any group allows the permission, then we allow it.
-		foreach ($this->_permCache[$acctInfo->account_id] as $theGroupId => $theAssignedRights) {
+		foreach ($acctInfo->rights as $theGroupId => $theAssignedRights) {
 			$theResult = self::FORM_VALUE_Disallow;
 			if (!empty($theAssignedRights[$aNamespace]) && !empty($theAssignedRights[$aNamespace][$aPermission]))
 				$theResult = $theAssignedRights[$aNamespace][$aPermission];
@@ -203,7 +200,7 @@ class AuthPermissions extends BaseModel {
 		$theGroupId = $aGroupId+0;
 		//check rights for group passed in, and then all its parents
 		$theMergeList = array($theGroupId => -1);
-		/* @var $dbAuth Auth */
+		/* @var $dbAuth \BitsTheater\models\Auth */
 		$dbAuth = $this->getProp('Auth');
 		$theGroupList = Arrays::array_column_as_key($dbAuth->getGroupList(),'group_id');
 		//$this->debugLog('grouplist='.$this->debugStr($theGroupList));
@@ -239,9 +236,6 @@ class AuthPermissions extends BaseModel {
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'group_id' ) ;
 
 		$theGroupID = intval($aGroupID) ;
-
-		if( $theGroupID == BitsGroups::TITAN_GROUP_ID )
-			return $this->getTitanRights() ;
 
 		$dbGroups = $this->getProp( 'AuthGroups' ) ;
 		$theGroups = Arrays::array_column_as_key( $dbGroups->getAllGroups(true), 'group_id' ) ;
@@ -294,7 +288,7 @@ class AuthPermissions extends BaseModel {
 	 * @param string $aGroupID a group ID to be merged into the result set
 	 * @param boolean $bIsFirst indicates whether this is the first group being
 	 *  processed in a loop that is ascending a chain of ancestors
-	 * @return a copy of the permissions table that was passed in; this function
+	 * @return array Returns a copy of the permissions table that was passed in; this function
 	 *  should be called such that the return value is assigned back into the
 	 *  referenced array if it is being called iteratively on a hierarchy
 	 */
@@ -343,24 +337,6 @@ class AuthPermissions extends BaseModel {
 	}
 
 	/**
-	 * Consumed by getGrantedRights() to build up a giant tree of all the site's
-	 * permissions, all marked as true.
-	 */
-	protected function getTitanRights()
-	{
-		$theTitanPerms = array() ;
-		$theSpaces = $this->getRes( 'Permissions/namespace' ) ;
-		foreach( $theSpaces as $theSpace => $theNSInfo )
-		{
-			$theTitanPerms[$theSpace] = array() ;
-			$thePerms = $this->getRes( 'Permissions/' . $theSpace ) ;
-			foreach( $thePerms as $thePerm => $thePermInfo )
-				$theTitanPerms[$theSpace][$thePerm] = true ;
-		}
-		return $theTitanPerms ;
-	}
-
-	/**
 	 * Remove existing permissions for a particular group.
 	 * @param integer $aGroupId - the group ID.
 	 */
@@ -406,8 +382,7 @@ class AuthPermissions extends BaseModel {
 	/**
 	 * Returns a raw SELECT * from the permission/group mapping table.
 	 * @param $bIncludeSystemGroups boolean indicates whether to include the
-	 *  "unregistered" and "titan" groups that are defined by default when the
-	 *  system is installed
+	 *   "unregistered" group.
 	 * @throws DbException if a problem occurs during DB query execution
 	 * @return array a table of rows from the DB
 	 */
@@ -420,12 +395,8 @@ class AuthPermissions extends BaseModel {
 		if( ! $bIncludeSystemGroups )
 		{
 			$theSql->startWhereClause()
-				->setParamOperator( '<>' )
-			 	->addFieldAndParam( 'group_id', 'unreg_group_id',
-			 			BitsGroups::UNREG_GROUP_ID )
-			 	->setParamPrefix( ' AND ' )
-				->addFieldAndParam( 'group_id', 'titan_group_id',
-						BitsGroups::TITAN_GROUP_ID )
+				->setParamOperator(SqlBuilder::OPERATOR_NOT_EQUAL)
+				->mustAddParam('group_id', BitsGroups::UNREG_GROUP_ID, \PDO::PARAM_INT)
 				->endWhereClause()
 				;
 		}
@@ -443,16 +414,13 @@ class AuthPermissions extends BaseModel {
 	 * @return array indication of the result
 	 * @throws DbException if a problem occurs during DB query execution
 	 * @throws RightsException if either source or target is not specified, or
-	 *  not found, or is the "titan" group
+	 *   not found
 	 */
 	public function copyPermissions( $aSourceGroupID=null, $aTargetGroupID=null )
 	{
 		if( ! isset( $aSourceGroupID ) )
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT',
 					'source_group_id' ) ;
-
-		if( $aSourceGroupID == BitsGroups::TITAN_GROUP_ID )
-			throw RightsException::toss( $this, 'CANNOT_COPY_FROM_TITAN' ) ;
 
 		$dbGroups = $this->getProp( 'AuthGroups' ) ;
 
@@ -463,9 +431,6 @@ class AuthPermissions extends BaseModel {
 		if( ! isset( $aTargetGroupID ) )
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT',
 					'target_group_id' ) ;
-
-		if( $aTargetGroupID == BitsGroups::TITAN_GROUP_ID )
-			throw RightsException::toss( $this, 'CANNOT_COPY_TO_TITAN' ) ;
 
 		if( ! $dbGroups->groupExists( $aTargetGroupID ) )
 			throw RightsException::toss( $this, 'GROUP_NOT_FOUND',
@@ -556,7 +521,6 @@ class AuthPermissions extends BaseModel {
 	 *  the database
 	 * @throws DbException if something goes wrong in the DB
 	 * @throws BrokenLeg if one of the parameters is missing
-	 * @throws RightsException if the group ID is that of the "titan" group
 	 */
 	public function setPermission( $aGroupID=null, $aNamespace=null, $aPerm=null, $aValue=null )
 	{
@@ -567,8 +531,6 @@ class AuthPermissions extends BaseModel {
 		if( empty( $aPerm ) )
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', 'permission' ) ;
 
-		if( $aGroupID == BitsGroups::TITAN_GROUP_ID )
-			throw RightsException::toss( $this, 'CANNOT_MODIFY_TITAN' ) ;
 		$dbGroups = $this->getProp( 'AuthGroups' ) ;
 		if( ! $dbGroups->groupExists( $aGroupID ) )
 			throw RightsException::toss( $this, 'GROUP_NOT_FOUND',
@@ -643,9 +605,9 @@ class AuthPermissions extends BaseModel {
 				'namespace_new' => $aNewNamespace,
 		));
 		$theSql->startWith('UPDATE')->add($this->tnPermissions);
-		$theSql->add('SET')->mustAddFieldAndParam('namespace', 'namespace_new');
+		$theSql->add('SET')->addParamForColumn('namespace_new', 'namespace');
 		$theSql->startWhereClause();
-		$theSql->mustAddFieldAndParam('namespace', 'namespace_old');
+		$theSql->addParamForColumn('namespace_old', 'namespace');
 		$theSql->endWhereClause();
 		try {
 			$theSql->execDML();
@@ -655,10 +617,8 @@ class AuthPermissions extends BaseModel {
 					$aOldNamespace . ' to ' . $aNewNamespace
 			);
 		}
-		
 		//after changing permissions, affect the cache too
-		$this->_permCache = array();
-		$this->isPermissionAllowed($aNewNamespace, '');
+		$this->getDirector()->account_info->rights = null;
 	}
 
 }//end class

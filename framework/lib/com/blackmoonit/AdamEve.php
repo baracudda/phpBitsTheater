@@ -16,9 +16,8 @@
  */
 
 namespace com\blackmoonit;
-use com\blackmoonit\Strings;
-use \stdClass as BaseClass;
-use \ReflectionClass;
+use stdClass as BaseClass;
+use ReflectionClass;
 {//begin namespace
 
 /**
@@ -124,6 +123,20 @@ class AdamEve extends BaseClass {
 	    	}
 	    }
 	    return $theResult;
+	}
+	
+	/**
+	 * Static version of logStuff().
+	 * @see AdamEve::logStuff()
+	 */
+	static protected function debugOutput( $_ )
+	{
+		$theLogLine = '';
+		foreach (func_get_args() as $arg)
+		{
+			$theLogLine .= ( is_string($arg) ) ? $arg : Strings::debugStr($arg);
+		}
+		Strings::debugLog( $theLogLine );
 	}
 	
 	/**

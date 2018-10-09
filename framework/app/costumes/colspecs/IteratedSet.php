@@ -37,6 +37,7 @@ use PDOStatement ;
  * @since BitsTheater 3.5.3
  */
 class IteratedSet extends BaseCostume
+implements \Countable, \IteratorAggregate
 {
 	/**
 	 * The data set to be iterated. Could be a PDOStatement, an array, whatever.
@@ -70,7 +71,7 @@ class IteratedSet extends BaseCostume
 	 * fully-qualified class names.
 	 * @var string
 	 */
-	public $mItemClass;
+	public $mItemClass = self::DEFAULT_ITEM_CLASS;
 
 	/**
 	 * Optional arguments for the constructor of the class that contains a
@@ -86,6 +87,45 @@ class IteratedSet extends BaseCostume
 	 */
 	public $mPrintAsJsonObjectWithIdKey = null;
 	
+	/**
+	 * Required to implement Countable.
+	 * @return number Return the number of items in our set.
+	 */
+	public function count()
+	{
+		//if our dataset is a query, ask it for the count
+		if ( $this->mDataSet instanceof \PDOStatement )
+		{ return $this->mDataSet->rowCount(); }
+		//if our dataset is an array, use the count() function
+		if ( is_array($this->mDataSet) )
+		{ return count($this->mDataSet); }
+		//otherwise, return 0.
+		return 0;
+	}
+	
+	/**
+	 * Return the appropriate iterator for the job so we can use this object
+	 * in a foreach() statement.
+	 */
+	public function getIterator()
+	{
+		for ( $theItem=$this->fetch(); $theItem !== false; $theItem=$this->fetch() ) {
+			yield $theItem;
+		}
+	}
+	
+	/**
+	 * Generator method using a callback on each item as it is yielded.
+	 * @param callable $theCallback - the callback.
+	 * @return \Generator Returns the generated data.
+	 */
+	public function map(callable $theCallback)
+	{
+		foreach($this as $key => $item) {
+			yield $key => $theCallback($item);
+		}
+	}
+		
 	/**
 	 * Magic PHP method to limit what var_dump() shows.
 	 */
@@ -213,6 +253,33 @@ class IteratedSet extends BaseCostume
 	}
 
 	/**
+	 * Fetches all of the data as an array.
+	 * @param int $aFetchStyle - (OPTIONAL) the fetch style const.
+	 * @param mixed $aFetchArg - (OPTIONAL) some fetch styles may use an arg.
+	 * @param array $ctor_args - (OPTIONAL) some fetch styles need more args.
+	 * @return array
+	 * @see PDOStatement::fetchAll()
+	 * @deprecated Nice to know it can be done, but do not wish to encourage use anywhere.
+	 * /
+	private function fetchAll($aFetchStyle=null, $aFetchArg=null, $ctor_args=null)
+	{
+		if ( !($this->mDataSet instanceof PDOStatement) ) return; //trivial
+		$theResults = $this->mDataSet->fetchAll(...func_get_args());
+		if ( !empty($theResults) ) {
+			foreach ($theResults as $theRow) {
+				if ( is_object($theRow) ) {
+					if ( method_exists($theRow, 'onFetch') )
+					{ $theRow->onFetch(); }
+					$this->onFetch( $theRow );
+				}
+				else break;
+			}
+		}
+		return $theResults;
+	}
+	*/
+
+	/**
 	 * Prints the entire data set to the output stream, item by item as array.
 	 * @param string $aEncodeOptions options for `json_encode()`
 	 * @return IteratedSet $this
@@ -228,7 +295,7 @@ class IteratedSet extends BaseCostume
 		try
 		{
 			$theSeparator = '' ;
-			for( $theItem = $this->fetch() ; $theItem !== false ; $theItem = $this->fetch() )
+			foreach ($this as $theItem)
 			{
 				print( $theSeparator ) ;
 				$theSeparator = ',' ;
@@ -266,7 +333,7 @@ class IteratedSet extends BaseCostume
 		try
 		{
 			$theSeparator = '' ;
-			for( $theItem = $this->fetch() ; $theItem !== false ; $theItem = $this->fetch() )
+			foreach ($this as $theItem)
 			{
 				print( $theSeparator ) ;
 				$theSeparator = ',' ;
@@ -301,7 +368,7 @@ class IteratedSet extends BaseCostume
 				$this->printAsJsonObjectWithIdKey( $this->mPrintAsJsonObjectWithIdKey, $aEncodeOptions );
 		return $this ;
 	}
-
+	
 } // end class
 
 } // end namespace

@@ -67,7 +67,7 @@ class Arrays {
 	 * single specified column.
 	 * @param array $anArray - array of arrays.
 	 * @param  $aKey - index of column to retrieve.
-	 * @return Returns a one dimensional array of just $anArray[$subArray[$aKey]] values.
+	 * @return array Returns a one dimensional array of just $anArray[$subArray[$aKey]] values.
 	 * @link http://www.php.net//manual/en/function.array-column.php array_column()
 	 */
 	static public function array_column($anArray, $aKey) {
@@ -154,16 +154,23 @@ class Arrays {
 	/**
 	 * Convert a given two dimensional array into a csv.
 	 * @param array $aInput - array to convert, returns FALSE if this is empty.
-	 * @param array $aHeaderRow - (optional) single dimension array of header values or TRUE to grab 1st row keys.
-	 * @param mixed $aStream - (optional) output directed to a stream, else a string is returned.
-	 * @param string $aDelimiter - (optional) defaults to ",", but it can be TAB or whatever.
-	 * @param functions $aCallbacks - (optional) callback functions keyed by column names for alternate output;
-	 *                                Callbacks are of the form myCallback($col, $row).
-	 * @return string - Returns a string if no output stream is given, else !empty($aInput).
+	 * @param array $aHeaderRow - (optional) single dimension array of header
+	 *   values or TRUE to grab 1st row keys.
+	 * @param mixed $aStream - (optional) output directed to a stream,
+	 *   else a string is returned.
+	 * @param string $aDelimiter - (optional) defaults to ",", but it can be
+	 *   <span style="font-family:monospace;">TAB</span> or whatever.
+	 * @param callable[] $aCallbacks - (optional) callback functions keyed by
+	 *   column names for alternate output; Callbacks are of the form
+	 *   <span style="font-family:monospace;">myCallback($col, $row)</span>.
+	 * @return string - Returns a string if no output stream is given,
+	 *   else <span style="font-family:monospace;">!empty($aInput)</span>.
 	 * @see StackOverflow.com http://stackoverflow.com/a/21858025
 	 * @see OutputToCSV.
 	 */
-	static public function array_to_csv_string(array &$aInput, $aHeaderRow=null, $aStream=null, $aDelimiter=',', $aCallbacks) {
+	static public function array_to_csv_string(array &$aInput, $aHeaderRow=null,
+			$aStream=null, $aDelimiter=',', $aCallbacks)
+	{
 		if (empty($aInput))
 			return false;
 		// using concatenation since it is faster than fputcsv, and file size is smaller

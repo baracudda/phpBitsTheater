@@ -199,7 +199,7 @@ class BaseWidget
 
 	/**
 	 * Tests whether a value has been set for an attribute.
-	 * @param unknown $aName attribute name
+	 * @param string $aName attribute name
 	 * @return boolean true if a value has been set
 	 */
 	public function hasAttr( $aName )

@@ -17,8 +17,6 @@
 
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
-use BitsTheater\costumes\ConfigNamespaceInfo;
-use BitsTheater\costumes\ConfigResEntry;
 use com\blackmoonit\Widgets;
 use com\blackmoonit\widgetbuilder\TextAreaWidget ;
 use BitsTheater\models\Config;
@@ -69,7 +67,8 @@ class ConfigSettingInfo extends BaseCostume
 	 * based on the array keys or object property names.
 	 * @param array|object $aThing - array or object to copy from.
 	 */
-	protected function copyFrom(&$aThing) {
+	protected function copyFrom( $aThing )
+	{
 		parent::copyFrom($aThing);
 		$this->config_key = $this->ns.'/'.$this->key;
 		if ( !empty($this->mSettingInfo) && (!$this->mSettingInfo instanceof ConfigResEntry) ) {
@@ -230,7 +229,7 @@ class ConfigSettingInfo extends BaseCostume
 	/**
 	 * Given the Scene variable, get the widget values converted back to what needs
 	 * to be saved as a config value.
-	 * @param Scene $aScene - the scene containing the values.
+	 * @param \BitsTheater\Scene $aScene - the scene containing the values.
 	 * @return mixed Returns the value to be saved.
 	 */
 	public function getInputValue($aScene)
