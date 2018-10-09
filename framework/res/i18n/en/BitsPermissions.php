@@ -79,13 +79,13 @@ class BitsPermissions extends BaseResources {
 			'view' => 'View Organizations',
 			'create' => 'Create Organizations',
 			'modify' => 'Modify Organizations',
-			//'delete' => 'Delete Organizations',
+			'transcend' => 'Access All Organizations',
 	);
 	public $desc_auth_orgs = array(
 			'view' => 'View Organization management area.',
 			'modify' => 'Modify Organization details.',
 			'create' => 'Define new Organizations.',
-			//'delete' => 'Remove existing roles.',
+			'transcend' => 'View and operate on data from any Organization',
 	);
 	
 	public $label_config = array(

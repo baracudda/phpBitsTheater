@@ -37,6 +37,7 @@ use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornByIDirectedForValidation;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\costumes\WornForFeatureVersioning;
+use BitsTheater\models\AccountPrefs ;                          // 3.2.15 (#3288)
 use BitsTheater\models\AuthGroups as AuthGroupsDB;
 use BitsTheater\outtakes\AccountAdminException;
 use BitsTheater\outtakes\PasswordResetException;
@@ -556,7 +557,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 *   the data to be used.
 	 * @return array Returns the data posted to the database.
 	 */
-	public function addAuthAccount( $aDataObject )
+	public function addAuthAccount($aDataObject)
 	{
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom($aDataObject);
 		$this->checkNewAuthAccountInfo($theSql);
@@ -695,45 +696,70 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 					'auth_id' => $aAuthAccount->auth_id,
 					'last_seen_ts' => $aAuthAccount->last_seen_ts,
 			));
+			
 			//determine what org to use
-			$theOrgID = $this->getCurrentOrgID($aAuthAccount);
-			if ( !empty($theOrgID) ) {
-				//if we have a session saved orgID, use it
-				$theOrgRow = $this->getOrganization($theOrgID);
+			$theOrgRow = null ;
+			$theCurrentOrg = static::getCurrentOrg($this) ;
+			if( !empty($theCurrentOrg) )
+			{ // Try the session's "current" org first.
+				$theOrgRow = $this->getOrganization( $theCurrentOrg->org_id ) ;
 			}
-			else if ( !$this->isAllowed('auth_orgs', 'transcend') ) {
-				//if we do not have an all backstage pass, grab 1st defined org.
-				$theFilter = null;
-				$theOrgID = ( !empty($aScene->org_id) ) ? $aScene->org_id : null;
-				if ( !empty($theOrgID) ) {
-					$theFilter = SqlBuilder::withModel($this)
-						->startWhereClause()->setParamPrefix('1 AND ')
-						->mustAddParam('org_id', $theOrgID)
-						->endWhereClause()
-						;
-				}
-				$theOrgRow = $this->getOrgsForAuthCursor(
-						$aAuthAccount->auth_id, null, $theFilter
-				)->fetch();
+/*
+			if( empty($theOrgRow) && !empty( $aScene->org_id ) )
+			{ // We weren't set in an org yet. Maybe the scene gave us one?
+				if( $this->accountBelongsToOrg( $aAuthAccount->auth_id, $aScene->org_id ) )
+					$theOrgRow = $this->getOrganization( $aScene->org_id ) ;
 			}
-			if ( !empty($theOrgRow) && isset( $theOrgRow['dbconn'] ) ) {
-				$this->setCurrentOrg($theOrgRow);
+*/
+			if( $theOrgRow === null )
+			{ // We couldn't use one from the scene. Check account's preference?
+				$dbPrefs = $this->getProp( AccountPrefs::MODEL_NAME ) ;
+				$theDefaultOrgID = $dbPrefs->getPreference(
+						$aAuthAccount->auth_id, 'organization', 'default_org' );
+				if( !empty($theDefaultOrgID) && $this->accountBelongsToOrg( $aAuthAccount->auth_id, $theDefaultOrgID ) )
+					$theOrgRow = $this->getOrganization($theDefaultOrgID) ;
 			}
-			else if ( !empty($theOrgID) && !$this->isEmpty($this->tnAuthOrgs) &&
-					!$this->isAllowed('auth_orgs', 'transcend') )
-			{
-				// person is trying to log into an Org they do not belong in,
-				//   consider them an unwanted guest.
-				$this->logStuff(__METHOD__, ' auth_id [', $aAuthAccount->auth_id,
-						'] tried to log into org [', $theOrgID, '] for which ',
-						'they do not have access.'
-				);
-				$theAcctInfo = $this->getDirector()->account_info;
-				$theAcctInfo->groups = array();
-				$theAcctInfo->rights = array();
-				$this->updateFailureLockout($aScene, $theAcctInfo);
+			if( $theOrgRow === null )
+			{ // We STILL didn't find one. Grab the first one that's authorized.
+				$theOrgRow = $this->getOrgsForAuthCursor( $aAuthAccount->auth_id )->fetch() ;
+			}
+
+			if( !empty($theOrgRow) && isset( $theOrgRow['dbconn'] ) )
+			{ // We found something, so pick it.
+				$this->setCurrentOrg($theOrgRow) ;
 			}
 		}
+	}
+	
+	/**
+	 * Indicates whether the given account ID has been mapped into the given
+	 * org ID.
+	 * @param string $aAuthID an account ID
+	 * @param string $aOrgID an organization ID
+	 * @return boolean true if the account is mapped to that org
+	 */
+	public function accountBelongsToOrg( $aAuthID, $aOrgID )
+	{
+		if( $this->isAllowed( 'auth_orgs', 'transcend' ) )
+			return true ;
+		
+		$theSql = SqlBuilder::withModel($this)
+			->startWith( 'SELECT COUNT(*) AS theCount FROM ' )
+			->add( $this->tnAuthOrgMap )
+			->startWhereClause()
+			->mustAddParam( 'auth_id', $aAuthID )
+			->setParamPrefix( ' AND ' )
+			->mustAddParam( 'org_id', $aOrgID )
+			->endWhereClause()
+			->logSqlDebug( __METHOD__, ' [TRACE] ' )
+			;
+		try
+		{
+			$theResult = $theSql->getTheRow() ;
+			return( $theResult['theCount'] > 0 ) ;
+		}
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 	
 	/**
@@ -794,14 +820,26 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$theOrgName = isset($theOrg->org_name) ? $theOrg->org_name : 'Root';
 			throw new DbException($iax, 'fail2swap2org=[' . $theOrgName . ']');
 		}
-		//ensure we store the current org in our session
-		$this->getDirector()->account_info->mSeatingSection = $theOrg;
-		// (#6297) Force re-evaluation of permissions at next check.
-		$this->getDirector()->account_info->rights = null ;
-		if ( $this->isAccountInSessionCache() ) {
-			// if have an account stored in session cache, ensure we update it
-			$this->saveAccountToSessionCache($this->getDirector()->account_info);
+		
+		if( empty($this->getDirector()->account_info->mSeatingSection )
+		 || empty($theOrg)
+		 || $this->getDirector()->account_info->mSeatingSection->org_id != $theOrg->org_id
+		  )
+		{ // The specified org differs from the one that was in the Director.
+			//ensure we store the current org in our session
+			$this->getDirector()->account_info->mSeatingSection = $theOrg;
+			// (#6297) Force re-evaluation of permissions at next check.
+			$this->getDirector()->account_info->rights = null ;
+			// (#6288) Need to clear groups as well, since we may have switched orgs
+			$this->getDirector()->account_info->groups = null ;
+			// (#6288) Now check a permission to kickstart regeneration of rights.
+			$this->isAllowed('auth_orgs', 'transcend');
+			if( $this->isAccountInSessionCache() )
+			{ // Ensure that the session's account cache is really updated.
+				$this->saveAccountToSessionCache($this->getDirector()->account_info);
+			}
 		}
+		
 		return $this;
 	}
 	
@@ -1227,7 +1265,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
-	 * For a given organization id, returns all child orgs.
+	 * For a given organization id, returns all of the immediate child orgs.
 	 * @param string|string[] $aOrgId - a single ID or an array of several IDs.
 	 * @param string|string[] $aFieldList - (optional) which fields to return, default is all of them.
 	 * @param SqlBuilder $aFilter - (optional) specifies restrictions on data to return
@@ -1242,8 +1280,10 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		$theSql = SqlBuilder::withModel($this)
 			->startWith('SELECT')->addFieldList($aFieldList)
 			->add('FROM')->add($this->tnAuthOrgs)
-			->startWhereClause()->mustAddParam('parent_org_id', $aOrgID)
-				->setParamPrefix(' AND ')->applyFilter($aFilter)
+			->startWhereClause()
+			->mustAddParam('parent_org_id', $aOrgID)
+			->setParamPrefix(' AND ')
+			->applyFilter($aFilter)
 			->endWhereClause()
 			;
 		if ( !empty($aSortList) )
@@ -1252,6 +1292,35 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		{ return $theSql->query(); }
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+	}
+	
+	/**
+	 * For a given organization id, returns all child orgs.
+	 * @param string|string[] $aOrgId - a single ID or an array of several IDs.
+	 * @return array Returns all rows as an array.
+	 */
+	public function getOrgAndAllChildrenIDs( $aOrgID )
+	{
+		$theResultSet = array($aOrgID);
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('SELECT org_id')
+			->add('FROM')->add($this->tnAuthOrgs)
+			->startWhereClause()
+			->mustAddParam('parent_org_id', $aOrgID)
+			->endWhereClause()
+			;
+		try
+		{
+			$theOrgList = $theSql->query()->fetchAll(\PDO::FETCH_COLUMN);
+			foreach($theOrgList as $theOrgID) {
+				$theResultSet = array_merge($theResultSet,
+						$this->getOrgAndAllChildrenIDs($theOrgID)
+				);
+			}
+		}
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+		return $theResultSet;
 	}
 	
 	/**
@@ -1390,7 +1459,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 					;
 			}
 		}
-		
+		//restrict results to current org and its children
+		$theOrgIDList = null;
+		$theCurrOrgID = $this->getCurrentOrgID();
+		if ( !empty($theCurrOrgID) ) {
+			$theOrgIDList = $this->getOrgAndAllChildrenIDs($theCurrOrgID);
+		}
 		$theSql = SqlBuilder::withModel($this)->setSanitizer($aSqlSanitizer);
 		//query field list NOTE: since we may have a nested query in
 		//  the field list, must add HINT for getQueryTotals()
@@ -1400,8 +1474,23 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			->add(SqlBuilder::FIELD_LIST_HINT_END)
 			;
 		$theSql->add('FROM')->add($this->tnAuthAccounts);
-		$theSql->startWhereClause()->applyFilter($aFilter)->endWhereClause()
-			->retrieveQueryTotalsForSanitizer()
+		//regardless of what is "passed in" via SqlSanitizer object, force
+		//  results to be restricted to "curr org or its sub-orgs"
+		$theOrgParamKey = uniqid('param_');
+		$theSql->startWhereClause();
+		if ( !empty($theOrgIDList) ) {
+			$theSubQuery = SqlBuilder::withModel($this)
+				->add('SELECT DISTINCT auth_id FROM')->add($this->tnAuthOrgMap)
+				->startWhereClause()
+				->setParamValueIfEmpty($theOrgParamKey, $theOrgIDList)
+				->addParamForColumn($theOrgParamKey, 'org_id')
+				->endWhereClause()
+				;
+			$theSql->addSubQueryForColumn($theSubQuery, 'auth_id');
+			$theSql->setParamPrefix(' AND ');
+		}
+		$theSql->applyFilter($aFilter);
+		$theSql->retrieveQueryTotalsForSanitizer()
 			->applyOrderByListFromSanitizer()
 			->applyQueryLimitFromSanitizer()
 			;
@@ -1419,15 +1508,14 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @throws DbException if something goes wrong
 	 */
 	public function getAccountsToDisplay($aScene=null, $aGroupId=null) {
-		if ( isset($aGroupId) )
+		if ( !empty($aGroupId) )
 		{
-			$aFilter = SqlBuilder::withModel($this)
-				->startWhereClause()
+			$theFilter = SqlBuilder::withModel($this)
+				->startFilter()
 				->mustAddParam('group_id', $aGroupId)
-				->endWhereClause()
 				;
 		}
-		return $this->getAuthAccountsToDisplay($aScene, null, $aFilter);
+		return $this->getAuthAccountsToDisplay($aScene, $theFilter);
 	}
 
 	/**

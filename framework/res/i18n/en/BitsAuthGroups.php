@@ -24,7 +24,7 @@ class BitsAuthGroups extends BaseResources {
 	//note, this could have been a static function that loaded its array from a file and returned it
 	public $group_names = array(
 			0=>'unregistered visitor',
-			1=>'titan',  //super admin
+			1=>'org-parent',
 			2=>'admin',
 			3=>'privileged',
 			4=>'restricted',
@@ -38,12 +38,9 @@ class BitsAuthGroups extends BaseResources {
 	public $hint_dialog_group_reg_code =
 		'When registering, a user supplying this code will automatically be a member of this role.';
 
-	public $errmsg_cannot_modify_titan = 'That user role cannot be modified.' ;
-	public $errmsg_cannot_copy_from_titan =
-		'That user role\'s permissions cannot be copied to another role.' ;
-	public $errmsg_cannot_copy_to_titan =
-		'Permissions cannot be copied into that role.' ;
 	public $errmsg_group_not_found = 'Role [%1$s] not found.' ;
+	public $errmsg_group_is_parent = 'Child Roles depend on this parent Role.';
+	public $errmsg_wild_west = 'No provisioned group has sufficient permissions to administer this site!' ;
 	
 	public $placeholder_group_name = '    role name';
 	public $placeholder_reg_code = '    map-to-role phrase';

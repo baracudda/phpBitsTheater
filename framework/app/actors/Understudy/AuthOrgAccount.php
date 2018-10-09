@@ -865,8 +865,8 @@ class AuthOrgAccount extends BaseActor
 			if( empty($theAccount) )
 				throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $theID );
 			$theAcctInfo = $dbAuth->createAccountInfoObj($theAccount);
-			$theAcctInfo->groups = $dbAuthGroups->getGroupIDListForAuth(
-					$theAcctInfo->auth_id
+			$theAcctInfo->groups = $dbAuthGroups->getGroupIDListForAuthAndOrg(
+					$theAcctInfo->auth_id, $dbAuth->getCurrentOrgID()
 			);
 			$theAcctInfo->org_ids = $dbAuth->getOrgsForAuthCursor(
 					$theAcctInfo->auth_id
@@ -999,8 +999,16 @@ class AuthOrgAccount extends BaseActor
 		$theReturn->groups =
 				$this->getGroupsForAccount( $theReturn->account_id ) ;
 		$this->addMobileHardwareIdsForAutoLogin( $theReturn );
+		$dbAuth = $this->getCanonicalModel();
+		$theFilter = SqlBuilder::withModel($dbAuth)
+			->startFilter(' AND org.')
+			->setParamValue('showonlythese_orgs',
+					$dbAuth->getOrgAndAllChildrenIDs($dbAuth->getCurrentOrgID())
+			)
+			->addParamForColumn('showonlythese_orgs', 'org_id')
+			;
 		$theReturn->org_ids = $this->getOrgsForAccount(
-				$theAccount['auth_id'], array('org_id') ) ;
+				$theAccount['auth_id'], array('org_id'), $theFilter ) ;
 				
 		$this->scene->results = APIResponse::resultsWithData( $theReturn ) ;
 	}
@@ -1084,12 +1092,14 @@ class AuthOrgAccount extends BaseActor
 	 * @param string[] $aFieldList a subset of columns to return; if exactly one
 	 *  column is given, then the return value is a simple array of the values
 	 *  from that column
+	 * @param SqlBuilder $aFilter - (OPTIONAL) a filter for orgs to get.
 	 * @return array|NULL an associative array of organization data, or a simple
 	 *  array of values if exactly one column is requested in
 	 *  <code>$aFieldList</code>, or null if an error occurs.
 	 * @since BitsTheater v4.0.0
 	 */
-	protected function getOrgsForAccount( $aAuthID=null, $aFieldList=null )
+	protected function getOrgsForAccount( $aAuthID=null, $aFieldList=null,
+			SqlBuilder $aFilter=null )
 	{
 		try
 		{
@@ -1097,7 +1107,7 @@ class AuthOrgAccount extends BaseActor
 			$dbOrgs = $this->getProp( 'Auth' ) ;
 			$theRowSet = AuthOrgSet::withContextAndColumns($this, $aFieldList)
 				->setDataFromPDO(
-						$dbOrgs->getOrgsForAuthCursor( $aAuthID )
+						$dbOrgs->getOrgsForAuthCursor( $aAuthID, null, $aFilter )
 				);
 			$theFieldList = $theRowSet->getExportFieldsList();
 			$theSimpleField = ( !empty($theFieldList) && count($theFieldList) == 1 )
@@ -1219,9 +1229,8 @@ class AuthOrgAccount extends BaseActor
 				$dbAuthGroups = $this->getAuthGroupsModel();
 				if ( $dbAuthGroups->groupExists($theGroupID) ) {
 					$theFilter = SqlBuilder::withModel($dbAuthGroups)
-						->startWhereClause()
+						->startFilter()
 						->mustAddParam('group_id', $theGroupID)
-						->endWhereClause()
 						;
 				}
 				else
@@ -1514,20 +1523,25 @@ class AuthOrgAccount extends BaseActor
 	
 	/**
 	 * Used by ajajGetOrgs().
-	 * @param $aID - get a particular Org or all?
+	 * @param $aID - (OPTIONAL) get a particular Org else current & children.
 	 * @return AuthOrgSet Returns the set to iterate through and fetch.
 	 */
-	protected function getOrgs($aID=null)
+	protected function getOrgs( $aID=null )
 	{
 		$v = $this->getMyScene();
 		$dbAuth = $this->getMyModel();
-		$theFilter = null;
+		$theFilter = SqlBuilder::withModel($dbAuth)
+			->startFilter()
+			;
 		if ( !empty($aID) ) {
-			$theFilter = SqlBuilder::withModel($dbAuth)
-				->startWith('1')->setParamPrefix(' AND ')
-				->mustAddParam('org_id', $aID)
-				;
+			$theFilter->setParamValue('org_id', $aID);
 		}
+		else {
+			$theCurrOrgID = $dbAuth->getCurrentOrgID();
+			$theIDList = $dbAuth->getOrgAndAllChildrenIDs($theCurrOrgID);
+			$theFilter->setParamValueIfEmpty('org_id', $theIDList);
+		}
+		$theFilter->addParam('org_id');
 		//get default field list
 		$theFieldList = array();
 		if ( filter_var($v->with_map_info, FILTER_VALIDATE_BOOLEAN) )
@@ -1638,6 +1652,7 @@ class AuthOrgAccount extends BaseActor
 			//construct our iterator object
 			$theIterator = AuthAccountSet::create($this)
 				->setupPagerDataFromUserData($this->scene)
+				->setupSqlDataFromUserData($this->scene)
 				->setItemClassArgs($this->getMyModel(), $theFieldList)
 				;
 			$theFilter = $theIterator->getFilterForSearch($v->filter,

@@ -209,7 +209,7 @@ trait WornForSqlSanitize
 		// see if we have an orderby clause
 		if ( !empty($aScene->orderby) ) {
 			if ( is_string($aScene->orderby) ) {
-				$bSortAscending = !filter_var(FILTER_VALIDATE_BOOLEAN, $aScene->orderbyrvs);
+				$bSortAscending = !filter_var($aScene->orderbyrvs, FILTER_VALIDATE_BOOLEAN);
 				$this->addOrderByDefinition($aScene->orderby, $bSortAscending);
 			}
 			else if ( is_array($aScene->orderby) ) {

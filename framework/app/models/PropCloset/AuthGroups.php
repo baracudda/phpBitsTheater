@@ -86,6 +86,9 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	public $tnGroupRegCodes;	const TABLE_GroupRegCodes = 'authgroup_reg_codes';
 	public $tnPermissions;		const TABLE_Permissions = 'authgroup_permissions';
 	
+	/** @var string The error code to notify callers to maybe check for migration. */
+	const ERR_CODE_EMPTY_AUTHGROUP_TABLE = '6x9=42';
+	
 	/** @var string The ID of the "unregistered user" group. */
 	const UNREG_GROUP_ID = 'UNKNOWN' ;
 	
@@ -1588,18 +1591,39 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	/**
 	 * Get the groups a particular auth_id belongs to.
 	 * @param string $aAuthID - the auth account ID.
+	 * @param string $aOrgID - (OPTIONAL) the org ID to limit results for.
 	 * @return string[] Returns the array of group IDs.
 	 */
-	public function getGroupIDListForAuth( $aAuthID )
+	public function getGroupIDListForAuthAndOrg( $aAuthID, $aOrgID )
 	{
 		if ( empty($aAuthID) )
 		{ throw new \InvalidArgumentException('invalid $aAuthID param'); }
 		$theSql = SqlBuilder::withModel($this);
 		$theSql->startWith('SELECT group_id FROM')->add($this->tnGroupMap)
+			->add('INNER JOIN')->add($this->tnGroups)->add('AS g USING (group_id)')
 			->startWhereClause()
 			->mustAddParam('auth_id', $aAuthID)
+			->setParamPrefix(' AND (g.')
+			->mustAddParam('org_id', $aOrgID)
+			->setParamPrefix(' OR ')
+			;
+		// OR a group that has the transcend permission
+		$theSubQuery = SqlBuilder::withModel($this)
+			->startWith('SELECT group_id FROM')->add($this->tnPermissions)
+			->add('INNER JOIN')->add($this->tnGroups)->add('AS g2 USING (group_id)')
+			->startWhereClause('g2.')
+			->mustAddParamForColumn('subquery.org_id', 'org_id', null)
+			->setParamPrefix(' AND ')
+			->mustAddParam('namespace', 'auth_orgs')
+			->setParamPrefix(' AND ')
+			->mustAddParam('permission', 'transcend')
+			->setParamPrefix(' AND ')
+			->mustAddParam('value', static::VALUE_Allow)
 			->endWhereClause()
 			;
+		$theSql->addSubQueryForColumn($theSubQuery, 'group_id');
+		$theSql->add(')');
+		//$theSql->logSqlDebug(__METHOD__); //DEBUG
 		try
 		{
 			$theIDList = $theSql->query()->fetchAll(\PDO::FETCH_COLUMN);
@@ -1613,11 +1637,11 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			//  case no protection is sufficient).
 			$isFormerTitan = false;
 			if ( !empty($theIDList) ) {
-				$isFormerTitan = array_search($this->getDirector()->app_id,
+				$isFormerTitan = in_array($this->getDirector()->app_id,
 					$theIDList, true
 				);
 			}
-			if ( $isFormerTitan !== false ) {
+			if ( $isFormerTitan ) {
 				//replace former titan group with current group 2 ID in map
 				//  so that current titan accounts will be admins (best guess)
 				$theGroup2 = AuthGroup::fromThing($this->getGroupByNum(2));
@@ -1641,8 +1665,11 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			/* @var $dbAuth \BitsTheater\models\Auth */
 			$dbAuth = $this->getProp('Auth');
 			$theAuthRow = $dbAuth->getAuthByAccountId($aAcctId);
-			if ( !empty($theAuthRow) )
-			{ return $this->getGroupIDListForAuth($theAuthRow['auth_id']); }
+			if ( !empty($theAuthRow) ) {
+				return $this->getGroupIDListForAuthAndOrg(
+						$theAuthRow['auth_id'], $dbAuth->getCurrentOrgID()
+				);
+			}
 			else
 			{ return array( static::UNREG_GROUP_ID ); }
 		}
@@ -1670,6 +1697,26 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				$this->returnProp($dbOldAuthGroups);
 			}
 		}
+	}
+
+	/**
+	 * Get the groups a particular account belongs to filtered by org.
+	 * The current org is used if none is supplied.
+	 * @param string $aAuthID - the auth ID for the account.
+	 * @return string[] Returns the array of group IDs.
+	 */
+	public function getAcctGroupsForOrg($aAuthID, $aOrgID=null)
+	{
+		if ( !$this->exists($this->tnGroups) || $this->isEmpty($this->tnGroups) )
+		{
+			$err = new DbException(null, 'parent table is empty');
+			$err->setCode(static::ERR_CODE_EMPTY_AUTHGROUP_TABLE);
+			throw $err;
+		}
+		if ( !empty($aAuthID) )
+		{ return $this->getGroupIDListForAuthAndOrg($aAuthID, $aOrgID); }
+		else
+		{ return array( static::UNREG_GROUP_ID ); }
 	}
 
 	/**
@@ -1895,12 +1942,19 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		//NULL means we have not even tried to check permissions.
 		if ( is_null($aAcctInfo->groups) )
 		{
-			$aAcctInfo->groups = $this->getGroupIDListForAuth($aAcctInfo->auth_id);
+			$theOrgID = null;
+			if ( !empty($aAcctInfo->mSeatingSection) ) {
+				$theOrgID = $aAcctInfo->mSeatingSection->org_id;
+			}
+			$aAcctInfo->groups = $this->getGroupIDListForAuthAndOrg(
+					$aAcctInfo->auth_id, $theOrgID
+			);
 			if ( empty($aAcctInfo->groups) )
 			{ $aAcctInfo->groups = array(static::UNREG_GROUP_ID); }
 		}
 		//NULL means we have not even tried to check permissions.
-		if ( is_null($aAcctInfo->rights) ) try {
+		if ( is_null($aAcctInfo->rights) ) try
+		{
 			$aAcctInfo->rights = (object)$this->getGrantedRights($aAcctInfo->groups);
 			//cast to an object because session restore will restore as object
 			foreach ($aAcctInfo->rights as $theNS => $thePerms) {

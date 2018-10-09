@@ -177,8 +177,8 @@ implements IWillCall
 		//authorized, load extended account data
 		if ( is_null($aAcctInfo->groups) ) {
 			$dbAuthGroups = $dbAuth->getProp('AuthGroups');
-			$aAcctInfo->groups = $dbAuthGroups->getGroupIDListForAuth(
-					$aAcctInfo->auth_id
+			$aAcctInfo->groups = $dbAuthGroups->getGroupIDListForAuthAndOrg(
+					$aAcctInfo->auth_id, $dbAuth->getCurrentOrgID()
 			);
 			$this->returnProp($dbAuthGroups);
 		}

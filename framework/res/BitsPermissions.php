@@ -31,7 +31,7 @@ class BitsPermissions extends BaseResource {
 			'view',
 			'create',
 			'modify',
-			//'delete',
+			'transcend',
 	);
 	
 	public $enum_config = array('modify');
