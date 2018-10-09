@@ -5,7 +5,7 @@ use BitsTheater\res\BitsWebsite as BaseResources;
 
 class Website extends BaseResources
 {
-	public $feature_id = WEBAPP_NAMESPACE . ': website'; //DO NOT TRANSLATE!
+	public $feature_id = WEBAPP_NAME . ': website'; //DO NOT TRANSLATE!
 	public $version_seq = 1;	//build number, inc'ing by 10 in dev, 1 in hot-fixes
 	public $version = '1.0.0';	//displayed version text
 	public $api_version_seq = 1;    //api version number, inc if Actor methods change to force other apps to update
