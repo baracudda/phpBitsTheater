@@ -753,7 +753,39 @@ class SqlBuilder extends BaseCostume {
 		}
 		return $this;
 	}
-
+	
+	/**
+	 * Sub-query gets added to the SQL string .
+	 * @param SqlBuilder $aSubQuery - the sub-query object to copy the SQL
+	 *   string from and insert as "("+SubQuery->SQL+")".
+	 * @param string $aColumnName - the table column (aka field) name.
+	 * @param boolean $bExpectMultipleResults - (OPTIONAL) whether to expect
+	 *   an array of results or just a single one. Default is TRUE.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function addSubQueryForColumn( SqlBuilder $aSubQuery, $aColumnName,
+			$bExpectMultipleResults=true )
+	{
+		$saveParamOp = $this->myParamOperator;
+		if ( $bExpectMultipleResults ) {
+			switch ( trim($this->myParamOperator) ) {
+				case '=':
+					$this->myParamOperator = ' IN ';
+					break;
+				case self::OPERATOR_NOT_EQUAL:
+					$this->myParamOperator = ' NOT IN ';
+					break;
+			}//switch
+		}
+		$this->mySql .= $this->myParamPrefix .
+				$this->field_quotes . $aColumnName . $this->field_quotes .
+				$this->myParamOperator . '(' . $aSubQuery->mySql . ')' ;
+		$this->myParamOperator = $saveParamOp;
+		//also merge in any params and param types from the sub-query
+		$this->myParams = array_merge($this->myParams, $aSubQuery->myParams);
+		$this->myParamTypes = array_merge($this->myParamTypes, $aSubQuery->myParamTypes);
+	}
+	
 	/**
 	 * Apply an externally defined set of WHERE field clauses and param values
 	 * to our SQL (excludes the "WHERE" keyword).
@@ -837,9 +869,12 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
-	 * Some operators require alternate handling during WHERE clauses (e.g. "=" with NULLs).
-	 * This will setParamPrefix(" WHERE ") which will apply to the next addParam.
-	 * @param string $aAdditionalParamPrefix - string to append to " WHERE " as the next param prefix.
+	 * Some operators require alternate handling during WHERE clauses
+	 * (e.g. "=" with NULLs). This will setParamPrefix(" WHERE ") which will
+	 * apply to the next addParam.
+	 * @param string $aAdditionalParamPrefix - string to append to " WHERE "
+	 *   as the next param prefix.
+	 * @return $this Returns $this for chaining.
 	 */
 	public function startWhereClause( $aAdditionalParamPrefix='' )
 	{
@@ -849,11 +884,29 @@ class SqlBuilder extends BaseCostume {
 	
 	/**
 	 * Some operators require alternate handling during WHERE clauses (e.g. "=" with NULLs).
+	 * @return $this Returns $this for chaining.
 	 */
 	public function endWhereClause()
 	{
 		$this->bUseIsNull = false;
 		return $this;
+	}
+	
+	/**
+	 * Some operators require alternate handling during WHERE clauses
+	 * (e.g. "=" with NULLs). Similar to startWhereClause(), this method is
+	 * specific to building a filter object that consists entirely of a
+	 * partial WHERE clause which will get appended to the main SqlBuilder
+	 * object using applyFilter().
+	 * @param string $aAdditionalParamPrefix - (OPTIONAL) string to set as the
+	 *   inital value for setParamPrefix(). Defaults to " AND ".
+	 * @return $this Returns $this for chaining.
+	 */
+	public function startFilter( $aSetParamPrefix=' AND ' )
+	{
+		$this->bUseIsNull = true;
+		$this->startWith('1');
+		return $this->setParamPrefix($aSetParamPrefix);
 	}
 	
 	//=================================================================
