@@ -25,7 +25,7 @@ use com\blackmoonit\Strings;
 /**
  * Managed media file wrapper which could be static website managed files
  * or user uploaded managed files.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 abstract class ManagedMediaFile extends BaseCostume
 {

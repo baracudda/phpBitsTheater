@@ -1672,7 +1672,7 @@ class AuthOrgAccount extends BaseActor
 	 *  <li>'MISSING_ARGUMENT' - if the org ID is not specified.</li>
 	 *  <li>'ENTITY_NOT_FOUND' - if no org with that ID exists.</li>
 	 * </ul>
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	public function ajajChangeOrg( $aOrgID=null )
 	{

@@ -1002,7 +1002,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @return boolean|NULL|array the database row as an associative array if
 	 *  the org is found, or <code>null</code> if not found, or
 	 *  <code>false</code> under certain error conditions.
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	public function getOrgByName( $aName=null, $aFieldList=null )
 	{
@@ -2057,7 +2057,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @param Scene $aScene - the parameters given to us, in case that affects
 	 *   what venues we wish to try.
 	 * @return string[] Returns the list of IWillCall classes to use for auth.
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	protected function getVenuesToCheckForTickets( $aScene )
 	{

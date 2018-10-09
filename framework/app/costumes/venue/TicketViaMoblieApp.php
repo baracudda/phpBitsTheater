@@ -6,7 +6,7 @@ use BitsTheater\costumes\Wardrobe\TicketViaMobileApp as BaseCostume;
 /**
  * Class used to help manage logging in via POST variable mimicing the
  * HTTP "Broadway" Authorization format and IMEI information.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class TicketViaMoblieApp extends BaseCostume
 {

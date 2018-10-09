@@ -729,7 +729,7 @@ class SqlBuilder extends BaseCostume {
 	 * @param boolean $bAndAComma (optional:false) also append a comma and an
 	 *  additional space. Useful for composing lists.
 	 * @return $this Returns $this for chaining.
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	public function addQuoted( $aStr, $bAndAComma=false )
 	{

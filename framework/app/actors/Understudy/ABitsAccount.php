@@ -265,7 +265,7 @@ abstract class ABitsAccount extends BaseActor {
 	 * An implementation/descendant class may override this method to add new
 	 * custom checks.
 	 * @param string $aSecret - the unencrypted user input
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	protected function validatePswdChangeInput( $aSecret )
 	{ return true ; }

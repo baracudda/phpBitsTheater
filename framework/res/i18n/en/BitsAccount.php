@@ -98,7 +98,7 @@ class BitsAccount extends BaseResources
 	 * The message string contains one parameter, allowing it to echo the
 	 * invalid input back to the user.
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 * @see \BitsTheater\actors\Understudy\AuthOrgAccount::ajajCreateOrg()
 	 */
 	public $errmsg_invalid_org_short_name =
@@ -112,7 +112,7 @@ class BitsAccount extends BaseResources
 	 * minimum length set in the instance's configs.
 	 * This is the programmatic error token.
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 * @see \BitsTheater\outtakes\AccountAdminException::MSG_PASSWORD_MINIMUM_LENGTH
 	 */
 	public $errmsg_password_minimum_length =

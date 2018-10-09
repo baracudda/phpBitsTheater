@@ -32,7 +32,7 @@ use BitsTheater\res\AccountPrefs as PrefsResource ;
 /**
  * Similar to <code>BitsConfig</code>, this is the base class for account-level
  * preferences.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class BitsAccountPrefs extends BaseModel
 implements IFeatureVersioning

@@ -26,7 +26,7 @@ use BitsTheater\Scene;
 
 /**
  * Class used to help manage authentication via some mechanism.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 abstract class ATicketForVenue extends BaseCostume
 implements IWillCall

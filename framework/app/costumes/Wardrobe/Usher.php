@@ -26,7 +26,7 @@ use BitsTheater\Scene;
 
 /**
  * Authorization class used to wrangle permissions after authentication.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class Usher extends BaseCostume
 { use WornByModel;

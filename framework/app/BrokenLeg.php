@@ -301,7 +301,7 @@ class BrokenLeg extends \Exception
 	 * the input to be an integer.
 	 * @param integer $aCode the condition code
 	 * @return \BitsTheater\BrokenLeg $this
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	public function setConditionCode( $aCode )
 	{ $this->code = intval($aCode) ; return $this ; }
@@ -314,7 +314,7 @@ class BrokenLeg extends \Exception
 	 * capture and relay error response messages from other downstream APIs.
 	 * @param string $aMessage the literal error message to be set
 	 * @return \BitsTheater\BrokenLeg $this
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	public function setMessage( $aMessage='' )
 	{ $this->message = $aMessage ; return $this ; }

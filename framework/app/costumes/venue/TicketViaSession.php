@@ -5,7 +5,7 @@ use BitsTheater\costumes\Wardrobe\TicketViaSession as BaseCostume;
 
 /**
  * Class used to help manage logging in via the PHP Session.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class TicketViaSession extends BaseCostume
 {

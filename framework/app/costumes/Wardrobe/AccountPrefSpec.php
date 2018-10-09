@@ -23,7 +23,7 @@ use BitsTheater\costumes\EnumResEntry ;
 /**
  * Similar to <code>ConfigResEntry</code>, this class encapsulates the
  * specification of an account preference.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class AccountPrefSpec extends EnumResEntry
 {

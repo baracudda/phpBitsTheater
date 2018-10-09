@@ -5,7 +5,7 @@ use BitsTheater\costumes\Wardrobe\TicketViaAuthHeaderBroadway as BaseCostume;
 
 /**
  * Class used to help manage logging in via HTTP "Broadway" Authorization Header.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class TicketViaAuthHeaderBroadway extends BaseCostume
 {

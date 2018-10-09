@@ -5,7 +5,7 @@ use BitsTheater\BrokenLeg ;
 
 /**
  * Provides exception templates for various file I/O exception scenarios.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class FileIOException extends BrokenLeg
 {

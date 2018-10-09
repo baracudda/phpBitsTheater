@@ -24,7 +24,7 @@ use com\blackmoonit\Strings;
 
 /**
  * Class used to help manage logging in via a browser Cookie.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class TicketViaCookie extends BaseCostume
 {

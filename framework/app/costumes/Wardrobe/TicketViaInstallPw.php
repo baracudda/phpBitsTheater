@@ -24,7 +24,7 @@ use BitsTheater\models\AuthGroups as AuthGroupsDB;
 
 /**
  * Class used to help manage logging in via the install.pw file.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class TicketViaInstallPw extends BaseCostume
 {

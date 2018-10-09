@@ -45,7 +45,7 @@ class AuthOrg extends BaseCostume
 	 *
 	 * @param string $aInput the input to be validated
 	 * @return boolean <code>true</code> iff the input is valid
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	public static function validateOrgShortName( $aInput )
 	{
@@ -64,7 +64,7 @@ class AuthOrg extends BaseCostume
 	 * @return boolean|NULL|AuthOrg an instance of this costume, populated with
 	 *  the data from a discovered organization, or <code>null</code> if no org
 	 *  is found, or <code>false</code> under certain error conditions
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	public static function forModelConnection( Model $aModel=null )
 	{
@@ -110,7 +110,7 @@ class AuthOrg extends BaseCostume
 	/**
 	 * Virtual property populated only when fetching data for a sub-organization
 	 * @var AuthOrg
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	public $parent_org = null ;
 	

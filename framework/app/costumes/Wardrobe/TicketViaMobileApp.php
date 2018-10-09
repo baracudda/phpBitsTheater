@@ -9,7 +9,7 @@ use com\blackmoonit\Strings;
 /**
  * Class used to help manage logging in via POST variable mimicing the
  * HTTP "Broadway" Authorization format and IMEI information.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class TicketViaMobileApp extends BaseCostume
 {

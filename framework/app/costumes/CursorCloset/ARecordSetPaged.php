@@ -34,7 +34,7 @@ use BitsTheater\costumes\WornForPagerManagement;
  *     ;
  * </pre>
  *
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 abstract class ARecordSetPaged extends ARecordSet
 {

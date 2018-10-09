@@ -5,7 +5,7 @@ use BitsTheater\costumes\Wardrobe\Usher as BaseCostume;
 
 /**
  * Class used to help manage authorization after authentication.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class Usher extends BaseCostume
 {

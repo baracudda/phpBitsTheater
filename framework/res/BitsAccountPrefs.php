@@ -26,7 +26,7 @@ use BitsTheater\res\Resources as BaseResources ;
  * Defines account preferences that belong to the core library.
  * The <code>AccountPrefs</code> resource overrides this, and is where
  * app-specific account preferences should be defined.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class BitsAccountPrefs extends BaseResources
 {

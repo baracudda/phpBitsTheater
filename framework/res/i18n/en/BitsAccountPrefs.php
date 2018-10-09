@@ -29,7 +29,7 @@ use BitsTheater\res\AccountPrefs as BaseResources ;
 	
 /**
  * String resources related to account preferences.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class BitsAccountPrefs extends BaseResources
 {

@@ -22,7 +22,7 @@ use BitsTheater\Scene;
 
 /**
  * Class used to help manage logging in via the URL.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.1.0
  */
 class TicketViaURL extends BaseCostume
 {

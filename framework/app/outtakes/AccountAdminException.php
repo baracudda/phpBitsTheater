@@ -16,7 +16,7 @@ extends BrokenLeg
 	 * Thrown when a client attempts to create an organization but the "short
 	 * name" for the org (used to create its database) fails validation.
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 * @see \BitsTheater\actors\Understudy\AuthOrgAccount::ajajCreateOrg()
 	 */
 	const ACT_INVALID_ORG_SHORT_NAME = 'INVALID_ORG_SHORT_NAME' ;
@@ -24,28 +24,28 @@ extends BrokenLeg
 	 * Thrown when someone tries to work with an account preference but doesn't
 	 * tell us enough about which one they want to use.
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	const ACT_NO_PREFERENCE_SPECIFIED = 'NO_PREFERENCE_SPECIFIED' ;
 	/**
 	 * Thrown when someone tries to change an account preference that doesn't
 	 * exists.
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	const ACT_NO_SUCH_PREFERENCE = 'NO_SUCH_PREFERENCE' ;
 	/**
 	 * Thrown when a user's input for a password change is shorter than the
 	 * minimum length set in the instance's configs.
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 * @see \BitsTheater\outtakes\AccountAdminException::ERR_PASSWORD_MINIMUM_LENGTH
 	 */
 	const ACT_PASSWORD_MINIMUM_LENGTH = 'PASSWORD_MINIMUM_LENGTH' ;
 	/**
 	 * Thrown when an update to a preference fails. (Go figure.)
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 */
 	const ACT_PREFERENCE_UPDATE_FAILED = 'PREFERENCE_UPDATE_FAILED' ;
 	const ACT_UNIQUE_FIELD_ALREADY_EXISTS = 'UNIQUE_FIELD_ALREADY_EXISTS' ;
@@ -56,7 +56,7 @@ extends BrokenLeg
 	 * Thrown when a client attempts to create an organization but the "short
 	 * name" for the org (used to create its database) fails validation.
 	 * @var integer
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 * @see \BitsTheater\actors\Understudy\AuthOrgAccount::ajajCreateOrg()
 	 */
 	const ERR_INVALID_ORG_SHORT_NAME = BrokenLeg::HTTP_UNPROCESSABLE_ENTITY ;
@@ -66,7 +66,7 @@ extends BrokenLeg
 	 * Thrown when a user's input for a password change is shorter than the
 	 * minimum length set in the instance's configs.
 	 * @var integer
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 * @see \BitsTheater\outtakes\AccountAdminException::ACT_PASSWORD_MINIMUM_LENGTH
 	 * @see \BitsTheater\outtakes\AccountAdminException::MSG_PASSWORD_MINIMUM_LENGTH
 	 */
@@ -81,7 +81,7 @@ extends BrokenLeg
 	 * Thrown when a client attempts to create an organization but the "short
 	 * name" for the org (used to create its database) fails validation.
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 * @see \BitsTheater\actors\Understudy\AuthOrgAccount::ajajCreateOrg()
 	 */
 	const MSG_INVALID_ORG_SHORT_NAME =
@@ -93,7 +93,7 @@ extends BrokenLeg
 	 * Thrown when a user's input for a password change is shorter than the
 	 * minimum length set in the instance's configs.
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.1.0
 	 * @see \BitsTheater\outtakes\AccountAdminException::ERR_PASSWORD_MINIMUM_LENGTH
 	 * @see \BitsTheater\res\en\BitsAccount::$errmsg_password_minimum_length
 	 */
