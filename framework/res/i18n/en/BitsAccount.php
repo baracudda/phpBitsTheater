@@ -89,14 +89,36 @@ class BitsAccount extends BaseResources
 		'Failed to dispatch an email to [%1$s].' ;
 	public $err_cannot_delete_active_account =
 		'Cannot delete account [%1$s]; the account is linked to data.' ;
-	public $err_cannot_delete_titan = 'That user cannot be deleted.' ;
 	public $err_cannot_delete_yourself = 'You cannot delete your own account!' ;
 	public $err_unique_field_already_exists =
 		'Unique field [%1$s] already exists in system.' ;
-	public $errmsg_cannot_update_to_titan =
-		'Account cannot be updated to belong to the specified group.' ;
-	public $errmsg_cannot_create_account_titan =
-		'Account cannot be created belonging to the specified group.' ;
+	/**
+	 * Thrown when a client attempts to create an organization but the "short
+	 * name" for the org (used to create its database) fails validation.
+	 * The message string contains one parameter, allowing it to echo the
+	 * invalid input back to the user.
+	 * @var string
+	 * @since BitsTheater v4.1.0
+	 * @see \BitsTheater\actors\Understudy\AuthOrgAccount::ajajCreateOrg()
+	 */
+	public $errmsg_invalid_org_short_name =
+		'String [%1$s] is not a valid codename for an organization.' ;
+	public $errmsg_no_preference_specified =
+		'Not enough information to resolve a preference location.' ;
+	public $errmsg_no_such_preference =
+		'Could not resolve a preference at [%1$s/%2$s].' ;
+	/**
+	 * Thrown when a user's input for a password change is shorter than the
+	 * minimum length set in the instance's configs.
+	 * This is the programmatic error token.
+	 * @var string
+	 * @since BitsTheater v4.1.0
+	 * @see \BitsTheater\outtakes\AccountAdminException::MSG_PASSWORD_MINIMUM_LENGTH
+	 */
+	public $errmsg_password_minimum_length =
+		'Passwords must be at least %1$s characters in length.' ;
+	public $errmsg_preference_update_failed =
+		'Failed to update the account preference.' ;
 	
 	// "Help" messages should be initialized in the initHelpText() function that
 	// is invoked by the constructor.

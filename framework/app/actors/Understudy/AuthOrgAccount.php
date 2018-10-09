@@ -17,25 +17,24 @@
 
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\actors\Understudy\ABitsAccount as BaseActor;
-use BitsTheater\scenes\Account as MyScene;
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\AuthPasswordReset;
 use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthAccountSet;
-use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\AuthOrgSet;
-use BitsTheater\costumes\colspecs\CommonMySql;
-use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForAuditFields;
-use BitsTheater\outtakes\AccountAdminException;
-use BitsTheater\outtakes\PasswordResetException;
+use BitsTheater\costumes\colspecs\CommonMySql;
+use BitsTheater\costumes\CursorCloset\AuthOrg ;
+use BitsTheater\models\AccountPrefs as PrefsDB ;
 use BitsTheater\models\Auth as AuthDB; /* @var $dbAuth AuthDB */
 use BitsTheater\models\AuthGroups as AuthGroupsDB; /* @var $dbAuthGroups AuthGroupsDB */
+use BitsTheater\outtakes\AccountAdminException;
+use BitsTheater\outtakes\PasswordResetException;
+use BitsTheater\scenes\Account as MyScene;
 use com\blackmoonit\Arrays;
-use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\MailUtils;
 use com\blackmoonit\MailUtilsException;
 use com\blackmoonit\Strings;
@@ -61,7 +60,7 @@ class AuthOrgAccount extends BaseActor
 
 	/**
 	 * Token to use for "ping"; override in descendant.
-	 * @see AuthBasicAccount::requestMobileAuth()
+	 * @see requestMobileAuth()
 	 * @var string
 	 */
 	const MAGIC_PING_TOKEN = 'pInG';
@@ -158,6 +157,7 @@ class AuthOrgAccount extends BaseActor
 				{ return $dbAuth::REGISTRATION_REG_CODE_FAIL; }
 				else
 				{ $theVerifiedTs = null; }
+				$this->validatePswdChangeInput($aAcctPw) ; // Throws exception if rejected.
 				//TODO rework add/register
 				//now that we have a proper group and account name, lets save stuff!
 				$theNewAcct = array(
@@ -166,6 +166,11 @@ class AuthOrgAccount extends BaseActor
 						$v->getPwInputKey() => $aAcctPw,
 						'verified_timestamp' => $theVerifiedTs,
 				);
+				// Also make sure we choose the correct org for this reg code.
+				$theGroup = $dbAuthGroups->getGroup($theDefaultGroup) ;
+				$theOrgToAdd = ( empty($theGroup['org_id']) ? null : $theGroup['org_id'] ) ;
+				if( !empty($theOrgToAdd) )
+					$theNewAcct['org_ids'] = array( $theOrgToAdd ) ;
 				$dbAuth->registerAccount($theNewAcct, $theDefaultGroup);
 				return $dbAuth::REGISTRATION_SUCCESS;
 			} else {
@@ -281,17 +286,16 @@ class AuthOrgAccount extends BaseActor
 		$bRegCodeOk = ( !empty($v->reg_code) );
 		if ( $bPwOk && $bRegCodeOk && $bPostKeyOldEnough ) {
 			$dbAuth = $this->getProp('Auth');
-			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey, $v->email,
-					$v->reg_code, false);
+			$theRegResult = $this->registerNewAccount($v->$userKey, $v->$pwKey,
+					$v->email, $v->reg_code, false
+			);
 			//$this->debugLog(__METHOD__.' ['.$v->$userKey.'] code='.$theRegResult); //DEBUG
 			switch ($theRegResult) {
 				case $dbAuth::REGISTRATION_SUCCESS :
-					//registration succeeded, save the account in session cache
-					$this->getDirector()->setMyAccountInfo(
-							$dbAuth->getAccountInfoCacheByEmail($v->email)
-					);
-					//since we are "logged in" via a non-standard mechanism, create an anti-CSRF token
-					$dbAuth->setCsrfTokenCookie();
+					//registration succeeded, now pretend to login with it
+					$v->{$dbAuth::KEY_userinfo} = $v->{$userKey};
+					$v->{$dbAuth::KEY_pwinput} = $v->{$pwKey};
+					$dbAuth->checkTicket($v);
 					//we may wish to return the newly created account data
 					return $this->ajajGetAccountInfo();
 				case $dbAuth::REGISTRATION_REG_CODE_FAIL :
@@ -373,7 +377,9 @@ class AuthOrgAccount extends BaseActor
 					}
 				}
 				$pwKeyNew = $this->scene->getPwInputKey().'_new';
-				if (!empty($this->scene->$pwKeyNew) && $this->scene->$pwKeyNew===$this->scene->password_confirm) {
+				if (!empty($this->scene->$pwKeyNew) && $this->scene->$pwKeyNew===$this->scene->password_confirm)
+				{ // Verify that the input is acceptable, and if so, use it.
+					$this->validatePswdChangeInput($this->scene->$pwKeyNew) ;
 					$dbAuth->updatePassword($theAcctId, $this->scene->$pwKeyNew);
 				}
 				$v->addUserMsg($this->getRes('account/msg_update_success'), $v::USER_MSG_NOTICE);
@@ -440,7 +446,9 @@ class AuthOrgAccount extends BaseActor
 				//update PASSWORD
 				$pwKeyNew = $v->getPwInputKey().'_new';
 				$pwKeyConfirm = $v->getPwInputKey().'_confirm';
-				if (!empty($v->$pwKeyNew) && ($v->$pwKeyNew===$v->$pwKeyConfirm)) {
+				if (!empty($v->$pwKeyNew) && ($v->$pwKeyNew===$v->$pwKeyConfirm))
+				{ // Verify that the input is acceptable, and if so, use it.
+					$this->validatePswdChangeInput( $v->$pwKeyNew ) ;
 					$dbAuth->updatePassword($theAcctId, $v->$pwKeyNew);
 				}
 
@@ -564,43 +572,58 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-     * Register a user via mobile app rather than on web page.
-	 * POST vars expected: name, salt, email, code, fingerprints
-     * Returns JSON encoded array[code, user_token, auth_token]
+     * Register a user via mobile app rather than on web page.<br>
+	 * POST vars expected: name, salt, email, code, fingerprints<br>
+     * Returns JSON encoded array[code, user_token, auth_token]<br>
 	 * @return string Returns the redirect URL, if defined.
 	 */
 	public function registerViaMobile()
 	{
-		//shortcut variable $v also in scope in our view php file.
 		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
-		$dbAuth = $this->getProp('Auth');
+		$dbAuth = $this->getCanonicalModel();
 		//$this->debugLog('regargs='.$v->name.', '.$v->salt.', '.$v->email.', '.$v->code);
 		$theRegResult = $this->registerNewAccount($v->name, $v->salt, $v->email, $v->code, false);
-		if ($theRegResult===$dbAuth::REGISTRATION_SUCCESS) {
-			$theAuthHeader = HttpAuthHeader::fromHttpAuthHeader($this->getDirector(),
-					(!empty($v->auth_header_data)) ? $v->auth_header_data : null
-			);
-			$theMobileRow = $dbAuth->registerMobileFingerprints(
-					$dbAuth->getAuthByEmail($v->email), $theAuthHeader
-			);
-			$v->results = array(
-					'code' => $theRegResult,
-					'auth_id' => $theMobileRow['auth_id'],
-					'user_token' => $theMobileRow['account_token'],
-			);
-			$this->debugLog($v->name.' successfully registered an account via mobile: '.$theMobileRow['account_token']);
-		} else {
-			if (!isset($theRegResult))
-				$theRegResult = $dbAuth::REGISTRATION_UNKNOWN_ERROR;
-			$v->results = array('code' => $theRegResult);
-			$this->debugLog($v->name.' unsuccessfully tried to register an account via mobile. ('.$theRegResult.')');
+		if ( $theRegResult===$dbAuth::REGISTRATION_SUCCESS ) {
+			//pretend we are just now logging in with the newly registered account
+			$v->{$dbAuth::KEY_userinfo} = $v->name;
+			$v->{$dbAuth::KEY_pwinput} = $v->salt;
+			$dbAuth->checkTicket($v);
+			$theMobileRow = $this->getMyMobileRow();
+			if ( !empty($theMobileRow) ) {
+				$v->results = array(
+						'code' => $theRegResult,
+						'auth_id' => $theMobileRow['auth_id'],
+						'user_token' => $theMobileRow['account_token'],
+				);
+				$this->logStuff($v->name,
+						' successfully registered an account via mobile: [',
+						$theMobileRow['account_token'], ']'
+				);
+				return;
+			}
 		}
+		if ( !isset($theRegResult) )
+		{ $theRegResult = $dbAuth::REGISTRATION_UNKNOWN_ERROR; }
+		$v->results = array(
+				'code' => $theRegResult,
+		);
+		$this->logStuff($v->name,
+				' unsuccessfully tried to register an account via mobile. [',
+				$theRegResult, ']'
+		);
 	}
 	
 	/**
+	 * Get my mobile data, if known.
+	 * @return array Returns the mobile data as an array.
+	 */
+	protected function getMyMobileRow()
+	{ return $this->getCanonicalModel()->getMyMobileRow(); }
+	
+	/**
 	 * Mobile auth is a bit more involved than Basic HTTP auth, use this mechanism
-	 * for authenticating mobile devices (which may be rooted).
+	 * for authenticating mobile devices (which may be rooted).<br>
      * Returns JSON encoded array[account_name, user_token, auth_token, api_version_seq]
 	 * @param string $aPing - (optional) ping string which could be used to pong a response.
 	 * @return string Returns the redirect URL, if defined.
@@ -610,27 +633,25 @@ class AuthOrgAccount extends BaseActor
 		//shortcut variable $v also in scope in our view php file.
 		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
-		if (empty($aPing)) {
-//			$this->debugLog(__METHOD__.$v->debugStr($v->auth_header_data)); //DEBUG
-			$theAuthHeader = HttpAuthHeader::fromHttpAuthHeader($this->getDirector(),
-					(!empty($v->auth_header_data)) ? $v->auth_header_data : null
-			);
-			$dbAuth = $this->getProp('Auth');
-			if (!$this->isGuest()) {
-//				$this->debugLog(__METHOD__.' login account found.'); //DEBUG
-				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
-						$this->director->account_info, $theAuthHeader
-				);
-			} else {
-//				$this->debugLog(__METHOD__.' login using broadway auth unsuccessful'); //DEBUG
-				$v->results = $dbAuth->requestMobileAuthAutomatedByTokens(
-						$v->auth_id, $v->user_token, $theAuthHeader
-				);
-			}
-			if (empty($v->results)) {
-//				$this->debugLog(__METHOD__.' mobile auth fail; logging out'); //DEBUG
-				$this->director->logout();
+		if ( empty($aPing) ) {
+			if ( $this->isGuest() ) {
 				throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED);
+			}
+			$theMobileRow = $this->getMyMobileRow();
+			if ( !empty($theMobileRow) ) {
+				$theMobileRow = (object)$theMobileRow;
+				$myAuth = $this->getDirector()->getMyAccountInfo();
+				$dbAuth = $this->getCanonicalModel();
+				$theAuthToken = $dbAuth->generateAuthTokenForMobile(
+						$myAuth->account_id, $myAuth->auth_id, $theMobileRow->mobile_id
+				);
+				$v->results = array(
+						'account_name' => $myAuth->account_name,
+						'auth_id' => $myAuth->auth_id,
+						'user_token' => $theMobileRow->account_token,
+						'auth_token' => $theAuthToken,
+						'api_version_seq' => $this->getRes('website/api_version_seq'),
+				);
 			}
 		} else if ($aPing===static::MAGIC_PING_TOKEN) {
 			$v->results = array(
@@ -698,6 +719,7 @@ class AuthOrgAccount extends BaseActor
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', "account_name" );
 		if ( empty ( $aPassword ) )
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', "account_password" );
+		$this->validatePswdChangeInput( $aPassword ) ;
 		if ( empty ( $aEmail ) )
 			throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', "email" );
 
@@ -722,19 +744,12 @@ class AuthOrgAccount extends BaseActor
 				$accountGroup = array();
 				foreach ($aGroupId as $anID) {
 					$theID = trim($anID);
-					//if not TITAN group and not already in group, add to group list
-					if ( ($theID!==$dbAuthGroups->getTitanGroupID()) &&
-						(array_search($theID, $accountGroup, true)===false) )
+					//if not already in group, add to group list
+					if ( !in_array($theID, $accountGroup, true) )
 					{ $accountGroup[] = $theID; }
 				}
-				// Ensure not trying to create an account affiliated with the special TITAN group.
-				if ( array_search( $dbAuthGroups->getTitanGroupID(), $accountGroup ) !== false )
-					throw AccountAdminException::toss( $this, 'CANNOT_CREATE_TITAN_ACCOUNT' );
 			} else {
 				$accountGroup = trim($aGroupId);
-				// Ensure not trying to create an account affiliated with the special TITAN group.
-				if ( $accountGroup == $dbAuthGroups->getTitanGroupID() )
-					throw AccountAdminException::toss( $this, 'CANNOT_CREATE_TITAN_ACCOUNT' );
 			}
 		}
 
@@ -806,9 +821,7 @@ class AuthOrgAccount extends BaseActor
 	 * <li><b>account_group_ids</b> - (optional)
 	 *   Array of authgroup ids to map to the account. All previous authgroup
 	 *   affiliations for this account will be removed and replaced with this
-	 *   list of group affiliations.<br>
-	 *   Be aware that attempting to update an account to the authgroup id of
-	 *   the TITAN group will result in an exception being thrown.
+	 *   list of group affiliations.
 	 * </li>
 	 * </ul>
 	 * @param integer|string $aID - (optional) the auth or account ID
@@ -818,7 +831,6 @@ class AuthOrgAccount extends BaseActor
 	 * <li>PERMISSION_DENIED - if user lacks permission to modify accounts.</li>
 	 * <li>UNIQUE_FIELD_ALREADY_EXISTS - if a unique field is specified to update,
 	 *   but already exists in the system.</li>
-	 * <li>CANNOT_UPDATE_TO_TITAN - if the TITAN group is specified.</li>
 	 * </ul>
 	 * @return string Returns the redirect URL, if defined.
 	 * @since BitsTheater 3.6
@@ -842,13 +854,7 @@ class AuthOrgAccount extends BaseActor
 		$aPassword 	= trim ( $v->account_password );
 		$aEmail 	= trim ( $v->email );
 		$aIsActive  = (isset($v->account_is_active)) ? $v->account_is_active : null;
-		
 		$aGroupIds  = $v->account_group_ids;
-		// Ensure not trying to set group affiliation to special TITAN group.
-		foreach ((array)$aGroupIds as $thisNewGroupId) {
-			if ( $thisNewGroupId == $dbAuthGroups->getTitanGroupID() )
-				throw AccountAdminException::toss($this, 'CANNOT_UPDATE_TO_TITAN');
-		}
 
 		try
 		{
@@ -859,8 +865,8 @@ class AuthOrgAccount extends BaseActor
 			if( empty($theAccount) )
 				throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $theID );
 			$theAcctInfo = $dbAuth->createAccountInfoObj($theAccount);
-			$theAcctInfo->groups = $dbAuthGroups->getGroupIDListForAuth(
-					$theAcctInfo->auth_id
+			$theAcctInfo->groups = $dbAuthGroups->getGroupIDListForAuthAndOrg(
+					$theAcctInfo->auth_id, $dbAuth->getCurrentOrgID()
 			);
 			$theAcctInfo->org_ids = $dbAuth->getOrgsForAuthCursor(
 					$theAcctInfo->auth_id
@@ -911,7 +917,7 @@ class AuthOrgAccount extends BaseActor
 
 			//update is_active, if applicable
 			if ( isset($updatedIsActive) )
-				$dbAuth->setInvitation($theAcctInfo->account_id, $updatedIsActive);
+				$dbAuth->setInvitation($theAcctInfo, $updatedIsActive);
 
 			// Update account group, if applicable.
 			if ( isset ( $aGroupIds ))
@@ -919,9 +925,6 @@ class AuthOrgAccount extends BaseActor
 				// First we want to remove existing mappings of group ids for this account.
 				foreach ($theAcctInfo->groups as $thisGroupId)
 				{
-					// Ensure not trying to remove group affiliation to special TITAN group.
-					if ( $thisGroupId == $dbAuthGroups->getTitanGroupID() )
-						continue;
 					$dbAuthGroups->delMap(
 							$thisGroupId, $theAcctInfo->auth_id
 					);
@@ -961,7 +964,7 @@ class AuthOrgAccount extends BaseActor
 		// Print out successful APIResponse, generated by ajajGet().
 		$this->ajajGet( $theAcctInfo->account_id );
 	}
-
+	
 	/**
 	 * Allows a site administrator to view the details of an existing account.
 	 * @param integer $aAccountID the account ID (if null, fetch from POST var
@@ -976,7 +979,7 @@ class AuthOrgAccount extends BaseActor
 	public function ajajGet( $aAccountID=null )
 	{
 		$this->checkAllowed( 'accounts', 'view' );
-		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$theAccountID = $this->getRequestData( $aAccountID, 'account_id', true ) ;
 		$dbAccounts = $this->getCanonicalModel() ;
 		try
 		{
@@ -996,8 +999,16 @@ class AuthOrgAccount extends BaseActor
 		$theReturn->groups =
 				$this->getGroupsForAccount( $theReturn->account_id ) ;
 		$this->addMobileHardwareIdsForAutoLogin( $theReturn );
+		$dbAuth = $this->getCanonicalModel();
+		$theFilter = SqlBuilder::withModel($dbAuth)
+			->startFilter(' AND org.')
+			->setParamValue('showonlythese_orgs',
+					$dbAuth->getOrgAndAllChildrenIDs($dbAuth->getCurrentOrgID())
+			)
+			->addParamForColumn('showonlythese_orgs', 'org_id')
+			;
 		$theReturn->org_ids = $this->getOrgsForAccount(
-				$theAccount['auth_id'], array('org_id') ) ;
+				$theAccount['auth_id'], array('org_id'), $theFilter ) ;
 				
 		$this->scene->results = APIResponse::resultsWithData( $theReturn ) ;
 	}
@@ -1076,29 +1087,41 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-	 * Fetches the list of organizations to which an account belongs.
+	 * Fetches the list of organizations to which an account has membership in.
 	 * @param string $aAuthID an account's auth ID (a UUID)
 	 * @param string[] $aFieldList a subset of columns to return; if exactly one
 	 *  column is given, then the return value is a simple array of the values
 	 *  from that column
+	 * @param SqlBuilder $aFilter - (OPTIONAL) a filter for orgs to get.
 	 * @return array|NULL an associative array of organization data, or a simple
 	 *  array of values if exactly one column is requested in
 	 *  <code>$aFieldList</code>, or null if an error occurs.
 	 * @since BitsTheater v4.0.0
 	 */
-	protected function getOrgsForAccount( $aAuthID=null, $aFieldList=null )
+	protected function getOrgsForAccount( $aAuthID=null, $aFieldList=null,
+			SqlBuilder $aFilter=null )
 	{
 		try
 		{
+			$theOrgs = array();
 			$dbOrgs = $this->getProp( 'Auth' ) ;
-			$theOrgs = $dbOrgs->getOrgsForAuthCursor( $aAuthID, $aFieldList )
-				->fetchAll() ;
-			if( !empty($theOrgs) && !empty($aFieldList) && count($aFieldList) == 1 )
-			{ // Caller wanted exactly one column; collapse it to an array.
-				return Arrays::array_column( $theOrgs, $aFieldList[0] ) ;
-			}
-			else
-				return $theOrgs ;
+			$theRowSet = AuthOrgSet::withContextAndColumns($this, $aFieldList)
+				->setDataFromPDO(
+						$dbOrgs->getOrgsForAuthCursor( $aAuthID, null, $aFilter )
+				);
+			$theFieldList = $theRowSet->getExportFieldsList();
+			$theSimpleField = ( !empty($theFieldList) && count($theFieldList) == 1 )
+				? $theFieldList[0] : null;
+			foreach ($theRowSet as $theRow) {
+				if ( !empty($theSimpleField) )
+				{ // Caller wanted exactly one column; collapse it to a string[].
+					$theOrgs[] = $theRow->exportData()->{$theSimpleField};
+				}
+				else {
+					$theOrgs[] = $theRow->exportData();
+				}
+			};
+			return $theOrgs ;
 		}
 		catch( Exception $x )
 		{
@@ -1126,8 +1149,9 @@ class AuthOrgAccount extends BaseActor
 		$theAuthID = $this->getRequestData( $aAuthID, 'auth_id' ) ;
 		$theFieldList =
 				$this->getRequestData( $aFieldList, 'field_list', false ) ;
-		$this->scene->results = APIResponse::resultsWithData(
-				$this->getOrgsForAccount( $theAuthID, $theFieldList ) ) ;
+		$this->setApiResults(
+				$this->getOrgsForAccount( $theAuthID, $theFieldList )
+		);
 	}
 	
 	/**
@@ -1161,7 +1185,7 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-	 * Standard output for either getAll or getAllInGroup.
+	 * Standard output for either getAll.
 	 * @param \PDOStatement $aRowSet - the result set to return.
 	 * @return AuthAccountSet Returns the wrapper class used.
 	 * @since BitsTheater 3.7.0
@@ -1173,7 +1197,7 @@ class AuthOrgAccount extends BaseActor
 		$theFieldList = AuthAccount::getDefinedFields();
 		//construct our iterator object
 		$theAccountSet = AuthAccountSet::create( $this )
-				->setItemClassArgs($this->getProp('Auth'), $theFieldList)
+				->setItemClassArgs($this->getMyModel(), $theFieldList)
 				->setDataFromPDO($aRowSet)
 				;
 		$theAccountSet->filter = $v->filter ;
@@ -1183,31 +1207,10 @@ class AuthOrgAccount extends BaseActor
 		$theGroupFieldList = array('group_id', 'group_name');
 		$theAccountSet->mGroupList = AuthGroupList::create( $this )
 				->setFieldList($theGroupFieldList)
-				->setItemClassArgs($this->getProp('AuthGroups'), $theGroupFieldList)
+				->setItemClassArgs($this->getAuthGroupsModel(), $theGroupFieldList)
 				;
 					
 		return $theAccountSet;
-	}
-
-	/**
-	 * Consumed by ajajGetAll().
-	 * @param integer $aGroupID the ID of the account group
-	 * @since BitsTheater 3.6.0
-	 */
-	protected function getAllInGroup( $aGroupID )
-	{
-		$dbGroups = $this->getProp('AuthGroups');
-		if( ! $dbGroups->groupExists($aGroupID) )
-			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aGroupID ) ;
-		$dbAuth = $this->getProp('Auth');
-		try {
-			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene, $aGroupID);
-			$this->scene->results = APIResponse::resultsWithData(
-					$this->getAuthAccountSet($theRowSet)
-			);
-		}
-		catch (Exception $x)
-		{ throw BrokenLeg::tossException( $this, $x ) ; }
 	}
 
 	/**
@@ -1220,15 +1223,24 @@ class AuthOrgAccount extends BaseActor
 	public function ajajGetAll( $aGroupID=null )
 	{
 		$this->checkAllowed( 'accounts', 'view' );
-		$theGroupID = $this->getEntityID( $aGroupID, 'group_id', false ) ;
-		if( ! empty($theGroupID) )
-			return $this->getAllInGroup( $theGroupID ) ; // instead of "get all"
-		$dbAuth = $this->getProp('Auth');
+		$theGroupID = $this->getRequestData( $aGroupID, 'group_id', false ) ;
 		try {
-			$theRowSet = $dbAuth->getAccountsToDisplay($this->scene);
-			$this->scene->results = APIResponse::resultsWithData(
-					$this->getAuthAccountSet($theRowSet)
+			if ( !empty($theGroupID) ) {
+				$dbAuthGroups = $this->getAuthGroupsModel();
+				if ( $dbAuthGroups->groupExists($theGroupID) ) {
+					$theFilter = SqlBuilder::withModel($dbAuthGroups)
+						->startFilter()
+						->mustAddParam('group_id', $theGroupID)
+						;
+				}
+				else
+				{ throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $theGroupID ); }
+			}
+			$dbAuth = $this->getMyModel();
+			$theRowSet = $dbAuth->getAuthAccountsToDisplay($this->scene,
+					$theFilter
 			);
+			$this->setApiResults($this->getAuthAccountSet($theRowSet));
 		}
 		catch (Exception $x)
 		{ throw BrokenLeg::tossException( $this, $x ) ; }
@@ -1264,9 +1276,18 @@ class AuthOrgAccount extends BaseActor
 	{
 		$theAccountID = $this->getRequestData( $aAccountID, 'account_id', true ) ;
 		$this->setActiveStatus( $theAccountID, false ) ;
-		$dbAuth = $this->getProp( 'Auth' ) ;
+		$dbAuth = $this->getMyModel();
 		$theAuthRow = $dbAuth->getAuthByAccountId( $aAccountID );
-		$dbAuth->removeTokensFor($theAuthRow['auth_id'], $theAuthRow['account_id'], '%');
+		$theTokensToRemove = array(
+				$dbAuth::TOKEN_PREFIX_ANTI_CSRF . '%',
+				$dbAuth::TOKEN_PREFIX_COOKIE . '%',
+				$dbAuth::TOKEN_PREFIX_LOCKOUT . '%',
+		);
+		foreach ($theTokensToRemove as $theTokenPattern) {
+			$dbAuth->removeTokensFor($theAuthRow['auth_id'],
+					$theAuthRow['account_id'], $theTokenPattern
+			);
+		}
 	}
 
 	/**
@@ -1280,20 +1301,22 @@ class AuthOrgAccount extends BaseActor
 	{
 		$this->checkAllowed( 'accounts', 'activate' );
 		$dbAuth = $this->getProp( 'Auth' ) ;
-		$theAuth = null ;
-		try { $theAuth = $dbAuth->getAuthByAccountId($aAccountID) ; }
-		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
-		if( empty($theAuth) )
-			throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aAccountID ) ;
-		try { $dbAuth->setInvitation( $aAccountID, $bActive ) ; }
-		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, 'DB_EXCEPTION', $dbx->getMessage() ) ; }
+		try {
+			$theAuth = $dbAuth->getAuthByAccountId($aAccountID) ;
+			if ( !empty($theAuth) ) {
+				$dbAuth->setInvitation( $dbAuth->createAccountInfoObj($theAuth), $bActive ) ;
+			}
+			else {
+				throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $aAccountID ) ;
+			}
+		}
+		catch (\Exception $x)
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
 
 		$theResponse = new \stdClass() ;
 		$theResponse->account_id = $aAccountID ;
 		$theResponse->is_active = $bActive ;
-		$this->scene->results = APIResponse::resultsWithData($theResponse) ;
+		$this->setApiResults($theResponse);
 	}
 
 	/**
@@ -1361,7 +1384,6 @@ class AuthOrgAccount extends BaseActor
 	 * Map a mobile device with an account to auto-login once configured.
 	 * Returns NO CONTENT.
 	 * @return string Returns the redirect URL, if defined.
-	 * @since BitsTheater 3.6.1
 	 */
 	public function ajajMapMobileToAccount()
 	{
@@ -1392,34 +1414,8 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-	 * Before a pairing of device to auth account is attempted, what should occur?
-	 * Default behavior is to delete stale tokens for enhanced security.
-	 * @param string $aDeviceTokenFilter - the particular token prefix used.
-	 */
-	protected function beforeRequestMobileAuthAccount($aDeviceTokenFilter)
-	{
-		$dbAuth = $this->getProp('Auth');
-		//remove any stale device tokens
-		$dbAuth->removeStaleTokens($aDeviceTokenFilter, '3 MONTH');
-		$this->returnProp($dbAuth);
-	}
-	
-	/**
-	 * Once a pairing of device to auth account succeeds, then what? Default behavior is to
-	 * delete the token for enhanced security.
-	 * @param string $aDeviceTokenFilter - the particular token prefix used.
-	 */
-	protected function afterSuccessfulRequestMobileAuthAccount($aDeviceTokenFilter)
-	{
-		$dbAuth = $this->getProp('Auth');
-		//remove any lingering device tokens unless one was JUST created
-		$dbAuth->removeStaleTokens($aDeviceTokenFilter, '1 SECOND');
-		$this->returnProp($dbAuth);
-	}
-	
-	/**
 	 * Mobile devices might ask the server for what account should be used
-	 * for authenticating mobile devices (which may be rooted).
+	 * for authenticating mobile devices (which may be rooted).<br>
 	 * Returns JSON encoded array[account_name, auth_id, user_token, auth_token]
 	 * @return string Returns the redirect URL, if defined.
 	 */
@@ -1428,30 +1424,20 @@ class AuthOrgAccount extends BaseActor
 		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
 		
-		//Auth Header IS NOT SET because we do not have an account, yet
-		//  Most of the Auth Header data is in a POST param
-		if (!empty($v->auth_header_data))
-		{
-			$theHttpAuthHeader = HttpAuthHeader::fromHttpAuthHeader(
-					$this->getDirector(), $v->auth_header_data
+		$dbAuth = $this->getProp('Auth');
+		$myAuth = $this->getDirector()->getMyAccountInfo();
+		$theMobileRow = $this->getMyMobileRow();
+		if ( !$this->isGuest() && !empty($theMobileRow) ) {
+			$theAuthToken = $dbAuth->generateAuthTokenForMobile(
+					$myAuth->account_id, $myAuth->auth_id, $theMobileRow['mobile_id']
 			);
-			$dbAuth = $this->getProp('Auth');
-			$theDeviceTokenFilter = $dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':';
-			$theDeviceTokenFilter .= $theHttpAuthHeader->device_id . ':%';
-			$this->beforeRequestMobileAuthAccount($theDeviceTokenFilter);
-			
-			$theTokenRows = $dbAuth->getAuthTokens(null, null, $theDeviceTokenFilter, true);
-			//$this->debugLog(__METHOD__.' rows='.$this->debugStr($theTokenRows));
-			if (!empty($theTokenRows)) {
-				//just use the first one found
-				$theID = $theTokenRows[0]['account_id'];
-				$theAccountInfoCache = $dbAuth->getAccountInfoCache($dbAuth, $theID);
-				$v->results = $dbAuth->requestMobileAuthAfterPwLogin(
-						$theAccountInfoCache, $theHttpAuthHeader
-				);
-				//$this->debugLog(__METHOD__.' results='.$this->debugStr($v->results));
-				$this->afterSuccessfulRequestMobileAuthAccount($theDeviceTokenFilter);
-			}
+			$v->results = array(
+					'account_name' => $myAuth->account_name,
+					'auth_id' => $myAuth->auth_id,
+					'user_token' => $theMobileRow['account_token'],
+					'auth_token' => $theAuthToken,
+					'api_version_seq' => $this->getRes('website/api_version_seq'),
+			);
 		}
 	}
 	
@@ -1498,13 +1484,21 @@ class AuthOrgAccount extends BaseActor
 	 */
 	public function ajajCreateOrg()
 	{
-		//by checking a non-existant permission, we regulate this ability to Titan users only.
-		$this->checkAllowed('auth', 'create_org');
+		$this->checkAllowed('auth_orgs', 'create');
+		$theOrgName = $this->getRequestData( null, 'org_name' ) ;
+		if( ! AuthOrg::validateOrgShortName( $theOrgName ) )
+		{ // Don't accept names that might cause trouble for the framework.
+			throw AccountAdminException::toss( $this,
+				AccountAdminException::ACT_INVALID_ORG_SHORT_NAME, $theOrgName ) ;
+		}
+		
 		$dbAuth = $this->getProp('Auth');
 		try {
-			$this->scene->results = APIResponse::resultsWithData(
-					$dbAuth->addOrganization($this->scene)
-			);
+			$theResults = $this->setApiResults($dbAuth->addOrganization($this->scene));
+			if ( !empty($theResults) && !empty($theResults->data) ) {
+				$dbAuthGroups = $this->getProp('AuthGroups');
+				$dbAuthGroups->setupDefaultDataForNewOrg($theResults->data);
+			}
 		}
 		catch ( Exception $x )
 		{ throw BrokenLeg::tossException($this, $x); }
@@ -1516,8 +1510,7 @@ class AuthOrgAccount extends BaseActor
 	 */
 	public function ajajUpdateOrg()
 	{
-		//by checking a non-existant permission, we regulate this ability to Titan users only.
-		$this->checkAllowed('auth', 'update_org');
+		$this->checkAllowed('auth_orgs', 'modify');
 		$dbAuth = $this->getProp('Auth');
 		try {
 			$this->scene->results = APIResponse::resultsWithData(
@@ -1530,20 +1523,25 @@ class AuthOrgAccount extends BaseActor
 	
 	/**
 	 * Used by ajajGetOrgs().
-	 * @param $aID - get a particular Org or all?
+	 * @param $aID - (OPTIONAL) get a particular Org else current & children.
 	 * @return AuthOrgSet Returns the set to iterate through and fetch.
 	 */
-	protected function getOrgs($aID=null)
+	protected function getOrgs( $aID=null )
 	{
 		$v = $this->getMyScene();
 		$dbAuth = $this->getMyModel();
-		$theFilter = null;
+		$theFilter = SqlBuilder::withModel($dbAuth)
+			->startFilter()
+			;
 		if ( !empty($aID) ) {
-			$theFilter = SqlBuilder::withModel($dbAuth)
-				->startWith('1')->setParamPrefix(' AND ')
-				->mustAddParam('org_id', $aID)
-				;
+			$theFilter->setParamValue('org_id', $aID);
 		}
+		else {
+			$theCurrOrgID = $dbAuth->getCurrentOrgID();
+			$theIDList = $dbAuth->getOrgAndAllChildrenIDs($theCurrOrgID);
+			$theFilter->setParamValueIfEmpty('org_id', $theIDList);
+		}
+		$theFilter->addParam('org_id');
 		//get default field list
 		$theFieldList = array();
 		if ( filter_var($v->with_map_info, FILTER_VALIDATE_BOOLEAN) )
@@ -1560,10 +1558,11 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-	 * Retrieve single site message for given message id. Can optionally
+	 * Retrieve single org for given id or all (paged) if null. Can optionally
 	 * supply a field list by supplying a 'field_list' array in the
 	 * request body.
 	 * @param string $aID - (optional) The ID of the record to be returned.
+	 * @return string Return the URL to redirect to, if any.
 	 * @throws BrokenLeg::ENTITY_NOT_FOUND if ID given but not found.
 	 */
 	public function ajajGetOrgs($aID=null)
@@ -1573,32 +1572,424 @@ class AuthOrgAccount extends BaseActor
 		// Ensure view set to response in JSON format for this endpoint.
 		$this->viewToRender('results_as_json');
 		// Ensure required endpoint permissions are held, throwing BrokenLeg otherwise.
-		$this->checkAllowed('auth', 'view_orgs');
-		// get all messages, or just a single one?
-		$theID = $this->getRequestData($aID, 'org_id', false);
+		$this->checkAllowed('auth_orgs', 'view');
 		// sort_by is an alias for orderby in this endpoint
 		$v->orderby = $this->getRequestData($v->orderby, 'sort_by', false);
-		// Retrieve the site message from db.
+		// get all data, or just a single one?
+		$theID = $this->getRequestData($aID, 'org_id', false);
+		// Retrieve the data from db.
 		try
 		{
 			$theRecordSet = $this->getOrgs($theID);
 			if ( !empty($theID) ) {
 				$theRow = $theRecordSet->fetch();
 				if ( $theRow !== false ) {
-					$v->results = APIResponse::resultsWithData($theRow->exportData()) ;
+					$this->setApiResults($theRow->exportData());
 				}
-				else {
+				else if ( empty($aID) ) {
+					$this->setApiResults(array());
+				} else {
 					throw BrokenLeg::toss($this, 'ENTITY_NOT_FOUND', $theID);
 				}
 			}
 			else {
-				$v->results = APIResponse::resultsWithData($theRecordSet) ;
+				$this->setApiResults($theRecordSet);
 			}
 		}
 		catch(Exception $x)
 		{ throw BrokenLeg::tossException($this, $x); }
 	}
 
+	/**
+	 * Retrieves specific accounts by the given parameters.
+	 * @param string $aFilter - Filter string used to search for accounts
+	 * by a certain subset of field/column values.
+	 */
+	public function ajajSearch( $aSearchText=null )
+	{
+		// Assign by reference our current scene to our scope helper variable.
+		$v = $this->getMyScene();
+		// Ensure view set to response in JSON format for this endpoint.
+		$this->viewToRender('results_as_json');
+		// Ensure required endpoint permissions are held, throwing BrokenLeg otherwise.
+		$this->checkAllowed('accounts', 'view');
+		// sort_by is an alias for orderby in this endpoint
+		$v->orderby = $this->getRequestData($v->orderby, 'sort_by', false);
+		// Parse given request parameters.
+		$theSearchText = Strings::stripEnclosure(trim(
+				$this->getRequestData($aSearchText, 'search', false)
+		));
+		if ( !empty($theSearchText) )
+		{ $theSearchText = '%' . $theSearchText . '%'; }
+		$bAndSearchText = filter_var($v->andSearch, FILTER_VALIDATE_BOOLEAN);
+		//put the authgroups/authorgs ID lists under their appropriate filter key
+		if ( !empty($v->authgroups) )
+		{
+			if ( empty($v->filter) )
+			{ $v->filter = array(); }
+			if ( is_array($v->filter) )
+			{ $v->filter['group_id'] =  $v->authgroups; }
+			else //if it is not an array, it is an object
+			{ $v->filter->group_id = $v->authgroups; }
+		}
+		if ( !empty($v->authorgs) )
+		{
+			if ( empty($v->filter) )
+			{ $v->filter = array(); }
+			if ( is_array($v->filter) )
+			{ $v->filter['org_id'] =  $v->authorgs; }
+			else //if it is not an array, it is an object
+			{ $v->filter->org_id = $v->authorgs; }
+		}
+		//we wish to return auth groups and orgs list details
+		$bIncMaps = true;
+		//get default field list
+		$theFieldList = array();
+		if ( $bIncMaps )
+		{ $theFieldList[] = 'with_map_info'; }
+		try
+		{
+			//construct our iterator object
+			$theIterator = AuthAccountSet::create($this)
+				->setupPagerDataFromUserData($this->scene)
+				->setupSqlDataFromUserData($this->scene)
+				->setItemClassArgs($this->getMyModel(), $theFieldList)
+				;
+			$theFilter = $theIterator->getFilterForSearch($v->filter,
+					$theSearchText, $bAndSearchText);
+			$theRowSet = $theIterator->getAccountsToDisplay($theFilter);
+			$this->setApiResults($theRowSet);
+		}
+		catch ( \Exception $x )
+		{ throw BrokenLeg::tossException($this, $x); }
+	}
+	
+	/**
+	 * Change the currently viewed org to a different one.
+	 * @param string $aOrgID - the org_id (if null, fetch from POST var
+	 *   <code>'org_id'</code> instead).
+	 * @throws BrokenLeg <ul>
+	 *  <li>'MISSING_ARGUMENT' - if the org ID is not specified.</li>
+	 *  <li>'ENTITY_NOT_FOUND' - if no org with that ID exists.</li>
+	 * </ul>
+	 * @since BitsTheater v4.1.0
+	 */
+	public function ajajChangeOrg( $aOrgID=null )
+	{
+		//guests cannot change what org they are looking at, ignore them
+		if ( $this->isGuest() )
+		{ throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED); }
+		//org_id is required request parameter (url/get/post)
+		$theOrgID = $this->getRequestData( $aOrgID, 'org_id', false ) ;
+		//get my auth
+		$myAuthID = $this->getDirector()->getMyAccountInfo()->auth_id;
+		try {
+			//get our model
+			$dbAuth = $this->getMyModel();
+			if ( !empty($theOrgID) ) {
+				//get our org data - do not use the AuthOrg costume as we need
+				//  the dbconn info which the costume does not provide (security
+				//  precaution against accidentally exporting back to a client).
+				$theOrg = $dbAuth->getOrganization($theOrgID);
+				//if org exists...
+				if ( !empty($theOrg) ) {
+					if ( $this->isAllowed('auth_orgs', 'transcend') ) {
+						$theOrgList = array();
+						$theOrgSet = AuthOrgSet::withContextAndColumns($this, array('org_id'))
+							->setPagerEnabled(false)
+							->getOrganizationsToDisplay()
+							;
+						foreach ($theOrgSet as $anOrg) { //$theOrg var name already in use
+							$theOrgList[] = $anOrg->exportData()->org_id;
+						}
+					}
+					else {
+						$theOrgList = $dbAuth->getOrgsForAuthCursor($myAuthID, array('org_id'))
+							->fetchAll(\PDO::FETCH_COLUMN)
+							;
+					}
+					//... ensure it is one of logged in users mapped orgs
+					if ( !empty($theOrgList) &&
+							array_search($theOrgID, $theOrgList, true) !== false )
+					{
+						$dbAuth->setCurrentOrg($theOrg);
+						//no need to return anything but a "yep, it worked" response
+						$this->setNoContentResponse();
+					}
+					else {
+						throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
+					}
+				}
+				else {
+					throw BrokenLeg::toss($this, BrokenLeg::ACT_ENTITY_NOT_FOUND, $aOrgID);
+				}
+			}
+			else { //switching back to root, only allow if can transcend
+				if ( $this->isAllowed('auth_orgs', 'transcend') ) {
+					$dbAuth->setCurrentOrg();
+					//no need to return anything but a "yep, it worked" response
+					$this->setNoContentResponse();
+				}
+				else {
+					throw BrokenLeg::toss($this, BrokenLeg::ACT_MISSING_ARGUMENT, 'org ID');
+				}
+			}
+		}
+		catch ( \Exception $x ) {
+			throw BrokenLeg::tossException($this, $x);
+		}
+	}
+	
+	/**
+	 * Fetches a specific account preference for the given account.
+	 *
+	 * In addition to the function arguments, we support the Boolean query param
+	 * 'simple'; if true, then only the value will be returned, as plaintext.
+	 * If false, or not specified, the API sends back an object.
+	 *
+	 * <pre>
+	 * {
+	 *     "auth_id": (string),
+	 *     "namespace": (string),
+	 *     "pref_key": (string),
+	 *     "pref_value": (boolean|integer|string)
+	 * }
+	 * </pre>
+	 *
+	 * @param string $aAuthID the account ID
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 */
+	public function ajajGetPreferenceFor( $aAuthID, $aSpace, $aKey )
+	{
+		$theAuthID = $this->resolveTargetAuthID($aAuthID) ;
+		$theSpace = $this->getRequestData( $aSpace, 'namespace' ) ;
+		$theKey = $this->getRequestData( $aKey, 'pref_key' ) ;
+		$bSimple = $this->getRequestData( null, 'simple', false ) ;
+		if( $bSimple === null ) $bSimple = false ;
+		$dbPrefs = $this->getProp( PrefsDB::MODEL_NAME ) ;
+		try
+		{
+			$theValue = $dbPrefs->getPreference($theAuthID,$theSpace,$theKey) ;
+			if( $bSimple )
+			{ // print only the value, directly to the output stream
+				$this->viewToRender( 'results_as_txt' ) ;
+				print $theValue ;
+				return ;
+			} // otherwise, return a full API response
+			$this->setApiResults( array(
+					'auth_id' => $theAuthID,
+					'namespace' => $theSpace,
+					'pref_key' => $theKey,
+					'pref_value' => $theValue
+				));
+		}
+		catch( \Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+	
+	/**
+	 * Fetches a specified preference value for the current account.
+	 *
+	 * In addition to the function arguments, we support the Boolean query param
+	 * 'simple'; if true, then only the value will be returned, as plaintext.
+	 * If false, or not specified, the API sends back an object.
+	 *
+	 * <pre>
+	 * {
+	 *     "auth_id": (string),
+	 *     "namespace": (string),
+	 *     "pref_key": (string),
+	 *     "pref_value": (boolean|integer|string)
+	 * }
+	 * </pre>
+	 *
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 */
+	public function ajajGetPreference( $aSpace, $aKey )
+	{
+		$theAuthID = $this->getDirector()->account_info->auth_id ;
+		$this->ajajGetPreferenceFor( $theAuthID, $aSpace, $aKey ) ;
+	}
+	
+	/**
+	 * Sets the value of an account preference.
+	 * @param string $aAuthID the account ID
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 * @param string $aValue the value to set
+	 */
+	public function ajajSetPreferenceFor( $aAuthID, $aSpace, $aKey, $aValue=null )
+	{
+		$theAuthID = $this->resolveTargetAuthID($aAuthID) ;
+		$theSpace = $this->getRequestData( $aSpace, 'namespace' ) ;
+		$theKey = $this->getRequestData( $aKey, 'pref_key' ) ;
+		// Value isn't strictly required because we can allow null.
+		$theValue = $this->getRequestData( $aValue, 'pref_value', false ) ;
+		$theSummary = array(
+				'auth_id' => $theAuthID,
+				'namespace' => $theSpace,
+				'pref_key' => $theKey,
+				'pref_value' => $theValue
+			);
+		$dbPrefs = $this->getProp( PrefsDB::MODEL_NAME ) ;
+		try
+		{
+			$theResult = $dbPrefs->setPreference(
+					$theAuthID, $theSpace, $theKey, $theValue ) ;
+			$theSummary['pref_value'] = $theResult['value'] ;
+			if( $theResult['status'] == 200 || $theResult['status'] == 201 )
+			{
+				http_response_code($theResult['status']) ;
+				$this->setApiResults($theSummary) ;
+			}
+			else
+			{ // Some exception handler override returned some data to us.
+				$theError = AccountAdminException::toss( $this,
+						AccountAdminException::ACT_PREFERENCE_UPDATE_FAILED ) ;
+				$theError->putExtras($theSummary) ;
+				$theError->setConditionCode( $theResult['status'] ) ;
+				throw $theError ;
+			}
+		}
+		catch( \Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+	
+	/**
+	 * Sets the value of an account preference for the current account.
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 * @param string $aValue the value to set
+	 */
+	public function ajajSetPreference( $aSpace, $aKey, $aValue )
+	{
+		$theAuthID = $this->getDirector()->account_info->auth_id ;
+		$this->ajajSetPreferenceFor( $theAuthID, $aSpace, $aKey, $aValue ) ;
+	}
+	
+	/**
+	 * Resets an account's preference to its default value.
+	 * On success, we just return HTTP 204.
+	 * Operation is idempotent; if setting is already gone, we don't care.
+	 * @param string $aAuthID the account ID
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 */
+	public function ajajResetPreferenceFor( $aAuthID, $aSpace, $aKey )
+	{
+		$theAuthID = $this->resolveTargetAuthID($aAuthID) ;
+		$theSpace = $this->getRequestData( $aSpace, 'namespace' ) ;
+		$theKey = $this->getRequestData( $aKey, 'pref_key' ) ;
+		$dbPrefs = $this->getProp( PrefsDB::MODEL_NAME ) ;
+		try
+		{
+			$theResult = $dbPrefs->resetPreference(
+					$theAuthID, $theSpace, $theKey ) ;
+			if( $theResult )
+				$this->setApiResultsAsNoContent() ;
+			else
+			{ // Something failed and didn't throw an exception.
+				throw AccountAdminException::toss( $this,
+						AccountAdminException::ACT_PREFERENCE_UPDATE_FAILED ) ;
+			}
+		}
+		catch( \Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+	
+	/**
+	 * Resets the specified preference for the current account to its default
+	 * value.
+	 * On success, we just return HTTP 204.
+	 * Operation is idempotent; if setting is already gone, we don't care.
+	 * @param string $aSpace the preference namespace
+	 * @param string $aKey the preference key
+	 */
+	public function ajajResetPreference( $aSpace, $aKey )
+	{
+		$theAuthID = $this->getDirector()->account_info->auth_id ;
+		$this->ajajResetPreferenceFor( $theAuthID, $aSpace, $aKey ) ;
+	}
+	
+	/**
+	 * Gets all the preferences for an account.
+	 * @param string $aAuthID (optional) the account ID; if not supplied, then
+	 *  the current account's preferences are fetched
+	 */
+	public function ajajGetPreferencesFor( $aAuthID=null )
+	{
+		$theAuthID = $this->resolveTargetAuthID($aAuthID) ;
+		$dbPrefs = $this->getProp( PrefsDb::MODEL_NAME ) ;
+		try
+		{ $this->setApiResults( $dbPrefs->getPreferencesFor($theAuthID) ) ; }
+		catch( \Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+	
+	/**
+	 * Gets preferences for the current account.
+	 */
+	public function ajajGetPreferences()
+	{
+		$theAuthID = $this->getDirector()->account_info->auth_id ;
+		$this->ajajGetPreferencesFor($theAuthID) ;
+	}
+	
+	/**
+	 * Gets the preference <i>profile</i> for an account. This is a hierarchical
+	 * map of preferences namespaces and keys to values, where the value is
+	 * either an explicit value provisioned for the account, or the default
+	 * value specified in the application resources.
+	 * @param string $aAuthID (optional) the account ID; if not supplied, then
+	 *  the current account's preferences are fetched
+	 */
+	public function ajajGetPreferenceProfileFor( $aAuthID=null )
+	{
+		$theAuthID = $this->resolveTargetAuthID($aAuthID) ;
+		$dbPrefs = $this->getProp( PrefsDb::MODEL_NAME ) ;
+		try
+		{
+			$this->setApiResults(
+					$dbPrefs->getPreferenceProfileFor($theAuthID) ) ;
+		}
+		catch( \Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+	}
+	
+	/**
+	 * Gets the preference <i>profile</i> for this account. This is a
+	 * hierarchical map of preferences namespaces and keys to values, where the
+	 * value is either an explicit value provisioned for the account, or the
+	 * default value specified in the application resources.
+	 */
+	public function ajajGetPreferenceProfile()
+	{
+		$theAuthID = $this->getDirector()->account_info->auth_id ;
+		$this->ajajGetPreferenceProfileFor($theAuthID) ;
+	}
+		
+	/**
+	 * Reusable code to figure out which account we're working with. A requestor
+	 * may send a request with no auth ID supplied, in which case we should act
+	 * on the requestor's own account. If the requestor does supply an explicit
+	 * ID, then we must ensure that it matches
+	 * @param string $aAuthID (optional) the account ID; if not supplied, then
+	 *  the current account's preferences are fetched
+	 * @return string the resolved ID
+	 */
+	protected function resolveTargetAuthID( $aAuthID=null )
+	{
+		$theAuthID = $this->getRequestData( $aAuthID, 'auth_id', false ) ;
+		$theCurrentAuthID = $this->getDirector()->account_info->auth_id ;
+		if( empty($theAuthID) ) // No ID was supplied; use the current account.
+			$theAuthID = $theCurrentAuthID ;
+		else if( $theAuthID != $theCurrentAuthID ) // Requestor needs rights.
+			$this->checkAllowed( 'accounts', 'modify' ) ;
+		return $theAuthID ;
+	}
+	
 }//end class
 
 }//end namespace

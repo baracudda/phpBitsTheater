@@ -1,10 +1,14 @@
 <?php
 use com\blackmoonit\Strings;
 
-function downloadFile($aFile, $aMimeType, $aDownloadAsFilename, $aDisposition) {
+function downloadFile( $aFile, $aMimeType, $aDownloadAsFilename, $aDisposition)
+{
+	//Strings::debugLog( __METHOD__ . "[DEBUG] results [{$aFile}] MIME type [{$aMimeType}] attachment name [{$aDownloadAsFilename}] disposition [{$aDisposition}]" ) ;
 	if (file_exists($aFile)) {
-		//if no headers are sent, send some
-		if (!headers_sent()) {
+		//if headers are already sent, sending more causes errors!
+		if( !headers_sent() )
+		{
+			//Strings::debugLog( __METHOD__ . ' [DEBUG] setting response headers...' ) ;
 			if (empty($aMimeType)) {
 				if (Strings::endsWith($aFile,'.apk')) {
 					$aMimeType = 'application/vnd.android.package-archive';
@@ -27,4 +31,4 @@ function downloadFile($aFile, $aMimeType, $aDownloadAsFilename, $aDisposition) {
 	}
 }
 
-downloadFile($v->results, $v->mimetype, $v->output_filename, $v->content_disposition);
+downloadFile( $v->results, $v->mimetype, $v->output_filename, $v->content_disposition ) ;

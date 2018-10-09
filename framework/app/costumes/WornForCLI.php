@@ -78,7 +78,7 @@ trait WornForCLI
 	 * @param boolean $isError indicates that the message represents an error
 	 * @param boolean $isFatal indicates that the message represents a fatal
 	 *  error which should kill the script (trumps $isError)
-	 * @return the object, for fluid invocations
+	 * @return $this Return the object, for fluid invocations
 	 * @throws BrokenLeg if not running under CLI and the message is a fatal
 	 *  error
 	 */

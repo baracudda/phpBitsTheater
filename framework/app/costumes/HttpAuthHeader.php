@@ -17,20 +17,15 @@
 
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
-use BitsTheater\costumes\IDirected;
-use BitsTheater\costumes\WornForHttpAuthBasic;
-use BitsTheater\costumes\WornForHttpAuthBroadway;
-use BitsTheater\Director;
 {//namespace begin
 
 /**
  * HTTP Authorization headers have different members based on the scheme
  * being utilized, but any common characterizitics/methods would go here.
+ * @deprecated venue auth mechanism supercedes the need for this class.
  */
 class HttpAuthHeader extends BaseCostume
 {
-	use WornForHttpAuthBasic, WornForHttpAuthBroadway;
-	
 	/**
 	 * The raw HTTP Auth header.
 	 * @var string
@@ -48,7 +43,8 @@ class HttpAuthHeader extends BaseCostume
 	 */
 	public function setup(IDirected $aContext) {
 		parent::setup($aContext);
-		$this->setHttpAuthHeader($_SERVER['HTTP_AUTHORIZATION']);
+		if ( !empty($_SERVER['HTTP_AUTHORIZATION']) )
+		{ $this->setHttpAuthHeader($_SERVER['HTTP_AUTHORIZATION']); }
 	}
 
 	/**
@@ -81,15 +77,6 @@ class HttpAuthHeader extends BaseCostume
 	 * Parse out the Auth data according to the Auth scheme.
 	 */
 	protected function parseAuthData() {
-		$theAuthData = base64_decode(substr($this->auth_header, strlen($this->auth_scheme)+1));
-		switch ($this->auth_scheme) {
-			case 'Basic':
-				$this->parseAuthHeaderAsAuthBasic($theAuthData);
-				break;
-			case 'Broadway':
-				$this->parseAuthHeaderAsAuthBroadway($theAuthData);
-				break;
-		}//switch
 	}
 	
 }//end class

@@ -17,9 +17,9 @@
 
 namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
+use BitsTheater\costumes\AuthOrg;
 use BitsTheater\costumes\WornForExportData as ExportDataTrait;
 use BitsTheater\costumes\colspecs\CommonMySql;
-use BitsTheater\models\AuthGroups;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -47,8 +47,12 @@ class CacheForAuthAccountInfo extends BaseCostume
 	/** @var boolean Will always be TRUE for current logged in account info. */
 	public $is_active = true;
 	/** @var string[] account has membership in these AuthGroups. */
-	public $groups = array( AuthGroups::UNREG_GROUP_ID );
-
+	public $groups = null;
+	/** @var string[] 3D boolean leaf array of group_id[namespace[right[]]] */
+	public $rights = null;
+	/** @var AuthOrg The property to store the current org. */
+	public $mSeatingSection = null;
+	
 	public function __construct($aContext=null, $aFieldList=null) {
 		if ( !empty($aContext) )
 		{ $this->setDirector( $aContext->getDirector() ); }
@@ -60,11 +64,14 @@ class CacheForAuthAccountInfo extends BaseCostume
 	 * based on the array keys or object property names.
 	 * @param array|object $aThing - array or object to copy from.
 	 */
-	protected function copyFrom( &$aThing )
+	protected function copyFrom( $aThing )
 	{
 		foreach ($aThing as $theName => $theValue) {
 			if (property_exists($this, $theName)) {
 				$this->{$theName} = $theValue;
+			}
+			if ( $theName=='curr_org' && !empty($theValue) ) {
+				$this->mSeatingSection = AuthOrg::getInstance($this, $theValue);
 			}
 		}
 		$this->account_id = Strings::toInt($this->account_id);
@@ -85,7 +92,10 @@ class CacheForAuthAccountInfo extends BaseCostume
 		$o = parent::constructExportObject();
 		$o->account_id = intval( $o->account_id ) ;
 		unset($o->last_seen_dt);
-		$dbAuth = $this->getDirector()->getProp('Auth');
+		unset($o->mSeatingSection);
+		if ( !empty($this->mSeatingSection) )
+		{ $o->curr_org = $this->mSeatingSection->exportData(); }
+		$dbAuth = $this->getProp('Auth');
 		switch ($dbAuth->dbType()) {
 			case $dbAuth::DB_TYPE_MYSQL:
 				$o = CommonMySql::deepConvertSQLTimestampsToISOFormat($o);

@@ -67,8 +67,8 @@ class FinallyBlock {
 	
 	/**
 	 * Construct a closeCursor FinallyBlock for PDOStatements.
-	 * @param PDOStatement $aPdoStatement - the PDOStatement to close.
-	 * @return \com\blackmoonit\FinallyBlock
+	 * @param \PDOStatement $aPdoStatement - the PDOStatement to close.
+	 * @return $this Returns the new object created.
 	 */
 	static public function forDbCursor(&$aPdoStatement) {
 		return new self(__NAMESPACE__ .'\FinallyBlock::closeCursor',$aPdoStatement);
@@ -76,7 +76,7 @@ class FinallyBlock {
 	
 	/**
 	 * Closes a PDOStatement.
-	 * @param string $aPdoStatement - the PDOStatement to close.
+	 * @param \PDOStatement $aPdoStatement - the PDOStatement to close.
 	 */
 	static public function closeCursor(&$aPdoStatement=null) {
 		if ($aPdoStatement) {

@@ -16,7 +16,6 @@
  */
 
 namespace BitsTheater;
-use BitsTheater\Director;
 {//begin namespace
 
 global $director; //exposed as a Global Var so legacy systems can interface with us

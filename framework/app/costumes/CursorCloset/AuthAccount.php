@@ -84,38 +84,98 @@ class AuthAccount extends BaseCostume
 	{ return $this->getModel()->getProp( 'AuthGroups' ); }
 	
 	/**
-	 * Event called after fetching data from db and setting all our properties.
+	 * groups ID list was requested, this method fills in that property.
 	 */
-	public function onFetch()
+	protected function getGroupsList()
 	{
 		if ( !empty($this->account_id) ) try {
-			if ( array_search('groups', $this->getExportFieldList())!==false ) {
-				$this->groups = $this->getAuthGroupsProp()->getAcctGroups($this->account_id);
-				if (!empty($aRow->groups)) {
-					foreach ($aRow->groups as &$theGroupId) {
-						if ( is_numeric($theGroupId) ) {
-							$theGroupId = strval($theGroupId);
-						}
+			$this->groups = $this->getAuthGroupsProp()->getAcctGroups($this->account_id);
+			if ( !empty($aRow->groups) ) {
+				foreach ($aRow->groups as &$theGroupID) {
+					if ( is_numeric($theGroupID) ) {
+						$theGroupID = strval($theGroupID);
 					}
 				}
-			}
-			if ( !empty($this->hardware_ids) )
-			{
-				//convert string field to a proper list of items
-				$this->hardware_ids = explode('|', $this->hardware_ids);
-				foreach ($this->hardware_ids as &$theToken) {
-					list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theToken);
-					$theToken = $theHardwareId;
-				}
-				//if there is only 1 item, ensure it is just a string, not an array
-				if (count($this->hardware_ids)==1)
-				{ $this->hardware_ids = $this->hardware_ids[0]; }
 			}
 		}
 		catch (\Exception $x)
 		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
 	}
 	
-}//end class
+	/**
+	 * Parse any info retrieved via onFetch() for hardware_ids property.
+	 */
+	protected function parseHardwareIDs()
+	{
+		if ( !empty($this->hardware_ids) )
+		{
+			//convert string field to a proper list of items
+			$this->hardware_ids = explode('|', $this->hardware_ids);
+			foreach ($this->hardware_ids as &$theToken) {
+				list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theToken);
+				$theToken = $theHardwareId;
+			}
+			//if there is only 1 item, ensure it is just a string, not an array
+			if (count($this->hardware_ids)==1)
+			{ $this->hardware_ids = $this->hardware_ids[0]; }
+		}
+	}
 	
+	/**
+	 * Event called after fetching data from db and setting all our properties.
+	 */
+	public function onFetch()
+	{
+		if ( in_array('groups', $this->getExportFieldList()) ) {
+			$this->getGroupsList();
+		}
+		$this->parseHardwareIDs();
+	}
+	
+	/**
+	 * Return the default columns to sort by and whether or not they should be ascending.
+	 * @return array Returns <code>array[fieldname => ascending=true]</code>.
+	 */
+	static public function getDefaultSortColumns()
+	{ return array('account_name' => true); }
+	
+	/**
+	 * Returns TRUE if the fieldname specified is sortable.
+	 * @param string $aFieldName - the field name to check.
+	 * @return boolean Returns TRUE if sortable, else FALSE.
+	 */
+	static public function isFieldSortable($aFieldName)
+	{
+		$theAllowedSorts = array_diff(static::getDefinedFields(), array(
+		));
+		return ( array_search($aFieldName, $theAllowedSorts)!==false );
+	}
+	
+	/**
+	 * What fields are individually filterable?
+	 * @return string[] Returns the list of filterable fields.
+	 */
+	static public function getFilterFieldList()
+	{ return static::getDefinedFields(); }
+	
+	/**
+	 * What fields are text searchable?
+	 * @return string[] Returns the list of searchable fields.
+	 */
+	static public function getSearchFieldList()
+	{
+		return array(
+				'account_name',
+				'email',
+				'created_by',
+				'updated_by',
+				//NOTE: not sure how to "text search" date fields, yet
+				//'created_ts',
+				//'updated_ts',
+				//'verified_ts',
+		);
+	}
+	
+}//end class
+
 }//end namespace

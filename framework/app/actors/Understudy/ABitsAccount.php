@@ -35,7 +35,17 @@ abstract class ABitsAccount extends BaseActor {
 	 */
 	protected function createMyScene($anAction)
 	{ return new MyScene($this, $anAction); }
-
+	
+	/**
+	 * {@inheritDoc}
+	 * @see \BitsTheater\Actor::isApiResult()
+	 */
+	protected function isApiResult( $aAction, $aQuery )
+	{
+		return ( parent::isApiResult($aAction, $aQuery) ||
+				$aAction == 'loginAs' );
+	}
+	
 	/**
 	 * View the currently logged in account information. (page render)
 	 * @param number $aAcctId - the account to view, if allowed to see one besides the current.
@@ -46,7 +56,7 @@ abstract class ABitsAccount extends BaseActor {
 		$v =& $this->scene;
 		
 		if ($this->isGuest() || empty($aAcctId)) {
-			return $v->getSiteUrl($this->config['auth/register_url']);
+			return $v->getSiteUrl($this->getConfigSetting('auth/register_url'));
 		}
 		$dbAccounts = $this->getProp('Accounts');
 		$v->dbAccounts = $dbAccounts;
@@ -124,7 +134,7 @@ abstract class ABitsAccount extends BaseActor {
 		$v =& $this->scene;
 		$this->setupLoginInfo($v);
 		$v->action_url_logout = $v->getSiteUrl(
-				$this->config['auth/logout_url']
+				$this->getConfigSetting('auth/logout_url')
 		);
 	}
 	
@@ -147,20 +157,20 @@ abstract class ABitsAccount extends BaseActor {
 	 */
 	public function ajajGetAccountInfo()
 	{
-		$v =& $this->scene;
 		$this->viewToRender('results_as_json');
-		if( ! $this->isGuest() )
-		{
+		if ( !$this->isGuest() ) {
 			$theData = $this->getDirector()->getMyAccountInfo()->exportData() ;
-			if( !empty($theData->groups) ) try
-			{
+			if ( !empty($theData->rights) ) {
+				$theData->permissions = $theData->rights; //old alias
+				unset($theData->rights);
+			}
+			if( !empty($theData->groups) && empty($theData->permissions) ) try {
 				$dbPerms = $this->getProp( 'Permissions' ) ;
 				$theData->permissions = $dbPerms->getGrantedRights($theData->groups);
 			}
 			catch( Exception $x )
 			{ throw BrokenLeg::tossException( $this, $x ) ; }
-
-			$v->results = APIResponse::resultsWithData($theData) ;
+			$this->setApiResults($theData);
 		}
 		else
 		{ throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED) ; }
@@ -182,7 +192,7 @@ abstract class ABitsAccount extends BaseActor {
 	 */
 	public function ajajDelete( $aAccountID=null )
 	{
-		$theAccountID = $this->getEntityID( $aAccountID, 'account_id' ) ;
+		$theAccountID = $this->getRequestData( $aAccountID, 'account_id' ) ;
 		if( $this->checkCanDeleteAccount( $theAccountID ) )
 			$this->deleteAccountData( $theAccountID ) ;
 		$this->scene->results = APIResponse::noContentResponse() ;
@@ -221,8 +231,6 @@ abstract class ABitsAccount extends BaseActor {
 		try { $theGroups = $dbGroups->getAcctGroups( $aAccountID ) ; }
 		catch( DbException $dbx )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_EXCEPTION, $dbx->getMessage() ) ; }
-		if( in_array( $dbGroups->getTitanGroupID(), $theGroups ) )
-			throw AccountAdminException::toss( $this, 'CANNOT_DELETE_TITAN' ) ;
 		$this->returnProp( $dbGroups ) ;
 
 		return true ;
@@ -250,7 +258,18 @@ abstract class ABitsAccount extends BaseActor {
 
 		return $this ;
 	}
-
+	
+	/**
+	 * Executes a series of checks to validate an input received from a user
+	 * as part of a password change request. Default is to just approve it.
+	 * An implementation/descendant class may override this method to add new
+	 * custom checks.
+	 * @param string $aSecret - the unencrypted user input
+	 * @since BitsTheater v4.1.0
+	 */
+	protected function validatePswdChangeInput( $aSecret )
+	{ return true ; }
+	
 }//end class
 
 }//end namespace

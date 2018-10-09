@@ -26,7 +26,8 @@ class GenericRowData extends BaseCostume {
 	 * Copies values into self regardless of existing property name.
 	 * @param array|object $aThing - array or object to copy from.
 	 */
-	protected function copyFrom(&$aThing) {
+	protected function copyFrom( $aThing )
+	{
 		foreach ($aThing as $theName => $theValue) {
 			$this->{$theName} = $theValue;
 		}

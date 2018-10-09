@@ -19,7 +19,6 @@ namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
 use BitsTheater\costumes\MenuItemResEntry;
 use BitsTheater\res\ResException;
-use com\blackmoonit\Strings;
 {//namespace begin
 
 /**

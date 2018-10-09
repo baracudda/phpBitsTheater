@@ -16,8 +16,6 @@
 */
 
 namespace com\blackmoonit;
-use com\blackmoonit\ICalendarEntry;
-use com\blackmoonit\Strings;
 {//begin namespace
 
 /**

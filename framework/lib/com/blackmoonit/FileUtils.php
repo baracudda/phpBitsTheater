@@ -16,7 +16,6 @@
 */
 
 namespace com\blackmoonit;
-use com\blackmoonit\FinallyBlock;
 {//begin namespace
 
 class FileUtils {
@@ -41,7 +40,7 @@ class FileUtils {
 	 * Similar to file_put_contents, but forces all parts of the folder path to exist first.
 	 * @param string $aDestFile - path and filename of destination.
 	 * @param string $aFileContents - contents to be saved in $aDestFile.
-	 * @return Returns false on failure, else num bytes stored.
+	 * @return int|boolean Returns false on failure, else num bytes stored.
 	 */
 	static public function file_force_contents($aDestFile, $aData, $aDataSize, $mode=0755, $flags=0) {
 		try {
@@ -57,7 +56,8 @@ class FileUtils {
 	 * @param string $aSrcFilePath - template source.
 	 * @param string $aDestFilePath - template destination.
 	 * @param array $aReplacements - (optional) replacement name=>value inside the template.
-	 * @throws Exception on failure.
+	 * @return int|boolean Returns false on failure, else num bytes stored.
+	 * @throws \Exception on failure.
 	 */
 	static public function copyFileContents($aSrcFilePath, $aDestFilePath, $aReplacements=array()) {
 		$theSrcContents = file_get_contents($aSrcFilePath);
@@ -80,7 +80,7 @@ class FileUtils {
 	/**
 	 * Writing to a network stream may end before the whole string is written.
 	 * Return value of fwrite() may be checked. Windows quirk handled as well.
-	 * @param file_stream $aFileStream - the file stream instance.
+	 * @param resource $aFileStream - the file stream instance.
 	 * @param string $aText - the string data to write out.
 	 * @param number $aRetryCount - number of attempts before giving up.
 	 * @return number - Returns the # of bytes written out.
@@ -131,6 +131,39 @@ class FileUtils {
 	}
 	
 	/**
+	 * Delete a folder's contents and, optionally, the folder itself.
+	 * @param string $aFolderPath - the path of the folder.
+	 * @param boolean $bOnlyRemoveContents - (OPTIONAL) if TRUE, keep the
+	 *   folder but delete all its contents.
+	 * @return boolean Returns TRUE if successful.
+	 * @throws \UnexpectedValueException if the path cannot be found or is not
+	 *   a directory.
+	 */
+	static public function deleteFolder( $aFolderPath, $bOnlyRemoveContents=false )
+	{
+		$theFolderPath = realpath($aFolderPath);
+		$theFolderIterator = new \RecursiveDirectoryIterator(
+				$theFolderPath, \FilesystemIterator::SKIP_DOTS
+		);
+		$theFileIterator = new \RecursiveIteratorIterator($theFolderIterator,
+				\RecursiveIteratorIterator::CHILD_FIRST
+		);
+		$theResult = true;
+		foreach ($theFileIterator as $theFileInfo) {
+			$theFile = $theFileInfo->getRealPath();
+			$theResult = ( $theFileInfo->isDir() ) ? rmdir($theFile) : unlink($theFile);
+			// if we cannot remove even one of the contents, may as well stop
+			if ( !$theResult ) break;
+		}
+		if ( !$bOnlyRemoveContents && $theResult && is_dir($theFolderPath) ) {
+			//if all contents were removed successfully, and we should also be
+			//  removing the folder supplied to us, remove it as well
+			rmdir($theFolderPath);
+		}
+		return $theResult;
+	}
+	
+	/**
 	 * Appends a path segment onto an existing path which may or may not have
 	 * a directory separator already.
 	 * @param string $aExistingPath - the existing path string.
@@ -155,7 +188,7 @@ class FileUtils {
 	 * individually, but all indicate that the line is generally unusable/empty
 	 * and should be skipped by any looping algorithm that is processing all
 	 * lines of a CSV file.
-	 * @param unknown $aInput the value returned by a call to
+	 * @param mixed $aInput the value returned by a call to
 	 *  <code>fgetcsv()</code>
 	 * @return boolean <code>true</code> if the return value can be considered
 	 *  "empty" in terms of CSV input
@@ -231,6 +264,15 @@ class FileUtils {
 			return self::getFileSizeOfStream( $theFileStream );
 		}
 	}
+	
+	/**
+	 * Return the name of a temporary file whose existance is managed and
+	 * cleaned up by PHP when no longer needed.  Useful for creating files
+	 * that only exist long enough for a client to download.
+	 * @return string Returns the full file path to the temporary file.
+	 */
+	static public function getTempFileName()
+	{ return stream_get_meta_data(tmpfile())['uri']; }
 	
 }//end class FileUtils
 

@@ -17,6 +17,7 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\costumes\AccountInfoCache;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -48,7 +49,8 @@ abstract class AuthBase extends BaseModel {
 	 */
 	public function checkTicket($aScene) {
 		if ($this->director->isInstalled()) {
-			if ($this->director->app_id != \BitsTheater\configs\Settings::getAppId()) {
+			$theSettingsClass = $this->director->getSiteSettingsClass();
+			if ( $this->director->app_id != $theSettingsClass::getAppId() ) {
 				$this->ripTicket();
 				return false;
 			}
@@ -59,7 +61,6 @@ abstract class AuthBase extends BaseModel {
 	public function ripTicket() {
 		$this->clearCsrfTokenCookie();
 		$this->director->account_info = null;
-		$this->director->resetSession();
 	}
 	
 	public function canRegister($aAcctName, $aEmailAddy) {
@@ -83,10 +84,12 @@ abstract class AuthBase extends BaseModel {
 	 * Check your authority mechanism to determine if a permission is allowed.
 	 * @param string $aNamespace - namespace of the permission.
 	 * @param string $aPermission - name of the permission.
-	 * @param string $acctInfo - (optional) check this account instead of current user.
+	 * @param AccountInfoCache $aAcctInfo - (optional) check this account
+	 *   instead of current user.
 	 * @return boolean Return TRUE if the permission is granted, FALSE otherwise.
 	 */
-	abstract public function isPermissionAllowed($aNamespace, $aPermission, $acctInfo=null);
+	abstract public function isPermissionAllowed( $aNamespace, $aPermission,
+			AccountInfoCache $aAcctInfo=null );
 	
 	/**
 	 * Return the defined permission groups.
@@ -95,10 +98,10 @@ abstract class AuthBase extends BaseModel {
 	
 	/**
 	 * Checks the given account information for membership.
-	 * @param AccountInfoCache $aAccountInfo - the account info to check.
+	 * @param AccountInfoCache $aAcctInfo - the account info to check.
 	 * @return boolean Returns FALSE if the account info matches a member account.
 	 */
-	abstract public function isGuestAccount($aAccountInfo);
+	abstract public function isGuestAccount( AccountInfoCache $aAcctInfo=null );
 	
 	/**
 	 * Send an HTTPOnly cookie preset with out site information.

@@ -72,8 +72,9 @@ class BitsConfig extends BaseActor {
 	}
 
 	/**
-	 * Return all the defined settings for the website.
-	 * @return APIResponse Returns the standard API response object.
+	 * Endpoint will return the standard API response object with all of the
+	 * defined settings for the website.
+	 * @return string Returns the redirect URL, if defined.
 	 */
 	public function ajajGetSettings() {
 		$v =& $this->scene;

@@ -3,7 +3,6 @@ use BitsTheater\scenes\Account as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
 use com\blackmoonit\Widgets ;
-use com\blackmoonit\Strings ;
 
 print('v'.$v->getRes('website/version').'<br />');
 $w = '' ;

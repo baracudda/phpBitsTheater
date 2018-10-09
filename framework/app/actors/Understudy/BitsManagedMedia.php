@@ -18,7 +18,6 @@
 namespace BitsTheater\actors\Understudy;
 use BitsTheater\Actor as BaseActor;
 use BitsTheater\BrokenLeg;
-use BitsTheater\costumes\APIResponse ;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -26,8 +25,7 @@ class BitsManagedMedia extends BaseActor {
 
 	/**
 	 * Given the file ID and possibly MIME type, return the filepath.
-	 * @param unknown $aFileId
-	 * @param string $aMimeType
+	 * @param string $aMimeType - the MIME type.
 	 */
 	protected function getFilePathOf($aMimeType=null)
 	{

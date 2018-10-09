@@ -17,9 +17,9 @@
 
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseActor;
+use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\Scene as MyScene;
-use BitsTheater\models\Config;
 use com\blackmoonit\exceptions\FourOhFourExit;
 use com\blackmoonit\exceptions\SystemExit;
 use com\blackmoonit\Strings;
@@ -59,11 +59,6 @@ implements IDirected
 	 */
 	public $director = null;
 	/**
-	 * Config model used essentially like an array (ie. config[some_key]; )
-	 * @var Config
-	 */
-	public $config = null;
-	/**
 	 * Scene interface used like properties (ie. scene->some_var; (which can be functions))
 	 * @var MyScene
 	 */
@@ -87,6 +82,21 @@ implements IDirected
 	protected $myPublicMethodsAccessControl = array();
 	
 	/**
+	 * PHP Magic method to get properties that do not exist.
+	 * @param string $aName - the property to get.
+	 * @return mixed Returns what is needed.
+	 */
+	public function __get($aName)
+	{
+		if ($this->director->canConnectDb() && $this->director->isInstalled())
+		{
+			//support legacy property removed.
+			if ($aName=='config')
+			{ return $this->getProp('Config'); }
+		}
+	}
+	
+	/**
 	 * Once created, set up the Actor object for use.
 	 * @param Director $aDirector - the Director object.
 	 * @param string $anAction - the method attempting to be called via URL.
@@ -96,9 +106,6 @@ implements IDirected
 		$this->action = $anAction;
 		$this->setupMethodAccessControl();
 		$this->scene = $this->createMyScene($anAction);
-		if ($this->director->canConnectDb() && $this->director->isInstalled()) {
-			$this->config = $this->director->getProp('Config');
-		}
 		$this->bHasBeenSetup = true;
 	}
 
@@ -107,7 +114,6 @@ implements IDirected
 	 * @see \com\blackmoonit\AdamEve::cleanup()
 	 */
 	public function cleanup() {
-		$this->director->returnProp($this->config);
 		unset($this->director);
 		unset($this->action);
 		unset($this->scene);
@@ -119,9 +125,8 @@ implements IDirected
 	 * @param string $anAction - action specified by URL.
 	 * @return string Return what action should be performed.
 	 */
-	static public function getDefaultAction($anAction=null) {
-		return (!empty($anAction)) ? $anAction : static::DEFAULT_ACTION;
-	}
+	static public function getDefaultAction( $anAction=null )
+	{ return ( !empty($anAction) ) ? $anAction : static::DEFAULT_ACTION; }
 	
 	/**
 	 * Default behavior is to prevent all public methods inherent in Actor class
@@ -166,7 +171,57 @@ implements IDirected
 	/** @return MyScene Returns my scene object. */
 	public function getMyScene()
 	{ return $this->scene; }
-
+	
+	/**
+	 * Should the endpoint being rendered be considered an API endpoint for
+	 * returning the standard APIResponse/BrokenLeg results? Used by perform().
+	 * @param string $aAction - the endpoint method name.
+	 * @param string[] $aQuery - the endpoint parameters.
+	 * @return boolean Returns TRUE if the endpoint should be considered one
+	 *   for the purposes of returning an APIResponse.
+	 */
+	protected function isApiResult( $aAction, $aQuery )
+	{
+		return ( $this->renderThisView==='results_as_json' );
+	}
+	
+	/**
+	 * Director is trying to determine what Actor::method() to execute, it
+	 * will call this method to determine if an action/endpoint by the URL
+	 * is present and callable. Return the name of the method to call if so,
+	 * otherwise toss a 404.
+	 * @param string $aAction - action as encoded in the URL.
+	 * @return string Returns the method name to call for the given action.
+	 * @throws FourOhFourExit - if the action cannot be performed.
+	 */
+	static public function getMethodForAction( $aAction )
+	{
+		$myClass = get_called_class();
+		//normalize URL action to method name format and ensure non-empty
+		$theMethodName = static::getDefaultAction(
+				Strings::getMethodName($aAction)
+		);
+		//see if method exists and is scope public
+		try {
+			$theMethod = new \ReflectionMethod($myClass, $theMethodName);
+			if ( !$theMethod->isPublic() ) {
+				throw (new FourOhFourExit($myClass . '::' . $aAction))
+					->setContextMsg('action not accessible');
+			}
+		}
+		catch ( \ReflectionException $rx ) {
+			throw (new FourOhFourExit($myClass . '::' . $aAction))
+				->setContextMsg('action not found');
+		}
+		//ensure a public scope method is not restricted for some reason
+		if ( !static::isActionUrlAllowed($theMethodName) ) {
+			throw (new FourOhFourExit($myClass . '::' . $aAction))
+				->setContextMsg('action not a valid URL action');
+		}
+		//all good, return the actual method name to call.
+		return $theMethodName;
+	}
+	
 	/**
 	 * Once it has been determined that we wish to and are allowed to perform
 	 * an action, this method actually does the work calling the method.
@@ -207,7 +262,7 @@ implements IDirected
 			return false;
 		}
 		catch (BrokenLeg $e) {
-			if ($this->renderThisView==='results_as_json') {
+			if ( $this->isApiResult($anAction, $aQuery) ) {
 				//API calls need to eat the exception and give a sane HTTP Response
 				$e->setErrorResponse($this->scene);
 			} else {
@@ -215,8 +270,23 @@ implements IDirected
 				throw $e;
 			}
 		}
-		if (empty($theResult))
-			$this->renderView($this->renderThisView);
+		catch (\Exception $x) {
+			if ( $this->isApiResult($anAction, $aQuery) ) {
+				//API calls need to eat the exception and give a sane HTTP Response
+				BrokenLeg::tossException($this, $x)->setErrorResponse($this->scene);
+			} else {
+				//non-API calls need to bubble up the exception
+				throw $x;
+			}
+		}
+		if ( empty($theResult) ) {
+			$theView = $this->viewToRender();
+			if ( empty($theView) ) {
+				$theView = $anAction;
+			}
+			//$this->debugLog(__METHOD__ . " theView=[{$theView}]"); //DEBUG
+			$this->renderView($theView);
+		}
 		else
 			header('Location: '.$theResult);
 		return true;
@@ -238,14 +308,21 @@ implements IDirected
 			$anAction = $this->action;
 		$recite =& $this->scene; $v =& $recite; //$this->scene, $recite, $v are all the same
 		$myView = $recite->getViewPath($recite->actor_view_path.$anAction);
-		if (file_exists($myView))
-			include($myView);
+		if ( is_file($myView) )
+		{ include($myView); }
 		else {
 			$theAppView = $recite->getViewPath($recite->view_path.$anAction);
-			if (file_exists($theAppView))
-				include($theAppView);
-			else
+			if ( is_file($theAppView) )
+			{ include($theAppView); }
+			else {
+				/* DEBUG
+				$this->debugLog(__METHOD__ . ' ' . $this->mySimpleClassName
+						. '->' . $anAction . ' NOT FOUND.'
+				);
+				$this->debugLog(__METHOD__ . ' ' . Strings::getStackTrace());
+				*/
 				throw new FourOhFourExit(str_replace(BITS_ROOT,'',$myView));
+			}
 		}
 	}
 	
@@ -319,16 +396,6 @@ implements IDirected
 		//  object needs to have this view before checking for the
 		//  CSRF protection token in the headers.
 		$this->viewToRender('results_as_json');
-
-		//if we try to call an ajaj* method without CSRF token header,
-		//  then treat as if api* method was called and check for
-		//  headers with auth credentials instead.
-		if ($this->getDirector()->isInstalled()) {
-			$dbAuth = $this->getProp('Auth');
-			if (!empty($dbAuth)) {
-				$this->scene->bCheckOnlyHeadersForAuth = (!$dbAuth->isCsrfTokenHeaderPresent());
-			}
-		}
 	}
 
 	/**
@@ -341,7 +408,7 @@ implements IDirected
 		//we need to have a prefix that does the opposite of AJAJ
 		//  and allow CORS, at the expense of always providing
 		//  any auth if needed.
-		$this->scene->bCheckOnlyHeadersForAuth = true;
+		$this->scene->bExplicitAuthRequired = true;
 	}
 
 	/**
@@ -545,8 +612,10 @@ implements IDirected
 	 * Returns the defined Home/Landing page of the website.
 	 * @return string
 	 */
-	public function getHomePage() {
-		return BITS_URL.'/'.configs\Settings::getLandingPage();
+	public function getHomePage()
+	{
+		$theSettingsClass = $this->director->getSiteSettingsClass();
+		return BITS_URL . '/' . $theSettingsClass::getLandingPage();
 	}
 	
 	/**
@@ -554,10 +623,10 @@ implements IDirected
 	 * @param string $aMsg - (OPTIONAL) message to return.
 	 * @throws SystemExit
 	 */
-	public function throwPermissionDenied($aMsg='') {
-		if ($aMsg==='') {
-			$aMsg = getRes('generic/msg_permission_denied');
-		}
+	public function throwPermissionDenied( $aMsg=null )
+	{
+		if ( is_null($aMsg) )
+		{ $aMsg = $this->getRes('generic/msg_permission_denied'); }
 		throw new SystemExit($aMsg, 403);
 	}
 	
@@ -583,12 +652,8 @@ implements IDirected
 	 * @see Director::getSiteMode()
 	 * @return string Returns the site mode config setting.
 	 */
-	public function getSiteMode() {
-		if ($this->config)
-			return $this->config['site/mode'];
-		else
-			return self::SITE_MODE_NORMAL;
-	}
+	public function getSiteMode()
+	{ return $this->director->getSiteMode(); }
 	
 	/**
 	 * Gets a value from an incoming request, based on a value fetched from a
@@ -645,11 +710,53 @@ implements IDirected
 	 * @throws BrokenLeg (MISSING_ARGUMENT) if no value was found in either data
 	 *  source, and the caller indicated that a result is required
 	 * @see Actor::getRequestData()
+	 * @deprecated Use getRequestData() instead.
 	 * @since BitsTheater 3.7.0
 	 */
 	protected function getEntityID( $aValue=null, $aField=null, $isRequired=true )
 	{ return $this->getRequestData( $aValue, $aField, $isRequired ) ; }
-
+	
+	/**
+	 * Helper method to easily set a 204 no content response.
+	 * Alias for setNoContentResponse().
+	 */
+	public function setApiResultsAsNoContent()
+	{ $this->scene->results = APIResponse::noContentResponse(); }
+	
+	/**
+	 * Helper method to easily set a 204 no content response.
+	 * Alias for setApiResultsAsNoContent().
+	 */
+	public function setNoContentResponse()
+	{ $this->scene->results = APIResponse::noContentResponse(); }
+	
+	/**
+	 * Helper method to easily set the successful results of an API endpoint.
+	 * @param mixed $aResults - the result data you wish to return.
+	 * @return APIResponse Returns the response object so you can work with it
+	 *   if you have more to do.
+	 */
+	public function setApiResults( $aResults )
+	{
+		$this->scene->results = APIResponse::resultsWithData($aResults);
+		return $this->scene->results;
+	}
+	
+	/**
+	 * Helper method for a descendant actor to easily get the current results
+	 * of an API endpoint.
+	 * @return APIResponse Returns the response object.
+	 */
+	public function getApiResults()
+	{
+		if ( $this->scene->results instanceof APIResponse ) {
+			return $this->scene->results;
+		}
+		else {
+			return null;
+		}
+	}
+	
 }//end class
 
 }//end namespace

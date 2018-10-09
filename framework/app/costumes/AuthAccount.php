@@ -33,6 +33,20 @@ class AuthAccount extends BaseCostume
 		{ $this->mapped_imei = $this->hardware_ids; }
 	}
 	
-}//end class
+	/**
+	 * What fields are text searchable?
+	 * @return string[] Returns the list of searchable fields.
+	 */
+	static public function getSearchFieldList()
+	{
+		return array_merge(array_diff(parent::getSearchFieldList(), array(
+				'created_by', //we do not display this field (yet?)
+				'updated_by', //we do not display this field (yet?)
+		)), array(
+				'mapped_imei',
+		));
+	}
 	
+}//end class
+
 }//end namespace

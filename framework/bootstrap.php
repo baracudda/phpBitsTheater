@@ -20,7 +20,7 @@ namespace BitsTheater;
 
 global $theStageManager;
 require_once( __DIR__ . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'Regisseur.php' );
-$theStageManager = \BitsTheater\Regisseur::requisition();
+$theStageManager = Regisseur::requisition();
 $theStageManager->defineConstants()->registerClassLoaders();
 
 }//end namespace
