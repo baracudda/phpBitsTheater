@@ -142,7 +142,7 @@ implements ISqlSanitizer
 	{ return ( isset($this->mItemClassArgs[1]) ) ? $this->mItemClassArgs[1] : null; }
 	
 	/**
-	 * @see MyModel::getOrganizationsToDisplay()
+	 * @see MyModel::getAuthAccountsToDisplay()
 	 * @param SqlBuilder $aFilter - (optional) additional filtering.
 	 * @return $this Returns $this for chaining.
 	 */
@@ -304,14 +304,14 @@ implements ISqlSanitizer
 		//create the base filter object
 		$theFilter = SqlBuilder::withModel( $this->getMyModel() )
 			//filter should always be in "where clause mode"
-			->startWhereClause()->setParamPrefix(' AND ')
+			->startFilter()
 			;
 		//if searching for generic text, search over these fields
 		if ( !empty($aSearchText) )
 		{
 			$theSearchFieldList = $this->getItemFieldListForSearch();
 			//$this->logStuff(__METHOD__, ' search=', $theSearchFieldList);//DEBUG
-			$theFilter->add('(0')
+			$theFilter->add('AND (0')
 				->setParamOperator(' LIKE ')->setParamPrefix(' OR ')
 				//mapped_imei field becomes a simple matter with a data handler
 				->setParamDataHandler('mapped_imei',
@@ -347,9 +347,6 @@ implements ISqlSanitizer
 		//if filtering on specific fields, add those values into WHERE clause
 		if ( !empty($aFieldFilter) ) {
 			//$this->logStuff(__METHOD__, ' filter=', $aFieldFilter);//DEBUG
-			//if we started with no search criteria, place dummy first term
-			if ( empty($aSearchText) )
-			{ $theFilter->add('1'); }
 			//see if we OR the search term or AND it; use add() since we will always end ')'.
 			if ( !$bAndSearchText )
 			{ $theFilter->add(' OR (1'); }

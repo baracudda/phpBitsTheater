@@ -52,6 +52,29 @@ class AuthGroupList extends BaseCostume
 	protected function getIdTableName()
 	{ return $this->getModel()->tnGroups; }
 	
+	/**
+	 * Instead of returning all groups lists, only return the ones
+	 * for my current Org.
+	 * {@inheritDoc}
+	 * @see \BitsTheater\costumes\CursorCloset\ARecordList::createSqlQuery()
+	 */
+	protected function createSqlQuery( $aListOfIds )
+	{
+		$theSql = parent::createSqlQuery($aListOfIds);
+		/* @var $dbAuth \BitsTheater\models\Auth */
+		$dbAuth = $this->getModel()->getProp('Auth');
+		$theCurrOrgID = $dbAuth->getCurrentOrgID();
+		if ( !empty($theCurrOrgID) ) {
+			$theSql->startWhereClause()
+				->setParamPrefix(' AND ')
+				->mustAddParam('org_id', $theCurrOrgID)
+				->endWhereClause()
+				;
+		}
+		//$theSql->logSqlDebug(__METHOD__); //DEBUG
+		return $theSql;
+	}
+	
 }//end class
 
 }//end namespace

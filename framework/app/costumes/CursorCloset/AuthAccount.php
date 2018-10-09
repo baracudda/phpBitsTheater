@@ -84,36 +84,52 @@ class AuthAccount extends BaseCostume
 	{ return $this->getModel()->getProp( 'AuthGroups' ); }
 	
 	/**
-	 * Event called after fetching data from db and setting all our properties.
+	 * groups ID list was requested, this method fills in that property.
 	 */
-	public function onFetch()
+	protected function getGroupsList()
 	{
 		if ( !empty($this->account_id) ) try {
-			if ( array_search('groups', $this->getExportFieldList())!==false ) {
-				$this->groups = $this->getAuthGroupsProp()->getAcctGroups($this->account_id);
-				if (!empty($aRow->groups)) {
-					foreach ($aRow->groups as &$theGroupId) {
-						if ( is_numeric($theGroupId) ) {
-							$theGroupId = strval($theGroupId);
-						}
+			$this->groups = $this->getAuthGroupsProp()->getAcctGroups($this->account_id);
+			if ( !empty($aRow->groups) ) {
+				foreach ($aRow->groups as &$theGroupID) {
+					if ( is_numeric($theGroupID) ) {
+						$theGroupID = strval($theGroupID);
 					}
 				}
-			}
-			if ( !empty($this->hardware_ids) )
-			{
-				//convert string field to a proper list of items
-				$this->hardware_ids = explode('|', $this->hardware_ids);
-				foreach ($this->hardware_ids as &$theToken) {
-					list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theToken);
-					$theToken = $theHardwareId;
-				}
-				//if there is only 1 item, ensure it is just a string, not an array
-				if (count($this->hardware_ids)==1)
-				{ $this->hardware_ids = $this->hardware_ids[0]; }
 			}
 		}
 		catch (\Exception $x)
 		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
+	}
+	
+	/**
+	 * Parse any info retrieved via onFetch() for hardware_ids property.
+	 */
+	protected function parseHardwareIDs()
+	{
+		if ( !empty($this->hardware_ids) )
+		{
+			//convert string field to a proper list of items
+			$this->hardware_ids = explode('|', $this->hardware_ids);
+			foreach ($this->hardware_ids as &$theToken) {
+				list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theToken);
+				$theToken = $theHardwareId;
+			}
+			//if there is only 1 item, ensure it is just a string, not an array
+			if (count($this->hardware_ids)==1)
+			{ $this->hardware_ids = $this->hardware_ids[0]; }
+		}
+	}
+	
+	/**
+	 * Event called after fetching data from db and setting all our properties.
+	 */
+	public function onFetch()
+	{
+		if ( in_array('groups', $this->getExportFieldList()) ) {
+			$this->getGroupsList();
+		}
+		$this->parseHardwareIDs();
 	}
 	
 	/**

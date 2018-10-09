@@ -16,6 +16,7 @@
  */
 
 namespace BitsTheater\costumes\CursorCloset;
+use com\blackmoonit\exceptions\DbException;
 use BitsTheater\costumes\CursorCloset\AuthAccount as BaseCostume;
 {//namespace begin
 
@@ -35,6 +36,9 @@ class AuthAcct4Orgs extends BaseCostume
 	//  alias: "with_map_info" will include all of these fields
 	//public $groups will be included if you specify the alias ^
 	public $org_ids;
+	
+	/** @var string Used to limit what groups are returned. */
+	protected $mCurrOrgID = null;
 	
 	/**
 	 * Set the list of fields to restrict export to use.
@@ -57,7 +61,11 @@ class AuthAcct4Orgs extends BaseCostume
 			$aFieldList[] = 'groups';
 			$aFieldList[] = 'org_ids';
 		}
-		return parent::setExportFieldList($aFieldList);
+		parent::setExportFieldList($aFieldList);
+		if ( in_array('groups', $this->getExportFieldList()) ) {
+			$this->mCurrOrgID = $this->getAuthProp()->getCurrentOrgID();
+		}
+		return $this;
 	}
 	
 	/** @return \BitsTheater\models\Auth */
@@ -65,21 +73,53 @@ class AuthAcct4Orgs extends BaseCostume
 	{ return $this->getModel()->getProp( 'Auth' ); }
 	
 	/**
-	 * Event called after fetching data from db and setting all our properties.
+	 * groups ID list was requested, this method fills in that property.
 	 */
-	public function onFetch()
+	protected function getGroupsList()
+	{
+		$dbAuthGroups = $this->getAuthGroupsProp();
+		if ( !empty($this->auth_id) ) try {
+			$this->groups = $dbAuthGroups->getAcctGroupsForOrg(
+					$this->auth_id, $this->mCurrOrgID
+			);
+		}
+		catch ( DbException $dbx )
+		{
+			if ( $dbx->getCode()==$dbAuthGroups::ERR_CODE_EMPTY_AUTHGROUP_TABLE ) {
+				parent::getGroupsList();
+			}
+			else {
+				$this->getModel()->logErrors(__METHOD__, $x->getMessage());
+			}
+		}
+		catch ( \Exception $x )
+		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
+	}
+	
+	/**
+	 * groups ID list was requested, this method fills in that property.
+	 */
+	protected function getOrgsList()
 	{
 		if ( !empty($this->auth_id) ) try {
-			if ( array_search('org_ids', $this->getExportFieldList())!==false ) {
+			if ( in_array('org_ids', $this->getExportFieldList()) ) {
 				$this->org_ids = $this->getAuthProp()
 					->getOrgsForAuthCursor($this->auth_id, 'org_id')
-					->fetchAll(\PDO::FETCH_COLUMN, 0)
+					->fetchAll(\PDO::FETCH_COLUMN)
 					;
 			}
 		}
 		catch (\Exception $x)
 		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
+	}
+	
+	/**
+	 * Event called after fetching data from db and setting all our properties.
+	 */
+	public function onFetch()
+	{
 		parent::onFetch();
+		$this->getOrgsList();
 	}
 	
 }//end class
