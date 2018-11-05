@@ -421,7 +421,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @return AccountInfoCache Returns the object for the Auth model in use.
 	 */
 	public function createAccountInfoObj( $aInitialData=null )
-	{ return AccountInfoCache::fromThing($aInitialData); }
+	{ return AccountInfoCache::fromThing($this, $aInitialData); }
 	
 	public function getAuthByEmail($aEmail) {
 		$theSql = "SELECT * FROM {$this->tnAuth} WHERE email = :email";

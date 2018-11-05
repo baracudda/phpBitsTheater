@@ -1035,7 +1035,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @throws DBException
 	 * @return \PDOStatement Returns the query result.
 	 */
-	public function getOrganizationsToDisplay(ISqlSanitizer $aSqlSanitizer,
+	public function getOrganizationsToDisplay(ISqlSanitizer $aSqlSanitizer=null,
 			SqlBuilder $aFilter=null, $aFieldList=null)
 	{
 		$theSql = SqlBuilder::withModel($this)->setSanitizer($aSqlSanitizer)
@@ -1049,7 +1049,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 //		$theSql->logSqlDebug(__METHOD__); //DEBUG
 		try { return $theSql->query() ; }
 		catch( PDOException $pdox )
-		{ $this->relayPDOException( __METHOD__, $pdox, $theSql ) ; }
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
 	
 	/**
@@ -1368,7 +1368,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	
 	/** @return boolean Returns TRUE if an account is in session cache. */
 	public function isAccountInSessionCache()
-	{ return !empty($this->getDirector()[static::KEY_userinfo]); }
+	{
+		return (
+				!empty($this->getDirector()[static::KEY_userinfo]) &&
+				!is_numeric($this->getDirector()[static::KEY_userinfo])
+				);
+	}
 	
 	
 	//=========================================================================
@@ -1436,7 +1441,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @throws DBException
 	 * @return \PDOStatement Returns the query result.
 	 */
-	public function getAuthAccountsToDisplay(ISqlSanitizer $aSqlSanitizer,
+	public function getAuthAccountsToDisplay(ISqlSanitizer $aSqlSanitizer=null,
 			 SqlBuilder $aFilter=null, $aFieldList=null)
 	{
 		if ( empty($aFieldList) ) {
@@ -1497,7 +1502,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		//$theSql->logSqlDebug(__METHOD__); //DEBUG
 		try { return $theSql->query() ; }
 		catch( PDOException $pdox )
-		{ $this->relayPDOException( __METHOD__, $pdox, $theSql ) ; }
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
 	
 	/**
