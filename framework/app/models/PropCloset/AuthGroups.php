@@ -339,28 +339,38 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			try
 			{
 				$theSql->execMultiDML( $theDefaultData );
-				//since group_num is an auto-inc field, 0 might get
-				//  auto-changed to be the next auto-inc value instead
-				//  of 0, which is what we actually want. UPDATE should
-				//  fix that for us.
-				switch ($this->dbType()) {
-					case self::DB_TYPE_MYSQL:
-					default:
-						$theSql->reset()
-							->startWith('UPDATE')->add($this->tnGroups)
-							->add('SET')
-							->mustAddParam('group_num', 0, \PDO::PARAM_INT)
-							->startWhereClause()
-							->mustAddParam('group_id', $theDefaultData[0]['group_id'])
-							->endWhereClause()
-							->execDML()
-						;
-				}//switch
+				$this->fixGroupNum0AfterInsert($theDefaultData[0]['group_id']);
 			}
 			catch (PDOException $pdox)
 			{ throw $theSql->newDbException(__METHOD__, $pdox); }
 			return $theDefaultData;
 		}
+	}
+	
+	/**
+	 * Since group_num is an auto-inc field, 0 might get auto-changed to be
+	 * the next auto-inc value instead of 0, which is what we actually want.
+	 * UPDATE should fix that for us.
+	 * @param string $aGroupID - the group ID to fix.
+	 * @return $this Returns $this for chaining.
+	 * @throws PDOException if a problem occurs.
+	 */
+	protected function fixGroupNum0AfterInsert( $aGroupID )
+	{
+		switch ($this->dbType()) {
+			case self::DB_TYPE_MYSQL:
+			default:
+				SqlBuilder::withModel($this)
+					->startWith('UPDATE')->add($this->tnGroups)
+					->add('SET')
+					->mustAddParam('group_num', 0, \PDO::PARAM_INT)
+					->startWhereClause()
+					->mustAddParam('group_id', $aGroupID)
+					->endWhereClause()
+					->execDML()
+				;
+		}//switch
+		return $this;
 	}
 	
 	/**
@@ -743,12 +753,13 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 */
 	protected function migrateFromBitsGroups()
 	{
-		$theTaskText = 'migrating schema to v4.0.0 AuthGroups model';
+		$theTaskText = 'migrating schema to v4.x AuthGroups model';
 		$this->logStuff(__METHOD__, ' ', $theTaskText);
 		$this->migrateFromBitsGroupsToAuthGroups();
 		$this->migrateFromBitsGroupMapToAuthGroupMap();
 		$this->migrateFromBitsGroupRegCodesToAuthGroupRegCodes();
 		$this->migrateFromBitsPermissionsToAuthGroupPermissions();
+		$this->migrateTitanRoleToAdmin();
 		$this->migrateToAuthGroupsComplete();
 		$this->logStuff(__METHOD__, ' FINISHED ', $theTaskText);
 	}
@@ -815,8 +826,18 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 						$theNewRow['group_id'] = $theIDList[$theItem['group_id']]['new_id'];
 				}//end switch
 				//group_num
-				$theNewRow['group_num'] = $theItem['group_id'];
+				if ( $theItem['group_id'] == $dbOldAuthGroups::UNREG_GROUP_ID ) {
+					$theNewRow['group_num'] = -1; //0 will cause auto-inc field to put "next" val
+				}
+				else {
+					$theNewRow['group_num'] = $theItem['group_id'];
+				}
+				
 				$this->add($theNewRow);
+				//if we were forced to use -1 instead of 0, fix it.
+				if ( $theNewRow['group_num'] == -1 ) {
+					$this->fixGroupNum0AfterInsert($theNewRow['group_id']);
+				}
 			}
 			$this->logStuff(' migrated to ', $this->tnGroups);
 		}
@@ -1089,50 +1110,64 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				' had its indexes recreated correctly.');
 	}
 	
+	/**
+	 * In version 2, we migrated the Titan role to be just a plain Admin
+	 * role and did away with any "special cases" for Titan. Since migrations
+	 * from 3.x will also need to run this particular migration separately,
+	 * it needs to be its own method to be called from both places.
+	 * @return $this Returns $this for chaining.
+	 * @throws PDOException if a problem occurs.
+	 */
+	protected function migrateTitanRoleToAdmin()
+	{
+		//deliberately remove the Titan UUID so it can never be used
+		//  to potentially login again as a faux-admin.
+		//get data for the former Titan group
+		$theGroup1 = AuthGroup::fromThing($this->getGroupByNum(1));
+		//replace former titan group with current group 2 ID in map
+		//  so that current titan accounts will be admins (best guess)
+		$theGroup2 = AuthGroup::fromThing($this->getGroupByNum(2));
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('UPDATE')->add($this->tnGroupMap);
+		$this->setAuditFieldsOnUpdate($theSql)
+			->mustAddParam('group_id', $theGroup2->group_id)
+			->startWhereClause()
+			->setParamValueIfEmpty('oldgroup_id', $theGroup1->group_id)
+			->addParamForColumn('oldgroup_id', 'group_id')
+			->endWhereClause()
+			->execDML()
+		;
+		//remove group 1 (former Titan group) AFTER we remapped members
+		$this->del($theGroup1->group_id);
+		//re-add default group 1 (org-parent)
+		$theGroupNames = $this->getRes('AuthGroups', 'group_names');
+		$theGroup1->group_id = Strings::createUUID();
+		$theGroup1->group_num = 1;
+		$theGroup1->group_name = $theGroupNames[1];
+		$theSql = SqlBuilder::withModel($this)
+			->obtainParamsFrom($theGroup1)
+			->startWith('INSERT INTO')->add($this->tnGroups)
+		;
+		$this->setAuditFieldsOnInsert($theSql);
+		$theSql->mustAddParam('group_id')
+			->mustAddParam('group_num')
+			->mustAddParam('group_name')
+			->execDML()
+		;
+		//set default permissions for group 1.
+		$this->insertDataForAuthPermissionGroup(
+				$this->getDefaultRightsForOrgParent($theGroup1->group_id)
+		);
+		$this->logStuff('authgroup 1 migrated to be "org-parent".');
+		return $this;
+	}
+	
 	protected function upgradeFeatureVersionTo2()
 	{
 		$theTransactionSql = SqlBuilder::withModel($this);
 		$theTransactionSql->beginTransaction();
 		try {
-			//deliberately remove the Titan UUID so it can never be used
-			//  to potentially login again as a faux-admin.
-			//get data for the former Titan group
-			$theGroup1 = AuthGroup::fromThing($this->getGroupByNum(1));
-			//replace former titan group with current group 2 ID in map
-			//  so that current titan accounts will be admins (best guess)
-			$theGroup2 = AuthGroup::fromThing($this->getGroupByNum(2));
-			$theSql = SqlBuilder::withModel($this)
-				->startWith('UPDATE')->add($this->tnGroupMap);
-			$this->setAuditFieldsOnUpdate($theSql)
-				->mustAddParam('group_id', $theGroup2->group_id)
-				->startWhereClause()
-				->setParamValueIfEmpty('oldgroup_id', $theGroup1->group_id)
-				->addParamForColumn('oldgroup_id', 'group_id')
-				->endWhereClause()
-				->execDML()
-			;
-			//remove group 1 (former Titan group) AFTER we remapped members
-			$this->del($theGroup1->group_id);
-			//re-add default group 1 (org-parent)
-			$theGroupNames = $this->getRes('AuthGroups', 'group_names');
-			$theGroup1->group_id = Strings::createUUID();
-			$theGroup1->group_num = 1;
-			$theGroup1->group_name = $theGroupNames[1];
-			$theSql = SqlBuilder::withModel($this)
-				->obtainParamsFrom($theGroup1)
-				->startWith('INSERT INTO')->add($this->tnGroups)
-			;
-			$this->setAuditFieldsOnInsert($theSql);
-			$theSql->mustAddParam('group_id')
-				->mustAddParam('group_num')
-				->mustAddParam('group_name')
-				->execDML()
-			;
-			//set default permissions for group 1.
-			$this->insertDataForAuthPermissionGroup(
-					$this->getDefaultRightsForOrgParent($theGroup1->group_id)
-			);
-			$this->logStuff('v2: group 1 migrated to be "org-parent".');
+			$this->migrateTitanRoleToAdmin();
 			//add org_id field to the groups table.
 			$this->addFieldToTable(2, 'org_id', $this->tnGroups,
 					'org_id ' . CommonMySql::TYPE_UUID . ' NULL',
