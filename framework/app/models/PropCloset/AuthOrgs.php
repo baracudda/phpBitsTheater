@@ -1532,7 +1532,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 				;
 			$theFilter = SqlBuilder::withModel($this)
 				->startFilter()
-				->addSubQueryForColumn($theSubQuery, 'auth_id');
+				->addSubQueryForColumn($theSubQuery, 'auth_id')
 				;
 		}
 		return $this->getAuthAccountsToDisplay($aSanitizer, $theFilter);
