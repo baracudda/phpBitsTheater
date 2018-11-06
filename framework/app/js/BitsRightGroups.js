@@ -18,7 +18,7 @@ var BitsRightGroups = BaseClass.extend({
 		
 		if (this.mGroups) {
 			var e = $('#group_parent',this.mDialogGroup);
-			e.append($('<option value="-1" selected></option>'));
+			e.append($('<option value="" selected></option>'));
 			$.each(this.mGroups, function(key, row) {
 				e.append($("<option></option>").attr("value",key).text(row));
 			});
@@ -31,7 +31,7 @@ BitsRightGroups.prototype.onAddGroupClick = function(e) {
 	$('#dialog_title_add',this.mDialogGroup).show();
 	$('#dialog_title_edit',this.mDialogGroup).hide();
 
-	$('#group_id',this.mDialogGroup).val('-1');
+	$('#group_id',this.mDialogGroup).val('');
 	$('#group_name',this.mDialogGroup).val('');
 	//$('#group_desc',this.mDialogGroup).val('');
 	
@@ -77,11 +77,11 @@ BitsRightGroups.prototype.onEditGroupClick = function(e) {
 
 BitsRightGroups.prototype.onGroupSaveClick = function(e) {
 	var thisone = this;
-	var id = Number($('#group_id',this.mDialogGroup).val());
+	var id = $('#group_id',this.mDialogGroup).val();
 	var gn = $('#group_name',this.mDialogGroup).val();
 	//var gd = $('#group_desc',this.mDialogGroup).val();
-	var gp = Number($('#group_parent',this.mDialogGroup).val());
-	if(gp<2)gp=undefined;
+	var gp = $('#group_parent',this.mDialogGroup).val();
+	if(gp=='UNKNOWN'||gp=="")gp=undefined;
 	var rc = $('#group_reg_code',this.mDialogGroup).val();
 	//console.log('SAVE group click id='+id+' gn='+gn+' gp='+gp+' rc='+rc);
 	if (gn) {
