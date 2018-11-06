@@ -22,6 +22,7 @@ use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\IFeatureVersioning;
+use BitsTheater\costumes\ISqlSanitizer;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\costumes\WornForFeatureVersioning;
@@ -1862,22 +1863,35 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 
 	/**
 	 * Get the list of reg code for a given group.
+	 * @param string $aGroupID - (OPTIONAL) restrict output to group_id.
+	 *   NOTE: if omitted, 2D array of records indexed by group_id is returned
+	 *   as legacy behavior.
 	 * @return string[] Return array of reg codes.
 	 */
 	public function getGroupRegCodes( $aGroupID=null )
 	{
-		$theSql = SqlBuilder::withModel($this);
-		$theSql->startWith('SELECT reg_code')
+		$theFieldList = ( !empty($aGroupID) ) ? 'reg_code' : null;
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('SELECT')->addFieldList($theFieldList)
 			->add('FROM')->add($this->tnGroupRegCodes)
 			->startWhereClause()
-			->mustAddParam('group_id', $aGroupID)
+			->addParam('group_id', $aGroupID)
 			->endWhereClause()
 			->applyOrderByList(array(
 					'created_ts' => SqlBuilder::ORDER_BY_ASCENDING
 			))
 		;
 		try
-		{ return $theSql->query()->fetchAll(\PDO::FETCH_COLUMN); }
+		{
+			if ( !empty($aGroupID) ) {
+				return $theSql->query()->fetchAll(\PDO::FETCH_COLUMN);
+			}
+			else {
+				return Arrays::array_column_as_key(
+						$theSql->query()->fetchAll(), 'group_id'
+				);
+			}
+		}
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException( __METHOD__, $pdox ); }
 	}
@@ -2078,6 +2092,48 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		{ throw $theSql->newDbException( __METHOD__, $pdox); }
 		//$this->logStuff(__METHOD__, ' groups=', $theResults); //DEBUG
 		return ( !empty($theResults) ) ? $theResults : array();
+	}
+	
+	/**
+	 * Show the auth groups for display (pager and such).
+	 * @param ISqlSanitizer $aSqlSanitizer - the SQL sanitizer obj being used.
+	 * @param SqlBuilder $aFilter - (optional) Specifies restrictions on
+	 *   data to return; effectively populating a WHERE filter for the query.
+	 * @param string[]|NULL $aFieldList - (optional) String list representing
+	 *   which columns to return. Leaving this argument blank defaults to
+	 *   returning all table column fields.
+	 * @throws DBException
+	 * @return \PDOStatement Returns the query result.
+	 */
+	public function getRolesToDisplay(ISqlSanitizer $aSqlSanitizer=null,
+			 SqlBuilder $aFilter=null, $aFieldList=null)
+	{
+		//restrict results to current org
+		$theOrg = AuthDB::getCurrentOrg($this);
+		$theOrgID = ( !empty($theOrg) ) ? $theOrg->org_id : null;
+		$theSql = SqlBuilder::withModel($this)->setSanitizer($aSqlSanitizer);
+		//query field list NOTE: since we may have a nested query in
+		//  the field list, must add HINT for getQueryTotals()
+		$theSql->startWith('SELECT')
+			->add(SqlBuilder::FIELD_LIST_HINT_START)
+			->addFieldList($aFieldList)
+			->add(SqlBuilder::FIELD_LIST_HINT_END)
+			;
+		$theSql->add('FROM')->add($this->tnGroups)
+			->startWhereClause()
+			->mustAddParam('org_id', $theOrgID)
+			->setParamPrefix(' AND ')
+			->applyFilter($aFilter)
+			->endWhereClause()
+			;
+		$theSql->retrieveQueryTotalsForSanitizer()
+			->applyOrderByListFromSanitizer()
+			->applyQueryLimitFromSanitizer()
+			;
+		//$theSql->logSqlDebug(__METHOD__); //DEBUG
+		try { return $theSql->query() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
 	
 	/**
