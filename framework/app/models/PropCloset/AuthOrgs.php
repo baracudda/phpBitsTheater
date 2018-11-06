@@ -1506,21 +1506,36 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
-	 * Gets the set of all account records.
-	 * @param Scene $aScene - (optional) Scene object in case we need user-defined query limits.
-	 * @param number $aGroupId - (optional) the group id to filter on
+	 * Gets the set of account auth_ids.
+	 * @param ISqlSanitizer $aSqlSanitizer - the SQL sanitizer obj being used.
+	 * @param string|string[] $aGroupIDorList - (OPTIONAL) a group_id or list
+	 *   of IDs.
 	 * @return \PDOStatement - the iterable result of the SELECT query
 	 * @throws DbException if something goes wrong
 	 */
-	public function getAccountsToDisplay($aScene=null, $aGroupId=null) {
-		if ( !empty($aGroupId) )
+	public function getAccountsToDisplay( ISqlSanitizer $aSanitizer=null,
+			$aGroupIDorList=null )
+	{
+		$theFilter = null;
+		if ( !empty($aGroupIDorList) )
 		{
+			//force results to be restricted to those from group_id
+			$dbAuthGroups = $this->getAuthGroupsProp();
+			$theParamKey = uniqid('param_');
+			$theSubQuery = SqlBuilder::withModel($dbAuthGroups)
+				->add('SELECT DISTINCT auth_id FROM')
+				->add($dbAuthGroups->tnGroupMap)
+				->startWhereClause()
+				->setParamValueIfEmpty($theParamKey, $aGroupIDorList)
+				->addParamForColumn($theParamKey, 'group_id')
+				->endWhereClause()
+				;
 			$theFilter = SqlBuilder::withModel($this)
 				->startFilter()
-				->mustAddParam('group_id', $aGroupId)
+				->addSubQueryForColumn($theSubQuery, 'auth_id');
 				;
 		}
-		return $this->getAuthAccountsToDisplay($aScene, $theFilter);
+		return $this->getAuthAccountsToDisplay($aSanitizer, $theFilter);
 	}
 
 	/**
