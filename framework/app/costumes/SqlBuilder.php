@@ -784,6 +784,7 @@ class SqlBuilder extends BaseCostume {
 		//also merge in any params and param types from the sub-query
 		$this->myParams = array_merge($this->myParams, $aSubQuery->myParams);
 		$this->myParamTypes = array_merge($this->myParamTypes, $aSubQuery->myParamTypes);
+		return $this;
 	}
 	
 	/**
