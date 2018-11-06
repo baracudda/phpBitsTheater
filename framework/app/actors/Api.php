@@ -5,8 +5,8 @@ use BitsTheater\Actor as BaseActor;
 
 class Api extends BaseActor
 {
-	
-	
+	//nothing to override or do here, yet
+
 }//end class
 
 }//end namespace

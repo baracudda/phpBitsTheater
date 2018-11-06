@@ -5,7 +5,6 @@ use BitsTheater\actors\Understudy\BitsMenus as BaseActor;
 
 class Menus extends BaseActor
 {
-	
 	//nothing to override, yet
 	
 }//end class

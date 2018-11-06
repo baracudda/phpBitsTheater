@@ -4,7 +4,6 @@ namespace BitsTheater\models;
 use BitsTheater\models\PropCloset\BitsConfig as BaseModel;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\SqlBuilder;
-use com\blackmoonit\Strings;
 {//begin namespace
 
 class Config extends BaseModel
