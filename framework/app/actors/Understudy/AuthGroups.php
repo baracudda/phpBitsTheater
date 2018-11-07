@@ -81,6 +81,8 @@ class AuthGroups extends BaseActor
 	 */
 	public function group( $aGroupID=null )
 	{
+		if ( empty($aGroupID) )
+			return $this->getMyUrl('/rights');
 		if ( !$this->isAllowed('auth','modify') )
 			return $this->getHomePage();
 		//shortcut variable $v also in scope in our view php file.
@@ -88,19 +90,21 @@ class AuthGroups extends BaseActor
 		//indicate what top menu we are currently in
 		$this->setCurrentMenuKey('admin');
 		
-		if ( empty($aGroupID) ) return $this->getMyUrl('/rights');
-		
 		$dbAuthGroups = $this->getMyModel();
-		if ( $aGroupID==MyModel::UNREG_GROUP_ID) {
-			$v->group = null;
-		} else {
-			$v->groups = Arrays::array_column_as_key(
-					$dbAuthGroups->getRolesToDisplay($this->getMyScene())->fetchAll(), 'group_id'
-			);
-			$v->group = $v->groups[$aGroupID];
+		try {
+			$theProc = new RightsMatrixProcessor($this);
+			$theProc->process(true);
 		}
+		catch( Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+		if ( empty($theProc->authgroups[$aGroupID]) ) {
+			return $this->getMyUrl('/rights');
+		}
+		//view expects an array, so export from the rights processor, then
+		//  convert to an array.
+		$v->group = (array)$theProc->authgroups[$aGroupID]->exportData();
 		$v->right_groups = $v->getPermissionRes('namespace');
-		$v->assigned_rights = $dbAuthGroups->getAssignedRights($aGroupID);
+		$v->assigned_rights = $theProc->getAssignedRightsForGroup($aGroupID);
 		//$v->addUserMsg($this->debugStr($v->assigned_rights)); //DEBUG-ONLY
 		$v->redirect = $this->getMyUrl('/rights');
 		$v->next_action = $this->getMyUrl('/rights/modify');

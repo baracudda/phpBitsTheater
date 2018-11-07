@@ -4,14 +4,19 @@ use BitsTheater\scenes\Rights as MyScene;
 /* @var $v MyScene */
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
+use BitsTheater\models\AuthGroups as AuthGroupsDB;
+
+$theDenyVal = AuthGroupsDB::FORM_VALUE_Deny;
+$theAllowVal = AuthGroupsDB::FORM_VALUE_Allow;
+$theDisallowVal = AuthGroupsDB::FORM_VALUE_Disallow;
 $css = <<<EOM
 input[type="radio"]+label {
 	min-width: 2em;
 }
-input[type="radio"][value="deny"]:checked+label {
+input[type="radio"][value="{$theDenyVal}"]:checked+label {
 	background: tomato;
 }
-input[type="radio"][value="allow"]:checked+label {
+input[type="radio"][value="{$theAllowVal}"]:checked+label {
 	background: lime;
 }
 
@@ -35,9 +40,9 @@ $res = $v->getPermissionRes('right_values');
 		<span style="font-size:larger;"><?php print($v->getRes('generic/label_note_title')); ?></span>
 		</div>
 		<div class="panel-body"><table><tbody>
-<tr><td align="right"><b>+</b> = </td><td><?php print($res['allow']->label.': '.$res['allow']->desc); ?></td></tr>
-<tr><td align="right"><b>-</b> = </td><td><?php print($res['disallow']->label.': '.$res['disallow']->desc); ?></td></tr>
-<tr><td align="right"><b>x</b> = </td><td><?php print($res['deny']->label.': '.$res['deny']->desc); ?></td></tr>
+<tr><td align="right"><b>+</b>&nbsp;=&nbsp;</td><td><?php print($res[$theAllowVal]->label.': '.$res[$theAllowVal]->desc); ?></td></tr>
+<tr><td align="right"><b>-</b>&nbsp;=&nbsp;</td><td><?php print($res[$theDisallowVal]->label.': '.$res[$theDisallowVal]->desc); ?></td></tr>
+<tr><td align="right"><b>x</b>&nbsp;=&nbsp;</td><td><?php print($res[$theDenyVal]->label.': '.$res[$theDenyVal]->desc); ?></td></tr>
 		</tbody></table></div>
 	</div>
 </div>
@@ -59,7 +64,7 @@ foreach ($v->right_groups as $ns => $nsInfo) {
 	//build rows first in case there are none so we can skip header too
 	foreach ($v->getPermissionRes($ns) as $theRight => $theRightInfo) {
 		$thePermissionValue = $v->getRightValue($v->assigned_rights,$ns,$theRight);
-		if ($thePermissionValue=='deny-disable')
+		if ( $thePermissionValue == AuthGroupsDB::FORM_VALUE_DoNotShow )
 			continue;
 		//if (Auth::TYPE!='basic' && $ns=='auth' && $theRight!='modify') continue;
 		$cellLabel = '<td style="width:20em" class="db-field-label">'.htmlentities($theRightInfo->label).'</td>';

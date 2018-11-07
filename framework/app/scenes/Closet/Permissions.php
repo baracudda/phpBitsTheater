@@ -20,6 +20,7 @@ use BitsTheater\Scene as MyScene;
 use BitsTheater\costumes\ISqlSanitizer;
 use BitsTheater\costumes\WornForSqlSanitize;
 use BitsTheater\costumes\AuthGroup;
+use BitsTheater\models\AuthGroups as AuthGroupsDB;
 use com\blackmoonit\Widgets;
 {//namespace begin
 
@@ -55,11 +56,15 @@ class Permissions extends MyScene implements ISqlSanitizer
 	}
 	
 	public function getShortRightValues() {
-		return array('allow'=>'+','disallow'=>'-','deny'=>'x');
+		return array(
+				AuthGroupsDB::FORM_VALUE_Allow => AuthGroupsDB::VALUE_Allow,
+				AuthGroupsDB::FORM_VALUE_Disallow => AuthGroupsDB::VALUE_Disallow,
+				AuthGroupsDB::FORM_VALUE_Deny => AuthGroupsDB::VALUE_Deny,
+		);
 	}
 	
 	public function getRightValue($aAssignedRights, $aNamespace, $aRightName) {
-		$theResult = 'disallow';
+		$theResult = AuthGroupsDB::FORM_VALUE_Disallow;
 		if (!empty($aAssignedRights[$aNamespace]) && !empty($aAssignedRights[$aNamespace][$aRightName]))
 			$theResult = $aAssignedRights[$aNamespace][$aRightName];
 		return $theResult;
@@ -105,7 +110,7 @@ class Permissions extends MyScene implements ISqlSanitizer
 	{
 		switch ($aFieldName) {
 			case 'group_id':        return $this->getRes('AuthGroups/colheader_group_id');
-			case 'group_num':        return $this->getRes('AuthGroups/colheader_group_num');
+			case 'group_num':       return $this->getRes('AuthGroups/colheader_group_num');
 			case 'group_name':      return $this->getRes('AuthGroups/colheader_group_name');
 			case 'parent_group_id': return $this->getRes('AuthGroups/colheader_parent_group_id');
 			default:                return parent::getColHeaderLabel($aFieldName);
