@@ -1875,7 +1875,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			->startWith('SELECT')->addFieldList($theFieldList)
 			->add('FROM')->add($this->tnGroupRegCodes)
 			->startWhereClause()
-			->addParam('group_id', $aGroupID)
+			->setParamValueIfEmpty('group_id', $aGroupID)->addParam('group_id')
 			->endWhereClause()
 			->applyOrderByList(array(
 					'created_ts' => SqlBuilder::ORDER_BY_ASCENDING
