@@ -28,7 +28,7 @@ function process_cli_options($aStageManager)
 
 //standard means of setting up the environment to access the website via CLI
 //  the processed CLI options returned by the process_cli_options() are returned as well.
-$theCliOptions = require_once('cli_bootstrap.php');
+$theCliOptions = require_once(__DIR__ . DIRECTORY_SEPARATOR . 'cli_bootstrap.php');
 
 function printFileList( $aList )
 {

@@ -751,7 +751,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			->setParamPrefix( ' AND ' )
 			->mustAddParam( 'org_id', $aOrgID )
 			->endWhereClause()
-			->logSqlDebug( __METHOD__, ' [TRACE] ' )
+			//->logSqlDebug( __METHOD__, ' [TRACE] ' )
 			;
 		try
 		{

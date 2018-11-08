@@ -290,7 +290,7 @@ class RightsMatrixProcessor extends BaseCostume
 					}
 				}//foreach
 				if ( $theValuesDoNotShowCount == count($thePermInfo['values']) ) {
-					unset($this->rights[$theNamespaceIdx][$thePermIdx]);
+					unset($this->rights[$theNamespaceIdx]['permission_list'][$thePermIdx]);
 					$thePermListDoNotShowCount += 1;
 				}
 			}//foreach
