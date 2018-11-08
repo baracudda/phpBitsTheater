@@ -521,7 +521,7 @@ class Strings {
 	/**
 	 * Writes log messages to the logging destination
 	 * Defaults to syslog unless $_ENV['LOG_PATH'] is set
-	 * @param int $priority - log level
+	 * @param int $priority - log level, one of the LOG_* consts.
 	 * @param string $message - log message
 	 */
 	static public function log($level, $message)

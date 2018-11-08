@@ -95,6 +95,18 @@ class ARecord extends BaseCostume
 	}
 	
 	/**
+	 * Returns the "context" &mdash; the director from this record's model
+	 * @return \BitsTheater\Director|NULL the context, or null if not set up yet
+	 * @since BitsTheater v4.2.1
+	 */
+	public function getContext()
+	{
+		if( !empty( $this->getModel() ) )
+			return $this->getModel()->getDirector() ;
+		else return null ;
+	}
+	
+	/**
 	 * Static builder method to return an instance of the costume pre-bound
 	 * to a model instance.
 	 * @param MyModel $aModel the model instance to bind

@@ -8,6 +8,14 @@ $theAppPath = dirname(__DIR__);
 global $theStageManager;
 require_once( $theAppPath . DIRECTORY_SEPARATOR . 'Regisseur.php' );
 $theStageManager = Regisseur::requisition();
+// Bail out if this is not running under CLI mode. We don't want these
+// CLI operations to be invoked through HTTP.
+if ( !$theStageManager->isRunningUnderCLI() ) {
+    $current_filename = basename($argv[0]);
+    print("ERROR: Attempting to run {$current_filename} under HTTP. Use the CLI." . PHP_EOL);
+    exit(1);
+}
+//process command arguments
 $theCliOptions = (function_exists('process_cli_options'))
 	? process_cli_options($theStageManager)
 	: $theStageManager->processOptionsForCLI();
@@ -40,7 +48,7 @@ $ sudo paste -s -d "\n" /Applications/mampstack-5.6.20-0/php/etc/php.ini /usr/lo
 EXAMPLE CLI ACTION FILE NAMED: someCliAction.php
 
 <?php
-require_once('cli_bootstrap.php');
+$theCliOptions = require_once(__DIR__ . DIRECTORY_SEPARATOR . 'cli_bootstrap.php');
 $director->raiseCurtain('Actor', 'method');
 
 ************************************************/
