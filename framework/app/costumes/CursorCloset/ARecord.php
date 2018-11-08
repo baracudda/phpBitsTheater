@@ -97,7 +97,7 @@ class ARecord extends BaseCostume
 	/**
 	 * Returns the "context" &mdash; the director from this record's model
 	 * @return \BitsTheater\Director|NULL the context, or null if not set up yet
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater v4.2.1
 	 */
 	public function getContext()
 	{
