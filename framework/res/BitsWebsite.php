@@ -19,7 +19,12 @@ namespace BitsTheater\res;
 use BitsTheater\res\Resources as BaseResources;
 {//begin namespace
 
-class BitsWebsite extends BaseResources {
+class BitsWebsite extends BaseResources
+{
+	/** @var string The framework's sequence number. */
+	public $framework_version_seq = 10;
+	/** @var string The framework's displayed version number. */
+	public $framework_version = '4.2.0';
 	/**
 	 * Your website's build number.
 	 * This should only ever increase with each release you make.
@@ -178,12 +183,18 @@ class BitsWebsite extends BaseResources {
 	}
 	
 	/**
-	 * SetupDb defines the SeqNum being passed in, this converts it to a more conventional display.
+	 * Returns the displayed framework version number. It used to be based on
+	 * the SetupDb::FEATURE_VERSION_SEQ, but in 4.2+, it has become its own
+	 * property of the Website resources.
 	 * @param number $aSeqNum - SetupDb::FEATURE_VERSION_SEQ value.
 	 * @return string Returns the version display fit for human consumption.
 	 */
-	public function getFrameworkVersion($aSeqNum) {
-		switch(true) {
+	public function getFrameworkVersion($aSeqNum)
+	{
+		if ( !empty($this->framework_version) ) {
+			return $this->framework_version;
+		}
+		else switch(true) {
 			case ($aSeqNum<2):
 				return '2.4.9';
 			case ($aSeqNum<3):
@@ -198,9 +209,10 @@ class BitsWebsite extends BaseResources {
 	}
 	
 	/**
-	 * Override this function if your website needs to do some updates that are not database related.
-	 * Throw an exception if your update did not succeed.
-	 * @param number $aSeqNum - the version sequence number (<= what is defined in your overriden Website class).
+	 * Override this function if your website needs to do some updates that
+	 * are not database related. Throw an exception if your update fails.
+	 * @param number $aSeqNum - the version sequence number (<= what is defined
+	 *   in your overriden Website class).
 	 * @throws \Exception on failure.
 	 */
 	public function updateVersion($aSeqNum) {

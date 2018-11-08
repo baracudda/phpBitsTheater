@@ -5,7 +5,6 @@ use BitsTheater\actors\Understudy\AuthOrgAccount as BaseActor;
 
 class Account extends BaseActor
 {
-	
 	//nothing to override or do here, yet
 
 }//end class

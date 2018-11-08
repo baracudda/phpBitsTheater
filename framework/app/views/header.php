@@ -42,6 +42,9 @@ if (!empty($theJsList)) {
 	}//foreach
 }
 
+print($v->cueActor('Fragments', 'get', 'header-favicon'));
+print($v->cueActor('Fragments', 'get', 'header-extras'));
+
 print( $aExtraHeaderHtml . PHP_EOL ) ;
 
 print( '</head>' . PHP_EOL ) ;

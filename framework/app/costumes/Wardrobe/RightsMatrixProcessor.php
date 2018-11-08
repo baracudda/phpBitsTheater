@@ -315,6 +315,15 @@ class RightsMatrixProcessor extends BaseCostume
 		return $o;
 	}
 	
-} // end class RightsMatrixProcessor
+	/**
+	 * Once processed, pick out a particular group's permissions.
+	 * @param string $aGroupID - the group_id to retrieve FORM_VALUE_*.
+	 * @return array A 2D [ namespace => [ permission => FORM_value ] ]
+	 */
+	public function getAssignedRightsForGroup( $aGroupID )
+	{ return $this->mAssignedRights[$aGroupID]; }
+	
+	
+} // end class
 
-} // end namespace BitsTheater\costumes
+} // end namespace
