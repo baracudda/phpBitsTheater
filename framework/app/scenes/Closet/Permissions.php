@@ -20,6 +20,7 @@ use BitsTheater\Scene as MyScene;
 use BitsTheater\costumes\ISqlSanitizer;
 use BitsTheater\costumes\WornForSqlSanitize;
 use BitsTheater\costumes\AuthGroup;
+use BitsTheater\models\AuthGroups as AuthGroupsDB;
 use com\blackmoonit\Widgets;
 {//namespace begin
 
@@ -55,11 +56,15 @@ class Permissions extends MyScene implements ISqlSanitizer
 	}
 	
 	public function getShortRightValues() {
-		return array('allow'=>'+','disallow'=>'-','deny'=>'x');
+		return array(
+				AuthGroupsDB::FORM_VALUE_Allow => AuthGroupsDB::VALUE_Allow,
+				AuthGroupsDB::FORM_VALUE_Disallow => AuthGroupsDB::VALUE_Disallow,
+				AuthGroupsDB::FORM_VALUE_Deny => AuthGroupsDB::VALUE_Deny,
+		);
 	}
 	
 	public function getRightValue($aAssignedRights, $aNamespace, $aRightName) {
-		$theResult = 'disallow';
+		$theResult = AuthGroupsDB::FORM_VALUE_Disallow;
 		if (!empty($aAssignedRights[$aNamespace]) && !empty($aAssignedRights[$aNamespace][$aRightName]))
 			$theResult = $aAssignedRights[$aNamespace][$aRightName];
 		return $theResult;
@@ -80,6 +85,7 @@ class Permissions extends MyScene implements ISqlSanitizer
 	{
 		switch ($aFieldName) {
 			case 'group_id':
+			case 'group_num':
 			case 'group_name':
 			case 'parent_group_id':
 				return true;
@@ -93,7 +99,7 @@ class Permissions extends MyScene implements ISqlSanitizer
 	 * @return array Returns <code>array[fieldname => ascending=true]</code>.
 	 */
 	public function getDefaultSortColumns()
-	{ return array( 'group_name' => true, 'group_id' => true ) ; }
+	{ return array( 'group_num' => true ) ; }
 	
 	/**
 	 * Returns the human label used for a field.
@@ -103,9 +109,10 @@ class Permissions extends MyScene implements ISqlSanitizer
 	public function getColHeaderLabel($aFieldName)
 	{
 		switch ($aFieldName) {
-			case 'group_id':        return $this->getRes('AuthGroup/colheader_group_id');
-			case 'group_name':      return $this->getRes('AuthGroup/colheader_group_name');
-			case 'parent_group_id': return $this->getRes('AuthGroup/colheader_parent_group_id');
+			case 'group_id':        return $this->getRes('AuthGroups/colheader_group_id');
+			case 'group_num':       return $this->getRes('AuthGroups/colheader_group_num');
+			case 'group_name':      return $this->getRes('AuthGroups/colheader_group_name');
+			case 'parent_group_id': return $this->getRes('AuthGroups/colheader_parent_group_id');
 			default:                return parent::getColHeaderLabel($aFieldName);
 		}//end switch
 	}
@@ -121,6 +128,8 @@ class Permissions extends MyScene implements ISqlSanitizer
 		switch ($aFieldName) {
 			case 'group_id':
 				return '<td style="align:center">'.$aDataRow->group_id.'</td>';
+			case 'group_num':
+				return '<td style="align:center">'.$aDataRow->group_num.'</td>';
 			case 'group_name':
 				return '<td>'.htmlentities($aDataRow->group_name).'</td>';
 			case 'parent_group_id':

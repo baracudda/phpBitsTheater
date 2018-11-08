@@ -1,10 +1,10 @@
 <?php
 namespace BitsTheater\res\en;
 use BitsTheater\res\en\BitsPermissions as BaseResources;
-use BitsTheater\costumes\EnumResEntry;
 {//begin namespace
 
-class Permissions extends BaseResources {
+class Permissions extends BaseResources
+{
 	
 	public $label_my_namespaces = array(
 		'ns_a' => 'My WebApp Right Group A',

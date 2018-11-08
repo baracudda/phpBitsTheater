@@ -21,13 +21,128 @@ use BitsTheater\BrokenLeg ;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\RightsMatrixProcessor;
+use BitsTheater\models\AuthGroups as MyModel;
 use BitsTheater\outtakes\RightsException ;
+use BitsTheater\scenes\Rights as MyScene;
+use com\blackmoonit\Arrays;
+use com\blackmoonit\Strings;
 use com\blackmoonit\exceptions\DbException;
 use Exception;
 {//namespace begin
 
 class AuthGroups extends BaseActor
 {
+	const DEFAULT_ACTION = 'groups';
+	
+	/**
+	 * {@inheritDoc}
+	 * @return MyScene Returns a newly created scene descendant.
+	 * @see \BitsTheater\Actor::createMyScene()
+	 */
+	protected function createMyScene($anAction)
+	{ return new MyScene($this, $anAction); }
+
+	/** @return MyScene Returns my scene object. */
+	public function getMyScene()
+	{ return $this->scene; }
+
+	/**
+	 * @return MyModel Returns the database model reference.
+	 */
+	protected function getMyModel()
+	{ return $this->getProp(MyModel::MODEL_NAME); }
+
+	/**
+	 * Page listing all roles of which an account can be a member.
+	 * @return string|null Returns the redirect URL, if defined.
+	 */
+	public function groups()
+	{
+		if ( !$this->isAllowed('auth','modify') )
+			return $this->getHomePage();
+		//shortcut variable $v also in scope in our view php file.
+		$v = $this->getMyScene();
+		//indicate what top menu we are currently in
+		$this->setCurrentMenuKey('admin');
+		
+		$dbAuthGroups = $this->getMyModel();
+		$v->groups = Arrays::array_column_as_key(
+				$dbAuthGroups->getRolesToDisplay($this->getMyScene())->fetchAll(), 'group_id'
+		);
+		$v->group_reg_codes = $dbAuthGroups->getGroupRegCodes();
+	}
+	
+	/**
+	 * Page is rendered for editing the permissions assigned to a group/role.
+	 * For the API function that returns the permissions for a group, see
+	 * ajajGetPermissionsFor().
+	 * @param string $aGroupID - the ID of the group to be edited.
+	 * @return string|null Returns the redirect URL, if defined.
+	 */
+	public function group( $aGroupID=null )
+	{
+		if ( empty($aGroupID) )
+			return $this->getMyUrl('/rights');
+		if ( !$this->isAllowed('auth','modify') )
+			return $this->getHomePage();
+		//shortcut variable $v also in scope in our view php file.
+		$v = $this->getMyScene();
+		//indicate what top menu we are currently in
+		$this->setCurrentMenuKey('admin');
+		
+		$dbAuthGroups = $this->getMyModel();
+		try {
+			$theProc = new RightsMatrixProcessor($this);
+			$theProc->process(true);
+		}
+		catch( Exception $x )
+		{ throw BrokenLeg::tossException( $this, $x ) ; }
+		if ( empty($theProc->authgroups[$aGroupID]) ) {
+			return $this->getMyUrl('/rights');
+		}
+		//view expects an array, so export from the rights processor, then
+		//  convert to an array.
+		$v->group = (array)$theProc->authgroups[$aGroupID]->exportData();
+		$v->right_groups = $v->getPermissionRes('namespace');
+		$v->assigned_rights = $theProc->getAssignedRightsForGroup($aGroupID);
+		//$v->addUserMsg($this->debugStr($v->assigned_rights)); //DEBUG-ONLY
+		$v->redirect = $this->getMyUrl('/rights');
+		$v->next_action = $this->getMyUrl('/rights/modify');
+		//CSRF protection via form data: we need to use a secret hidden form value
+		$this->director['post_key'] = Strings::createUUID().Strings::createUUID();
+		$this->director['post_key_ts'] = time()+1; //you can only update your account 1 second after the page loads
+		$v->post_key = $this->director['post_key'];
+	}
+	
+	/**
+	 * Since this method processes form submission, we need to use a secret
+	 * hidden form value. The group() endpoint creates a token to use,
+	 * typically tied to the user session, and in here, we validate that we
+	 * receive the same value back in the form post. The attacker can't simply
+	 * scrape our remote form as the target user through JavaScript, thanks to
+	 * "same-domain request limits" in the XmlHttpRequest function.
+	 * @return string|null Returns the redirect URL, if defined.
+	 */
+	public function modify()
+	{
+		$v = $this->getMyScene();
+		$bPostKeyOk = ($this->director['post_key']===$v->post_key);
+		//valid time >10sec, <30min
+		$theMinTime = $this->director['post_key_ts'];
+		$theNowTime = time();
+		$theMaxTime = $theMinTime+(60*30);
+		$bPostKeyOldEnough = ($theMinTime < $theNowTime) && ($theNowTime < $theMaxTime);
+		unset($this->director['post_key']);
+		unset($this->director['post_key_ts']);
+		if ( !$this->isAllowed('auth','modify') || !$bPostKeyOk || !$bPostKeyOldEnough )
+			return $this->getHomePage();
+		if ( empty($v->group_id) )
+			return $this->getMyUrl('/rights');
+		$dbAuthGroups = $this->getMyModel();
+		$dbAuthGroups->modifyGroupRights($v);
+		return $v->redirect;
+	}
+	
 	/**
 	 * Do the actual database insert for creating a new group.
 	 * Helper function in case descendants want to do something special.
@@ -38,7 +153,7 @@ class AuthGroups extends BaseActor
 	{
 		try
 		{
-			$dbAuthGroups = $this->getProp( 'AuthGroups' ) ;
+			$dbAuthGroups = $this->getMyModel();
 			return $dbAuthGroups->createGroup( $aDataObject->group_name,
 					$aDataObject->parent_group_id, $aDataObject->group_num,
 					$aDataObject->reg_code, $aDataObject->source_group_id

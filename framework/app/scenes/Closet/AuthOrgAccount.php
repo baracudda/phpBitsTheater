@@ -117,6 +117,7 @@ implements ISqlSanitizer
 				$w = '<td>';
 				$w .= Widgets::buildButton()->addClass('btn-sm')->addClass('btn-default')
 						->addClass('btn_edit_account')
+						->setDataAttr('auth_id', $aDataRow->auth_id)
 						->setDataAttr('account_id', $aDataRow->account_id)
 						->setDataAttr('account_name', htmlentities($aDataRow->account_name))
 						->setDataAttr('email', htmlentities($aDataRow->email))

@@ -22,6 +22,7 @@ use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\IFeatureVersioning;
+use BitsTheater\costumes\ISqlSanitizer;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\costumes\WornForFeatureVersioning;
@@ -339,28 +340,38 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			try
 			{
 				$theSql->execMultiDML( $theDefaultData );
-				//since group_num is an auto-inc field, 0 might get
-				//  auto-changed to be the next auto-inc value instead
-				//  of 0, which is what we actually want. UPDATE should
-				//  fix that for us.
-				switch ($this->dbType()) {
-					case self::DB_TYPE_MYSQL:
-					default:
-						$theSql->reset()
-							->startWith('UPDATE')->add($this->tnGroups)
-							->add('SET')
-							->mustAddParam('group_num', 0, \PDO::PARAM_INT)
-							->startWhereClause()
-							->mustAddParam('group_id', $theDefaultData[0]['group_id'])
-							->endWhereClause()
-							->execDML()
-						;
-				}//switch
+				$this->fixGroupNum0AfterInsert($theDefaultData[0]['group_id']);
 			}
 			catch (PDOException $pdox)
 			{ throw $theSql->newDbException(__METHOD__, $pdox); }
 			return $theDefaultData;
 		}
+	}
+	
+	/**
+	 * Since group_num is an auto-inc field, 0 might get auto-changed to be
+	 * the next auto-inc value instead of 0, which is what we actually want.
+	 * UPDATE should fix that for us.
+	 * @param string $aGroupID - the group ID to fix.
+	 * @return $this Returns $this for chaining.
+	 * @throws PDOException if a problem occurs.
+	 */
+	protected function fixGroupNum0AfterInsert( $aGroupID )
+	{
+		switch ($this->dbType()) {
+			case self::DB_TYPE_MYSQL:
+			default:
+				SqlBuilder::withModel($this)
+					->startWith('UPDATE')->add($this->tnGroups)
+					->add('SET')
+					->mustAddParam('group_num', 0, \PDO::PARAM_INT)
+					->startWhereClause()
+					->mustAddParam('group_id', $aGroupID)
+					->endWhereClause()
+					->execDML()
+				;
+		}//switch
+		return $this;
 	}
 	
 	/**
@@ -743,12 +754,13 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 */
 	protected function migrateFromBitsGroups()
 	{
-		$theTaskText = 'migrating schema to v4.0.0 AuthGroups model';
+		$theTaskText = 'migrating schema to v4.x AuthGroups model';
 		$this->logStuff(__METHOD__, ' ', $theTaskText);
 		$this->migrateFromBitsGroupsToAuthGroups();
 		$this->migrateFromBitsGroupMapToAuthGroupMap();
 		$this->migrateFromBitsGroupRegCodesToAuthGroupRegCodes();
 		$this->migrateFromBitsPermissionsToAuthGroupPermissions();
+		$this->migrateTitanRoleToAdmin();
 		$this->migrateToAuthGroupsComplete();
 		$this->logStuff(__METHOD__, ' FINISHED ', $theTaskText);
 	}
@@ -815,8 +827,18 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 						$theNewRow['group_id'] = $theIDList[$theItem['group_id']]['new_id'];
 				}//end switch
 				//group_num
-				$theNewRow['group_num'] = $theItem['group_id'];
+				if ( $theItem['group_id'] == $dbOldAuthGroups::UNREG_GROUP_ID ) {
+					$theNewRow['group_num'] = -1; //0 will cause auto-inc field to put "next" val
+				}
+				else {
+					$theNewRow['group_num'] = $theItem['group_id'];
+				}
+				
 				$this->add($theNewRow);
+				//if we were forced to use -1 instead of 0, fix it.
+				if ( $theNewRow['group_num'] == -1 ) {
+					$this->fixGroupNum0AfterInsert($theNewRow['group_id']);
+				}
 			}
 			$this->logStuff(' migrated to ', $this->tnGroups);
 		}
@@ -1089,50 +1111,64 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				' had its indexes recreated correctly.');
 	}
 	
+	/**
+	 * In version 2, we migrated the Titan role to be just a plain Admin
+	 * role and did away with any "special cases" for Titan. Since migrations
+	 * from 3.x will also need to run this particular migration separately,
+	 * it needs to be its own method to be called from both places.
+	 * @return $this Returns $this for chaining.
+	 * @throws PDOException if a problem occurs.
+	 */
+	protected function migrateTitanRoleToAdmin()
+	{
+		//deliberately remove the Titan UUID so it can never be used
+		//  to potentially login again as a faux-admin.
+		//get data for the former Titan group
+		$theGroup1 = AuthGroup::fromThing($this->getGroupByNum(1));
+		//replace former titan group with current group 2 ID in map
+		//  so that current titan accounts will be admins (best guess)
+		$theGroup2 = AuthGroup::fromThing($this->getGroupByNum(2));
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('UPDATE')->add($this->tnGroupMap);
+		$this->setAuditFieldsOnUpdate($theSql)
+			->mustAddParam('group_id', $theGroup2->group_id)
+			->startWhereClause()
+			->setParamValueIfEmpty('oldgroup_id', $theGroup1->group_id)
+			->addParamForColumn('oldgroup_id', 'group_id')
+			->endWhereClause()
+			->execDML()
+		;
+		//remove group 1 (former Titan group) AFTER we remapped members
+		$this->del($theGroup1->group_id);
+		//re-add default group 1 (org-parent)
+		$theGroupNames = $this->getRes('AuthGroups', 'group_names');
+		$theGroup1->group_id = Strings::createUUID();
+		$theGroup1->group_num = 1;
+		$theGroup1->group_name = $theGroupNames[1];
+		$theSql = SqlBuilder::withModel($this)
+			->obtainParamsFrom($theGroup1)
+			->startWith('INSERT INTO')->add($this->tnGroups)
+		;
+		$this->setAuditFieldsOnInsert($theSql);
+		$theSql->mustAddParam('group_id')
+			->mustAddParam('group_num')
+			->mustAddParam('group_name')
+			->execDML()
+		;
+		//set default permissions for group 1.
+		$this->insertDataForAuthPermissionGroup(
+				$this->getDefaultRightsForOrgParent($theGroup1->group_id)
+		);
+		$this->logStuff('authgroup 1 migrated to be "org-parent".');
+		return $this;
+	}
+	
 	protected function upgradeFeatureVersionTo2()
 	{
 		$theTransactionSql = SqlBuilder::withModel($this);
 		$theTransactionSql->beginTransaction();
 		try {
-			//deliberately remove the Titan UUID so it can never be used
-			//  to potentially login again as a faux-admin.
-			//get data for the former Titan group
-			$theGroup1 = AuthGroup::fromThing($this->getGroupByNum(1));
-			//replace former titan group with current group 2 ID in map
-			//  so that current titan accounts will be admins (best guess)
-			$theGroup2 = AuthGroup::fromThing($this->getGroupByNum(2));
-			$theSql = SqlBuilder::withModel($this)
-				->startWith('UPDATE')->add($this->tnGroupMap);
-			$this->setAuditFieldsOnUpdate($theSql)
-				->mustAddParam('group_id', $theGroup2->group_id)
-				->startWhereClause()
-				->setParamValueIfEmpty('oldgroup_id', $theGroup1->group_id)
-				->addParamForColumn('oldgroup_id', 'group_id')
-				->endWhereClause()
-				->execDML()
-			;
-			//remove group 1 (former Titan group) AFTER we remapped members
-			$this->del($theGroup1->group_id);
-			//re-add default group 1 (org-parent)
-			$theGroupNames = $this->getRes('AuthGroups', 'group_names');
-			$theGroup1->group_id = Strings::createUUID();
-			$theGroup1->group_num = 1;
-			$theGroup1->group_name = $theGroupNames[1];
-			$theSql = SqlBuilder::withModel($this)
-				->obtainParamsFrom($theGroup1)
-				->startWith('INSERT INTO')->add($this->tnGroups)
-			;
-			$this->setAuditFieldsOnInsert($theSql);
-			$theSql->mustAddParam('group_id')
-				->mustAddParam('group_num')
-				->mustAddParam('group_name')
-				->execDML()
-			;
-			//set default permissions for group 1.
-			$this->insertDataForAuthPermissionGroup(
-					$this->getDefaultRightsForOrgParent($theGroup1->group_id)
-			);
-			$this->logStuff('v2: group 1 migrated to be "org-parent".');
+			$this->migrateTitanRoleToAdmin();
 			//add org_id field to the groups table.
 			$this->addFieldToTable(2, 'org_id', $this->tnGroups,
 					'org_id ' . CommonMySql::TYPE_UUID . ' NULL',
@@ -1827,22 +1863,35 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 
 	/**
 	 * Get the list of reg code for a given group.
+	 * @param string $aGroupID - (OPTIONAL) restrict output to group_id.
+	 *   NOTE: if omitted, 2D array of records indexed by group_id is returned
+	 *   as legacy behavior.
 	 * @return string[] Return array of reg codes.
 	 */
 	public function getGroupRegCodes( $aGroupID=null )
 	{
-		$theSql = SqlBuilder::withModel($this);
-		$theSql->startWith('SELECT reg_code')
+		$theFieldList = ( !empty($aGroupID) ) ? 'reg_code' : null;
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('SELECT')->addFieldList($theFieldList)
 			->add('FROM')->add($this->tnGroupRegCodes)
 			->startWhereClause()
-			->mustAddParam('group_id', $aGroupID)
+			->setParamValueIfEmpty('group_id', $aGroupID)->addParam('group_id')
 			->endWhereClause()
 			->applyOrderByList(array(
 					'created_ts' => SqlBuilder::ORDER_BY_ASCENDING
 			))
 		;
 		try
-		{ return $theSql->query()->fetchAll(\PDO::FETCH_COLUMN); }
+		{
+			if ( !empty($aGroupID) ) {
+				return $theSql->query()->fetchAll(\PDO::FETCH_COLUMN);
+			}
+			else {
+				return Arrays::array_column_as_key(
+						$theSql->query()->fetchAll(), 'group_id'
+				);
+			}
+		}
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException( __METHOD__, $pdox ); }
 	}
@@ -2043,6 +2092,48 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		{ throw $theSql->newDbException( __METHOD__, $pdox); }
 		//$this->logStuff(__METHOD__, ' groups=', $theResults); //DEBUG
 		return ( !empty($theResults) ) ? $theResults : array();
+	}
+	
+	/**
+	 * Show the auth groups for display (pager and such).
+	 * @param ISqlSanitizer $aSqlSanitizer - the SQL sanitizer obj being used.
+	 * @param SqlBuilder $aFilter - (optional) Specifies restrictions on
+	 *   data to return; effectively populating a WHERE filter for the query.
+	 * @param string[]|NULL $aFieldList - (optional) String list representing
+	 *   which columns to return. Leaving this argument blank defaults to
+	 *   returning all table column fields.
+	 * @throws DBException
+	 * @return \PDOStatement Returns the query result.
+	 */
+	public function getRolesToDisplay(ISqlSanitizer $aSqlSanitizer=null,
+			 SqlBuilder $aFilter=null, $aFieldList=null)
+	{
+		//restrict results to current org
+		$theOrg = AuthDB::getCurrentOrg($this);
+		$theOrgID = ( !empty($theOrg) ) ? $theOrg->org_id : null;
+		$theSql = SqlBuilder::withModel($this)->setSanitizer($aSqlSanitizer);
+		//query field list NOTE: since we may have a nested query in
+		//  the field list, must add HINT for getQueryTotals()
+		$theSql->startWith('SELECT')
+			->add(SqlBuilder::FIELD_LIST_HINT_START)
+			->addFieldList($aFieldList)
+			->add(SqlBuilder::FIELD_LIST_HINT_END)
+			;
+		$theSql->add('FROM')->add($this->tnGroups)
+			->startWhereClause()
+			->mustAddParam('org_id', $theOrgID)
+			->setParamPrefix(' AND ')
+			->applyFilter($aFilter)
+			->endWhereClause()
+			;
+		$theSql->retrieveQueryTotalsForSanitizer()
+			->applyOrderByListFromSanitizer()
+			->applyQueryLimitFromSanitizer()
+			;
+		//$theSql->logSqlDebug(__METHOD__); //DEBUG
+		try { return $theSql->query() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
 	
 	/**

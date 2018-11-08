@@ -17,8 +17,6 @@
 
 namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\Wardrobe\TicketViaRequest as BaseCostume;
-use BitsTheater\costumes\AccountInfoCache;
-use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\Scene;
 use com\blackmoonit\Strings;
 {//namespace begin

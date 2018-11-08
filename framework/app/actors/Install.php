@@ -1,12 +1,12 @@
 <?php
 namespace BitsTheater\actors;
 use BitsTheater\actors\Understudy\BitsInstall as BaseActor;
-use BitsTheater\costumes\DbConnInfo;
+//use BitsTheater\costumes\DbConnInfo;
 {//namespace begin
 
 class Install extends BaseActor
 {
-	/* exmple connection override	
+	/* exmple connection override
 	public function getDbConns() {
 		$db_conns = array();
 
@@ -26,8 +26,7 @@ class Install extends BaseActor
 	
 		return $db_conns;
 	}
-	*/	
+	*/
 }//end class
 
 }//end namespace
-

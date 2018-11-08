@@ -25,10 +25,10 @@ class BitsPermissions extends BaseResources {
 	
 	public $title_groups = 'Assign Rights To Roles';
 	public $colheader_group_id = '#';
+	public $colheader_group_num = '#';
 	public $colheader_group_name = 'Role';
 	public $colheader_group_parent = 'Description';
 	public $display_group_0_desc = 'visitor that is not logged in';
-	public $display_group_1_desc = 'always passes permission checks';
 	public $display_parent_group = 'subset of %s';
 	public $label_button_add_role = '<span class="glyphicon glyphicon-plus"></span> Add Role';
 	
