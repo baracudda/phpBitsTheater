@@ -1260,6 +1260,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 *   <li>value4insert</li>
 	 *   <li>value4update</li>
 	 *   </ul>
+	 * @since 4.2.2
 	 */
 	public function mergeDataForAuthPermissionGroup( $aRightsData )
 	{
