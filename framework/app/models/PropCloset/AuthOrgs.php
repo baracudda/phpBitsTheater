@@ -154,6 +154,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @since BitsTheater 3.6.1
 	 */
 	const TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT = 'hwid2acct';
+	/**
+	 * Sometimes we need an actual value besides NULL to mean the
+	 * root org, use this value.
+	 * @var string
+	 * @since BitsTheater [NEXT]
+	 */
+	const ORG_ID_4_ROOT = '__ROOT-ORG-ID__';
 
 	public function setupAfterDbConnected()
 	{
@@ -677,6 +684,41 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
+	 * See if we need to swap to a differnt org automatically.
+	 * @param object $aScene - the Scene object in use that holds client input.
+	 * @param AccountInfoCache $aAuthAccount - (optional) the logged in auth account.
+	 */
+	protected function swapToDefaultOrg( $aScene, AccountInfoCache $aAuthAccount=null )
+	{
+		$theOrgRow = null ;
+		$theCurrentOrg = static::getCurrentOrg($this) ;
+		if( !empty($theCurrentOrg) )
+		{ // Try the session's "current" org first.
+			$theOrgRow = $this->getOrganization( $theCurrentOrg->org_id ) ;
+		}
+		if( $theOrgRow === null )
+		{
+			$dbPrefs = $this->getProp( AccountPrefs::MODEL_NAME ) ;
+			$theDefaultOrgID = $dbPrefs->getPreference(
+					$aAuthAccount->auth_id, 'organization', 'default_org' );
+			if ( $theDefaultOrgID == static::ORG_ID_4_ROOT ) {
+				return;
+			}
+			if( !empty($theDefaultOrgID) && $this->accountBelongsToOrg( $aAuthAccount->auth_id, $theDefaultOrgID ) )
+				$theOrgRow = $this->getOrganization($theDefaultOrgID) ;
+		}
+		if( $theOrgRow === null )
+		{ // We STILL didn't find one. Grab the first one that's authorized.
+			$theOrgRow = $this->getOrgsForAuthCursor( $aAuthAccount->auth_id )->fetch() ;
+		}
+
+		if( !empty($theOrgRow) && isset( $theOrgRow['dbconn'] ) )
+		{ // We found something, so pick it.
+			$this->setCurrentOrg($theOrgRow) ;
+		}
+	}
+	
+	/**
 	 * Event to be called immediately upon determining when a account is "logged in".
 	 * @param object $aScene - the Scene object in use that holds client input.
 	 * @param AccountInfoCache $aAuthAccount - (optional) the logged in auth account.
@@ -696,39 +738,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 					'auth_id' => $aAuthAccount->auth_id,
 					'last_seen_ts' => $aAuthAccount->last_seen_ts,
 			));
-			
-			//determine what org to use
-			$theOrgRow = null ;
-			$theCurrentOrg = static::getCurrentOrg($this) ;
-			if( !empty($theCurrentOrg) )
-			{ // Try the session's "current" org first.
-				$theOrgRow = $this->getOrganization( $theCurrentOrg->org_id ) ;
-			}
-/*
-			if( empty($theOrgRow) && !empty( $aScene->org_id ) )
-			{ // We weren't set in an org yet. Maybe the scene gave us one?
-				if( $this->accountBelongsToOrg( $aAuthAccount->auth_id, $aScene->org_id ) )
-					$theOrgRow = $this->getOrganization( $aScene->org_id ) ;
-			}
-*/
-			if( $theOrgRow === null )
-			{ // We couldn't use one from the scene. Check account's preference?
-				$dbPrefs = $this->getProp( AccountPrefs::MODEL_NAME ) ;
-				$theDefaultOrgID = $dbPrefs->getPreference(
-						$aAuthAccount->auth_id, 'organization', 'default_org' );
-				if( !empty($theDefaultOrgID) && $this->accountBelongsToOrg( $aAuthAccount->auth_id, $theDefaultOrgID ) )
-					$theOrgRow = $this->getOrganization($theDefaultOrgID) ;
-			}
-			if( $theOrgRow === null )
-			{ // We STILL didn't find one. Grab the first one that's authorized.
-				$theOrgRow = $this->getOrgsForAuthCursor( $aAuthAccount->auth_id )->fetch() ;
-			}
-
-			if( !empty($theOrgRow) && isset( $theOrgRow['dbconn'] ) )
-			{ // We found something, so pick it.
-				$this->setCurrentOrg($theOrgRow) ;
-			}
 		}
+		//determine what org to use
+		$this->swapToDefaultOrg($aScene, $aAuthAccount);
 	}
 	
 	/**
@@ -854,7 +866,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		//get our org data - do not use the AuthOrg costume as we need
 		//  the dbconn info which the costume does not provide (security
 		//  precaution against accidentally exporting back to a client).
-		if ( !empty($aOrgID) )
+		if ( !empty($aOrgID) && $aOrgID != static::ORG_ID_4_ROOT )
 		{ $theOrg = $this->getOrganization($aOrgID); }
 		else
 		{ $theOrg = null; }
@@ -1353,7 +1365,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	
 	/**
 	 * Save the given account to the PHP session cache.
-	 * @param AccountInfoCache $aAcctInfo - the account which rejected auth.
+	 * @param AccountInfoCache $aAcctInfo - the auth account to save.
 	 */
 	public function saveAccountToSessionCache( AccountInfoCache $aAcctInfo=null )
 	{
@@ -2102,7 +2114,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		if ( $this->getDirector()->canConnectDb() ) try {
 			//some routines should only check every other minute
 			$theLastPollCheck = $this->getDirector()['check_ticket_poll_ts'];
-			if ( empty($theLastPollCheck) || (time() - $theLastPollCheck > 100) ) {
+			if ( empty($theLastPollCheck) || ((time() - $theLastPollCheck) > 100) ) {
 				$this->onCheckTicketPollInterval($aScene);
 				$this->getDirector()['check_ticket_poll_ts'] = time();
 			}

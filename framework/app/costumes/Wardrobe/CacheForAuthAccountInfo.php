@@ -20,6 +20,7 @@ use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\costumes\AuthOrg;
 use BitsTheater\costumes\WornForExportData as ExportDataTrait;
 use BitsTheater\costumes\colspecs\CommonMySql;
+use BitsTheater\models\Auth as AuthDB;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -71,7 +72,7 @@ class CacheForAuthAccountInfo extends BaseCostume
 				$this->{$theName} = $theValue;
 			}
 			if ( $theName=='curr_org' && !empty($theValue) ) {
-				$this->mSeatingSection = AuthOrg::getInstance($this, $theValue);
+				$this->setSeatingSection($theValue);
 			}
 		}
 		$this->account_id = Strings::toInt($this->account_id);
@@ -95,13 +96,67 @@ class CacheForAuthAccountInfo extends BaseCostume
 		unset($o->mSeatingSection);
 		if ( !empty($this->mSeatingSection) )
 		{ $o->curr_org = $this->mSeatingSection->exportData(); }
-		$dbAuth = $this->getProp('Auth');
+		$dbAuth = $this->getProp(AuthDB::MODEL_NAME);
 		switch ($dbAuth->dbType()) {
 			case $dbAuth::DB_TYPE_MYSQL:
 				$o = CommonMySql::deepConvertSQLTimestampsToISOFormat($o);
 				break;
 		}//switch
 		return $o;
+	}
+	
+	/**
+	 * Set the org data to our object.
+	 * @param array|AuthOrg $aOrgData - the mSeatingSection data as obj or array.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setSeatingSection( $aOrgData )
+	{
+		if ( empty($aOrgData) ) {
+			$this->mSeatingSection = null;
+		}
+		if ( is_array($aOrgData) ) {
+			$this->mSeatingSection = AuthOrg::getInstance($this, $aOrgData);
+		}
+		else if ( $aOrgData instanceof AuthOrg ) {
+			$this->mSeatingSection = $aOrgData;
+		}
+		return $this;
+	}
+	
+	/**
+	 * Return the current org ID as something other than NULL to mean Root.
+	 * @return string Returns the magic root ID for root, else the org_id in use.
+	 */
+	public function getSeatSectionID()
+	{
+		if ( !empty($this->mSeatingSection) && !empty($this->mSeatingSection->org_id) ) {
+			return $this->mSeatingSection->org_id;
+		}
+		else {
+			return AuthDB::ORG_ID_4_ROOT;
+		}
+	}
+	
+	/**
+	 * Return the parent ID of the current org as something other than NULL to mean Root.
+	 * NULL will be returned if the current org is the Root org since Root has no parent.
+	 * @return string|NULL Returns the magic root ID for root, else the parent org ID or NULL
+	 *   if current org is already Root.
+	 */
+	public function getSeatSectionParentID()
+	{
+		if ( !empty($this->mSeatingSection) ) {
+			if ( !empty($this->mSeatingSection->parent_org_id) ) {
+				return $this->mSeatingSection->parent_org_id;
+			}
+			else if ( !empty($this->mSeatingSection->org_id) &&
+					$this->mSeatingSection->org_id != AuthDB::ORG_ID_4_ROOT )
+			{
+				return AuthDB::ORG_ID_4_ROOT;
+			}
+		}
+		return null;
 	}
 	
 }//end class
