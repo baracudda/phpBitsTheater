@@ -158,7 +158,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * Sometimes we need an actual value besides NULL to mean the
 	 * root org, use this value.
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater 4.2.2
 	 */
 	const ORG_ID_4_ROOT = '__ROOT-ORG-ID__';
 
