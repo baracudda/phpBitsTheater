@@ -22,9 +22,9 @@ use BitsTheater\res\Resources as BaseResources;
 class BitsWebsite extends BaseResources
 {
 	/** @var string The framework's sequence number. */
-	public $framework_version_seq = 11;
+	public $framework_version_seq = 12;
 	/** @var string The framework's displayed version number. */
-	public $framework_version = '4.2.1';
+	public $framework_version = '4.2.2';
 	/**
 	 * Your website's build number.
 	 * This should only ever increase with each release you make.
