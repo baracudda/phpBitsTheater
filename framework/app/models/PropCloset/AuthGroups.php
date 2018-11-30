@@ -1239,7 +1239,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$theSql->mustAddParam('namespace', '__PLACEHOLDER__')
 			->mustAddParam('permission', '__PLACEHOLDER__')
 			->mustAddParam('group_id', '__PLACEHOLDER__')
-			->mustAddParam('value', static::VALUE_Disallow, \PDO::PARAM_INT)
+			->mustAddParam('value', static::VALUE_Disallow)
 		;
 		//merge our audit field data with passed in rights data
 		foreach( $aRightsData as $theRowData ) {
@@ -1247,6 +1247,65 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		}
 		try { $theSql->execMultiDML($theParamData); }
 		catch (PDOException $pdox)
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+	}
+	
+	/**
+	 * Insert/update the data into the permissions table.
+	 * @param array $aRightsData - the rights data; ensure each entry has the
+	 *   following keys: <ul>
+	 *   <li>namespace</li>
+	 *   <li>permission</li>
+	 *   <li>group_id</li>
+	 *   <li>value4insert</li>
+	 *   <li>value4update</li>
+	 *   </ul>
+	 * @since 4.2.2
+	 */
+	public function mergeDataForAuthPermissionGroup( $aRightsData )
+	{
+		if ( empty($aRightsData) ) return; //trivial
+		$theSql = SqlBuilder::withModel($this);
+		switch ($this->dbType()) {
+			case self::DB_TYPE_MYSQL: //MySQL uses "INSERT ... ON DUPLICATE KEY UPDATE"
+				$theSql->startWith('INSERT INTO')->add($this->tnPermissions);
+				$this->setAuditFieldsOnInsert($theSql)
+					->mustAddParam('namespace', '__PLACEHOLDER__')
+					->mustAddParam('permission', '__PLACEHOLDER__')
+					->mustAddParam('group_id', '__PLACEHOLDER__')
+					->mustAddParamForColumn('value4insert', 'value', static::VALUE_Disallow)
+					;
+				$theSql->add('ON DUPLICATE KEY UPDATE');
+				$this->addAuditFieldsForUpdate($theSql->setParamPrefix(' '))
+					->mustAddParamForColumn('value4update', 'value', static::VALUE_Disallow)
+					;
+				break;
+			default:
+				$theSql->startWith('MERGE')->add($this->tnPermissions);
+				$theSql->add('WHEN NOT MATCHED BY TARGET')->add('INSERT');
+				$this->setAuditFieldsOnInsert($theSql)
+					->mustAddParam('namespace', '__PLACEHOLDER__')
+					->mustAddParam('permission', '__PLACEHOLDER__')
+					->mustAddParam('group_id', '__PLACEHOLDER__')
+					->mustAddParamForColumn('value4insert', 'value', static::VALUE_Disallow)
+					;
+				$theSql->add('WHEN MATCHED THEN')->add('UPDATE');
+				$this->addAuditFieldsForUpdate($theSql->setParamPrefix(' '))
+					->mustAddParamForColumn('value4update', 'value', static::VALUE_Disallow)
+					;
+				break;
+		}//end switch
+		//merge in the audit field params
+		foreach ($aRightsData as &$thePermRow) {
+			//keep the audit data, but override __PLACEHOLDER__ data with the actual params.
+			$thePermRow = array_merge($theSql->myParams, $thePermRow);
+		}
+		try {
+			//$this->logStuff(__METHOD__, ' rightsdata=', $aRightsData); //DEBUG
+			//$theSql->logSqlDebug(__METHOD__); //DEBUG
+			$theSql->execMultiDML($aRightsData);
+		}
+		catch( PDOException $pdox )
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
 	
@@ -2334,10 +2393,6 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		if ( empty($aDataObject) || empty($aDataObject->group_id) )
 			return; //trivial
 		
-		//remove existing permissions
-		//NOTE: introducing VALUE_Disallow removed the need to delete permissions.
-		//$this->removeGroupPermissions($aDataObject->group_id);
-
 		//add new permissions
 		$theRightsList = array();
 		$theRightGroups = $this->getRes('permissions/namespace');
@@ -2351,8 +2406,10 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				switch ( $theAssignment ) {
 					case static::FORM_VALUE_Allow:
 						$theValue = static::VALUE_Allow;
+						break;
 					case static::FORM_VALUE_Deny:
 						$theValue = static::VALUE_Deny;
+						break;
 					default:
 						$theValue = static::VALUE_Disallow;
 				}//switch
@@ -2360,11 +2417,12 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 						'namespace' => $ns,
 						'permission' => $theRight,
 						'group_id' => $aDataObject->group_id,
-						'value' => $theValue,
+						'value4insert' => $theValue,
+						'value4update' => $theValue,
 				);
 			}//end foreach
 		}//end foreach
-		$this->insertDataForAuthPermissionGroup($theRightsList);
+		$this->mergeDataForAuthPermissionGroup($theRightsList);
 	}
 
 	/**

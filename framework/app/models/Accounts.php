@@ -21,7 +21,6 @@ class Accounts extends BaseModel
 		return parent::isEmpty( empty($aTableName) ? $this->tnAccounts : $aTableName );
 	}
 	
-	
 }//end class
 
 }//end namespace
