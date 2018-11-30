@@ -48,7 +48,7 @@ if ( isset($theCliOptions['b']) )  {
 		$theData->admin_dbpass = getMyDbConnEnvVar('ADMINPSWD');
 		$theData->dbtype = getMyDbConnEnvVar('DBTYPE', AuthDB::DB_TYPE_MYSQL);
 		$theData->dbhost = getMyDbConnEnvVar('DBHOST');
-		$theData->dbport = getMyDbConnEnvVar('DBPORT');
+		$theData->dbport = getMyDbConnEnvVar('DBPORT', 3306);
 		$theData->dbname = getMyDbConnEnvVar('DBNAME');
 		$theData->dbuser = getMyDbConnEnvVar('DBUSER');
 		$theData->dbpass = getMyDbConnEnvVar('DBPSWD');

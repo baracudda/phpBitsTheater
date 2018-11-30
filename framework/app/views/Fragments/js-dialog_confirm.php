@@ -1,4 +1,11 @@
-<meta itemprop="js-dialog_confirm" data-bootbox_dialog_argument=<?php
+<meta itemprop="<?php
+	if ( !empty($v->dialog_itemprop) ) {
+		print($v->dialog_itemprop);
+	}
+	else {
+		print('js-dialog_confirm');
+	}
+?>" data-bootbox_dialog_argument="<?php
 	$o = new \StdClass();
 	if (!empty($v->dialog_title))
 		$o->title = $v->dialog_title;
@@ -15,5 +22,8 @@
 		? $v->dialog_success_label : $v->getRes('generic/label_button_ok');
 	$o->buttons->success->className = (!empty($v->dialog_success_class))
 		? $v->dialog_success_class : 'btn-success';
-	print( '"'.htmlentities(json_encode($o)).'"' );
-?>>
+	if ( !empty($v->dialog_message) ) {
+		$o->message = $v->dialog_message;
+	}
+	print(htmlentities(json_encode($o)));
+?>">
