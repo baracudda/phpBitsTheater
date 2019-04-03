@@ -452,6 +452,7 @@ implements IDirected
 	
 	/**
 	 * {@inheritDoc}
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 * @see \BitsTheater\costumes\IDirected::isAllowed()
 	 */
 	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
@@ -460,6 +461,7 @@ implements IDirected
 	
 	/**
 	 * {@inheritDoc}
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 * @see \BitsTheater\costumes\IDirected::isGuest()
 	 */
 	public function isGuest() {
@@ -468,6 +470,7 @@ implements IDirected
 	
 	/**
 	 * {@inheritDoc}
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 * @see \BitsTheater\costumes\IDirected::checkAllowed()
 	 */
 	public function checkAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
@@ -476,7 +479,7 @@ implements IDirected
 	
 	/**
 	 * {@inheritDoc}
-	 * @return $this
+	 * @return $this Returns $this for chaining.
 	 * @see \BitsTheater\costumes\IDirected::checkPermission()
 	 */
 	public function checkPermission($aNamespace, $aPermission, $aAcctInfo=null)
@@ -514,11 +517,12 @@ implements IDirected
 	
 	/**
 	 * Returns the URL for this site appended with relative path info.
-	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
-	 * equating to path segments.
-	 * @return string - returns the site domain + relative path URL.
+	 * @param string[]|string $aRelativeURL - array of path segments
+	 *   OR a bunch of string parameters equating to path segments.
+	 * @return string Returns the site relative path URL.
+	 * @see Director::getSiteUrl()
 	 */
-	public function getSiteUrl($aRelativeURL='', $_=null) {
+	public function getSiteUrl($aRelativeURL='') {
 		return call_user_func_array(array($this->getDirector(), 'getSiteUrl'), func_get_args());
 	}
 	
@@ -584,19 +588,19 @@ implements IDirected
 	}
 	
 	/**
-	 *
-	 * @param string $aUrl - string/array of relative site path segment(s), if
+	 * Get the current actor's relative URL and append more segments to it.
+	 * @param string|string[] $aUrl - relative site path segment(s), if a string and the
 	 * leading '/' is omitted, current Actor class name is pre-pended to $aUrl.
 	 * @param array $aQuery - (optional) array of query key/values.
-	 * @return string - Returns the domain + page url.
-	 * @see Scene::getSiteURL()
+	 * @return string Returns the relative page url.
+	 * @see Director::getSiteUrl()
 	 */
 	public function getMyUrl($aUrl='', array $aQuery=array()) {
 		$theUrl = null;
 		if (!empty($aUrl) && !is_array($aUrl) && !Strings::beginsWith($aUrl,'/') && !empty($this->_actor)) {
-			$theUrl = $this->_director->getSiteURL($this->_actor->mySimpleClassName,$aUrl);
+			$theUrl = $this->_director->getSiteUrl($this->_actor->mySimpleClassName,$aUrl);
 		} else {
-			$theUrl = $this->_director->getSiteURL($aUrl);
+			$theUrl = $this->_director->getSiteUrl($aUrl);
 		}
 		if (!empty($aQuery)) {
 			$theUrl .= '?'.http_build_query($aQuery,'','&');

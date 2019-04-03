@@ -75,6 +75,7 @@ implements IDirected
 
 	/**
 	 * {@inheritDoc}
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 * @see \BitsTheater\costumes\IDirected::isAllowed()
 	 */
 	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
@@ -83,6 +84,7 @@ implements IDirected
 
 	/**
 	 * {@inheritDoc}
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 * @see \BitsTheater\costumes\IDirected::isGuest()
 	 */
 	public function isGuest() {
@@ -91,6 +93,7 @@ implements IDirected
 	
 	/**
 	 * {@inheritDoc}
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 * @see \BitsTheater\costumes\IDirected::checkAllowed()
 	 */
 	public function checkAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
@@ -99,7 +102,7 @@ implements IDirected
 	
 	/**
 	 * {@inheritDoc}
-	 * @return $this
+	 * @return $this Returns $this for chaining.
 	 * @see \BitsTheater\costumes\IDirected::checkPermission()
 	 */
 	public function checkPermission($aNamespace, $aPermission, $aAcctInfo=null)
@@ -136,12 +139,12 @@ implements IDirected
 	}
 	
 	/**
-	 * Returns the URL for this site appended with relative path info.
-	 * @param mixed $aRelativeUrl - array of path segments OR a bunch of string parameters
-	 * equating to path segments.
-	 * @return string - returns the site domain + relative path URL.
+	 * Returns the relative URL for this site appended with additional path info.
+	 * @param string[]|string $aRelativeURL - array of path segments
+	 *   OR a bunch of string parameters equating to path segments.
+	 * @return string - returns the relative path URL.
 	 */
-	public function getSiteUrl($aRelativeURL='', $_=null) {
+	public function getSiteUrl($aRelativeURL='') {
 		return call_user_func_array(array($this->getDirector(), 'getSiteUrl'), func_get_args());
 	}
 	
