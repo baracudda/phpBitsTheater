@@ -18,6 +18,7 @@
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use BitsTheater\costumes\colspecs\CommonMySql;
+use BitsTheater\costumes\SqlBuilder;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\FinallyBlock;
@@ -336,6 +337,42 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Pre-load an entire namespace of values to cut down on the number of
+	 * SQL queries hitting the database.
+	 * @param string $aNamespace - the namespace to pre-load into memory.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function cacheNamespace( $aNamespace )
+	{
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('SELECT * FROM')
+			->add($this->getTableName())
+			->startWhereClause()
+			->mustAddParam('namespace', $aNamespace)
+			->endWhereClause()
+			;
+		try {
+			$theResultSet = $theSql->query();
+			foreach ($theResultSet as $theRow) {
+				$theNsKey = array(
+						'ns' => $theRow['namespace'],
+						'key' => $theRow[static::MAPKEY_NAME],
+				);
+				$theNsKeyStr = $this->implodeKeyName($theNsKey);
+				if ( empty($this->_mapcached[$theNsKeyStr]) ) {
+					$this->_mapcached[$theNsKeyStr] = 1;
+					$this->_mapdata[$theNsKeyStr] = $theRow['value'];
+					$this->_mapdefault[$theNsKeyStr] = $theRow['val_def'];
+				}
+			}
+		}
+		catch (\PDOException $pdox) {
+			throw $theSql->newDbException(__METHOD__, $pdox);
+		}
+		return $this;
 	}
 
 }//end class

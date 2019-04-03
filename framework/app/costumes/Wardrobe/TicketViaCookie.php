@@ -19,7 +19,6 @@ namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\Wardrobe\ATicketForVenue as BaseCostume;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\Scene;
-use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
@@ -40,14 +39,9 @@ class TicketViaCookie extends BaseCostume
 	protected function onBeforeCheckTicket( Scene $aScene )
 	{
 		$dbAuth = $this->getMyModel();
-		if ( !empty($_COOKIE[$dbAuth::KEY_userinfo]) ) {
-			$this->ticket_name = Strings::strstr_after(
-					$_COOKIE[$dbAuth::KEY_userinfo],
-					$this->getDirector()->app_id . '-'
-			);
-		}
-		if ( !empty($_COOKIE[$dbAuth::KEY_token]) ) {
-			$this->cookie_token = $_COOKIE[$dbAuth::KEY_token];
+		if ( $dbAuth->isAccountInCookieJar() ) {
+			$this->ticket_name = $dbAuth->getAuthIDFromAuthCookieUserInfoToken();
+			$this->cookie_token = $dbAuth->getAuthNonceFromCookieJar();
 		}
 		return $this;
 	}
@@ -82,6 +76,7 @@ class TicketViaCookie extends BaseCostume
 					$this->ticket_name, $this->cookie_token
 			);
 			if ( !empty($theResult) ) {
+				//if our nonce for the account existed, consider it valid
 				$theAuthRow = $dbAuth->getAuthByAuthId($this->ticket_name);
 				if ( !empty($theAuthRow) ) {
 					return $dbAuth->createAccountInfoObj($theAuthRow);
@@ -104,6 +99,8 @@ class TicketViaCookie extends BaseCostume
 	{
 		parent::onTicketAccepted($aScene, $aAcctInfo);
 		$dbAuth = $this->getMyModel();
+		//ensure we either pick up the org they last used or get their default
+		$dbAuth->checkForDefaultOrg($aScene, $aAcctInfo);
 		//save ticket short term cache
 		$dbAuth->saveAccountToSessionCache($aAcctInfo);
 		//login success, bake our CSRF token cookie!
@@ -111,7 +108,7 @@ class TicketViaCookie extends BaseCostume
 		//so updateCookie() has audit info
 		$this->getDirector()->account_info = $aAcctInfo;
 		//bake (re-create) a new cookie for next time
-		$dbAuth->updateCookie($aAcctInfo->auth_id, $aAcctInfo->account_id);
+		$dbAuth->updateCookie($aAcctInfo);
 		return $this;
 	}
 	
@@ -127,6 +124,7 @@ class TicketViaCookie extends BaseCostume
 		$dbAuth = $this->getMyModel();
 		$dbAuth->setMySiteCookie($dbAuth::KEY_userinfo);
 		$dbAuth->setMySiteCookie($dbAuth::KEY_token);
+		$dbAuth->setMySiteCookie($dbAuth::KEY_org_token);
 		try {
 			//remove their cookie tokens
 			$dbAuth->removeTokensFor($aAcctInfo->auth_id,

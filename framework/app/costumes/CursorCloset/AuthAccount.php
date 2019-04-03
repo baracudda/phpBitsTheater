@@ -103,6 +103,17 @@ class AuthAccount extends BaseCostume
 	}
 	
 	/**
+	 * Sometimes we need to reload the groups list after loading the account
+	 * record from the database.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function loadGroupsList()
+	{
+		$this->getGroupsList();
+		return $this;
+	}
+	
+	/**
 	 * Parse any info retrieved via onFetch() for hardware_ids property.
 	 */
 	protected function parseHardwareIDs()

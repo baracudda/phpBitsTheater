@@ -217,8 +217,8 @@ class TicketViaMobileApp extends BaseCostume
 		//  Default behavior is to delete the token for enhanced security.
 		//  Remove any lingering device tokens unless one was JUST created
 		if ( !empty($this->device_token_shelf_life)
-				&& !empty($this->device_token_filter) )
-		{
+				&& !empty($this->device_token_filter)
+		) {
 			$dbAuth = $this->getMyModel();
 			$dbAuth->removeStaleTokens($this->device_token_filter, '1 SECOND');
 		}

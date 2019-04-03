@@ -172,16 +172,7 @@ implements IWillCall
 	 */
 	public function onTicketAccepted( Scene $aScene, AccountInfoCache $aAcctInfo )
 	{
-		//$this->logStuff(__METHOD__, ' DEBUG ', $this);
-		$dbAuth = $this->getMyModel();
-		//authorized, load extended account data
-		if ( is_null($aAcctInfo->groups) ) {
-			$dbAuthGroups = $dbAuth->getProp('AuthGroups');
-			$aAcctInfo->groups = $dbAuthGroups->getGroupIDListForAuthAndOrg(
-					$aAcctInfo->auth_id, $dbAuth->getCurrentOrgID()
-			);
-			$this->returnProp($dbAuthGroups);
-		}
+		//nothing to do, yet (rights loaded later, after org is determined)
 		return $this;
 	}
 	

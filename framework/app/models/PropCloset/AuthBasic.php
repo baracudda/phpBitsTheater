@@ -778,21 +778,100 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	/**
 	 * Create the set of cookies which will be used the next session to re-auth.
 	 * @param string $aAuthId - the auth_id used by the account
-	 * @param integer $aAcctId
+	 * @param integer $aAcctId - the account num in use.
+	 * @return $this Returns $this for chaining.
 	 */
 	public function updateCookie($aAuthId, $aAcctId) {
 		try {
-			$theUserToken = $this->director->app_id.'-'.$aAuthId;
-			$theAuthToken = $this->generateAuthToken($aAuthId, $aAcctId, self::TOKEN_PREFIX_COOKIE);
+			$theUserToken = $this->createUserInfoTokenForAuthCookie($aAuthId);
+			$theAuthToken = $this->createNonceTokenForAuthCookie($aAuthId, $aAcctId);
 			$theStaleTime = $this->getCookieStaleTimestamp();
 			$this->setMySiteCookie(self::KEY_userinfo, $theUserToken, $theStaleTime);
 			$this->setMySiteCookie(self::KEY_token, $theAuthToken, $theStaleTime);
-		} catch (Exception $e) {
-			//do not care if setting cookies fails, log it so admin knows about it, though
-			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
 		}
+		catch ( \Exception $x ) {
+			//do not care if setting cookies fails, log it so admin knows about it, though
+			$this->logErrors(__METHOD__, ' ', $x->getErrorMsg());
+		}
+		return $this;
+	}
+	
+	/**
+	 * Return the auth ID token encoded however we wish to be saved in our
+	 * KEY_userinfo cookie.
+	 * @param string $aAuthID - the auth ID to encode.
+	 * @return string Returns the encoded token to use.
+	 */
+	public function createUserInfoTokenForAuthCookie( $aAuthID )
+	{
+		return $this->getDirector()->app_id . '-' . $aAuthID;
 	}
 
+	/**
+	 * Decoded and return the auth ID encoded in our KEY_userinfo cookie.
+	 * @param string[] $aCookieJar - (OPTIONAL) the string array holding the
+	 *   cookie to decode. Defaults to using PHP's $_COOKIE global variable.
+	 * @return string|NULL Returns the Auth ID, if found and decoded properly.
+	 */
+	public function getAuthIDFromAuthCookieUserInfoToken( $aCookieJar=null )
+	{
+		if ( empty($aCookieJar) ) {
+			$aCookieJar = &$_COOKIE;
+		}
+		if ( !empty($aCookieJar[static::KEY_userinfo]) ) {
+			return Strings::strstr_after(
+					$aCookieJar[static::KEY_userinfo],
+					$this->getDirector()->app_id . '-'
+			);
+		}
+	}
+	
+	/**
+	 * Return the nonce token encoded however we wish to be saved in our
+	 * KEY_token cookie. A nonce is an arbitrary value that can be used just
+	 * once in a cryptographic communication. It is similar in spirit to a
+	 * nonce word, hence the name. It is used to ensure that old communications
+	 * cannot be reused in replay attacks.
+	 * @param string $aAuthID - the auth ID used to track the nonce.
+	 * @param int $aAcctID - the account num used to track the nonce.
+	 * @return string Returns the encoded token to use.
+	 */
+	public function createNonceTokenForAuthCookie( $aAuthID, $aAcctID )
+	{
+		return $this->generateAuthToken($aAuthID, $aAcctID, self::TOKEN_PREFIX_COOKIE);
+	}
+	
+	/**
+	 * Decoded and return the nonce encoded in our KEY_token cookie.
+	 * @param string[] $aCookieJar - (OPTIONAL) the string array holding the
+	 *   cookie to decode. Defaults to using PHP's $_COOKIE global variable.
+	 * @return string|NULL Returns the Auth Nonce, if found and decoded properly.
+	 */
+	public function getAuthNonceFromCookieJar( $aCookieJar=null )
+	{
+		if ( empty($aCookieJar) ) {
+			$aCookieJar = &$_COOKIE;
+		}
+		if ( !empty($aCookieJar[static::KEY_token]) ) {
+			return $aCookieJar[static::KEY_token];
+		}
+	}
+	
+	/**
+	 * Check for our auth token(s) and return TRUE if they exist.
+	 * @param string[] $aCookieJar - (OPTIONAL) the string array holding the
+	 *   cookies to check. Defaults to using PHP's $_COOKIE global variable.
+	 * @return boolean Returns TRUE if the cookies exist.
+	 */
+	public function isAccountInCookieJar( $aCookieJar=null )
+	{
+		if ( empty($aCookieJar) ) {
+			$aCookieJar = &$_COOKIE;
+		}
+		return ( !empty($aCookieJar[static::KEY_userinfo]) &&
+				!empty($aCookieJar[static::KEY_token]) );
+	}
+	
 	/**
 	 * Remove stale tokens.
 	 */
@@ -1114,17 +1193,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * @return boolean Returns TRUE if cookies successfully logged the user in.
 	 */
 	protected function checkCookiesForTicket(Accounts $dbAccounts, $aCookieMonster) {
-		if (empty($aCookieMonster[self::KEY_userinfo]) || empty($aCookieMonster[self::KEY_token]))
-			return false;
-
-		$theAuthId = Strings::strstr_after($aCookieMonster[self::KEY_userinfo], $this->director->app_id.'-');
-		if (empty($theAuthId))
-			return false;
-
-		$theAuthToken = $aCookieMonster[self::KEY_token];
+		if ( !$this->isAccountInCookieJar($aCookieMonster) ) return false; //trivial
+		$theAuthId = $this->getAuthIDFromAuthCookieUserInfoToken($aCookieMonster);
+		if ( empty($theAuthId) ) return false; //trivial
+		$theAuthToken = $this->getAuthNonceFromCookieJar($aCookieMonster);
 		try {
 			//our cookie mechanism consumes cookie on use and creates a new one
-			//  by having rotating cookie tokens, stolen cookies have a limited window
+			//  by having rotating nonce tokens, stolen cookies have a limited window
 			//  in which to crack them before a new one is generated.
 			$theAuthTokenRow = $this->getAndEatCookie($theAuthId, $theAuthToken);
 			if (!empty($theAuthTokenRow)) {
@@ -1837,7 +1912,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 
 		$theResetUtils = null ;
 		if( isset($aResetUtils) )
-			$theResetUtils = &$aResetUtils ;
+			$theResetUtils = $aResetUtils ;
 		else
 			$theResetUtils = AuthPasswordReset::withModel($this) ;
 

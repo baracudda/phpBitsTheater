@@ -111,8 +111,10 @@ class TicketViaRequest extends BaseCostume
 		//if we have been asked to remember the ticket long term, save a cookie
 		if ( $this->bUpdateCookie ) {
 			//bake (create) a new cookie for next time
-			$dbAuth->updateCookie($aAcctInfo->auth_id, $aAcctInfo->account_id);
+			$dbAuth->updateCookie($aAcctInfo);
 		}
+		//determine what org to use
+		$dbAuth->checkForDefaultOrg($aScene, $aAcctInfo);
 		return $this;
 	}
 	

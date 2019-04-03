@@ -100,6 +100,8 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	const KEY_token = 'ticketmaster';
 	/** @var string The session key used to store current mobile row. */
 	const KEY_MobileInfo = 'TicketEnvelope';
+	/** @var string The cookie used to store the user's current org ID. */
+	const KEY_org_token = 'SeatingSection';
 	
 
 	/**
@@ -165,14 +167,14 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function setupAfterDbConnected()
 	{
 		parent::setupAfterDbConnected();
-		$this->tnAuthAccounts = $this->tbl_.self::TABLE_AuthAccounts;
-		$this->tnAuthTokens = $this->tbl_.self::TABLE_AuthTokens;
-		$this->tnAuthMobile = $this->tbl_.self::TABLE_AuthMobile;
-		$this->tnAuthOrgs = $this->tbl_.self::TABLE_AuthOrgs;
-		$this->tnAuthOrgMap = $this->tbl_.self::TABLE_AuthOrgMap;
+		$this->tnAuthAccounts = $this->tbl_.static::TABLE_AuthAccounts;
+		$this->tnAuthTokens = $this->tbl_.static::TABLE_AuthTokens;
+		$this->tnAuthMobile = $this->tbl_.static::TABLE_AuthMobile;
+		$this->tnAuthOrgs = $this->tbl_.static::TABLE_AuthOrgs;
+		$this->tnAuthOrgMap = $this->tbl_.static::TABLE_AuthOrgMap;
 		//backwards compatible aliases
-		$this->tnAccounts = $this->tbl_.self::TABLE_Accounts;
-		$this->tnAuth = $this->tbl_.self::TABLE_Auth;
+		$this->tnAccounts = $this->tbl_.static::TABLE_Accounts;
+		$this->tnAuth = $this->tbl_.static::TABLE_Auth;
 	}
 
 	/**
@@ -192,7 +194,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	protected function getTableDefSql($aTABLEconst, $aTableNameToUse=null)
 	{
 		switch($aTABLEconst) {
-		case self::TABLE_AuthAccounts:
+		case static::TABLE_AuthAccounts:
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnAuthAccounts;
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
@@ -214,7 +216,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 						', KEY (external_id)' .
 						') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE;
 			}//switch dbType
-		case self::TABLE_AuthTokens:
+		case static::TABLE_AuthTokens:
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnAuthTokens;
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
@@ -229,7 +231,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 						', INDEX IdxAuthToken (`token`, `updated_ts`)' .
 						')';
 			}//switch dbType
-		case self::TABLE_AuthMobile: //added in v3
+		case static::TABLE_AuthMobile: //added in v3
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnAuthMobile;
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
@@ -249,7 +251,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 						', KEY (`account_id`)' .
 						')';
 			}//switch dbType
-		case self::TABLE_AuthOrgs:
+		case static::TABLE_AuthOrgs:
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnAuthOrgs;
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
@@ -268,7 +270,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 						', UNIQUE KEY (org_name)' .
 						') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE;
 			}//switch dbType
-		case self::TABLE_AuthOrgMap:
+		case static::TABLE_AuthOrgMap:
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnAuthOrgMap;
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
@@ -289,11 +291,11 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	public function setupModel()
 	{
-		$this->setupTable( self::TABLE_AuthAccounts, $this->tnAuthAccounts ) ;
-		$this->setupTable( self::TABLE_AuthTokens, $this->tnAuthTokens ) ;
-		$this->setupTable( self::TABLE_AuthMobile, $this->tnAuthMobile ) ;
-		$this->setupTable( self::TABLE_AuthOrgs, $this->tnAuthOrgs ) ;
-		$this->setupTable( self::TABLE_AuthOrgMap, $this->tnAuthOrgMap ) ;
+		$this->setupTable( static::TABLE_AuthAccounts, $this->tnAuthAccounts ) ;
+		$this->setupTable( static::TABLE_AuthTokens, $this->tnAuthTokens ) ;
+		$this->setupTable( static::TABLE_AuthMobile, $this->tnAuthMobile ) ;
+		$this->setupTable( static::TABLE_AuthOrgs, $this->tnAuthOrgs ) ;
+		$this->setupTable( static::TABLE_AuthOrgMap, $this->tnAuthOrgMap ) ;
 	}
 
 	/**
@@ -319,7 +321,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 				else if ( !$this->isFieldExists('parent_authgroup_id', $this->tnAuthOrgs) )
 					return 2;
 		}//switch
-		return self::FEATURE_VERSION_SEQ ;
+		return static::FEATURE_VERSION_SEQ ;
 	}
 
 	/**
@@ -331,7 +333,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function upgradeFeatureVersion($aFeatureMetaData, $aScene)
 	{
 		$theSeq = $aFeatureMetaData['version_seq'];
-		$this->logStuff('Running ', __METHOD__, ' v'.$theSeq.'->v'.self::FEATURE_VERSION_SEQ);
+		$this->logStuff('Running ', __METHOD__, ' v'.$theSeq.'->v'.static::FEATURE_VERSION_SEQ);
 
 		// This switch block's cases are tests against the current version
 		// sequence number. The cases must be implemented sequentially (low to
@@ -684,38 +686,72 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
-	 * See if we need to swap to a differnt org automatically.
+	 * See if we have a valid org defined for the current user, using a default if
+	 * not and set the account information to use it as the current org.
+	 * @param object $aScene - the Scene object in use that holds client input.
+	 * @param AccountInfoCache $aAuthAccount - (optional) the logged in auth account.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function checkForDefaultOrg( $aScene, AccountInfoCache $aAuthAccount=null )
+	{
+		if ( !empty($aAuthAccount) && !$this->isEmpty($this->tnAuthOrgMap) &&
+				empty($aAuthAccount->mSeatingSection)
+		) {
+			//see if we have transcend rights, which only exist in Root org
+			$bCanTranscend = $this->isAllowed( 'auth_orgs', 'transcend' );
+			//reset loaded rights so when we swap to another database, we reload them
+			$aAuthAccount->rights = null;
+			$aAuthAccount->groups = null;
+			//see if we have an org cookie to use
+			$theDefaultOrgID = $this->getOrgIDFromAuthCookie();
+			if ( empty($theDefaultOrgID) ) {
+				//check the user preference for what org we default to on login
+				$dbPrefs = $this->getProp( AccountPrefs::MODEL_NAME ) ;
+				$theDefaultOrgID = $dbPrefs->getPreference(
+						$aAuthAccount->auth_id, 'organization', 'default_org'
+				);
+				$this->returnProp($dbPrefs);
+			}
+			if ( !empty($theDefaultOrgID) && $theDefaultOrgID != static::ORG_ID_4_ROOT ) {
+				if ( $bCanTranscend || $this->isAccountMappedToOrg($aAuthAccount->auth_id, $theDefaultOrgID) ) {
+					$this->logStuff($aAuthAccount->account_name,
+							' logging in to ORG_ID [', $theDefaultOrgID, ']'
+					);
+					$aAuthAccount->setSeatingSection($this->getOrganization($theDefaultOrgID));
+					return $this;
+				}
+			}
+			// No user preference found or not allowed to default to selected org.
+			//   Grab the first one that is authorized.
+			$theOrgRow = $this->getOrgsForAuthCursor( $aAuthAccount->auth_id )->fetch() ;
+			if( !empty($theOrgRow) && isset( $theOrgRow['dbconn'] ) )
+			{ // We found something, so pick it.
+				$this->logStuff($aAuthAccount->account_name,
+						' logging in to ORG_ID [', $theOrgRow['org_id'], ']'
+				);
+				$aAuthAccount->setSeatingSection($theOrgRow);
+				return $this;
+			}
+		}
+		return $this;
+	}
+	
+	/**
+	 * See if we need to swap to a differnt org other than Root.
 	 * @param object $aScene - the Scene object in use that holds client input.
 	 * @param AccountInfoCache $aAuthAccount - (optional) the logged in auth account.
 	 */
-	protected function swapToDefaultOrg( $aScene, AccountInfoCache $aAuthAccount=null )
+	public function swapToCurrentOrg( $aScene, AccountInfoCache $aAuthAccount=null )
 	{
-		$theOrgRow = null ;
-		$theCurrentOrg = static::getCurrentOrg($this) ;
-		if( !empty($theCurrentOrg) )
-		{ // Try the session's "current" org first.
-			$theOrgRow = $this->getOrganization( $theCurrentOrg->org_id ) ;
-		}
-		if( $theOrgRow === null )
-		{
-			$dbPrefs = $this->getProp( AccountPrefs::MODEL_NAME ) ;
-			$theDefaultOrgID = $dbPrefs->getPreference(
-					$aAuthAccount->auth_id, 'organization', 'default_org' );
-			if ( $theDefaultOrgID == static::ORG_ID_4_ROOT ) {
-				return;
+		if ( !empty($aAuthAccount) && !empty($aAuthAccount->mSeatingSection) ) {
+			$theOrgRow = $this->getOrganization($aAuthAccount->mSeatingSection->org_id) ;
+			//$this->logStuff(__METHOD__, ' got org=', $theOrgRow); //DEBUG
+			if ( !empty($theOrgRow) && isset( $theOrgRow['dbconn'] ) ) {
+				$this->setCurrentOrg($theOrgRow);
+				//$this->logStuff(__METHOD__, ' setting org to ', $theOrgRow['org_id']); return; //DEBUG
 			}
-			if( !empty($theDefaultOrgID) && $this->accountBelongsToOrg( $aAuthAccount->auth_id, $theDefaultOrgID ) )
-				$theOrgRow = $this->getOrganization($theDefaultOrgID) ;
 		}
-		if( $theOrgRow === null )
-		{ // We STILL didn't find one. Grab the first one that's authorized.
-			$theOrgRow = $this->getOrgsForAuthCursor( $aAuthAccount->auth_id )->fetch() ;
-		}
-
-		if( !empty($theOrgRow) && isset( $theOrgRow['dbconn'] ) )
-		{ // We found something, so pick it.
-			$this->setCurrentOrg($theOrgRow) ;
-		}
+		//$this->logStuff(__METHOD__, ' setting org to Root'); //DEBUG
 	}
 	
 	/**
@@ -739,36 +775,60 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 					'last_seen_ts' => $aAuthAccount->last_seen_ts,
 			));
 		}
+	}
+	
+	/**
+	 * Event to be called once an account is officially "logged in", after
+	 * onDetermineAuthAccount() and the specific venue's onTicketAccepted() method.
+	 * @param object $aScene - the Scene object in use that holds client input.
+	 * @param AccountInfoCache $aAuthAccount - (optional) the logged in auth account.
+	 */
+	public function onSeatTicketHolder( $aScene, AccountInfoCache $aAuthAccount=null )
+	{
 		//determine what org to use
-		$this->swapToDefaultOrg($aScene, $aAuthAccount);
+		$this->swapToCurrentOrg($aScene, $aAuthAccount);
+		//if groups is still empty, ensure we have tried to load them
+		if ( !empty($aAuthAccount) && empty($aAuthAccount->groups) ) {
+			$aAuthAccount->loadGroupsList();
+		}
 	}
 	
 	/**
 	 * Indicates whether the given account ID has been mapped into the given
 	 * org ID.
-	 * @param string $aAuthID an account ID
-	 * @param string $aOrgID an organization ID
-	 * @return boolean true if the account is mapped to that org
+	 * @param string $aAuthID - an account ID
+	 * @param string $aOrgID - an organization ID, NULL is Root as well as the
+	 *   ORG_ID_4_ROOT const.
+	 * @return boolean Returns TRUE if the account is mapped to that org.
 	 */
-	public function accountBelongsToOrg( $aAuthID, $aOrgID )
+	public function isAccountMappedToOrg( $aAuthID, $aOrgID=null )
 	{
-		if( $this->isAllowed( 'auth_orgs', 'transcend' ) )
-			return true ;
-		
 		$theSql = SqlBuilder::withModel($this)
 			->startWith( 'SELECT COUNT(*) AS theCount FROM ' )
 			->add( $this->tnAuthOrgMap )
 			->startWhereClause()
 			->mustAddParam( 'auth_id', $aAuthID )
-			->setParamPrefix( ' AND ' )
-			->mustAddParam( 'org_id', $aOrgID )
-			->endWhereClause()
+			;
+		if ( !empty($aOrgID) && $aOrgID != static::ORG_ID_4_ROOT ) {
+			//only non-Root orgs are mapped to an account
+			$theSql->setParamPrefix( ' AND ' )
+				->mustAddParam( 'org_id', $aOrgID )
+				;
+		}
+		$theSql->endWhereClause()
 			//->logSqlDebug( __METHOD__, ' [TRACE] ' )
 			;
 		try
 		{
 			$theResult = $theSql->getTheRow() ;
-			return( $theResult['theCount'] > 0 ) ;
+			if ( !empty($aOrgID) && $aOrgID != static::ORG_ID_4_ROOT ) {
+				//if we are checking for a specific org, count needs to be >0
+				return !empty($theResult['theCount']);
+			}
+			else {
+				//if we are checking for Root, count needs to be =0
+				return empty($theResult['theCount']);
+			}
 		}
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
@@ -812,7 +872,8 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	public function setCurrentOrg( $aOrgRow=null )
 	{
-		if ( empty($this->getDirector()->account_info) ) return; //trivial
+		$theAcctInfo = $this->getDirector()->getMyAccountInfo();
+		if ( empty($theAcctInfo) ) return; //trivial
 		//$this->logStuff(__METHOD__, ' switch2org=', $aOrgRow); //DEBUG
 		if ( !empty($aOrgRow) && !empty($aOrgRow['dbconn']) ) {
 			$theOrg = AuthOrg::getInstance($this, $aOrgRow);
@@ -832,27 +893,16 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$theOrgName = isset($theOrg->org_name) ? $theOrg->org_name : 'Root';
 			throw new DbException($iax, 'fail2swap2org=[' . $theOrgName . ']');
 		}
-		
-		if( empty($this->getDirector()->account_info->mSeatingSection )
-		 || empty($theOrg)
-		 || $this->getDirector()->account_info->mSeatingSection->org_id != $theOrg->org_id
-		  )
-		{ // The specified org differs from the one that was in the Director.
-			//ensure we store the current org in our session
-			$this->getDirector()->account_info->mSeatingSection = $theOrg;
-			// (#6297) Force re-evaluation of permissions at next check.
-			$this->getDirector()->account_info->rights = null ;
-			// (#6288) Need to clear groups as well, since we may have switched orgs
-			$this->getDirector()->account_info->groups = null ;
-			// (#6288) Now check a permission to kickstart regeneration of rights.
-			$this->isAllowed('auth_orgs', 'transcend');
-			if( $this->isAccountInSessionCache() )
-			{ // Ensure that the session's account cache is really updated.
-				$this->saveAccountToSessionCache($this->getDirector()->account_info);
-			}
+		//ensure we store the current org
+		$theAcctInfo->setSeatingSection($theOrg);
+		// (#6288) Need to reload groups as well, since we may have switched orgs
+		$theAcctInfo->loadGroupsList();
+		if( $this->isAccountInSessionCache() )
+		{ // Ensure that the session's account cache is really updated.
+			$this->saveAccountToSessionCache($theAcctInfo);
 		}
-		
-		return $this;
+		// Ensure that the if cookies are used, we save org info, too.
+		return $this->updateCookieForOrg($theOrg);
 	}
 	
 	/**
@@ -1029,7 +1079,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			->startWhereClause()
 			->mustAddParam( 'org_name', $aName )
 			->endWhereClause()
-//			->logSqlDebug( __METHOD__, '[TRACE] ' )
+//			->logSqlDebug( __METHOD__, ' [TRACE] ' )
 			;
 		try { return $theSql->getTheRow() ; }
 		catch( PDOException $pdox )
@@ -1387,6 +1437,21 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 				);
 	}
 	
+	/**
+	 * Check for our auth token(s) and return TRUE if they exist.
+	 * @param string[] $aCookieJar - (OPTIONAL) the string array holding the
+	 *   cookies to check. Defaults to using PHP's $_COOKIE global variable.
+	 * @return boolean Returns TRUE if the cookies exist.
+	 */
+	public function isAccountInCookieJar( $aCookieJar=null )
+	{
+		if ( empty($aCookieJar) ) {
+			$aCookieJar = &$_COOKIE;
+		}
+		return ( !empty($aCookieJar[static::KEY_userinfo]) &&
+				!empty($aCookieJar[static::KEY_token]) );
+	}
+	
 	
 	//=========================================================================
 	//===============    From AuthBasic          ==============================
@@ -1667,7 +1732,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	public function generateAuthToken($aAuthId, $aAcctId, $aTweak=null) {
 		//64chars of unique gibberish
-		$theAuthToken = self::generatePrefixedAuthToken( $aTweak ) ;
+		$theAuthToken = static::generatePrefixedAuthToken( $aTweak ) ;
 		$this->insertAuthToken($aAuthId, $aAcctId, $theAuthToken);
 		return $theAuthToken;
 	}
@@ -1695,7 +1760,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	{
 		return $aPrefix
 			. ( !empty($aPrefix) ? ':' : '' )
-			. self::generateAuthTokenPadding($aPrefix)
+			. static::generateAuthTokenPadding($aPrefix)
 			. Strings::createUUID()
 			;
 	}
@@ -1707,7 +1772,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	static public function generateSuffixedAuthToken( $aSuffix=null )
 	{
-		return self::generateAuthTokenPadding($aSuffix)
+		return static::generateAuthTokenPadding($aSuffix)
 			. Strings::createUUID()
 			. ( !empty($aSuffix) ? ':' : '' )
 			. $aSuffix
@@ -1760,19 +1825,130 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 
 	/**
 	 * Create the set of cookies which will be used the next session to re-auth.
-	 * @param string $aAuthId - the auth_id used by the account
-	 * @param integer $aAcctId
+	 * @param AccountInfoCache $aAcctInfo - the auth info.
+	 * @return $this Returns $this for chaining.
 	 */
-	public function updateCookie($aAuthId, $aAcctId) {
+	public function updateCookie( AccountInfoCache $aAcctInfo )
+	{
 		try {
-			$theUserToken = $this->director->app_id.'-'.$aAuthId;
-			$theAuthToken = $this->generateAuthToken($aAuthId, $aAcctId, self::TOKEN_PREFIX_COOKIE);
+			$theUserToken = $this->createUserInfoTokenForAuthCookie(
+					$aAcctInfo->auth_id
+			);
+			$theAuthToken = $this->createNonceTokenForAuthCookie(
+					$aAcctInfo->auth_id, $aAcctInfo->account_id
+			);
 			$theStaleTime = $this->getCookieStaleTimestamp();
-			$this->setMySiteCookie(self::KEY_userinfo, $theUserToken, $theStaleTime);
-			$this->setMySiteCookie(self::KEY_token, $theAuthToken, $theStaleTime);
-		} catch (Exception $e) {
+			$this->setMySiteCookie(static::KEY_userinfo, $theUserToken, $theStaleTime);
+			$this->setMySiteCookie(static::KEY_token, $theAuthToken, $theStaleTime);
+		}
+		catch ( \Exception $x ) {
 			//do not care if setting cookies fails, log it so admin knows about it, though
-			$this->debugLog(__METHOD__.' '.$e->getErrorMsg());
+			$this->logErrors(__METHOD__, ' ', $e->getErrorMsg());
+		}
+		return $this;
+	}
+	
+	/**
+	 * Return the auth ID token encoded however we wish to be saved in our
+	 * KEY_userinfo cookie.
+	 * @param string $aAuthID - the auth ID to encode.
+	 * @return string Returns the encoded token to use.
+	 */
+	public function createUserInfoTokenForAuthCookie( $aAuthID )
+	{
+		return $aAuthID;
+	}
+
+	/**
+	 * Decoded and return the auth ID encoded in our KEY_userinfo cookie.
+	 * @param string[] $aCookieJar - (OPTIONAL) the string array holding the
+	 *   cookie to decode. Defaults to using PHP's $_COOKIE global variable.
+	 * @return string|NULL Returns the Auth ID, if found and decoded properly.
+	 */
+	public function getAuthIDFromAuthCookieUserInfoToken( $aCookieJar=null )
+	{
+		if ( empty($aCookieJar) ) {
+			$aCookieJar = &$_COOKIE;
+		}
+		if ( !empty($aCookieJar[static::KEY_userinfo]) ) {
+			return $aCookieJar[static::KEY_userinfo];
+		}
+	}
+
+	/**
+	 * Return the nonce token encoded however we wish to be saved in our
+	 * KEY_token cookie. A nonce is an arbitrary value that can be used just
+	 * once in a cryptographic communication. It is similar in spirit to a
+	 * nonce word, hence the name. It is used to ensure that old communications
+	 * cannot be reused in replay attacks.
+	 * @param string $aAuthID - the auth ID used to track the nonce.
+	 * @param int $aAcctID - the account num used to track the nonce.
+	 * @return string Returns the encoded token to use.
+	 */
+	public function createNonceTokenForAuthCookie( $aAuthID, $aAcctID )
+	{
+		return $this->generateAuthToken($aAuthID, $aAcctID, static::TOKEN_PREFIX_COOKIE);
+	}
+	
+	/**
+	 * Decoded and return the nonce encoded in our KEY_token cookie.
+	 * @param string[] $aCookieJar - (OPTIONAL) the string array holding the
+	 *   cookie to decode. Defaults to using PHP's $_COOKIE global variable.
+	 * @return string|NULL Returns the Auth Nonce, if found and decoded properly.
+	 */
+	public function getAuthNonceFromCookieJar( $aCookieJar=null )
+	{
+		if ( empty($aCookieJar) ) {
+			$aCookieJar = &$_COOKIE;
+		}
+		if ( !empty($aCookieJar[static::KEY_token]) ) {
+			return $aCookieJar[static::KEY_token];
+		}
+	}
+	
+	/**
+	 * Create the cookie which will be used the next session during re-auth.
+	 * @param AuthOrg $aAuthOrg - the org in use.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function updateCookieForOrg( AuthOrg $aAuthOrg=null )
+	{
+		if ( $this->isAccountInCookieJar() ) try {
+			$theOrgToken = $this->createOrgTokenForAuthCookie($aAuthOrg);
+			$theStaleTime = $this->getCookieStaleTimestamp();
+			$this->setMySiteCookie(static::KEY_org_token, $theOrgToken, $theStaleTime);
+		}
+		catch ( \Exception $x ) {
+			//do not care if setting cookies fails, log it so admin knows about it, though
+			$this->logErrors(__METHOD__, ' ', $e->getErrorMsg());
+		}
+		return $this;
+	}
+	
+	/**
+	 * Return the org ID token encoded however we wish to be saved in our
+	 * KEY_org_token cookie.
+	 * @param AuthOrg $aAuthOrg - the org in use.
+	 * @return string Returns the encoded token to use.
+	 */
+	public function createOrgTokenForAuthCookie( AuthOrg $aAuthOrg=null )
+	{
+		return ( !empty($aAuthOrg) ) ? $aAuthOrg->org_id : static::ORG_ID_4_ROOT;
+	}
+
+	/**
+	 * Decoded and return the org ID encoded in our KEY_org_token cookie.
+	 * @param string[] $aCookieJar - (OPTIONAL) the string array holding the
+	 *   cookie to decode. Defaults to using PHP's $_COOKIE global variable.
+	 * @return string|NULL Returns the org ID, if found and decoded properly.
+	 */
+	public function getOrgIDFromAuthCookie( $aCookieJar=null )
+	{
+		if ( empty($aCookieJar) ) {
+			$aCookieJar = &$_COOKIE;
+		}
+		if ( !empty($aCookieJar[static::KEY_org_token]) ) {
+			return $aCookieJar[static::KEY_org_token];
 		}
 	}
 
@@ -1791,7 +1967,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$theDeltaField = 'updated_ts';
 			$theSql->add("AND {$theDeltaField}<(NOW() - INTERVAL {$aExpireInterval})");
 			$theSql->endWhereClause();
-			//$this->debugLog(__METHOD__ . $this->debugStr($theSql));
+			//$theSql->logSqlDebug(__METHOD__); //DEBUG
 			$theSql->execDML();
 		} catch (Exception $e) {
 			//do not care if removing stale tokens fails, log it so admin knows about it, though
@@ -1805,7 +1981,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function removeStaleCookies() {
 		$delta = $this->getCookieDurationInDays();
 		if (!empty($delta)) {
-			$this->removeStaleTokens(self::TOKEN_PREFIX_COOKIE.'%', $delta.' DAY');
+			$this->removeStaleTokens(static::TOKEN_PREFIX_COOKIE.'%', $delta.' DAY');
 		}
 	}
 
@@ -1813,7 +1989,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * Delete stale mobile auth tokens.
 	 */
 	public function removeStaleMobileAuthTokens() {
-		$this->removeStaleTokens(self::TOKEN_PREFIX_MOBILE.'%', '1 DAY');
+		$this->removeStaleTokens(static::TOKEN_PREFIX_MOBILE.'%', '1 DAY');
 	}
 
 	/**
@@ -1821,7 +1997,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	public function removeStaleAuthLockoutTokens() {
 		if ($this->director->isInstalled()) {
-			$this->removeStaleTokens(self::TOKEN_PREFIX_LOCKOUT.'%', '1 HOUR');
+			$this->removeStaleTokens(static::TOKEN_PREFIX_LOCKOUT.'%', '1 HOUR');
 		}
 	}
 
@@ -1829,7 +2005,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * Delete stale registration cap tokens.
 	 */
 	public function removeStaleRegistrationCapTokens() {
-		$this->removeStaleTokens(self::TOKEN_PREFIX_REGCAP.'%', '1 HOUR');
+		$this->removeStaleTokens(static::TOKEN_PREFIX_REGCAP.'%', '1 HOUR');
 	}
 
 	/**
@@ -1838,7 +2014,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function removeStaleAntiCsrfTokens() {
 		$delta = $this->getCookieDurationInDays();
 		if (!empty($delta)) {
-			$this->removeStaleTokens(self::TOKEN_PREFIX_ANTI_CSRF.'%', $delta.' DAY');
+			$this->removeStaleTokens(static::TOKEN_PREFIX_ANTI_CSRF.'%', $delta.' DAY');
 		}
 	}
 
@@ -1875,13 +2051,14 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @param number $aAcctId - the user's account_id.
 	 */
 	public function removeAntiCsrfToken($aAuthId, $aAcctId) {
-		$this->removeTokensFor($aAuthId, $aAcctId, self::TOKEN_PREFIX_ANTI_CSRF.'%');
+		$this->removeTokensFor($aAuthId, $aAcctId, static::TOKEN_PREFIX_ANTI_CSRF.'%');
 	}
 
 	/**
-	 * Returns the token row if it existed and removes it.
-	 * @param string $aAuthId
-	 * @param string $aAuthToken
+	 * Returns the auth cookie nonce token row, if it existed, and deletes it.
+	 * @param string $aAuthId - the auth ID.
+	 * @param string $aAuthToken - the nonce token to look for.
+	 * @return string[]|NULL Returns the nonce token row data, if found.
 	 */
 	public function getAndEatCookie($aAuthId, $aAuthToken) {
 		//toss out stale cookies first
@@ -1976,7 +2153,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		{
 			$theTokens = $this->getAuthTokens($theAuthInfo->auth_id,
 					$theAuthInfo->account_id,
-					self::TOKEN_PREFIX_ANTI_CSRF.'%', true
+					static::TOKEN_PREFIX_ANTI_CSRF.'%', true
 			);
 			if (!empty($theTokens))
 			{
@@ -2001,7 +2178,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		if (!empty($theAuthInfo) && !empty($delta))
 			return $this->generateAuthToken($theAuthInfo->auth_id,
 					$theAuthInfo->account_id,
-					self::TOKEN_PREFIX_ANTI_CSRF
+					static::TOKEN_PREFIX_ANTI_CSRF
 			);
 		else
 			return parent::setMyCsrfToken($aCsrfTokenName, $aCsrfToken);
@@ -2066,20 +2243,21 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	protected function checkVenueForTicket( Scene $aScene, IWillCall $aVenue )
 	{
+		//$this->logStuff(__FUNCTION__, ' class(v)=', get_class($aVenue)); //DEBUG
 		$theAuthAccount = $aVenue->checkForTicket($aScene);
 		if ( !empty($theAuthAccount) ) {
 			if ( $theAuthAccount->is_active ) {
-				//$this->logStuff(__METHOD__, ' determined=', $theAuthAccount); //DEBUG
+				//$this->logStuff(__FUNCTION__, ' determined=', $theAuthAccount); //DEBUG
 				$this->onDetermineAuthAccount($aScene, $theAuthAccount);
 				$aVenue->onTicketAccepted($aScene, $theAuthAccount);
-				//$this->logStuff(__FUNCTION__, ' v=', $aVenue, ' accepted=', $theAuthAccount); //DEBUG
+				$this->onSeatTicketHolder($aScene, $theAuthAccount);
+				//$this->logStuff(__FUNCTION__, ' accepted v=', $aVenue, ' a=', $theAuthAccount); //DEBUG
 			}
 			else {
 				$aVenue->onTicketRejected($aScene, $theAuthAccount);
 				//$this->logStuff(__FUNCTION__, ' v=', $aVenue, ' rejected=', $theAuthAccount); //DEBUG
 			}
 		}
-		//$this->logStuff(__FUNCTION__, ' v=', $aVenue, ' a=', $theAuthAccount); //DEBUG
 		return $theAuthAccount;
 	}
 	
@@ -2143,6 +2321,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * Check a specific venue for ticket information (auth account).
 	 * @param object $aScene - the Scene object associated with an Actor.
 	 * @param IWillCall $aVenue - the mechanism to check.
+	 * @return boolean Returns TRUE if ticket is active.
 	 */
 	public function checkTicketVia( Scene $aScene, IWillCall $aVenue )
 	{
@@ -2166,6 +2345,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			->startWhereClause()
 			->mustAddParam( 'auth_id', $aAcctInfo->auth_id )
 			->endWhereClause()
+			//->logSqlDebug(__METHOD__, '[TRACE]')
 			;
 		try {
 			$theSql->execDML() ;
@@ -2173,16 +2353,16 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			//  clear out their status tokens
 			$this->removeAntiCsrfToken($aAcctInfo->auth_id, $aAcctInfo->account_id);
 			$this->removeTokensFor($aAcctInfo->auth_id, $aAcctInfo->account_id,
-					self::TOKEN_PREFIX_COOKIE . '%'
+					static::TOKEN_PREFIX_COOKIE . '%'
 			);
 			$this->removeTokensFor($aAcctInfo->auth_id, $aAcctInfo->account_id,
-					self::TOKEN_PREFIX_LOCKOUT . '%'
+					static::TOKEN_PREFIX_LOCKOUT . '%'
 			);
 			//yes, this is not specific to a particular account, but needed
 			//   _some_ way to clear this out in case its needed.
 			//TODO when create an endpoint for this specific need, rip this out.
 			$this->removeTokensFor($this->getDirector()->app_id, 0,
-					self::TOKEN_PREFIX_REGCAP . '%'
+					static::TOKEN_PREFIX_REGCAP . '%'
 			);
 		}
 		catch( PDOException $pdox )
@@ -2317,13 +2497,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function canRegister($aAcctName, $aEmailAddy) {
 		$this->removeStaleRegistrationCapTokens();
 		if ( $this->checkRegistrationCap() )
-		{ return self::REGISTRATION_CAP_EXCEEDED; }
+		{ return static::REGISTRATION_CAP_EXCEEDED; }
 
-		$theResult = self::REGISTRATION_SUCCESS;
+		$theResult = static::REGISTRATION_SUCCESS;
 		if ( $this->getByName($aAcctName) )
-		{ $theResult = self::REGISTRATION_NAME_TAKEN; }
+		{ $theResult = static::REGISTRATION_NAME_TAKEN; }
 		else if ( $this->getAuthByEmail($aEmailAddy) )
-		{ $theResult = self::REGISTRATION_EMAIL_TAKEN; }
+		{ $theResult = static::REGISTRATION_EMAIL_TAKEN; }
 		return $theResult;
 	}
 
@@ -2444,7 +2624,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		//ensure we've cleaned house recently
 		$this->removeStaleMobileAuthTokens();
 		//see if we've already got a token for this device
-		$theTokenPrefix = self::TOKEN_PREFIX_MOBILE;
+		$theTokenPrefix = static::TOKEN_PREFIX_MOBILE;
 		if ( !empty($aMobileID) )
 			$theTokenPrefix .= $aMobileID;
 		$theTokenList = $this->getAuthTokens($aAuthId, $aAcctId, $theTokenPrefix . '%', true);
@@ -2475,7 +2655,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 
 		$theResetUtils = null ;
 		if( isset($aResetUtils) )
-			$theResetUtils = &$aResetUtils ;
+			$theResetUtils = $aResetUtils ;
 		else
 			$theResetUtils = AuthPasswordReset::withModel($this) ;
 
@@ -2544,7 +2724,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$theLockoutTokens = $this->getAuthTokens(
 					$this->getDirector()->app_id,
 					0,
-					self::TOKEN_PREFIX_REGCAP.'%', true
+					static::TOKEN_PREFIX_REGCAP.'%', true
 			);
 			$bLockedOut = (!empty($theLockoutTokens)) && (count($theLockoutTokens)>=$theMaxAttempts);
 			if ($bLockedOut) {
@@ -2566,7 +2746,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$theAuthToken = $this->generateAuthToken(
 					$this->getDirector()->app_id,
 					0,
-					self::TOKEN_PREFIX_REGCAP
+					static::TOKEN_PREFIX_REGCAP
 			);
 			//once the number of tokens >= max attempts, session is locked
 			//  session will unlock after tokens expire (currently 1 hour)
@@ -2584,7 +2764,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @since BitsTheater 3.6.1
 	 */
 	public function generateAutoLoginForMobileDevice($aAuthId, $aAcctId, $aHardwareId) {
-		$theAuthToken = self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':'
+		$theAuthToken = static::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':'
 			. $aHardwareId . ':'
 			. Strings::createUUID()
 		;
@@ -2603,7 +2783,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function getMobileHardwareIdsForAutoLogin($aAuthId, $aAcctId) {
 		$theIds = array();
 		$theAuthTokenRows = $this->getAuthTokens( $aAuthId, $aAcctId,
-				self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%', true
+				static::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%', true
 		);
 		if (!empty($theAuthTokenRows)) {
 			foreach ($theAuthTokenRows as $theRow) {
