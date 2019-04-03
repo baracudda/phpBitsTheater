@@ -167,7 +167,8 @@ implements ArrayAccess, IDirected
 			if ( !$this->check_session_start() ) {
 				$this->regenerateSession();
 			}
-		} catch (Exception $e) {
+		} catch ( \Exception $x ) {
+			$this->logErrors('Exception starting session, will regenerate: ', $x->getMessage());
 			$this->regenerateSession();
 		}
 		
@@ -281,10 +282,11 @@ implements ArrayAccess, IDirected
 	 * may cause client (browser) side race condition and may create many
 	 * session ID needlessly. Immediate session data deletion disables session
 	 * hijack attack detection and prevention also.
+	 * @return boolean Returns the status of session_start.
 	 */
 	protected function sessionStart()
 	{
-		session_start();
+		$theResult = session_start();
 		if ( isset($_SESSION['destroyed_ts']) ) {
 			if ( $_SESSION['destroyed_ts'] < time() ) {
 				//This could be an attack or due to an unstable network.
@@ -298,9 +300,10 @@ implements ArrayAccess, IDirected
 				session_commit();
 				session_id($_SESSION['new_session_id']);
 				// New session ID should exist
-				session_start();
+				$theResult = session_start();
 			}
 		}
+		return $theResult;
 	}
 	
 	/**
@@ -339,6 +342,7 @@ implements ArrayAccess, IDirected
 		session_start();
 		//Do not want this session to expire, yet.
 		unset($_SESSION['destroyed_ts']);
+		unset($_SESSION['new_session_id']);
 	}
 
 	public function isInstalled() {
