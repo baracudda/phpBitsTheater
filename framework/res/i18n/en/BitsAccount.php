@@ -85,6 +85,8 @@ class BitsAccount extends BaseResources
 	public $err_not_connected = 'Connection to the database failed.' ;
 	public $err_pw_request_failed =
 		'The password reset request failed. Contact the system administrator.' ;
+	public $err_pw_request_not_found =
+		'The password reset request was not found, it may have timed out. Please try again.' ;
 	public $err_email_dispatch_failed =
 		'Failed to dispatch an email to [%1$s].' ;
 	public $err_cannot_delete_active_account =
