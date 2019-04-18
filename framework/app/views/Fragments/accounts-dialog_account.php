@@ -67,7 +67,7 @@ print( $v->createCssTagBlock('#account_password{background-image:none !important
   		  <td style="padding:1em"><div id="list_account_groups">
   		  	<?php
 		  		foreach ($v->auth_groups as $gid => $row) {
-					if ($gid>1) {
+					if ( $row['group_num']+0 > 1 ) {
 						print('<label class="for-checkbox">'
 								. '<input type="checkbox" name="account_group_ids[]" value="'
 								. $gid . '" /> '
