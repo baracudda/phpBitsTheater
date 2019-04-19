@@ -104,8 +104,8 @@ class TicketViaInstallPw extends BaseCostume
 		if ( static::checkInstallPwVsInput($this->pw_input) )
 		{
 			$dbAuth = $this->getMyModel();
-			$theAcctName = !empty($aScene->{$dbAuth::KEY_token})
-				? $aScene->{$dbAuth::KEY_token} : 'SITE_ADMIN' ;
+			$theAcctName = !empty($aScene->{$dbAuth::KEY_userinfo})
+				? $aScene->{$dbAuth::KEY_userinfo} : 'SITE_ADMIN' ;
 			return $dbAuth->createAccountInfoObj(array(
 					//set fake account info so we can install/admin-stuff!
 					'auth_id' => 'ZOMG-n33dz-2-install/admin!',

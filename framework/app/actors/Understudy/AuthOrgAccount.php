@@ -634,13 +634,14 @@ class AuthOrgAccount extends BaseActor
 		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
 		if ( empty($aPing) ) {
-			if ( $this->isGuest() ) {
+			//do not just check "isGuest()" as mobile may be part of an org with no rights yet
+			$myAuth = $this->getDirector()->getMyAccountInfo();
+			if ( empty($myAuth) ) {
 				throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED);
 			}
 			$theMobileRow = $this->getMyMobileRow();
 			if ( !empty($theMobileRow) ) {
 				$theMobileRow = (object)$theMobileRow;
-				$myAuth = $this->getDirector()->getMyAccountInfo();
 				$dbAuth = $this->getCanonicalModel();
 				$theAuthToken = $dbAuth->generateAuthTokenForMobile(
 						$myAuth->account_id, $myAuth->auth_id, $theMobileRow->mobile_id
@@ -780,7 +781,7 @@ class AuthOrgAccount extends BaseActor
 			$myOrgList = $dbAuth->getOrgsForAuthCursor(
 					$this->getDirector()->account_info->auth_id
 			)->fetchAll();
-			if ( !empty($myOrgsList) ) {
+			if ( !empty($myOrgList) ) {
 				$theOrgList = array_intersect($theOrgList, $myOrgList);
 			}
 		}
@@ -946,7 +947,7 @@ class AuthOrgAccount extends BaseActor
 				$myOrgList = $dbAuth->getOrgsForAuthCursor(
 						$this->getDirector()->account_info->auth_id
 				)->fetchAll();
-				if ( !empty($myOrgsList) ) {
+				if ( !empty($myOrgList) ) {
 					$theOrgList = array_intersect($theOrgList, $myOrgList);
 				}
 			}
@@ -1045,7 +1046,7 @@ class AuthOrgAccount extends BaseActor
 		{
 			$this->errorLog( __METHOD__
 					. ' failed to fetch an email address for account ID ['
-					. $aAccountID . '] because of an exception: '
+					. $aAccountInfo->account_id . '] because of an exception: '
 					. $x->getMessage()
 				);
 		}
@@ -1178,7 +1179,7 @@ class AuthOrgAccount extends BaseActor
 		{
 			$this->errorLog( __METHOD__
 					. ' failed to fetch Mobile Hardware IDs for account ID ['
-					. $aAccountID . '] because of an exception: '
+					. $aAccountInfo->account_id . '] because of an exception: '
 					. $x->getMessage()
 			);
 		}
@@ -1427,7 +1428,7 @@ class AuthOrgAccount extends BaseActor
 		$dbAuth = $this->getProp('Auth');
 		$myAuth = $this->getDirector()->getMyAccountInfo();
 		$theMobileRow = $this->getMyMobileRow();
-		if ( !$this->isGuest() && !empty($theMobileRow) ) {
+		if ( !empty($myAuth) && !empty($theMobileRow) ) {
 			$theAuthToken = $dbAuth->generateAuthTokenForMobile(
 					$myAuth->account_id, $myAuth->auth_id, $theMobileRow['mobile_id']
 			);
@@ -1686,7 +1687,7 @@ class AuthOrgAccount extends BaseActor
 		try {
 			//get our model
 			$dbAuth = $this->getMyModel();
-			if ( !empty($theOrgID) ) {
+			if ( !empty($theOrgID) && $theOrgID != $dbAuth::ORG_ID_4_ROOT ) {
 				//get our org data - do not use the AuthOrg costume as we need
 				//  the dbconn info which the costume does not provide (security
 				//  precaution against accidentally exporting back to a client).
@@ -1863,7 +1864,7 @@ class AuthOrgAccount extends BaseActor
 	 * @param string $aKey the preference key
 	 * @param string $aValue the value to set
 	 */
-	public function ajajSetPreference( $aSpace, $aKey, $aValue )
+	public function ajajSetPreference( $aSpace, $aKey, $aValue=null )
 	{
 		$theAuthID = $this->getDirector()->account_info->auth_id ;
 		$this->ajajSetPreferenceFor( $theAuthID, $aSpace, $aKey, $aValue ) ;

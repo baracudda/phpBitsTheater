@@ -89,7 +89,7 @@ class AuthAcct4Orgs extends BaseCostume
 				parent::getGroupsList();
 			}
 			else {
-				$this->getModel()->logErrors(__METHOD__, $x->getMessage());
+				$this->getModel()->logErrors(__METHOD__, $dbx->getMessage());
 			}
 		}
 		catch ( \Exception $x )

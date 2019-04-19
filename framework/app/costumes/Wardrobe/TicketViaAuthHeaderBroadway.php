@@ -347,6 +347,9 @@ class TicketViaAuthHeaderBroadway extends BaseCostume
 					$this->getCircumstanceDataToStore($this->mMobileRow)
 			);
 		}
+
+		$dbAuth->checkForDefaultOrg($aScene, $aAcctInfo);
+
 		return $this;
 	}
 	

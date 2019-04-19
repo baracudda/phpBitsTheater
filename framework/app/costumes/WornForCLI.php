@@ -155,7 +155,7 @@ trait WornForCLI
 		$theModel = self::getDatabaseModel( $aContext, $aModelName ) ;
 		if( $theModel === false )
 		{
-			$this->writeLog(
+			self::writeLog(
 					"[FATAL] Cannot connect to model ["	. $aModelName . "].",
 					true, true
 				);

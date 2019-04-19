@@ -1,4 +1,6 @@
 <?php
+use BitsTheater\Scene; /* @var $v Scene */
+
 $dbAuth = $v->getProp('Auth');
 list( $theCsrfCookieName, $theCsrfHeaderName) = $dbAuth->getCsrfCookieHeaderNames();
 $v->returnProp($dbAuth);

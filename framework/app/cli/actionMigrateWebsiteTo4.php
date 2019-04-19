@@ -4,6 +4,8 @@ use BitsTheater\Regisseur;
 use BitsTheater\costumes\venue\TicketViaInstallPw;
 use com\blackmoonit\Strings;
 
+global $director;
+
 //CLI options should be defined by the special function `process_cli_options($aStageManger)`
 function process_cli_options($aStageManager)
 {

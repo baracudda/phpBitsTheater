@@ -782,7 +782,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			->add( ' LEFT JOIN ' )
 			->add( $this->tnGroupMap . ' AS GM USING (account_id) ' )
 			->startWhereClause()
-			->mustAddParam( 'group_id', $aGroupID )
+			->mustAddParam( 'group_id', $theGroupID )
 			->endWhereClause()
 			;
 		$this->returnProp( $dbAccounts ) ;

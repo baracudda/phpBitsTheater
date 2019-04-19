@@ -8,7 +8,8 @@ if ($recite->getDirector()->isGuest()) {
 	ssi_login();
 	$theLink = ob_get_clean();
 	$regexLink = '/<a\s[^>]*href=\"([^\"]*)\"[^>]*>(.*)<\/a>/siU';
-	preg_match($regexLink,$theLink,$matches);
+	$matches = array();
+	preg_match($regexLink, $theLink, $matches);
 	//print('<pre>'.var_dump($matches).'</pre><br/>');
 	print($matches[1]);
-}	
+}

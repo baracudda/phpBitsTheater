@@ -26,6 +26,8 @@ use BitsTheater\Scene;
  */
 class TicketViaURL extends BaseCostume
 {
+	/** @var boolean Used to determine if this venue should be used or not. */
+	protected $bAccountInfoSetInURL = false;
 	
 	/**
 	 * Tasks to complete before we even check to see if this ticket is for
@@ -35,10 +37,10 @@ class TicketViaURL extends BaseCostume
 	 */
 	protected function onBeforeCheckTicket( Scene $aScene )
 	{
-		$dbAuth = $this->getMyModel();
 		//PHP has some built in auth vars, check them and use if not empty
 		if ( !empty($_SERVER['PHP_AUTH_USER']) && !empty($_SERVER['PHP_AUTH_PW']) )
 		{
+			$this->bAccountInfoSetInURL = true;
 			$this->ticket_name = $_SERVER['PHP_AUTH_USER'];
 			$this->ticket_secret = $_SERVER['PHP_AUTH_PW'];
 			unset($_SERVER['PHP_AUTH_PW']);
@@ -48,6 +50,14 @@ class TicketViaURL extends BaseCostume
 		return $this;
 	}
 	
+	/**
+	 * Check to see if this venue should process the ticket.
+	 * @param Scene $aScene - var container object which may have auth info.
+	 * @return boolean Returns TRUE if this venue should process the ticket.
+	 */
+	protected function isTicketForThisVenue( Scene $aScene )
+	{ return $this->bAccountInfoSetInURL; }
+
 }//end class
 
 }//end namespace

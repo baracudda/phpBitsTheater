@@ -35,7 +35,7 @@ class Menus extends MyScene {
 		$theResult = trim($this->getMenuIcon($aMenuItem).' '.$aMenuItem->getLabel());
 		$theSubtext = $aMenuItem->getSubtext();
 		if (self::IS_SUBTEXT_SUPPORTED && !empty($theSubtext))
-			$theResult .= '<span class="subtext">'.$thSubtext.'</span>';
+			$theResult .= '<span class="subtext">'.$theSubtext.'</span>';
 		return $theResult;
 	}
 

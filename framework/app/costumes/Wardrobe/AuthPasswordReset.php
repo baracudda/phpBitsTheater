@@ -92,14 +92,10 @@ class AuthPasswordReset extends BaseCostume
 			->add('LIMIT 1')
 			;
 		$theAuthRecord = $theSql->getTheRow() ;
-		$theAccountID = $theAuthRecord['account_id'] ;
-		$theAuthID = $theAuthRecord['auth_id'] ;
-		$this->setDataFrom(array(
-				'myEmailAddr' => $aEmailAddr,
-				'myAccountID' => $theAccountID,
-				'myAuthID' => $theAuthID
-				)) ;
-		return $theAccountID ;
+		$this->myEmailAddr = $aEmailAddr;
+		$this->myAccountID = $theAuthRecord['account_id'];
+		$this->myAuthID = $theAuthRecord['auth_id'];
+		return $this->myAccountID;
 	}
 	
 	/** accessor */
@@ -151,53 +147,38 @@ class AuthPasswordReset extends BaseCostume
 	 * Queries the database for all existing password reset auth tokens for the
 	 * account ID to which this instance is bound. If this function is called
 	 * out of sequence, an exception is thrown.
-	 * @return mixed an array of results
+	 * @return array Returns an array of token rows.
 	 */
 	public function getTokens()
 	{
 		if( empty($this->myAccountID) && empty($this->myAuthID) )
 			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_OR_AUTH_ID' ) ;
-		
-		$theTokens = $this->model->getAuthTokens( $this->myAuthID,
-			$this->myAccountID, self::TOKEN_PREFIX . '%', true ) ;
-		$this->setDataFrom(array( 'myTokens' => $theTokens )) ;
-		return $theTokens ;
+		$this->removeStaleResetTokens();
+		$this->myTokens = $this->getMyModel()->getAuthTokens( $this->myAuthID,
+				$this->myAccountID, static::TOKEN_PREFIX . '%', true
+		);
+		return $this->myTokens;
 	}
 	
 	/**
 	 * Indicates whether the token set contains a token which was created
-	 * within the last 24 hours and is linked to the specified account ID.
-	 * @return boolean true if one of the supplied tokens was created or updated
-	 *  within the last 24 hours
+	 * within the last freshness time period and is linked to the specified
+	 * account ID.
+	 * @param string $aToken - (OPTIONAL) specific token to search for.
+	 * @return boolean Returns TRUE if one of the supplied tokens was
+	 *   created within the last freshness time period.
 	 */
-	public function hasRecentToken()
+	public function hasRecentToken( $aToken=null )
 	{
 		if( empty( $this->myAccountID ) && empty($this->myAuthID) )
 			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_OR_AUTH_ID' ) ;
 		if( empty( $this->myTokens ) ) return false ;
 		
-		/*
-		 * Should use DateTime, etc, but trying to do date comparisons with
-		 * those classes was like pulling teeth. So instead, we use the MUCH
-		 * simpler strtotime() function. However, we may need to alter this
-		 * code in preparation for the 2038 timestamp rollover, depending on
-		 * the state of the architecture for the server and PHP.
-		 */
-//		$theNow = new DateTime( 'now', new DateTimeZone('UTC') ) ;
-		$theNow = strtotime('now') ;
-		//TODO: use this maybe? $theNow = $this->getModel()->utc_now();
-		$theExpirationInterval = 60 * 60 * 24 ;              // a day of seconds
 		$theAuthFilter = $this->chooseIdentifierForSearch() ;
-		foreach( $this->myTokens as $theToken )
+		foreach( $this->myTokens as $theTokenRow )
 		{
-			if( $theToken[$theAuthFilter['col']] == $theAuthFilter['val'] )
-			{
-//				$theTokenDate = DateTime::createFromFormat(
-//						DbUtils::DATETIME_FORMAT_DEF_STD,
-//						$theToken['updated_ts'] ) ;
-				$theTokenDate = strtotime( $theToken['updated_ts'] ) ;
-				if( $theNow < $theTokenDate + $theExpirationInterval )
-					return true ;
+			if ( $theTokenRow[$theAuthFilter['col']] == $theAuthFilter['val'] ) {
+				return ( empty($aToken) || ($theTokenRow['token'] == $aToken) );
 			}
 		}
 		return false ;
@@ -214,7 +195,7 @@ class AuthPasswordReset extends BaseCostume
 			throw PasswordResetException::toss( $this, 'NO_ACCOUNT_ID' ) ;
 		if( empty( $this->myAuthID ) )
 			throw PasswordResetException::toss( $this, 'NO_AUTH_ID' ) ;
-		$this->myNewToken = AuthDB::generatePrefixedAuthToken( self::TOKEN_PREFIX ) ;
+		$this->myNewToken = AuthDB::generatePrefixedAuthToken( static::TOKEN_PREFIX ) ;
 		$theSql = SqlBuilder::withModel($this->model)
 			->startWith( 'INSERT INTO ' )->add( $this->model->tnAuthTokens )
 			->add( 'SET ' )
@@ -260,9 +241,9 @@ class AuthPasswordReset extends BaseCostume
 			->mustAddParam( $theAuthFilter['col'], $theAuthFilter['val'] )
 			->setParamPrefix( ' AND ' )
 			->setParamOperator(' LIKE ') //" TOTALLY " ;)
-			->mustAddFieldAndParam( 'token', 'pwreset_tokens', $this::TOKEN_PREFIX . '%' )
+			->mustAddParamForColumn( 'pwreset_tokens', 'token', static::TOKEN_PREFIX . '%' )
 			->setParamOperator(SqlBuilder::OPERATOR_NOT_EQUAL)
-			->mustAddFieldAndParam( 'token', 'myNewToken', $this->myNewToken )
+			->mustAddParamForColumn( 'myNewToken', 'token', $this->myNewToken )
 			->endWhereClause()
 			;
 //		$this->debugLog( $theSql->mySql ) ;
@@ -303,9 +284,9 @@ class AuthPasswordReset extends BaseCostume
 			->mustAddParam( $theAuthFilter['col'], $theAuthFilter['val'] )
 			->setParamPrefix( ' AND (' )
 			->setParamOperator(' LIKE ') //" TOTALLY " ;)
-			->mustAddFieldAndParam( 'token', 'pwreset_tokens', $this::TOKEN_PREFIX . '%' )
+			->mustAddParamForColumn( 'pwreset_tokens', 'token', static::TOKEN_PREFIX . '%' )
 			->setParamPrefix( ' OR ' )
-			->mustAddFieldAndParam( 'token', 'lockout_tokens', $dbAuth::TOKEN_PREFIX_LOCKOUT . '%' )
+			->mustAddParamForColumn( 'lockout_tokens', 'token', $dbAuth::TOKEN_PREFIX_LOCKOUT . '%' )
 			->add(')')
 			->endWhereClause()
 			;
@@ -419,24 +400,29 @@ class AuthPasswordReset extends BaseCostume
 	
 	public function authenticateForReentry( $aAuthID, $aAuthToken )
 	{
-		if( empty( $aAuthID ) )
+		if ( empty( $aAuthID ) ) {
 			throw PasswordResetException::toss( $this, 'NO_AUTH_ID' ) ;
-		if( empty( $aAuthToken ) )
+		}
+		$this->myAuthID = $aAuthID;
+		if ( empty( $aAuthToken ) ) {
 			throw PasswordResetException::toss( $this, 'NO_NEW_TOKEN' ) ;
-		$this->setDataFrom(array(
-				'myAuthID' => $aAuthID,
-				'myNewToken' => $aAuthToken
-			)) ;
-		$theTokens = $this->model->getAuthTokens( $aAuthID, null, $aAuthToken );
-		if( empty($theTokens) ) return false ;
-		$this->setDataFrom(array(
-				'myAccountID' => $theTokens[0]['account_id'],
-				'myTokens' => $theTokens
-			)) ;
-		if( ! $this->hasRecentToken() ) return false ; // but leave the old one
-		
-		return $this->model->setPasswordResetCreds(
-				$this->model->getProp('Accounts'), $this ) ;
+		}
+		$this->myNewToken = $aAuthToken;
+		$this->myTokens = $this->getTokens();
+		if ( !$this->hasRecentToken($aAuthToken) ) {
+			$x = PasswordResetException::toss($this, 'RESET_REQUEST_NOT_FOUND');
+			if ( !empty($this->myEmailAddr) ) {
+				$x->putExtra('email', $this->myEmailAddr);
+			}
+			if ( !empty($this->myAuthID) ) {
+				$x->putExtra('auth_id', $this->myAuthID);
+			}
+			throw $x;
+		}
+		$this->myAccountID = $this->myTokens[0]['account_id'];
+		return $this->getMyModel()->setPasswordResetCreds(
+				$this->getMyModel()->getProp('Accounts'), $this
+		);
 	}
 	
 	/**
@@ -468,7 +454,23 @@ class AuthPasswordReset extends BaseCostume
 					'DANG_PASSWORD_YOU_SCARY' ) ;
 		}
 	}
-		
+	
+	/** @return number The number of days a reset token remains fresh. 0=∞ */
+	protected function getTokenFreshnessDays()
+	{
+		return 1;
+	}
+	
+	/**
+	 * Delete stale cookie tokens.
+	 */
+	public function removeStaleResetTokens() {
+		$delta = $this->getTokenFreshnessDays();
+		if ( !empty($delta) ) {
+			$this->getMyModel()->removeStaleTokens(static::TOKEN_PREFIX.'%', $delta.' DAY');
+		}
+	}
+
 } // end AuthPasswordReset class
 
 } // end namespace

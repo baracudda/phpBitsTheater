@@ -2,6 +2,8 @@
 <?php
 use BitsTheater\Regisseur;
 
+global $director;
+
 //CLI options should be defined by the special function `process_cli_options($aStageManger)`
 function process_cli_options($aStageManager)
 {
@@ -38,7 +40,7 @@ foreach($theDbHostsToTry as $theHost) {
 	try {
 		$director->debugLog("Attempting DBHOST [{$theHost}]...");
 		$theDns = "mysql:host={$theHost};port={$theDbPort};dbname={$theDbName};charset=utf8";
-		$theDbConn = new \PDO($theDns, $theDbUser, $theDbPswd);
+		new \PDO($theDns, $theDbUser, $theDbPswd);
 		$theResult = $theHost;
 		break;
 	} catch (\PDOException $x) {

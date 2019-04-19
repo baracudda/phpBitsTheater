@@ -1,4 +1,6 @@
-<meta itemprop="<?php
+<?php
+use BitsTheater\Scene; /* @var $v Scene */
+?><meta itemprop="<?php
 	if ( !empty($v->dialog_itemprop) ) {
 		print($v->dialog_itemprop);
 	}

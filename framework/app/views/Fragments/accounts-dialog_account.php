@@ -1,5 +1,7 @@
 <?php
+use BitsTheater\Scene; /* @var $v Scene */
 use com\blackmoonit\Widgets;
+
 //fix bootstrap button location on dialog
 print( $v->createCssTagBlock('td label{margin-bottom:initial;}') );
 //fix checkbox label that is not truely a label (bootstrap override)
@@ -57,7 +59,7 @@ print( $v->createCssTagBlock('#account_password{background-image:none !important
   				<label><?php print($v->getRes('account/colheader_account_is_active'));?>:</label>
   			</td>
   			<td style="padding:1em"><input type="checkbox" id="account_is_active" name="account_is_active"
-  			<?php if( !$this->isAllowed( 'accounts', 'activate' ) ): ?>disabled<?php endif; ?>
+  			<?php if( !$v->isAllowed( 'accounts', 'activate' ) ): ?>disabled<?php endif; ?>
   			></td>
   		</tr>
   		<tr>
@@ -67,7 +69,8 @@ print( $v->createCssTagBlock('#account_password{background-image:none !important
   		  <td style="padding:1em"><div id="list_account_groups">
   		  	<?php
 		  		foreach ($v->auth_groups as $gid => $row) {
-					if ($gid>1) {
+		  			$theGroupNum = ( isset($row['group_num']) ) ? $row['group_num']+0 : $gid;
+					if ( $theGroupNum > 1 ) {
 						print('<label class="for-checkbox">'
 								. '<input type="checkbox" name="account_group_ids[]" value="'
 								. $gid . '" /> '

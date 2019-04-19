@@ -167,7 +167,8 @@ implements ArrayAccess, IDirected
 			if ( !$this->check_session_start() ) {
 				$this->regenerateSession();
 			}
-		} catch (Exception $e) {
+		} catch ( \Exception $x ) {
+			$this->logErrors('Exception starting session, will regenerate: ', $x->getMessage());
 			$this->regenerateSession();
 		}
 		
@@ -281,10 +282,11 @@ implements ArrayAccess, IDirected
 	 * may cause client (browser) side race condition and may create many
 	 * session ID needlessly. Immediate session data deletion disables session
 	 * hijack attack detection and prevention also.
+	 * @return boolean Returns the status of session_start.
 	 */
 	protected function sessionStart()
 	{
-		session_start();
+		$theResult = session_start();
 		if ( isset($_SESSION['destroyed_ts']) ) {
 			if ( $_SESSION['destroyed_ts'] < time() ) {
 				//This could be an attack or due to an unstable network.
@@ -298,9 +300,10 @@ implements ArrayAccess, IDirected
 				session_commit();
 				session_id($_SESSION['new_session_id']);
 				// New session ID should exist
-				session_start();
+				$theResult = session_start();
 			}
 		}
+		return $theResult;
 	}
 	
 	/**
@@ -339,6 +342,7 @@ implements ArrayAccess, IDirected
 		session_start();
 		//Do not want this session to expire, yet.
 		unset($_SESSION['destroyed_ts']);
+		unset($_SESSION['new_session_id']);
 	}
 
 	public function isInstalled() {
@@ -439,8 +443,8 @@ implements ArrayAccess, IDirected
 	 */
 	public function routeRequest( $aUrlPath )
 	{
-		//if $this->debugLog('aUrl='.$aUrl);  //DEBUG
-		//if $aUrl=='phpinfo') { print(phpinfo()); return; } //DEBUG
+		//$this->logStuff('[TRACE] URL=[', $aUrlPath, ']');
+		//if ( $aUrlPath=='phpinfo' ) { print(phpinfo()); return; } //DEBUG
 		if ( empty($aUrlPath) ) {
 			if ( $this->isInstalled() ) {
 				//if website has been installed, redirect to landing page
@@ -470,7 +474,7 @@ implements ArrayAccess, IDirected
 				default:
 					//$this->logStuff(__METHOD__, ' ', $fofx); //DEBUG
 					if ( $this->getDirector()->isRunningUnderCLI() )
-					{ print('Endpoint not found: ' . $theUrlNotFound); }
+					{ print('Endpoint not found: ' . $aUrlPath); }
 					else
 					{ throw new FourOhFourExit($this->getSiteUrl($aUrlPath)); }
 			}//switch
@@ -496,7 +500,7 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * Determain what actor::method(args) to call based on the URL.
+	 * Determine what actor::method(args) to call based on the URL.
 	 * Render the defined view for the given Actor::method().
 	 * @param string $aUrlPath - the non-empty URL path segments to parse.
 	 * @throws FourOhFourExit if URL does not refer to a valid endpoint.
@@ -854,7 +858,7 @@ implements ArrayAccess, IDirected
 	 * @param string $aPermission - permission name to check.
 	 * @param array|NULL $aAcctInfo - (optional) check specified account instead of
 	 *   currently logged in user.
-	 * @return boolean Returns TRUE if allowed.
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 */
 	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null)
 	{
@@ -870,7 +874,7 @@ implements ArrayAccess, IDirected
 	
 	/**
 	 * Determine if there is even a user logged into the system or not.
-	 * @return boolean Returns TRUE if no user is logged in.
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 */
 	public function isGuest()
 	{
@@ -885,6 +889,7 @@ implements ArrayAccess, IDirected
 	
 	/**
 	 * {@inheritDoc}
+	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 * @see \BitsTheater\costumes\IDirected::checkAllowed()
 	 */
 	public function checkAllowed($aNamespace, $aPermission, $aAcctInfo=null)
@@ -897,7 +902,7 @@ implements ArrayAccess, IDirected
 	
 	/**
 	 * {@inheritDoc}
-	 * @return $this
+	 * @return $this Returns $this for chaining.
 	 * @see \BitsTheater\costumes\IDirected::checkPermission()
 	 */
 	public function checkPermission($aNamespace, $aPermission, $aAcctInfo=null)
@@ -938,37 +943,61 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * Returns the URL for this site appended with relative path info.
-	 * @param mixed $aRelativeURL - array of path segments OR a bunch of string parameters
-	 * equating to path segments.
-	 * @return string - returns the site relative path URL.
-	 * @see Director::getFullUrl()
+	 * Given an array of strings, put them together to create a URL path.
+	 * @param string[] $aArgs - the args to be strung together.
+	 * @return string Return the imploded array as a string; non-empty
+	 *   results will always begin with a slash '/'.
 	 */
-	public function getSiteUrl($aRelativeURL='', $_=null) {
-		$theResult = BITS_URL;
-		if (!empty($aRelativeURL)) {
-			$theArgs = (is_array($aRelativeURL)) ? $aRelativeURL : func_get_args();
-			foreach ($theArgs as $pathPart) {
-				$theResult .= ((!empty($pathPart) && $pathPart[0]!=='/') ? '/' : '' ) . $pathPart;
+	protected function convertArgsToPath( $aArgs )
+	{
+		if ( empty($aArgs) ) return; //trivial
+		$theResult = '';
+		//do not want to use implode() as params might be ('/foo/bar', '#blah')
+		foreach ($aArgs as $pathPart) {
+			if ( !empty($pathPart) && ($pathPart[0] !== '/') ) {
+				$theResult .= '/';
 			}
+			$theResult .= $pathPart;
 		}
 		return $theResult;
 	}
 	
 	/**
 	 * Returns the URL for this site appended with relative path info.
-	 * @param string $aRelativeURL - site path relative to site root.
+	 * @param string[]|string $aRelativeURL - array of path segments
+	 *   OR a bunch of string parameters equating to path segments.
+	 * @return string Returns the site relative path URL.
+	 * @see Director::getFullUrl()
+	 */
+	public function getSiteUrl($aRelativeURL='') {
+		$theResult = BITS_URL;
+		if ( !empty($aRelativeURL) ) {
+			$theArgs = ( is_array($aRelativeURL) ) ? $aRelativeURL : func_get_args();
+			$theResult .= $this->convertArgsToPath($theArgs);
+		}
+		return $theResult;
+	}
+	
+	/**
+	 * Returns the URL for this site appended with relative path info.
+	 * @param string[]|string $aRelativeURL - array of path segments
+	 *   OR a bunch of string parameters equating to path segments.
 	 * @return string - returns the http scheme + site domain + relative path URL.
 	 * @see Director::getSiteUrl()
 	 */
 	public function getFullUrl($aRelativeURL='') {
-		$theResult = SERVER_URL.'/';
-		if (strlen(VIRTUAL_HOST_NAME)>0)
-			$theResult .= VIRTUAL_HOST_NAME.'/';
-		if (Strings::beginsWith($aRelativeURL, '/'))
-			return $theResult.substr($aRelativeURL, 1);
-		else
-			return $theResult.$aRelativeURL;
+		$theResult = SERVER_URL;
+		if ( strlen(VIRTUAL_HOST_NAME)>0 ) {
+			$theResult .= '/' . VIRTUAL_HOST_NAME;
+		}
+		if ( !empty($aRelativeURL) ) {
+			$theArgs = ( is_array($aRelativeURL) ) ? $aRelativeURL : func_get_args();
+			$theResult .= $this->convertArgsToPath($theArgs);
+		}
+		else {
+			$theResult .= '/';
+		}
+		return $theResult;
 	}
 	
 	/**

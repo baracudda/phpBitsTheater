@@ -31,31 +31,29 @@ trait WornByActor
 	/**
 	 * Static builder method to return an instance of the costume pre-bound to
 	 * an actor instance.
-	 * @param Actor $aActor the actor instance to bind
-	 * @return \BitsTheater\costumes\ABitsCostume an instance of the costume
+	 * @param Actor $aActor - the actor instance to bind
+	 * @return $this Returns $this for chaining
 	 */
 	public static function withActor( Actor $aActor )
 	{
 		$theClassName = get_called_class() ;
 		return (new $theClassName($aActor->director))
-			->setDirector($aActor->director)
 			->setActor($aActor)
 			;
 	}
 
-	/** Accessor. */
+	/** @return Actor The Actor bound to this costume. */
 	public function getActor()
-	{ return $this->actor ; }
+	{ return $this->actor; }
 
 	/**
 	 * Binds the costume instance to an instance of an actor.
-	 * @param Actor $aActor the actor to bind
-	 * @return \BitsTheater\costumes\ABitsCostume the updated costume
+	 * @param Actor $aActor - the actor to bind.
+	 * @return $this Returns $this for chaining.
 	 */
 	public function setActor( Actor $aActor )
 	{
 		$this->actor = $aActor ;
-		$this->setDirector($aActor->director) ;
 		return $this ;
 	}
 

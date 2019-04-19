@@ -89,11 +89,11 @@ interface IDirected {
 	
 	/**
 	 * Returns the URL for this site appended with relative path info.
-	 * @param mixed $aRelativeUrl - array of path segments OR a bunch of
-	 *   string parameters equating to path segments.
+	 * @param string[]|string $aRelativeURL - array of path segments
+	 *   OR a bunch of string parameters equating to path segments.
 	 * @return string - returns the site domain + relative path URL.
 	 */
-	public function getSiteUrl($aRelativeUrl='', $_=null);
+	public function getSiteUrl($aRelativeURL='');
 
 	/**
 	 * Get the setting from the configuration model.

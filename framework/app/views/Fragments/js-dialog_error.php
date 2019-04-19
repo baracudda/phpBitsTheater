@@ -1,4 +1,6 @@
-<meta itemprop="js-dialog_error" data-bootbox_dialog_argument=<?php
+<?php
+use BitsTheater\Scene; /* @var $v Scene */
+?><meta itemprop="js-dialog_error" data-bootbox_dialog_argument=<?php
 	$o = new \StdClass();
 	$o->title = $v->getRes('generic/title_dialog_error');
 	$o->size = 'small';

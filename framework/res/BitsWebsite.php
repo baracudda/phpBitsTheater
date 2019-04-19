@@ -22,9 +22,9 @@ use BitsTheater\res\Resources as BaseResources;
 class BitsWebsite extends BaseResources
 {
 	/** @var string The framework's sequence number. */
-	public $framework_version_seq = 12;
+	public $framework_version_seq = 13;
 	/** @var string The framework's displayed version number. */
-	public $framework_version = '4.2.2';
+	public $framework_version = '[NEXT]';
 	/**
 	 * Your website's build number.
 	 * This should only ever increase with each release you make.
@@ -220,7 +220,7 @@ class BitsWebsite extends BaseResources
 		try {
 			switch (true) {
 			//cases should always be lo->hi, never use break; so all changes are done in order.
-			case ($theSeq<2):
+			case ($aSeqNum < 2):
 				//do your stuff here
 			}//end switch
 		} catch (\Exception $e) {

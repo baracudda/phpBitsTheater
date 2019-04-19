@@ -226,13 +226,6 @@ abstract class ABitsAccount extends BaseActor {
 		if( empty($theAccount) )
 			throw BrokenLeg::toss( $this, BrokenLeg::ACT_ENTITY_NOT_FOUND, $aAccountID ) ;
 
-		$dbGroups = $this->getProp( 'AuthGroups' ) ;
-		$theGroups = null ;
-		try { $theGroups = $dbGroups->getAcctGroups( $aAccountID ) ; }
-		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_EXCEPTION, $dbx->getMessage() ) ; }
-		$this->returnProp( $dbGroups ) ;
-
 		return true ;
 	}
 

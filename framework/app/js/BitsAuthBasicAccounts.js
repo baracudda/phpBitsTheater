@@ -35,10 +35,12 @@ BitsAuthBasicAccounts.prototype.getGroupIdArray = function() {
 BitsAuthBasicAccounts.prototype.setGroupIdArray = function(aList) {
 	if (aList) {
 		var theGroupIds = $('input:checkbox',$('#list_account_groups',this.mDialogAccount)).each(function(){
-			if ($.inArray(Number(this.value),aList)<0)
-				$(this).prop('checked',false);
-			else
+			if ($.inArray(Number(this.value),aList)>=0)
 				$(this).prop('checked',true);
+			else if ($.inArray(this.value,aList)>=0)
+				$(this).prop('checked',true);
+			else
+				$(this).prop('checked',false);
 	    });
 	}
 }
@@ -66,6 +68,12 @@ BitsAuthBasicAccounts.prototype.onAddClick = function(e) {
 	this.mDialogAccount.modal('show');
 };
 
+BitsAuthBasicAccounts.prototype.decodeEntities = function(encodedString) {
+  var textArea = document.createElement('textarea');
+  textArea.innerHTML = encodedString;
+  return textArea.value;
+};
+
 BitsAuthBasicAccounts.prototype.onEditClick = function(e) {
 	e.preventDefault();
 	$('#dialog_title_add',this.mDialogAccount).hide();
@@ -78,7 +86,7 @@ BitsAuthBasicAccounts.prototype.onEditClick = function(e) {
 	var an = e.currentTarget.getAttribute('data-account_name');
 	var ae = e.currentTarget.getAttribute('data-email');
 	var ia = e.currentTarget.getAttribute('data-is_active');
-	var gl = $.parseJSON(e.currentTarget.getAttribute('data-groups'));
+	var gl = $.parseJSON(this.decodeEntities(e.currentTarget.getAttribute('data-groups')));
 	
 	$('#account_id',this.mDialogAccount).val(id);
 	$('#account_name',this.mDialogAccount).val(an);

@@ -1,4 +1,6 @@
-<meta itemprop="admin-js-dialog_update_schema" data-bootbox_dialog_argument=<?php
+<?php
+use BitsTheater\Scene; /* @var $v Scene */
+?><meta itemprop="admin-js-dialog_update_schema" data-bootbox_dialog_argument=<?php
 	$o = new \StdClass();
 	//$o->title = $v->getRes('admin/dialog_update_warning_title');
 	//$o->size = 'small';

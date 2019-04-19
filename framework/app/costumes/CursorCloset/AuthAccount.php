@@ -90,8 +90,8 @@ class AuthAccount extends BaseCostume
 	{
 		if ( !empty($this->account_id) ) try {
 			$this->groups = $this->getAuthGroupsProp()->getAcctGroups($this->account_id);
-			if ( !empty($aRow->groups) ) {
-				foreach ($aRow->groups as &$theGroupID) {
+			if ( !empty($this->groups) ) {
+				foreach ($this->groups as &$theGroupID) {
 					if ( is_numeric($theGroupID) ) {
 						$theGroupID = strval($theGroupID);
 					}
@@ -100,6 +100,17 @@ class AuthAccount extends BaseCostume
 		}
 		catch (\Exception $x)
 		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
+	}
+	
+	/**
+	 * Sometimes we need to reload the groups list after loading the account
+	 * record from the database.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function loadGroupsList()
+	{
+		$this->getGroupsList();
+		return $this;
 	}
 	
 	/**

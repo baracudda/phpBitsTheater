@@ -119,8 +119,6 @@ class AuthBasicAccount extends BaseActor
 	}
 	
 	protected function addNewAccount($aAcctName) {
-		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
 		$dbAccounts = $this->getProp('Accounts');
 		$theResult = $dbAccounts->add(array(
 				'account_name' => $aAcctName,
@@ -139,8 +137,6 @@ class AuthBasicAccount extends BaseActor
 	 * @return string Return one of the REGISTRATION_REG_CODE_* constants.
 	 */
 	protected function registerNewAccount($aAcctName, $aAcctPw, $aAcctEmail, $aRegCode, $bAllowGroup0toAutoRegister=true) {
-		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
 		if (!empty($aAcctName) && !empty($aAcctPw) && !empty($aAcctEmail) && !empty($aRegCode)) {
 			$dbAccounts = $this->getProp('Accounts');
 			$dbAuth = $this->getProp('Auth');
@@ -957,7 +953,7 @@ class AuthBasicAccount extends BaseActor
 		{
 			$this->errorLog( __METHOD__
 					. ' failed to fetch an email address for account ID ['
-					. $aAccountID . '] because of an exception: '
+					. $aAccountInfo->account_id . '] because of an exception: '
 					. $x->getMessage()
 				);
 		}
@@ -1022,7 +1018,7 @@ class AuthBasicAccount extends BaseActor
 		{
 			$this->errorLog( __METHOD__
 					. ' failed to fetch Mobile Hardware IDs for account ID ['
-					. $aAccountID . '] because of an exception: '
+					. $aAccountInfo->account_id . '] because of an exception: '
 					. $x->getMessage()
 			);
 		}

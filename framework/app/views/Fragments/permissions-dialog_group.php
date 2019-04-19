@@ -1,4 +1,5 @@
 <?php
+use BitsTheater\Scene; /* @var $v Scene */
 use com\blackmoonit\Widgets;
 print( $v->createCssTagBlock('td label{margin-bottom:initial}') );
 ?>

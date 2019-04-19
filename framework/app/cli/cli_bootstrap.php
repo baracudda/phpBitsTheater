@@ -49,7 +49,7 @@ EXAMPLE CLI ACTION FILE NAMED: someCliAction.php
 
 <?php
 $theCliOptions = require_once(__DIR__ . DIRECTORY_SEPARATOR . 'cli_bootstrap.php');
-$director->raiseCurtain('Actor', 'method');
+$director->raiseCurtain('Actor/method');
 
 ************************************************/
 /************************************************

@@ -102,6 +102,7 @@ class CacheForAuthAccountInfo extends BaseCostume
 				$o = CommonMySql::deepConvertSQLTimestampsToISOFormat($o);
 				break;
 		}//switch
+		$this->returnProp($dbAuth);
 		return $o;
 	}
 	
@@ -115,11 +116,11 @@ class CacheForAuthAccountInfo extends BaseCostume
 		if ( empty($aOrgData) ) {
 			$this->mSeatingSection = null;
 		}
-		if ( is_array($aOrgData) ) {
-			$this->mSeatingSection = AuthOrg::getInstance($this, $aOrgData);
-		}
 		else if ( $aOrgData instanceof AuthOrg ) {
 			$this->mSeatingSection = $aOrgData;
+		}
+		else if ( is_array($aOrgData) || is_object($aOrgData) ) {
+			$this->mSeatingSection = AuthOrg::getInstance($this, $aOrgData);
 		}
 		return $this;
 	}
@@ -157,6 +158,28 @@ class CacheForAuthAccountInfo extends BaseCostume
 			}
 		}
 		return null;
+	}
+	
+	/**
+	 * Sometimes we need to reload the groups list after loading the account
+	 * record from the database.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function loadGroupsList()
+	{
+		if ( !empty($this->auth_id) ) {
+			// (#6297) Force re-evaluation of permissions at next check.
+			$this->rights = null ;
+			// (#6288) reload groups as we may have switched orgs
+			$dbAuthGroups = $this->getProp('AuthGroups');
+			$this->groups = $dbAuthGroups->getGroupIDListForAuthAndOrg(
+					$this->auth_id, $this->getSeatSectionID()
+			);
+			$this->returnProp($dbAuthGroups);
+			// (#6288) Now check a permission to kickstart regeneration of rights.
+			$this->isAllowed('auth_orgs', 'transcend');
+		}
+		return $this;
 	}
 	
 }//end class

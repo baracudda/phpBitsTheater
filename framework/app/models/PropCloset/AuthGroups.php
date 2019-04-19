@@ -131,6 +131,9 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 */
 	const FORM_VALUE_ParentAllowed = 'parent-allow';
 	
+	/** @var boolean Is schema latest version? */
+	protected $bIsOrgColumnExists = true;
+	
 	/**
 	 * Overridden method to handle additional logic after a successful
 	 * database connection is made.
@@ -142,6 +145,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$this->tnGroupMap = $this->tbl_ . self::TABLE_GroupMap;
 		$this->tnGroupRegCodes = $this->tbl_ . self::TABLE_GroupRegCodes;
 		$this->tnPermissions = $this->tbl_ . self::TABLE_Permissions;
+		$this->bIsOrgColumnExists = $this->isFieldExists('org_id', $this->tnGroups);
 	}
 	
 	/**
@@ -1242,6 +1246,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			->mustAddParam('value', static::VALUE_Disallow)
 		;
 		//merge our audit field data with passed in rights data
+		$theParamData = array();
 		foreach( $aRightsData as $theRowData ) {
 			$theParamData[] = array_merge($theSql->myParams, $theRowData);
 		}
@@ -1693,6 +1698,9 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	{
 		if ( empty($aAuthID) )
 		{ throw new \InvalidArgumentException('invalid $aAuthID param'); }
+		if ( $aOrgID == AuthDB::ORG_ID_4_ROOT ) {
+			$aOrgID = null;
+		}
 		$theSql = SqlBuilder::withModel($this);
 		$theSql->startWith('SELECT group_id FROM')->add($this->tnGroupMap)
 			->add('INNER JOIN')->add($this->tnGroups)->add('AS g USING (group_id)')
@@ -2040,10 +2048,11 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 * @param string $aPermission - permission to test against.
 	 * @param AccountInfoCache $aAcctInfo - (optional) check this account
 	 *   instead of current user.
+	 * @param array $aListOfRights - (OPTIONAL) a subset of rights to load.
 	 * @return boolean Returns TRUE if allowed, else FALSE.
 	 */
 	public function isPermissionAllowed($aNamespace, $aPermission,
-			AccountInfoCache $aAcctInfo=null)
+			AccountInfoCache $aAcctInfo=null, $aListOfRights=null)
 	{
 		if ( empty($aAcctInfo) ) return false; //trivial
 		//$this->logStuff(__METHOD__, ' acctinfo=', $aAcctInfo); //DEBUG
@@ -2063,7 +2072,9 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		//NULL means we have not even tried to check permissions.
 		if ( is_null($aAcctInfo->rights) ) try
 		{
-			$aAcctInfo->rights = (object)$this->getGrantedRights($aAcctInfo->groups);
+			$aAcctInfo->rights = (object)$this->getGrantedRights(
+					$aAcctInfo->groups, $aListOfRights
+			);
 			//cast to an object because session restore will restore as object
 			foreach ($aAcctInfo->rights as $theNS => $thePerms) {
 				if ( !is_object($thePerms) ) {
@@ -2233,12 +2244,19 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	/**
 	 * Load up all rights assigned to this group as well as parent groups.
 	 * @param string|string[] $aGroupIDorList - a group ID or an array of IDs.
+	 * @param array $aListOfRights - (OPTIONAL) a subset of rights to load.
+	 * @param string $aOrgID - (OPTIONAL) a specific org to use, current org otherwise.
 	 * @return array Returns 2D boolean leaf array of [namespace[permission]].
 	 */
-	public function getAssignedRights( $aGroupIDorList )
+	public function getAssignedRights( $aGroupIDorList, $aListOfRights=null, $aOrgID=null )
 	{
 		//get list of defined rights
-		$theResults = $this::getDefinedRights($this, false);
+		if ( empty($aListOfRights) ) {
+			$theResults = $this::getDefinedRights($this, false);
+		}
+		else {
+			$theResults = $aListOfRights;
+		}
 		//get list of auth groups and their parents
 		$theGroups = $this->getAuthGroupsAndParents($aGroupIDorList, array(
 				'group_id', 'group_num', 'group_name', 'parent_group_id',
@@ -2254,25 +2272,48 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		
 		//auth model is IF ONE PARENT DENIES IT, THE RIGHT IS NOT ALLOWED
 		if ( !empty($theParentList) ) {
-			$theForbiddenRights = SqlBuilder::withModel($this)
+			$theSql = SqlBuilder::withModel($this)
 				->startWith('SELECT DISTINCT namespace, permission')
 				->add('FROM')->add($this->tnPermissions)
 				->startWhereClause()
 				->mustAddParam('group_id', $theParentList)
 				->setParamPrefix(' AND ')
 				->mustAddParam('value', static::VALUE_Deny)
-				->endWhereClause()
+				;
+			//limit our rights query to just those wanted, if defined
+			if ( !empty($aListOfRights) ) {
+				$theSql->add('AND ( 0');
+				foreach ($aListOfRights as $theNamespace => $theRightsList) {
+					$theNamespaceKey = $theSql->getUniqueDataKey('namespace');
+					$thePermissionKey = $theSql->getUniqueDataKey('permission');
+					$theSql->setParamPrefix(' OR (')
+						->mustAddParamForColumn($theNamespaceKey, 'namespace', $theNamespace)
+						->setParamPrefix(' AND ')
+						->mustAddParamForColumn($thePermissionKey, 'permission', array_keys($theRightsList))
+						->add(')')
+						;
+				}
+				$theSql->add(')');
+			}
+			$theSql->endWhereClause()
 				//->logSqlDebug(__METHOD__) //DEBUG
-				->query()
-				->fetchAll()
-			;
+				;
+			$theForbiddenRights = $theSql->query()->fetchAll();
 		}
 		else $theForbiddenRights = array();
 		
 		//auth model is IF ONE GROUP ALLOWS IT, THE RIGHT IS ALLOWED
 		if ( !empty($theCompleteList) )
 		{
-			$theCurrOrgID = $this->getProp('Auth')->getCurrentOrgID();
+			if ( empty($aOrgID) ) {
+				$theOrgID = $this->getProp(AuthDB::MODEL_NAME)->getCurrentOrgID();
+			}
+			else if ( $aOrgID==AuthDB::ORG_ID_4_ROOT ) {
+				$theOrgID = null;
+			}
+			else {
+				$theOrgID = $aOrgID;
+			}
 			$theSql = SqlBuilder::withModel($this)
 				->startWith('SELECT DISTINCT namespace, permission')
 				->add('FROM')->add($this->tnPermissions)->add('AS p')
@@ -2282,17 +2323,32 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				->setParamPrefix(' AND p.')
 				->mustAddParam('value', static::VALUE_Allow)
 				;
-			if( $this->isFieldExists( 'org_id', $this->tnGroups ) )
+			//limit our rights query to just those wanted, if defined
+			if ( !empty($aListOfRights) ) {
+				$theSql->add('AND ( 0');
+				foreach ($aListOfRights as $theNamespace => $theRightsList) {
+					$theNamespaceKey = $theSql->getUniqueDataKey('namespace');
+					$thePermissionKey = $theSql->getUniqueDataKey('permission');
+					$theSql->setParamPrefix(' OR (p.')
+						->mustAddParamForColumn($theNamespaceKey, 'namespace', $theNamespace)
+						->setParamPrefix(' AND p.')
+						->mustAddParamForColumn($thePermissionKey, 'permission', array_keys($theRightsList))
+						->add(')')
+						;
+				}
+				$theSql->add(')');
+			}
+			if ( $this->bIsOrgColumnExists )
 			{ // Don't look for an org ID if we haven't yet updated the table.
 				$theSql->setParamPrefix(' AND (g.')
-					->mustAddParam('org_id', $theCurrOrgID)
+					->mustAddParam('org_id', $theOrgID)
 					->setParamPrefix(' OR g.')
 					->mustAddParamForColumn('null_org_id', 'org_id', null)
 					->add(')')
 					;
 			}
 			$theSql->endWhereClause()
-//				->logSqlDebug(__METHOD__) //DEBUG
+				//->logSqlDebug(__METHOD__) //DEBUG
 				;
 			$theAssignedRights = $theSql->query()->fetchAll() ;
 		}
@@ -2316,11 +2372,12 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 * for the group, as a Boolean "true"; any right that is in 'disallow' or
 	 * 'deny' state is omitted from the result set.
 	 * @param string|string[] $aGroupIDorList - a group ID or an array of IDs.
+	 * @param array $aListOfRights - (OPTIONAL) a subset of rights to load.
 	 * @return array Returns 2D boolean leaf array of [namespace[permission]].
 	 */
-	public function getGrantedRights( $aGroupIDorList=null )
+	public function getGrantedRights( $aGroupIDorList=null, $aListOfRights=null )
 	{
-		$theResults = $this->getAssignedRights($aGroupIDorList);
+		$theResults = $this->getAssignedRights($aGroupIDorList, $aListOfRights);
 		// Now go back and remove everything that's not allowed.
 		foreach ($theResults as $theNS => $thePerms ) {
 			foreach($thePerms as $thePerm => $theVal ) {
@@ -2533,7 +2590,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		catch (PDOException $pdox)
 		{
 			throw new DbException( $pdox, __METHOD__
-					. ' failed to insert [' . $theCount
+					. ' failed to insert [' . count($theParamList)
 					. '] permissions into target group ['
 					. $aTargetGroupID . '].'
 					);
@@ -2665,7 +2722,9 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			);
 		}
 		//after changing permissions, affect the cache too
-		$this->getDirector()->account_info->rights = null;
+		if ( !empty($this->getDirector()->account_info) ) {
+			$this->getDirector()->account_info->rights = null;
+		}
 	}
 	
 }//end class
