@@ -69,7 +69,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 			$this->value_update = $this->db->prepare($this->sql_value_update);
 			$this->value_insert = $this->db->prepare($this->sql_value_insert);
 		} catch (DbException $dbe) {
-			throw $dbe->setContextMsg('dbError@'.$this->getTableName().".".$aVarName."\n");
+			throw $dbe->setContextMsg('dbError@'.$this->getTableName()."\n");
 		}
 	}
 	
@@ -220,7 +220,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 				}
 			} catch (\PDOException $dbe) {
 				if ($this->exists($this->getTableName())) {
-					throw new DbException($e,'dbError@'.$this->getTableName().' '.__METHOD__."({$this->debugStr($aMapInfo)})\n");
+					throw new DbException($dbe,'dbError@'.$this->getTableName().' '.__METHOD__."({$this->debugStr($aMapInfo)})\n");
 				} else {
 					$this->setMapValue($aMapInfo,$aMapInfo['default']);
 					return null;
@@ -333,7 +333,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 				}
 			} catch (\PDOException $e) {
 				if ($this->exists($this->getTableName())) {
-					throw new DbException($e2,'dbError@'.$this->getTableName().' '.__METHOD__."({$this->debugStr($aNsKey)},{$aNewValue})\n");
+					throw new DbException($e,'dbError@'.$this->getTableName().' '.__METHOD__."({$this->debugStr($aNsKey)},{$aNewValue})\n");
 				}
 			}
 		}

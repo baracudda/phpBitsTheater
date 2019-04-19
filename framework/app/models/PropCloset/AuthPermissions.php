@@ -311,7 +311,6 @@ class AuthPermissions extends BaseModel {
 			{
 				$theNS = $thePermRow['namespace'] ;
 				$thePerm = $thePermRow['permission'] ;
-				$bValue = false ;
 
 				if( isset( $thePerms[$theNS][$thePerm] ) && ! $thePerms[$theNS][$thePerm] )
 					continue ; // Don't grant a previously denied permission.

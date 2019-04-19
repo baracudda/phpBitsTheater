@@ -484,7 +484,7 @@ implements IFeatureVersioning
 			$this->handleDatabaseException( $pdox, __METHOD__,
 					array( 'auth_id' => $aAuthID,
 						'namespace' => $aSpace,
-						'pref_key' => $aPrefKey ),
+						'pref_key' => $aKey ),
 					$theSql
 				);
 			return false ; // in case the overridden handler doesn't throw

@@ -1126,7 +1126,6 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function getAuthAccountsForOrgCursor( $aOrgID, $aFieldList=null,
 			$aFilter=null, $aSortList=null )
 	{
-		$theResultSet = null;
 		$theSql = SqlBuilder::withModel($this)
 			->startWith('SELECT')->addFieldList($aFieldList)
 			->add('FROM')->add($this->tnAuthAccounts)
@@ -1154,7 +1153,6 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function getOrgsForAuthCursor( $aAuthId, $aFieldList=null,
 			$aFilter=null, $aSortList=null )
 	{
-		$theResultSet = null;
 		if( empty ($aFieldList ) )
 			$aFieldList = array( 'org.*' );
 		$theSql = SqlBuilder::withModel( $this )
@@ -1338,7 +1336,6 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function getOrgChildrenForOrgCursor( $aOrgID, $aFieldList=null,
 			$aFilter=null, $aSortList=null )
 	{
-		$theResultSet = null;
 		$theSql = SqlBuilder::withModel($this)
 			->startWith('SELECT')->addFieldList($aFieldList)
 			->add('FROM')->add($this->tnAuthOrgs)
@@ -1349,7 +1346,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			->endWhereClause()
 			;
 		if ( !empty($aSortList) )
-		{ $theSql->applySortList($theSortList); }
+		{ $theSql->applySortList($aSortList); }
 		try
 		{ return $theSql->query(); }
 		catch( PDOException $pdox )
@@ -1843,7 +1840,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		}
 		catch ( \Exception $x ) {
 			//do not care if setting cookies fails, log it so admin knows about it, though
-			$this->logErrors(__METHOD__, ' ', $e->getErrorMsg());
+			$this->logErrors(__METHOD__, ' ', $x->getErrorMsg());
 		}
 		return $this;
 	}
@@ -1920,7 +1917,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		}
 		catch ( \Exception $x ) {
 			//do not care if setting cookies fails, log it so admin knows about it, though
-			$this->logErrors(__METHOD__, ' ', $e->getErrorMsg());
+			$this->logErrors(__METHOD__, ' ', $x->getErrorMsg());
 		}
 		return $this;
 	}

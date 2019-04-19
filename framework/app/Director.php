@@ -474,7 +474,7 @@ implements ArrayAccess, IDirected
 				default:
 					//$this->logStuff(__METHOD__, ' ', $fofx); //DEBUG
 					if ( $this->getDirector()->isRunningUnderCLI() )
-					{ print('Endpoint not found: ' . $theUrlNotFound); }
+					{ print('Endpoint not found: ' . $aUrlPath); }
 					else
 					{ throw new FourOhFourExit($this->getSiteUrl($aUrlPath)); }
 			}//switch

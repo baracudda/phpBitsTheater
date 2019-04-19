@@ -40,11 +40,11 @@ $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwinput'
 				->setPlaceholder($v->getRes('account/placeholder_pwinput'))->render()
 		."</td></tr>\n";
 $chkpwJs = "checkPassword(document.getElementById('{$pwKey}'), this);";
-$js = "onfocus=\"{$chkpwJs}\" oninput=\"{$chkpwJs}\"";
 $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_pwconfirm').':</td>'
 		.'<td class="db-field">'
 		.Widgets::buildPassBox('password_confirm')->setValue($v->password_confirm)
 				->setRequired()->setAttr('maxlength', 120)
+				->setAttr('onfocus', $chkpwJs)->setAttr('oninput', $chkpwJs)
 				->setPlaceholder($v->getRes('account/placeholder_pwconfirm'))->render()
 		."</td></tr>\n";
 $theForm .= '<tr><td class="db-field-label">'.$v->getRes('account/label_regcode').':</td>'

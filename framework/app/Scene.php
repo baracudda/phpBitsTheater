@@ -553,7 +553,7 @@ implements IDirected
 			$theMethod = new ReflectionMethod($theActor,$anAction);
 			//if no exception, call the method
 			$theMethod->setAccessible(true); //protected from direct "raiseCurtain" calls, but ok for cue() or render*().
-			$args['aScene'] = $aScene; //append the scene of our caller as last param in case called method wants it
+			$args['aScene'] = $this; //append the scene of our caller as last param in case called method wants it
 			$theResult = $theMethod->invokeArgs($theActor,$args);
 			if (empty($theResult)) {
 				$s = $theActor->renderFragment($anAction);

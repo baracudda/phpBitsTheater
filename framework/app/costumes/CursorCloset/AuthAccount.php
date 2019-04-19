@@ -90,8 +90,8 @@ class AuthAccount extends BaseCostume
 	{
 		if ( !empty($this->account_id) ) try {
 			$this->groups = $this->getAuthGroupsProp()->getAcctGroups($this->account_id);
-			if ( !empty($aRow->groups) ) {
-				foreach ($aRow->groups as &$theGroupID) {
+			if ( !empty($this->groups) ) {
+				foreach ($this->groups as &$theGroupID) {
 					if ( is_numeric($theGroupID) ) {
 						$theGroupID = strval($theGroupID);
 					}

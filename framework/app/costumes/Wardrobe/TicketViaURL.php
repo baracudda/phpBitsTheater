@@ -37,7 +37,6 @@ class TicketViaURL extends BaseCostume
 	 */
 	protected function onBeforeCheckTicket( Scene $aScene )
 	{
-		$dbAuth = $this->getMyModel();
 		//PHP has some built in auth vars, check them and use if not empty
 		if ( !empty($_SERVER['PHP_AUTH_USER']) && !empty($_SERVER['PHP_AUTH_PW']) )
 		{

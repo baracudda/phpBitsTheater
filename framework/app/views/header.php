@@ -2,6 +2,7 @@
 use BitsTheater\Scene as MyScene;
 /* @var $recite MyScene */
 /* @var $v MyScene */
+/* @var $aExtraHeaderHtml string */ //This is the parameter sent into Scene->includeMyHeader()
 //NOTE: $v and $recite are interchangable (one is more readable, one is nice and short (v for variables! ... and functions)
 use com\blackmoonit\Strings ;
 
@@ -44,9 +45,9 @@ if (!empty($theJsList)) {
 
 print($v->cueActor('Fragments', 'get', 'header-favicon'));
 print($v->cueActor('Fragments', 'get', 'header-extras'));
-
-print( $aExtraHeaderHtml . PHP_EOL ) ;
-
+if ( !empty($aExtraHeaderHtml) ) {
+	print( $aExtraHeaderHtml . PHP_EOL ) ;
+}
 print( '</head>' . PHP_EOL ) ;
 
 $w = '<body>' . Strings::eol(2) ;

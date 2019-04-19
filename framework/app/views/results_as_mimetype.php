@@ -1,4 +1,5 @@
 <?php
+use BitsTheater\Scene; /* @var $v Scene */
 use com\blackmoonit\Strings;
 
 function downloadFile( $aFile, $aMimeType, $aDownloadAsFilename, $aDisposition)

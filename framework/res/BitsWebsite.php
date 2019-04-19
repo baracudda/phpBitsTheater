@@ -220,7 +220,7 @@ class BitsWebsite extends BaseResources
 		try {
 			switch (true) {
 			//cases should always be lo->hi, never use break; so all changes are done in order.
-			case ($theSeq<2):
+			case ($aSeqNum < 2):
 				//do your stuff here
 			}//end switch
 		} catch (\Exception $e) {

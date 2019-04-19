@@ -781,7 +781,7 @@ class AuthOrgAccount extends BaseActor
 			$myOrgList = $dbAuth->getOrgsForAuthCursor(
 					$this->getDirector()->account_info->auth_id
 			)->fetchAll();
-			if ( !empty($myOrgsList) ) {
+			if ( !empty($myOrgList) ) {
 				$theOrgList = array_intersect($theOrgList, $myOrgList);
 			}
 		}
@@ -947,7 +947,7 @@ class AuthOrgAccount extends BaseActor
 				$myOrgList = $dbAuth->getOrgsForAuthCursor(
 						$this->getDirector()->account_info->auth_id
 				)->fetchAll();
-				if ( !empty($myOrgsList) ) {
+				if ( !empty($myOrgList) ) {
 					$theOrgList = array_intersect($theOrgList, $myOrgList);
 				}
 			}
@@ -1046,7 +1046,7 @@ class AuthOrgAccount extends BaseActor
 		{
 			$this->errorLog( __METHOD__
 					. ' failed to fetch an email address for account ID ['
-					. $aAccountID . '] because of an exception: '
+					. $aAccountInfo->account_id . '] because of an exception: '
 					. $x->getMessage()
 				);
 		}
@@ -1179,7 +1179,7 @@ class AuthOrgAccount extends BaseActor
 		{
 			$this->errorLog( __METHOD__
 					. ' failed to fetch Mobile Hardware IDs for account ID ['
-					. $aAccountID . '] because of an exception: '
+					. $aAccountInfo->account_id . '] because of an exception: '
 					. $x->getMessage()
 			);
 		}

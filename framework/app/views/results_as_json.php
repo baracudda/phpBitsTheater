@@ -1,4 +1,6 @@
 <?php
+use BitsTheater\Scene; /* @var $v Scene */
+
 //if no headers are sent, send some
 if (!headers_sent()) {
 	header('Content-Type: application/json; charset=utf-8');

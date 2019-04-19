@@ -1246,6 +1246,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			->mustAddParam('value', static::VALUE_Disallow)
 		;
 		//merge our audit field data with passed in rights data
+		$theParamData = array();
 		foreach( $aRightsData as $theRowData ) {
 			$theParamData[] = array_merge($theSql->myParams, $theRowData);
 		}
@@ -2589,7 +2590,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		catch (PDOException $pdox)
 		{
 			throw new DbException( $pdox, __METHOD__
-					. ' failed to insert [' . $theCount
+					. ' failed to insert [' . count($theParamList)
 					. '] permissions into target group ['
 					. $aTargetGroupID . '].'
 					);

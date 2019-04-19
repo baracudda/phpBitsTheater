@@ -92,7 +92,7 @@ trait WornForCalendarEntry
 			$s .= "&TITLE=".$this->formatUrlData($this->getSummary());
 			$s .= "&DESC=".$this->formatUrlData($this->getDescription());
 			$s .= "&ST=".$this->getStartDateAsDateTime()->format(self::FORMAT_FOR_DATETIME);
-			$s .= "&DUR=".$ical->getEventDuration()->format(self::FORMAT_FOR_DURATION);
+			$s .= "&DUR=".$this->getEventDuration()->format(self::FORMAT_FOR_DURATION);
 			$s .= "&in_loc=".$this->formatUrlData($this->getLocation());
 			$s .= "&URL=".$this->formatUrlData($this->getURL());
 			return $s;
