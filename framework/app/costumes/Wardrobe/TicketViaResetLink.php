@@ -25,7 +25,7 @@ use BitsTheater\Scene;
 
 /**
  * Class used to help manage logging in via a password reset link.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater v4.3.0
  */
 class TicketViaResetLink extends BaseCostume
 {
