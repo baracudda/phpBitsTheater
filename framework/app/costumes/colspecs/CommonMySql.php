@@ -29,6 +29,13 @@ use com\blackmoonit\Strings;
 class CommonMySql
 {
 	/**
+	 * Defines the generic Unicode character set and collation in use.
+	 * @var string
+	 * @since v4.0.0
+	 */
+	const DEFAULT_UNICODE_SPEC = 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci';
+	
+	/**
 	 * Use this to specify primary and foreign key columns
 	 * @var string
 	 */
@@ -52,18 +59,19 @@ class CommonMySql
 	static public function TYPE_ASCII_CHAR( $aCharLength )
 	{ return 'CHAR(' . $aCharLength . ') CHARACTER SET ascii COLLATE ascii_bin'; }
 	
+	/**
+	 * SQL text for generic string values (including emojis).
+	 * @param integer $aCharLength - the string length of the column.
+	 * @return string Returns the SQL used for Char(x) with UTF8 generic sorting.
+	 */
+	static public function TYPE_UNICODE_CHAR( $aCharLength )
+	{ return 'VARCHAR(' . $aCharLength . ') ' . self::DEFAULT_UNICODE_SPEC; }
 	
 	/**
 	 * Dummy time to use for non-null timestamp columns.
 	 * @var string
 	 */
 	const DUMMY_TIME = '1970-01-01 00:00:01' ;
-	/**
-	 * Defines the generic Unicode character set and collation in use.
-	 * @var string
-	 * @since v4.0.0
-	 */
-	const DEFAULT_UNICODE_SPEC = 'CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci';
 	
 	/**
 	 * Fully-defines a column for tracking a row's creation time.
@@ -72,7 +80,7 @@ class CommonMySql
 	 * @var string
 	 */
 	const CREATED_TS_SPEC =
-			'created_ts timestamp NOT NULL DEFAULT \'1970-01-01 00:00:01\'' ;
+			"created_ts timestamp NOT NULL DEFAULT '" . self::DUMMY_TIME . "'" ;
 	/**
 	 * Fully-defines a column for tracking a row's update time.
 	 * In MySQL, only one column may use the CURRENT_TIMESTAMP default.
@@ -114,7 +122,7 @@ class CommonMySql
 	const TABLE_SPEC_FOR_UNICODE = self::DEFAULT_UNICODE_SPEC ;
 	
 	/**
-	 * Default Unicode table specification.
+	 * Default ASCII table specification.
 	 * @var string
 	 */
 	const TABLE_SPEC_FOR_ASCII = 'CHARACTER SET ascii COLLATE ascii_bin';
@@ -221,30 +229,21 @@ class CommonMySql
 	 */
 	static public function deepConvertSQLTimestampsToISOFormat( $aData )
 	{
-		if( is_object($aData) || is_array($aData) )
-		{ // Treat it as an object or array.
-			foreach( $aData as $theKey => $theValue )
-			{
-				if( is_object($theValue) || is_array($theValue) )
-					static::deepConvertSQLTimestampsToISOFormat($theValue) ;
-				else if( preg_match( '/_ts$/', $theKey ) == 1
-				 || preg_match( static::SQL_DATETIME_REGEX, $theValue ) == 1
-				 )
+		if ( is_object($aData) || is_array($aData) ) {
+			foreach( $aData as $theKey => &$theValue ) {
+				if( is_object($theValue) || is_array($theValue) ) {
+					$theValue = static::deepConvertSQLTimestampsToISOFormat($theValue) ;
+				}
+				else if ( preg_match( '/_ts$/', $theKey ) == 1
+						|| preg_match( static::SQL_DATETIME_REGEX, $theValue ) == 1 )
 				{ // Key has timestamp suffix, or value matches SQL datetime
-					$theConverted =
-						static::convertSQLTimestampToISOFormat($theValue) ;
-					if( is_object($aData) )
-						$aData->$theKey = $theConverted ;
-					else if( is_array($aData) )
-						$aData[$theKey] = $theConverted ;
-					// There should be no other possibilities... right...?
+					$theValue = static::convertSQLTimestampToISOFormat($theValue) ;
 				}
 			}
-			return $aData ;
+			return $aData;
 		}
-		else
-		{ // Treat it as a scalar value.
-			return static::convertSQLTimestampToISOFormat($aData) ;
+		else {
+			return static::convertSQLTimestampToISOFormat($aData);
 		}
 	}
 	

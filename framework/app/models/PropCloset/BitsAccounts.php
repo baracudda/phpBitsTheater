@@ -20,6 +20,7 @@ use BitsTheater\Model as BaseModel;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Strings;
+use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\SqlBuilder ;
 use PDOException;
 use PDO;
@@ -35,14 +36,14 @@ class BitsAccounts extends BaseModel {
 	
 	public function setupModel() {
 		switch ($this->dbType()) {
-		case 'mysql': default:
+		case BaseModel::DB_TYPE_MYSQL: default:
 			$theSql = "CREATE TABLE IF NOT EXISTS {$this->tnAccounts} ".
 				"( account_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY".
-				", account_name NCHAR(60) NOT NULL".
+				", account_name CHAR(60) NOT NULL".
 				", external_id INT".
 				", KEY idx_external_id (external_id)".
 				", UNIQUE KEY idx_account_name_ci (account_name) ".
-				") CHARACTER SET utf8 COLLATE utf8_general_ci";
+				') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 		}
 		$this->execDML($theSql);
 		$this->debugLog($this->getRes('install/msg_create_table_x_success/'.$this->tnAccounts));

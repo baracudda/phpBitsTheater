@@ -26,6 +26,7 @@ use BitsTheater\costumes\venue\TicketViaRequest;
 use BitsTheater\costumes\venue\TicketViaSession;
 use BitsTheater\costumes\venue\TicketViaURL;
 use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthOrg;
 use BitsTheater\costumes\AuthPasswordReset;
 use BitsTheater\costumes\DbAdmin;
@@ -199,22 +200,22 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} " .
-						'( auth_id ' . CommonMySQL::TYPE_UUID . " NOT NULL COMMENT 'cross-db ID'" .
+						'( auth_id ' . CommonMySql::TYPE_UUID . " NOT NULL COMMENT 'cross-db ID'" .
 						", account_id INT NOT NULL AUTO_INCREMENT COMMENT 'user-friendly ID'" .
 						', account_name VARCHAR(60) NOT NULL' .
 						', email VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL' .
-						', pwhash ' . CommonMySQL::TYPE_ASCII_CHAR(85) . ' NOT NULL' . //blowfish hash of pw & its salt
+						', pwhash ' . CommonMySql::TYPE_ASCII_CHAR(85) . ' NOT NULL' . //blowfish hash of pw & its salt
 						', external_id ' . CommonMySql::TYPE_UUID . ' NULL' .
 						', verified_ts TIMESTAMP NULL' . //useless until email verification implemented
 						', last_seen_ts TIMESTAMP NULL' .
-						', is_active ' . CommonMySQL::TYPE_BOOLEAN_1 .
-						', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
+						', is_active ' . CommonMySql::TYPE_BOOLEAN_1 .
+						', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 						', PRIMARY KEY (auth_id)' .
 						', UNIQUE KEY (account_id)' .
 						', UNIQUE KEY (account_name)' .
 						', UNIQUE KEY (email)' .
 						', KEY (external_id)' .
-						') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE;
+						') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 			}//switch dbType
 		case static::TABLE_AuthTokens:
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnAuthTokens;
@@ -222,10 +223,10 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
 						'( `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY' . //strictly for phpMyAdmin ease of use
-						', `auth_id` ' . CommonMySQL::TYPE_UUID . ' NOT NULL' .
+						', `auth_id` ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
 						', `account_id` INT NULL' .
-						', `token` ' . CommonMySQL::TYPE_ASCII_CHAR(128) . ' NOT NULL' .
-						', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
+						', `token` ' . CommonMySql::TYPE_ASCII_CHAR(128) . ' NOT NULL' .
+						', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 						', INDEX IdxAuthIdToken (`auth_id`, `token`)' .
 						', INDEX IdxAcctIdToken (`account_id`, `token`)' .
 						', INDEX IdxAuthToken (`token`, `updated_ts`)' .
@@ -236,16 +237,16 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-						'( `mobile_id` ' . CommonMySQL::TYPE_UUID . ' NOT NULL' .
-						', `auth_id` ' . CommonMySQL::TYPE_UUID . ' NOT NULL' .
+						'( `mobile_id` ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
+						', `auth_id` ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
 						', `account_id` INT NULL' .
-						', `auth_type` ' . CommonMySQL::TYPE_ASCII_CHAR(16) . " NOT NULL DEFAULT 'FULL_ACCESS'" .
-						', `account_token` ' . CommonMySQL::TYPE_ASCII_CHAR(64) . " NOT NULL DEFAULT 'STRANGE_TOKEN'" .
+						', `auth_type` ' . CommonMySql::TYPE_ASCII_CHAR(16) . " NOT NULL DEFAULT 'FULL_ACCESS'" .
+						', `account_token` ' . CommonMySql::TYPE_ASCII_CHAR(64) . " NOT NULL DEFAULT 'STRANGE_TOKEN'" .
 						', `device_name` VARCHAR(64) NULL' .
 						', `latitude` DECIMAL(11,8) NULL' .
 						', `longitude` DECIMAL(11,8) NULL' .
-						', `fingerprint_hash` ' . CommonMySQL::TYPE_ASCII_CHAR(85) . ' NULL' .
-						', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
+						', `fingerprint_hash` ' . CommonMySql::TYPE_ASCII_CHAR(85) . ' NULL' .
+						', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 						', PRIMARY KEY (`mobile_id`)' .
 						', KEY (`auth_id`)' .
 						', KEY (`account_id`)' .
@@ -256,19 +257,19 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} " .
-						'( org_id ' . CommonMySQL::TYPE_UUID . ' NOT NULL' .
+						'( org_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
 						', org_name VARCHAR(60) NOT NULL' . " COMMENT 'e.g. acmelabs'" .
 						', org_title VARCHAR(200) NULL' . " COMMENT 'e.g. Acme Labs, LLC'" .
 						', org_desc VARCHAR(2048) NULL' .
 						', parent_org_id ' . CommonMySql::TYPE_UUID . ' NULL' .
 						', parent_authgroup_id ' . CommonMySql::TYPE_UUID . ' NULL' .
 						', dbconn VARCHAR(1020) NULL' .
-						', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
+						', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 						', PRIMARY KEY (org_id)' .
 						', KEY (parent_org_id)' .
 						', KEY (parent_authgroup_id)' .
 						', UNIQUE KEY (org_name)' .
-						') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE;
+						') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 			}//switch dbType
 		case static::TABLE_AuthOrgMap:
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnAuthOrgMap;
@@ -277,7 +278,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} " .
 						'( auth_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
 						', org_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
-						', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
+						', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 						', PRIMARY KEY (auth_id, org_id)' .
 						', UNIQUE KEY (org_id, auth_id)' .
 						')';
@@ -456,12 +457,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 				' from ', $dbMeta->tnSiteVersions);
 		$this->returnProp($dbMeta);
 		//remove old tables
-		$theSql = SqlBuilder::withModel($dbOldAccounts)
+		SqlBuilder::withModel($dbOldAccounts)
 			->startWith('DROP TABLE')->add($dbOldAccounts->tnAccounts)
 			->execDML()
 			;
 		$this->logStuff(' dropped old table ', $dbOldAccounts->tnAccounts);
-		$theSql = SqlBuilder::withModel($dbOldAuthBasic)
+		SqlBuilder::withModel($dbOldAuthBasic)
 			->startWith('DROP TABLE')->add($dbOldAuthBasic->tnAuth)
 			->execDML()
 			;
@@ -1356,7 +1357,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	/**
 	 * For a given organization id, returns all child orgs.
 	 * @param string|string[] $aOrgId - a single ID or an array of several IDs.
-	 * @return array Returns all rows as an array.
+	 * @return string[] Returns all IDs as an array of strings.
 	 */
 	public function getOrgAndAllChildrenIDs( $aOrgID )
 	{
@@ -1529,13 +1530,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			if ( $theIdx !== false ) {
 				//find mapped hardware ids, if any
 				//  NOTE: AuthAccount costume converts this field into the appropriate string
-				$aFieldList[$theIdx] = '('
-					. " SELECT GROUP_CONCAT(token SEPARATOR ', ')"
-					. ' FROM' . $this->tnAuthTokens . ' WHERE '
-					. $this->tnAuthAccounts . '.auth_id=' . $this->tnAuthTokens . '.auth_id'
-					. ' AND token LIKE "' . static::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%"'
-					. ') AS hardware_ids'
-					;
+				$aFieldList[$theIdx] = AuthAccount::sqlForHardwareIDs($this,
+						$this->tnAuthAccounts . '.auth_id'
+				);
 			}
 		}
 		//restrict results to current org and its children
@@ -1653,7 +1650,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @param string $aToken - a specific token value, or a LIKE search filter
 	 *   pattern to limit the format of the tokens that are returned.
 	 *   Use SQL "LIKE" syntax for the latter.
-	 * @param boolean $bIsTokenFilterForLIKE - (OPTIONAL) indicates whether
+	 * @param boolean $bIsTokenFilterForLIKE - (OPTIONAL:false) indicates whether
 	 *   the $aToken param is a literal token value, or a LIKE filter pattern.
 	 * @return array the set of tokens, if any are found
 	 */
@@ -2667,7 +2664,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			return false ;
 		}
 
-		$theOldTokens = $theResetUtils->getTokens() ;
+		$theResetUtils->getTokens() ;
 		if( $theResetUtils->hasRecentToken() )
 		{
 			$this->debugLog( 'Password reset request denied for ['
@@ -2740,7 +2737,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		if ($theMaxAttempts>0) {
 			//$this->debugLog(__METHOD__.' '.strval($theMaxAttempts));
 			//add token
-			$theAuthToken = $this->generateAuthToken(
+			$this->generateAuthToken(
 					$this->getDirector()->app_id,
 					0,
 					static::TOKEN_PREFIX_REGCAP
@@ -2770,10 +2767,10 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Create and store an TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT token mapped
-	 * to an account. The token is guaranteed to be universally unique.
-	 * @param string $aAuthId - token mapped to auth record by this id.
-	 * @param number $aAcctId - the account which will map to this token.
+	 * Retrieve any TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT tokens mapped
+	 * to the account.
+	 * @param string $aAuthId - the auth_id of the account.
+	 * @param number $aAcctId - the account_id of the account.
 	 * @return string Return the tokens mapped to an account.
 	 * @since BitsTheater 3.6.2
 	 */
@@ -2785,7 +2782,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		if (!empty($theAuthTokenRows)) {
 			foreach ($theAuthTokenRows as $theRow) {
 				list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theRow['token']);
-				$theIds[] = $theHardwareId;
+				if ( !empty($thePrefix) && !empty($theHardwareId) && !empty($theUUID) ) {
+					$theIds[] = $theHardwareId;
+				}
 			}
 		}
 		return $theIds;
