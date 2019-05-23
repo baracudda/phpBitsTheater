@@ -23,6 +23,7 @@ use BitsTheater\Scene;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\AccountInfoCache ;
+use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthPasswordReset ;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\HttpAuthHeader;
@@ -477,7 +478,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$theQueryLimit = (!empty($aScene)) ? $aScene->getQueryLimit($this->dbType()) : null;
 		$theSql = SqlBuilder::withModel($this)->setSanitizer($aScene)->obtainParamsFrom(array(
 				'group_id' => $aGroupId,
-				'token' => self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%',
 		));
 		try {
 			//query field list
@@ -486,12 +486,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$theSql->startWith('SELECT')->add(SqlBuilder::FIELD_LIST_HINT_START);
 			$theSql->add('auth.*, acct.account_name');
 			//find mapped hardware ids, if any (AuthAccount costume will convert this field into appropriate string)
-			$theSql->add(', (')
-					->add("SELECT GROUP_CONCAT(`token` SEPARATOR ', ') FROM")->add($this->tnAuthTokens)
-					->add('WHERE auth.account_id=account_id')->setParamPrefix(' AND ')
-					->setParamOperator(' LIKE ')->mustAddParam('token')->setParamOperator('=')
-					->add(') AS hardware_ids')
-					;
+			$theSql->add(',')->add(AuthAccount::sqlForHardwareIDs($this, 'auth.auth_id'));
 			//done with fields
 			$theSql->add(SqlBuilder::FIELD_LIST_HINT_END);
 			//now for rest of query
@@ -531,20 +526,14 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	public function getAccountsByFilter( $aScene, $orderByList = null, $aFilter = null )
 	{
 		$theResultSet = null ;
-		$theSql = SqlBuilder::withModel($this)->setSanitizer($aScene)->obtainParamsFrom(array(
-				'token' => self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%',
-		));
+		$theSql = SqlBuilder::withModel($this)->setSanitizer($aScene);
 		//query field list
 		$dbAccounts = $this->getProp('Accounts');
 		//NOTE: since we have a nested query in field list, must add HINT for getQueryTotals()
 		$theSql->startWith('SELECT')->add(SqlBuilder::FIELD_LIST_HINT_START);
 		$theSql->add('auth.*, acct.account_name');
 		//find mapped hardware ids, if any (AuthAccount costume will convert this field into appropriate string)
-		$theSql->add(', (')
-			->add("SELECT GROUP_CONCAT(`token` SEPARATOR ', ') FROM")->add($this->tnAuthTokens)
-			->add('WHERE auth.account_id=account_id')->setParamPrefix(' AND ')
-			->setParamOperator(' LIKE ')->mustAddParam('token')->setParamOperator('=')
-			->add(') AS hardware_ids');
+		$theSql->add(',')->add(AuthAccount::sqlForHardwareIDs($this, 'auth.auth_id'));
 		//done with fields
 		$theSql->add(SqlBuilder::FIELD_LIST_HINT_END);
 		//now for rest of query
@@ -1439,7 +1428,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$bAuthorizedViaSession = false;
 			$bAuthorizedViaWebForm = false;
 			$bAuthorizedViaCookies = false;
-			$bCsrfTokenWasBaked = false;
 
 			$bAuthorizedViaHeaders = $this->checkHeadersForTicket($dbAccounts, $aScene);
 //			if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth'); //DEBUG
@@ -1466,7 +1454,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			if ($bAuthorized)
 			{
 				if ($bAuthorizedViaSession || $bAuthorizedViaWebForm || $bAuthorizedViaCookies)
-					$bCsrfTokenWasBaked = $this->setCsrfTokenCookie();
+					$this->setCsrfTokenCookie();
 			}
 //			else $this->debugLog(__METHOD__.' not authorized'); //DEBUG
 			$this->returnProp($dbAccounts);
@@ -1927,7 +1915,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			return false ;
 		}
 
-		$theOldTokens = $theResetUtils->getTokens() ;
+		$theResetUtils->getTokens() ;
 		if( $theResetUtils->hasRecentToken() )
 		{
 			$this->debugLog( 'Password reset request denied for ['
@@ -2000,7 +1988,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		if ($theMaxAttempts>0) {
 			//$this->debugLog(__METHOD__.' '.strval($theMaxAttempts));
 			//add token
-			$theAuthToken = $this->generateAuthToken(
+			$this->generateAuthToken(
 					$this->getDirector()->app_id,
 					0,
 					self::TOKEN_PREFIX_REGCAP
@@ -2045,7 +2033,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		if (!empty($theAuthTokenRows)) {
 			foreach ($theAuthTokenRows as $theRow) {
 				list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theRow['token']);
-				$theIds[] = $theHardwareId;
+				if ( !empty($thePrefix) && !empty($theHardwareId) && !empty($theUUID) ) {
+					$theIds[] = $theHardwareId;
+				}
 			}
 		}
 		return $theIds;

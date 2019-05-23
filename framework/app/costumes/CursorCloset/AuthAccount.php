@@ -17,6 +17,8 @@
 
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\ARecord as BaseCostume;
+use BitsTheater\models\Auth as AuthModel;
+use BitsTheater\models\AuthGroups as AuthGroupsModel;
 {//namespace begin
 
 /**
@@ -27,6 +29,8 @@ class AuthAccount extends BaseCostume
 {
 	/** @var string My fully qualified classname. */
 	const ITEM_CLASS = __CLASS__;
+	/** @var string The separator used between hardware IDs list as string. */
+	const HARDWARE_IDS_SEPARATOR = ', ';
 	
 	public $account_id;
 	public $account_name;
@@ -43,7 +47,34 @@ class AuthAccount extends BaseCostume
 	public $updated_ts;
 	
 	//extended info (optional - must be explicitly asked for via mExportTheseFields)
+	
+	/** @var string[] Array of group_id values the account belongs to. */
 	public $groups;
+	/**
+	 * Used to know if onFetch() should load authgroup information or not.
+	 * @var boolean
+	 */
+	protected $bLoadAuthGroupInfo = false;
+	/**
+	 * Model for retrieving authgroup mapping information.
+	 * @var AuthGroupsModel
+	 */
+	protected $dbAuthGroups = null;
+	
+	/** @var int The number of lockout tokens this account has accrued. */
+	public $lockout_count;
+	/** @var boolean if lockout count reaches or exceeds max limit. */
+	public $is_locked;
+	/**
+	 * Used to know if onFetch() should load lockout information or not.
+	 * @var boolean
+	 */
+	protected $bLoadLockoutInfo = false;
+	/**
+	 * Used to know if onFetch() should load hardware_ids or not.
+	 * @var boolean
+	 */
+	protected $bLoadHardwareIDs = false;
 	
 	/**
 	 * Set the list of fields to restrict export to use.
@@ -52,19 +83,23 @@ class AuthAccount extends BaseCostume
 	 */
 	public function setExportFieldList($aFieldList)
 	{
-		$theIndex = array_search('with_map_info', $aFieldList);
-		$bIncMapInfo = ( $theIndex!==false );
-		if ( $theIndex!==false )
-		{ unset($aFieldList[$theIndex]); }
-		if ( empty($aFieldList) ) {
-			$aFieldList = array_diff(static::getDefinedFields(), array(
-					'groups',
-			));
+		$aFieldList = $this->appendFieldListWithMapInfo($aFieldList, array(
+				'groups',
+				'lockout_count',
+		));
+		if ( in_array('load_hardware_ids', $aFieldList) ) {
+			$aFieldList = array_diff($aFieldList, array('load_hardware_ids'));
+			$this->bLoadHardwareIDs = true;
 		}
-		if ( $bIncMapInfo ) {
-			$aFieldList[] = 'groups';
+		parent::setExportFieldList($aFieldList);
+		if ( in_array('groups', $aFieldList) ) {
+			$this->bLoadAuthGroupInfo = true;
+			$this->dbAuthGroups = $this->getAuthGroupsProp();
 		}
-		return parent::setExportFieldList($aFieldList);
+		if ( in_array('lockout_count', $aFieldList) ) {
+			$this->bLoadLockoutInfo = true;
+		}
+		return $this;
 	}
 	
 	/**
@@ -76,12 +111,27 @@ class AuthAccount extends BaseCostume
 		$o = parent::constructExportObject();
 		unset($o->pwhash); //never export this value
 		$o->is_active = filter_var($o->is_active, FILTER_VALIDATE_BOOLEAN);
+		if ( isset($o->lockout_count) ) {
+			$theMaxAttempts = intval(
+					$this->getMyModel()->getConfigSetting('auth/login_fail_attempts'),
+					10
+			);
+			$o->is_locked = ( $o->lockout_count >= $theMaxAttempts );
+		}
+		else {
+			unset($o->lockout_count);
+			unset($o->is_locked);
+		}
 		return $o;
 	}
 
-	/** @return \BitsTheater\models\AuthGroups */
+	/** @return AuthModel */
+	protected function getMyModel()
+	{ return $this->getModel(); }
+	
+	/** @return AuthGroupsModel */
 	protected function getAuthGroupsProp()
-	{ return $this->getModel()->getProp( 'AuthGroups' ); }
+	{ return $this->getModel()->getProp('AuthGroups'); }
 	
 	/**
 	 * groups ID list was requested, this method fills in that property.
@@ -121,10 +171,12 @@ class AuthAccount extends BaseCostume
 		if ( !empty($this->hardware_ids) )
 		{
 			//convert string field to a proper list of items
-			$this->hardware_ids = explode('|', $this->hardware_ids);
+			$this->hardware_ids = explode($this::HARDWARE_IDS_SEPARATOR, $this->hardware_ids);
 			foreach ($this->hardware_ids as &$theToken) {
 				list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theToken);
-				$theToken = $theHardwareId;
+				if ( !empty($thePrefix) && !empty($theHardwareId) && !empty($theUUID) ) {
+					$theToken = $theHardwareId;
+				}
 			}
 			//if there is only 1 item, ensure it is just a string, not an array
 			if (count($this->hardware_ids)==1)
@@ -133,14 +185,57 @@ class AuthAccount extends BaseCostume
 	}
 	
 	/**
+	 * Lockout Count was requested, this method fills in that property.
+	 */
+	protected function getLockoutCount()
+	{
+		if ( !empty($this->auth_id) ) try {
+			$dbAuth = $this->getMyModel();
+			$theTokens = $dbAuth->getAuthTokens($this->auth_id, $this->account_id,
+					$dbAuth::TOKEN_PREFIX_LOCKOUT . "%", true
+			);
+			$this->lockout_count = ( !empty($theTokens) ) ? count($theTokens) : 0;
+		}
+		catch (\Exception $x)
+		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
+	}
+	
+	/**
+	 * Hardware IDs were requested, this method fills in that property.
+	 */
+	protected function getHardwareIDs()
+	{
+		if ( !empty($this->auth_id) && empty($this->hardware_ids) ) try {
+			$dbAuth = $this->getMyModel();
+			$theTokens = $dbAuth->getAuthTokens($this->auth_id, $this->account_id,
+					$dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ":%", true
+			);
+			if ( !empty($theTokens) ) {
+				$this->hardware_ids = implode(static::HARDWARE_IDS_SEPARATOR,
+						array_column($theTokens, 'token')
+				);
+				$this->parseHardwareIDs();
+			}
+		}
+		catch (\Exception $x)
+		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
+	}
+	
+	/**
 	 * Event called after fetching data from db and setting all our properties.
 	 */
 	public function onFetch()
 	{
-		if ( in_array('groups', $this->getExportFieldList()) ) {
+		if ( $this->bLoadAuthGroupInfo ) {
 			$this->getGroupsList();
 		}
 		$this->parseHardwareIDs();
+		if ( $this->bLoadLockoutInfo ) {
+			$this->getLockoutCount();
+		}
+		if ( $this->bLoadHardwareIDs ) {
+			$this->getHardwareIDs();
+		}
 	}
 	
 	/**
@@ -185,6 +280,35 @@ class AuthAccount extends BaseCostume
 				//'updated_ts',
 				//'verified_ts',
 		);
+	}
+	
+	/**
+	 * Ensure we get the "hardware_ids" field in such a way as we can decode it later.
+	 * @param AuthModel $dbAuth - the auth model.
+	 * @param string $aAuthIDAlias - the auth_id value to match against.
+	 * @return string Returns the SQL used for defining the "hardware_ids" field.
+	 */
+	static public function sqlForHardwareIDs( $dbAuth, $aAuthIDAlias )
+	{
+		if ( empty($dbAuth) ) {
+			throw new \InvalidArgumentException('$dbAuth cannot be empty');
+		}
+		if ( empty($aAuthIDAlias) ) {
+			throw new \InvalidArgumentException('$aAuthIDAlias cannot be empty');
+		}
+		$theSeparator = "'" . static::HARDWARE_IDS_SEPARATOR . "'";
+		switch ( $dbAuth->dbType() ) {
+			case $dbAuth::DB_TYPE_MYSQL:
+			default:
+				$theSqlStr = '(SELECT'
+					. " GROUP_CONCAT(__AuthTknsAlias.token SEPARATOR {$theSeparator})"
+					. " FROM {$dbAuth->tnAuthTokens} AS __AuthTknsAlias"
+					. " WHERE {$aAuthIDAlias}=__AuthTknsAlias.auth_id"
+					. "   AND __AuthTknsAlias.token LIKE '" . $dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ":%'"
+					. ") AS hardware_ids"
+					;
+		}//switch
+		return $theSqlStr;
 	}
 	
 }//end class

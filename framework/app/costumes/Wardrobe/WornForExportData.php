@@ -81,6 +81,35 @@ trait WornForExportData
 	 */
 	public function exportData()
 	{ return $this->exportFilter( $this->constructExportObject() ); }
+	
+	/**
+	 * Sometimes you just want to pass in a flag for all extra record
+	 * information as a single field rather than list each one individually.
+	 * Similar to passing in NULL, but adds in all other mapping data as well.
+	 * This specifically checks for "with_map_info" as an entry in $aFieldList
+	 * and removes the entry and replaces it with all the entries in
+	 * $aMapFieldList.
+	 * @return string[] Returns the munged $aFieldList with "with_map_info"
+	 *   entry replaced by appending the $aMapFieldList entries.
+	 */
+	protected function appendFieldListWithMapInfo( $aFieldList, $aMapFieldList,
+			$bForceAppend=false )
+	{
+		if ( $aFieldList==null ) $aFieldList = array();
+		if ( $aMapFieldList==null ) $aMapFieldList = array();
+		$theIndex = array_search('with_map_info', $aFieldList);
+		$bIncMapInfo = ( $theIndex !== false || $bForceAppend );
+		if ( $theIndex !== false ) {
+			array_splice($aFieldList, $theIndex, 1);
+		}
+		if ( empty($aFieldList) ) {
+			$aFieldList = array_diff($this::getDefinedFields(), $aMapFieldList);
+		}
+		if ( $bIncMapInfo ) {
+			$aFieldList = array_merge($aFieldList, $aMapFieldList);
+		}
+		return $aFieldList;
+	}
 		
 }//end trait
 
