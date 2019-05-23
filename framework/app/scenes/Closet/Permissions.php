@@ -104,7 +104,7 @@ class Permissions extends MyScene implements ISqlSanitizer
 	/**
 	 * Returns the human label used for a field.
 	 * @param string $aFieldName - one of the property names defined
-	 *     for AuthAccount costume.
+	 *     for AuthGroup costume.
 	 */
 	public function getColHeaderLabel($aFieldName)
 	{

@@ -268,7 +268,8 @@ class BitsAmazonS3 extends BaseModel
 		if ( !empty($theBucketName) )
 		{
 			try {
-				$result = $this->getS3Client()->createBucket(array(
+				//$result =
+				$this->getS3Client()->createBucket(array(
 						'Bucket' => $theBucketName,
 				));
 			}
@@ -444,7 +445,7 @@ class BitsAmazonS3 extends BaseModel
 		// Aws\CommandInterface objects. This generator accepts the iterator that
 		// yields files and the name of the bucket to upload the files to.
 		$theS3Client = $this->getS3Client();
-		$theCommandGenerator = function (\Iterator $aFiles, $aBucket) use ($theS3Client) {
+		$theCommandGenerator = function (\Iterator $aFiles, $aBucket) use ($theBaseKeyToUse, $theS3Client) {
 			foreach ($aFiles as $theFileInfo) {
 				// @var $theFileInfo \SplFileInfo
 				// Skip "." and ".." files and folders.
@@ -516,7 +517,7 @@ class BitsAmazonS3 extends BaseModel
 	public function uploadFolderToKey( $aFolderToUpload, $aKeyPathToUse, $aBucketName=null )
 	{
 		$theKeyToUse = $this->localNameAsKeyPath( $aFolderToUpload, $aKeyPathToUse );
-		return $this->uploadFolderAsKey( $aFileToUpload, $theKeyToUse, $aBucketName );
+		return $this->uploadFolderAsKey( $aFolderToUpload, $theKeyToUse, $aBucketName );
 	}
 	
 }//end class

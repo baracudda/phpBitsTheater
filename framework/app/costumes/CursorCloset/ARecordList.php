@@ -136,9 +136,12 @@ abstract class ARecordList extends BaseCostume
 	 */
 	public function addListOfIds($aList)
 	{
-		foreach ($aList as $theId) {
-			if (empty($this->mIdList[$theId]))
-				$this->mIdList[$theId] = true;
+		if ( !empty($aList) ) {
+			foreach ($aList as $theID) {
+				if ( empty($this->mIdList[$theID]) ) {
+					$this->mIdList[$theID] = true;
+				}
+			}
 		}
 		return $this;
 	}

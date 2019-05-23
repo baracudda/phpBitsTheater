@@ -61,7 +61,7 @@ class BitsConfig extends BaseActor {
 		//shortcut variable $v also in scope in our view php file.
 		$v =& $this->scene;
 		try {
-			$theResponse = $this->ajajModify();
+			$this->ajajModify();
 			$v->addUserMsg($this->getRes('config/msg_save_applied'), $v::USER_MSG_NOTICE);
 		} catch (Exception $e) {
 			if ( !($e instanceof BrokenLeg && $e->getCode()==400 && $e->getCondition()=='NO_UPDATES') )
@@ -118,7 +118,7 @@ class BitsConfig extends BaseActor {
 					$theNamespaceInfo->settings_list = $dbConfig->getConfigSettings($theNamespaceInfo);
 					foreach ($theNamespaceInfo->settings_list as $theSettingName => $theSettingInfo) {
 						$theWidgetName = $theSettingInfo->getWidgetName();
-						if (isset($v->$theWidgetName)) {
+						if ( !empty($theSettingName) && isset($v->$theWidgetName)) {
 							$theNewValue = $theSettingInfo->getInputValue($v);
 							$theOldValue = $theSettingInfo->getCurrentValue();
 							//if ($theSettingInfo->key==='security')

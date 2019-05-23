@@ -1,5 +1,7 @@
 <?php
-use BitsTheater\Scene; /* @var $v Scene */
+use BitsTheater\Scene as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
 
 //if no headers are sent, send some
 if (!headers_sent()) {

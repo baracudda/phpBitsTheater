@@ -18,9 +18,7 @@
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ASimpleCostume as BaseCostume;
 use BitsTheater\BrokenLeg;
-use com\blackmoonit\Strings ;
-use com\blackmoonit\FinallyBlock ;
-use Exception ;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
@@ -94,9 +92,6 @@ class APIResponse extends BaseCostume {
 		if( is_object($this->data) && method_exists( $this->data, 'printAsJson' ) )
 		{
 			print( '{"data":' ) ;
-			$theFinalEnclosure = new FinallyBlock(function() {
-				print( '}' ) ;
-			});
 			try
 			{
 				$this->data->printAsJson($aEncodeOptions) ;
@@ -108,7 +103,7 @@ class APIResponse extends BaseCostume {
 				else
 					print( 'null' ) ;
 			}
-			catch( Exception $x )
+			catch( \Exception $x )
 			{
 				Strings::errorLog( __METHOD__
 						. ' caught an exception while serializing: '
@@ -125,6 +120,9 @@ class APIResponse extends BaseCostume {
 							$x->getMessage() ) ;
 				}
 				print( $theError->toJson($aEncodeOptions) ) ;
+			}
+			finally {
+				print('}');
 			}
 		}
 		else

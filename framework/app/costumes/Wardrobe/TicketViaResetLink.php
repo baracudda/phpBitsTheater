@@ -112,7 +112,8 @@ class TicketViaResetLink extends BaseCostume
 		//save ticket short term cache
 		$dbAuth->saveAccountToSessionCache($aAcctInfo);
 		//login success, bake our CSRF token cookie!
-		$bCsrfTokenWasBaked = $dbAuth->setCsrfTokenCookie();
+		//$bCsrfTokenWasBaked =
+				$dbAuth->setCsrfTokenCookie();
 		return $this;
 	}
 	

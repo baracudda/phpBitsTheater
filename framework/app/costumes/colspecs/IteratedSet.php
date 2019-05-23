@@ -17,7 +17,6 @@
 namespace BitsTheater\costumes\colspecs ;
 use BitsTheater\costumes\ABitsCostume as BaseCostume ;
 use BitsTheater\costumes\IDirected ;
-use com\blackmoonit\FinallyBlock ;
 use com\blackmoonit\Strings;
 use Exception ;
 use PDO ;
@@ -289,9 +288,6 @@ implements \Countable, \IteratorAggregate
 		$this->mCurrent = null ;
 		$this->mFetchedCount = 0 ;
 		print( '[' ) ;
-		$theFinalEnclosure = new FinallyBlock(function() {
-			print( ']' ) ;
-		});
 		try
 		{
 			$theSeparator = '' ;
@@ -312,7 +308,9 @@ implements \Countable, \IteratorAggregate
 			Strings::errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
 			throw $x ;
 		}
-
+		finally {
+			print( ']' );
+		}
 		return $this ;
 	}
 
@@ -327,9 +325,6 @@ implements \Countable, \IteratorAggregate
 		$this->mCurrent = null ;
 		$this->mFetchedCount = 0 ;
 		print( '{' ) ;
-		$theFinalEnclosure = new FinallyBlock(function() {
-			print( '}' ) ;
-		});
 		try
 		{
 			$theSeparator = '' ;
@@ -350,6 +345,9 @@ implements \Countable, \IteratorAggregate
 		{
 			Strings::errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
 			throw $x ;
+		}
+		finally {
+			print( '}' );
 		}
 		return $this ;
 	}

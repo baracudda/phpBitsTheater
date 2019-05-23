@@ -66,7 +66,7 @@ class Arrays {
 	 * Given a two dimensional array, return the singular array of a
 	 * single specified column.
 	 * @param array $anArray - array of arrays.
-	 * @param  $aKey - index of column to retrieve.
+	 * @param int|string $aKey - index of column to retrieve.
 	 * @return array Returns a one dimensional array of just $anArray[$subArray[$aKey]] values.
 	 * @link http://www.php.net//manual/en/function.array-column.php array_column()
 	 */
