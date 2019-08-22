@@ -463,12 +463,13 @@ class SqlBuilder extends BaseCostume {
 			$this->mySql .= $this->myParamPrefix;
 			$this->mySql .= $this->field_quotes . $aColumnName . $this->field_quotes;
 			$this->mySql .= $this->myParamOperator.'(';
-			for ($i=0; $i < count($aDataValuesList); $i++) {
-				$theDataKey = $aParamKey . '_' . $i;
-				$this->mySql .= ':' . $theDataKey;
-				$this->mySql .= ($i < count($aDataValuesList)-1) ? ',' : ')';
-				$this->setParam($theDataKey, $aDataValuesList[$i], $aParamType);
+			$i = 1;
+			foreach ( $aDataValuesList as $theDataValue ) {
+				$theDataKey = $aParamKey . '_' . $i++;
+				$this->mySql .= ':' . $theDataKey . ',';
+				$this->setParam($theDataKey, $theDataValue, $aParamType);
 			}
+			$this->mySql = rtrim($this->mySql, ',') . ')';
 		}
 		return $this;
 	}
