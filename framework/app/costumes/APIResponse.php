@@ -89,7 +89,7 @@ class APIResponse extends BaseCostume {
 	 */
 	public function printAsJson( $aEncodeOptions=null )
 	{
-		if( is_object($this->data) && method_exists( $this->data, 'printAsJson' ) )
+		if ( !empty($this->data) && is_object($this->data) && method_exists($this->data, 'printAsJson') )
 		{
 			print( '{"data":' ) ;
 			try
