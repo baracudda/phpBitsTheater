@@ -149,6 +149,9 @@ class GenericDb extends BaseDbClass {
 			} else { //default type is STR
 				$theParamType = PDO::PARAM_STR;
 			}
+			if ($theParamType==PDO::PARAM_STR && is_object($theValue)) {
+				throw new \PDOException('Trying to bind an Object in a SQL query');
+			}
 			$theStatement->bindValue($theKey,$theValue,$theParamType);
 		}
 		return $theStatement;
