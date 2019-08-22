@@ -5,7 +5,7 @@ use BitsTheater\costumes\Wardrobe\TicketViaResetLink as BaseCostume;
 
 /**
  * Class used to help manage logging in via the password reset link.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater 4.3.1
  */
 class TicketViaResetLink extends BaseCostume
 {

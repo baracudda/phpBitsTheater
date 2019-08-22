@@ -71,7 +71,7 @@ class ARecord extends BaseCostume
 	 * @param string[]|NULL $aFieldList - (OPTIONAL) the list of fields to be
 	 *   exported.
 	 * @return $this Returns the newly created instance.
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater 4.3.1
 	 */
 	public static function fetchInstanceFromRow( $aRow,
 			$aModel=null, $aFieldList=null )

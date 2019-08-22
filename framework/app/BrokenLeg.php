@@ -16,9 +16,9 @@
  */
 
 namespace BitsTheater ;
+use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\IDirected;
 use com\blackmoonit\exceptions\IDebuggableException;
-use BitsTheater\costumes\APIResponse;
 use com\blackmoonit\exceptions\DbException;
 use PDOException;
 {
@@ -435,10 +435,10 @@ class BrokenLeg extends \Exception
 	 * checks for any defined constants; it just uses its parameters as is.
 	 * @param string $aCondition a string uniquely identifying the exceptional
 	 *  scenario.
-	 * @param $aCode - the error code associated with the $aCondition; this will
+	 * @param integer $aCode - the error code associated with the $aCondition; this will
 	 * typically be the HTTP Response code to return.
-	 * @param $aMessage - the text of the error message.
-	 * @return \BitsTheater\BrokenLeg an instance of the exception class
+	 * @param string $aMessage - the text of the error message.
+	 * @return $this Returns $this for chaining
 	 */
 	public static function pratfall( $aCondition, $aCode, $aMessage )
 	{
@@ -455,14 +455,14 @@ class BrokenLeg extends \Exception
 	 *  actor, model, or scene, or anything implementing IDirected
 	 * @param string $aCondition a string uniquely identifying the exceptional
 	 *  scenario.
-	 * @param $aCode - the error code associated with the $aCondition; this will
+	 * @param integer $aCode - the error code associated with the $aCondition; this will
 	 * typically be the HTTP Response code to return.
 	 * @param string $aMessageResource - the resource name.
 	 * @param string|array $aResourceData (optional) any additional data that would be
-	 * passed into a variable substitution in the definition of a text
-	 * resource; if non-empty, then the initial '/' separator is inserted
-	 * automatically before being used in getRes()
-	 * @return \BitsTheater\BrokenLeg an instance of the exception class
+	 *   passed into a variable substitution in the definition of a text
+	 *   resource; if non-empty, then the initial '/' separator is inserted
+	 *   automatically before being used in getRes()
+	 * @return $this Returns $this for chaining.
 	 */
 	public static function pratfallRes( IDirected $aContext, $aCondition, $aCode,
 			$aMessageResource, $aResourceData=null )
