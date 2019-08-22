@@ -854,114 +854,102 @@ class AuthOrgAccount extends BaseActor
 		$aIsActive  = (isset($v->account_is_active)) ? $v->account_is_active : null;
 		$aGroupIds  = $v->account_group_ids;
 
-		try
-		{
-			// Retrieve existing account for user.
-			$theAccount = ( is_numeric($theID) )
-					? $dbAuth->getAuthByAccountId($theID)
-					: $dbAuth->getAuthByAuthId($theID);
-			if( empty($theAccount) )
-				throw BrokenLeg::toss( $this, 'ENTITY_NOT_FOUND', $theID );
-			$theAcctInfo = $dbAuth->createAccountInfoObj($theAccount);
-			$theAcctInfo->groups = $dbAuthGroups->getGroupIDListForAuthAndOrg(
-					$theAcctInfo->auth_id, $dbAuth->getCurrentOrgID()
-			);
-			$theAcctInfo->org_ids = $dbAuth->getOrgsForAuthCursor(
-					$theAcctInfo->auth_id
-			)->fetchAll();
-
+		$theAuthAccount = $this->getAuthAccount($theID);
+		if ( !empty($theAuthAccount) ) try {
 			// Determine what values are different than existing values.
-			if ( !empty($aName) && $aName !== $theAcctInfo->account_name )
+			if ( !empty($aName) && ($aName !== $theAuthAccount->account_name) )
 				$updatedName = $aName;
-			if ( !empty($aPassword) &&
-					$dbAuth->cudo($theAcctInfo->account_id, $aPassword) )
+			if ( !empty($aPassword) && $dbAuth->cudo($theAuthAccount->account_id, $aPassword) )
 				$updatedPassword = $aPassword;
-			if ( !empty($aEmail) && $aEmail !== $theAcctInfo->email )
+			if ( !empty($aEmail) && $aEmail !== $theAuthAccount->email )
 				$updatedEmail = $aEmail;
-			if ( isset( $aIsActive ) && $aIsActive != $theAcctInfo->is_active )
+			if ( isset( $aIsActive ) && $aIsActive != $theAuthAccount->is_active )
 				$updatedIsActive = $aIsActive;
 
 			// Update email, if applicable.
-			if ( !empty ( $updatedEmail ))
-			{
+			if ( !empty ( $updatedEmail )) {
 				// Verify new unique email update doesn't already exist in system.
-				if ( $dbAuth->getAuthByEmail( $updatedEmail ) )
-				{
+				if ( $dbAuth->getAuthByEmail( $updatedEmail ) ) {
 					throw AccountAdminException::toss( $this,
-						'UNIQUE_FIELD_ALREADY_EXISTS', $updatedEmail );
-				} else {
-					$dbAuth->updateEmail($theAcctInfo->account_id, $updatedEmail);
+						'UNIQUE_FIELD_ALREADY_EXISTS', $updatedEmail
+					);
+				}
+				else {
+					$dbAuth->updateEmail($theAuthAccount->account_id, $updatedEmail);
 				}
 			}
 
 			// Update name, if applicable.
-			if ( !empty ( $updatedName ))
-			{
+			if ( !empty ( $updatedName )) {
 				// Verify new unique name update doesn't already exist in system.
-				if ( $dbAuth->getByName( $updatedName ) )
-				{
+				if ( $dbAuth->getByName( $updatedName ) ) {
 					throw AccountAdminException::toss( $this,
-							'UNIQUE_FIELD_ALREADY_EXISTS', $updatedName );
-				} else {
-					$dbAuth->updateName($theAcctInfo->account_id, $updatedName);
+							'UNIQUE_FIELD_ALREADY_EXISTS', $updatedName
+					);
+				}
+				else {
+					$dbAuth->updateName($theAuthAccount->account_id, $updatedName);
 				}
 			}
 
 			// Update password, if applicable.
-			if ( !empty ( $updatedPassword ))
-			{
-				$dbAuth->updatePassword($theAcctInfo->account_id, $updatedPassword);
+			if ( !empty ( $updatedPassword )) {
+				$dbAuth->updatePassword($theAuthAccount->account_id, $updatedPassword);
 			}
 
 			//update is_active, if applicable
-			if ( isset($updatedIsActive) )
-				$dbAuth->setInvitation($theAcctInfo, $updatedIsActive);
+			if ( isset($updatedIsActive) ) {
+				$dbAuth->setAuthIsActive($updatedIsActive, $theAuthAccount->auth_id);
+			}
 
 			// Update account group, if applicable.
-			if ( isset ( $aGroupIds ))
-			{
+			if ( isset ( $aGroupIds )) {
 				// First we want to remove existing mappings of group ids for this account.
-				foreach ($theAcctInfo->groups as $thisGroupId)
-				{
+				foreach ($theAuthAccount->groups as $thisGroupId) {
 					$dbAuthGroups->delMap(
-							$thisGroupId, $theAcctInfo->auth_id
+							$thisGroupId, $theAuthAccount->auth_id
 					);
 				}
 				// Now insert mapping of account with updated group id values.
-				foreach ($aGroupIds as $thisNewGroupId)
-				{
+				foreach ($aGroupIds as $thisNewGroupId) {
 					// Add mapping.
 					$dbAuthGroups->addMap(
-							$thisNewGroupId, $theAcctInfo->auth_id
+							$thisNewGroupId, $theAuthAccount->auth_id
 					);
 				}
 			}
 			
-			// update AuthOrg info
+			// update AuthOrg info, if different
 			$theOrgList = (isset($v->account_org_ids)) ? $v->account_org_ids : array();
-			//limit org list to only ones I belong to, unless I have permission
-			if ( !$this->isAllowed('auth','assign-to-any-org') ) {
-				$myOrgList = $dbAuth->getOrgsForAuthCursor(
-						$this->getDirector()->account_info->auth_id
-				)->fetchAll();
-				if ( !empty($myOrgList) ) {
-					$theOrgList = array_intersect($theOrgList,
-							Arrays::array_column($myOrgList, 'org_id')
-					);
+			$theRemovedOrgs = array_diff($theAuthAccount->org_ids, $theOrgList);
+			$theAddedOrgs = array_diff($theOrgList, $theAuthAccount->org_ids);
+			//removed orgs can just be safely removed
+			if ( !empty($theRemovedOrgs) ) {
+				$dbAuth->delOrgsForAuth($theAuthAccount->auth_id, $theRemovedOrgs);
+			}
+			if ( !empty($theAddedOrgs) ) {
+				//limit org list to only ones I can access, unless I have permission
+				if ( !$this->isAllowed('auth','assign-to-any-org') ) {
+					$theLimitedOrgSet = $this->getOrgs();
+					if ( !empty($theLimitedOrgSet) ) {
+						$theLimitedOrgs = array();
+						while ( ($theOrg = $theLimitedOrgSet->fetch()) !== false ) {
+							$theLimitedOrgs[] = $theOrg->org_id;
+						}
+						$theOrgsToAdd = array_intersect($theAddedOrgs, $theLimitedOrgs);
+						if ( !empty($theOrgsToAdd) ) {
+							$dbAuth->addOrgsToAuth($theAuthAccount->auth_id, $theOrgsToAdd);
+						}
+					}
+				}
+				else {
+					$dbAuth->addOrgsToAuth($theAuthAccount->auth_id, $theAddedOrgs);
 				}
 			}
-			if ( isset($theOrgList) ) {
-				if ( count($theAcctInfo->org_ids)>0 ) {
-					// First we want to remove existing mappings for this account.
-					$dbAuth->delOrgsForAuth($theAcctInfo->auth_id);
-				}
-				$dbAuth->addOrgsToAuth($theAcctInfo->auth_id, $theOrgList);
-			}
-			
 		}
 		catch( Exception $x )
 		{ throw BrokenLeg::tossException( $this, $x ); }
-		$theResult = $this->getAuthAccount($theAcctInfo->auth_id);
+		$theResult = $this->getAuthAccount($theAuthAccount->auth_id);
 		$this->setApiResults($theResult->exportData());
 	}
 	
@@ -975,7 +963,7 @@ class AuthOrgAccount extends BaseActor
 	 *  * 'MISSING_ARGUMENT' - if the account ID is not specified
 	 *  * 'ENTITY_NOT_FOUND' - if no account with that ID exists
 	 * @return AuthAccount Returns the account details.
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater 4.3.1
 	 */
 	protected function getAuthAccount( $aAccountLookup=null )
 	{
@@ -1025,7 +1013,7 @@ class AuthOrgAccount extends BaseActor
 	 *  * 'MISSING_ARGUMENT' - if the account ID is not specified
 	 *  * 'ENTITY_NOT_FOUND' - if no account with that ID exists
 	 * @return string Returns the redirect URL, if defined.
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater 4.3.1
 	 */
 	public function ajajGetAccount( $aAccountLookup=null )
 	{
@@ -1060,7 +1048,7 @@ class AuthOrgAccount extends BaseActor
 	 *  column is given, then the return value is a simple array of the values
 	 *  from that column
 	 * @param SqlBuilder $aFilter - (OPTIONAL) a filter for orgs to get.
-	 * @return array|NULL an associative array of organization data, or a simple
+	 * @return object[]|NULL an associative array of organization data, or a simple
 	 *  array of values if exactly one column is requested in
 	 *  <code>$aFieldList</code>, or null if an error occurs.
 	 * @since BitsTheater v4.0.0
@@ -1414,7 +1402,7 @@ class AuthOrgAccount extends BaseActor
 		$v = $this->getMyScene();
 		$this->viewToRender('results_as_json');
 		
-		$dbAuth = $this->getProp('Auth');
+		$dbAuth = $this->getMyModel();
 		$myAuth = $this->getDirector()->getMyAccountInfo();
 		$theMobileRow = $this->getMyMobileRow();
 		if ( !empty($myAuth) && !empty($theMobileRow) ) {
