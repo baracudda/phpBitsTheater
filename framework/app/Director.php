@@ -621,6 +621,17 @@ implements ArrayAccess, IDirected
 				{ $theModel->connect($aDbConnInfo->dbConnName); }
 			}
 		}
+		//change the log prefix to help diagnose org-related errors
+		if ( !empty($aDbConnInfo->dbName) ) {
+			$theLogPrefix = '[';
+			if (defined('VIRTUAL_HOST_NAME') && VIRTUAL_HOST_NAME) {
+				$theLogPrefix .= VIRTUAL_HOST_NAME . '/';
+			}
+			$theLogPrefix .= $aDbConnInfo->dbName;
+			Strings::debugPrefix($theLogPrefix.'-dbg] ');
+			Strings::errorPrefix($theLogPrefix.'-err] ');
+		}
+		//disconnect (does nothing at this point, but may in future)
 		if ( !empty($theOldDbConn) )
 		{ $theOldDbConn->disconnect(); }
 	}
