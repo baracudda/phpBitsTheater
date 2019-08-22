@@ -2090,6 +2090,33 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		);
 	}
 
+	/**
+	 * Check to see if s set of permissions are all allowed for an org.
+	 * A speed optimization, when necessary, rather than loading all rights.
+	 * @param array[] $aRightsList - the rights to check (must ALL pass); the array
+	 *   format must be a 2D array, [ namespace_name => [ permission_name=>boolean ] ]
+	 * @param string $aAuthID - the auth account ID to check.
+	 * @param string $aOrgID - the org ID to check.
+	 * @return boolean Returns TRUE if all rights pass permission check.
+	 */
+	public function isAllowedForOrg( $aRightsList, $aAuthID, $aOrgID )
+	{
+		if ( !empty($aRightsList) ) {
+			$theAuthGroupList = $this->getGroupIDListForAuthAndOrg($aAuthID, $aOrgID);
+			$theAssignedRightsList = $this->getAssignedRights(
+					$theAuthGroupList, $aRightsList, $aOrgID
+			);
+			foreach ( $aRightsList as $theNamespace => $thePermList ) {
+				foreach ( $thePermList as $thePermmission => $thePermValue ) {
+					if ( empty($theAssignedRightsList[$theNamespace]) ||
+							empty($theAssignedRightsList[$theNamespace][$thePermmission]) )
+					{ return false; }
+				}//foreach permission
+			}//foreach right namespace
+		}//if any rights to check per org
+		return true;
+	}
+	
 	//=========================================================================
 	//===============  AuthPermissions           ==============================
 	//=========================================================================
