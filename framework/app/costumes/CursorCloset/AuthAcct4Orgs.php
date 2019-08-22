@@ -16,8 +16,9 @@
  */
 
 namespace BitsTheater\costumes\CursorCloset;
-use com\blackmoonit\exceptions\DbException;
 use BitsTheater\costumes\CursorCloset\AuthAccount as BaseCostume;
+use BitsTheater\costumes\SqlBuilder;
+use com\blackmoonit\exceptions\DbException;
 {//namespace begin
 
 /**
@@ -39,28 +40,30 @@ class AuthAcct4Orgs extends BaseCostume
 	
 	/** @var string Used to limit what groups are returned. */
 	protected $mCurrOrgID = null;
+	/** @var boolean Used to limit what org_ids are returned. */
+	protected $bLimitOrgsToCurrentPlusChildren = false;
+	protected $mLimitedOrgs = null;
 	
 	/**
 	 * Set the list of fields to restrict export to use.
 	 * @param array $aFieldList - the field list.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function setExportFieldList($aFieldList)
+	public function setExportFieldList( $aFieldList )
 	{
-		$theIndex = array_search('with_map_info', $aFieldList);
-		$bIncMapInfo = ( $theIndex!==false );
-		if ( $theIndex!==false )
-		{ unset($aFieldList[$theIndex]); }
-		if ( empty($aFieldList) ) {
-			$aFieldList = array_diff(static::getDefinedFields(), array(
-					'groups',
-					'org_ids',
-			));
+		//check for "limited_orgs" and treat as flag for setOrgsLimited() as
+		//  some static factory methods do not allow a direct call to it.
+		if ( !empty($aFieldList) ) {
+			$theIndex = array_search('limited_orgs', $aFieldList);
+			if ( $theIndex !== false ) {
+				array_splice($aFieldList, $theIndex, 1); //its a flag, just remove it
+				$this->setOrgsLimited(true);
+			}
 		}
-		if ( $bIncMapInfo ) {
-			$aFieldList[] = 'groups';
-			$aFieldList[] = 'org_ids';
-		}
+		$aFieldList = $this->appendFieldListWithMapInfo($aFieldList, array(
+				'groups',
+				'org_ids',
+		));
 		parent::setExportFieldList($aFieldList);
 		if ( in_array('groups', $this->getExportFieldList()) ) {
 			$this->mCurrOrgID = $this->getAuthProp()->getCurrentOrgID();
@@ -73,12 +76,38 @@ class AuthAcct4Orgs extends BaseCostume
 	{ return $this->getModel()->getProp( 'Auth' ); }
 	
 	/**
+	 * Set if we limit orgs or not, default is no limits.
+	 * @param boolean $aBool - the value to set.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setOrgsLimited( $aBool )
+	{
+		$this->bLimitOrgsToCurrentPlusChildren = $aBool;
+		$this->mLimitedOrgs = null;
+		if ( $aBool ) {
+			$dbAuth = $this->getAuthProp();
+			$theCurrOrgID = $dbAuth->getCurrentOrgID();
+			if ( !empty($theCurrOrgID) && $theCurrOrgID != $dbAuth::ORG_ID_4_ROOT ) {
+				$this->mLimitedOrgs = $dbAuth->getOrgAndAllChildrenIDs($theCurrOrgID);
+			}
+		}
+		return $this;
+	}
+	
+	/**
+	 * Get the flag value for if orgs are limited or not.
+	 * @return boolean Returns TRUE if we are limiting orgs result.
+	 */
+	public function isOrgsLimited()
+	{ return $this->bLimitOrgsToCurrentPlusChildren; }
+	
+	/**
 	 * groups ID list was requested, this method fills in that property.
 	 */
 	protected function getGroupsList()
 	{
-		$dbAuthGroups = $this->getAuthGroupsProp();
 		if ( !empty($this->auth_id) ) try {
+			$dbAuthGroups = $this->getAuthGroupsProp();
 			$this->groups = $dbAuthGroups->getAcctGroupsForOrg(
 					$this->auth_id, $this->mCurrOrgID
 			);
@@ -103,8 +132,19 @@ class AuthAcct4Orgs extends BaseCostume
 	{
 		if ( !empty($this->auth_id) ) try {
 			if ( in_array('org_ids', $this->getExportFieldList()) ) {
-				$this->org_ids = $this->getAuthProp()
-					->getOrgsForAuthCursor($this->auth_id, 'org_id')
+				$dbAuth = $this->getAuthProp();
+				$theFilter = null;
+				if ( $this->isOrgsLimited() && !empty($this->mLimitedOrgs) ) {
+					//instead of returning all the orgs the account belongs to, restrict it to
+					//  only returning the orgs based on current org and its children.
+					$theFilter = SqlBuilder::withModel($dbAuth)
+						->startFilter(' AND map.')
+						->setParamValue('showonlythese_orgs', $this->mLimitedOrgs)
+						->addParamForColumn('showonlythese_orgs', 'org_id')
+						;
+				}
+				$this->org_ids = $dbAuth
+					->getOrgsForAuthCursor($this->auth_id, 'org_id', $theFilter)
 					->fetchAll(\PDO::FETCH_COLUMN)
 					;
 			}

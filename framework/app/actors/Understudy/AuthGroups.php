@@ -90,7 +90,6 @@ class AuthGroups extends BaseActor
 		//indicate what top menu we are currently in
 		$this->setCurrentMenuKey('admin');
 		
-		$dbAuthGroups = $this->getMyModel();
 		try {
 			$theProc = new RightsMatrixProcessor($this);
 			$theProc->process(true);

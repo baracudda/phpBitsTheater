@@ -204,31 +204,44 @@ abstract class ABitsAccount extends BaseActor {
 	 * checks of the "Should I really allow this?" variety.
 	 * Consumed by ajajDelete().
 	 * @param integer $aAccountID the account ID
-	 * @throws BrokenLeg one of the following error codes
+	 * @throws AccountAdminException one of the following error codes
 	 *  * 'FORBIDDEN' - if the requestor does not have appropriate rights
 	 *  * 'CANNOT_DELETE_YOURSELF' - if the account ID matches the requestor's
 	 *    account ID
-	 * @return boolean - true if no exceptions are thrown
+	 * @return boolean Returns TRUE if allowed to delete an account.
 	 * @since BitsTheater 3.6
 	 */
 	protected function checkCanDeleteAccount( $aAccountID )
 	{
-		$this->checkAllowed( 'accounts', 'delete' );
-
-		if( $aAccountID == $this->getMyAccountID() )
-			throw AccountAdminException::toss( $this, 'CANNOT_DELETE_YOURSELF' ) ;
-
-		$dbAccounts = $this->getProp( 'Accounts' ) ;
-		$theAccount = null ;
-		try { $theAccount = $dbAccounts->getAccount($aAccountID) ; }
-		catch( DbException $dbx )
-		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_EXCEPTION, $dbx->getMessage() ) ; }
-		if( empty($theAccount) )
-			throw BrokenLeg::toss( $this, BrokenLeg::ACT_ENTITY_NOT_FOUND, $aAccountID ) ;
+		$this->checkAllowed('accounts', 'delete');
+		if ( $aAccountID == $this->getMyAccountID() ) {
+			throw AccountAdminException::toss($this, 'CANNOT_DELETE_YOURSELF');
+		}
+		try {
+			$dbAccounts = $this->getProp( 'Accounts' ) ;
+			$theAccount = $dbAccounts->getAccount($aAccountID);
+			if ( empty($theAccount) ) {
+				throw AccountAdminException::toss($this,
+						AccountAdminException::ACT_ENTITY_NOT_FOUND, $aAccountID
+				);
+			}
+			$this->returnProp($dbAccounts);
+		}
+		catch( \Exception $x )
+		{ throw AccountAdminException::tossException($this, $x); }
 
 		return true ;
+		/* example...
+		$dbGroups = $this->getProp( 'AuthGroups' ) ;
+		$theGroups = null ;
+		try { $theGroups = $dbGroups->getAcctGroups( $aAccountID ) ; }
+		catch( \Exception $x )
+		{ throw AccountAdminException::tossException($this, $x); }
+		$this->returnProp( $dbGroups ) ;
+		return empty($theGroups);
+		*/
 	}
-
+	
 	/**
 	 * Deletes an account's data from the accounts table. Classes that override
 	 * the ajajDelete() endpoint can call this method before or after performing

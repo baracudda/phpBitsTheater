@@ -230,7 +230,7 @@ class Strings {
 		}
 		
 		// Un-comment this line to see the pre-processing logic in action:
-		// static::debugLog( __METHOD__ . ' [DEBUG] Pre-hash processed secret: ' . $thePwInput ) ;
+		// self::debugLog( __METHOD__ . ' [DEBUG] Pre-hash processed secret: ' . $thePwInput ) ;
 			
 		/* Security advisory from PHP.net:
 		 * Developers targeting PHP 5.3.7+ should use "$2y$" in preference to "$2a$".
@@ -294,7 +294,7 @@ class Strings {
 	 * @see Strings::createTextId()
 	 */
 	static public function createUUID()
-	{ return Strings::createGUID(); }
+	{ return self::createGUID(); }
 	
 	/**
 	 * Checks a UUID string (36 chars with dashes, no "{}") to see if it is a
@@ -681,7 +681,7 @@ class Strings {
 	 * @see Strings::createUUID()
 	 */
 	static public function createTextId() {
-		return Strings::cnvUUID2TextId(Strings::createUUID());
+		return self::cnvUUID2TextId(self::createUUID());
 	}
 	
 	/**
@@ -779,7 +779,7 @@ class Strings {
 	 * @return string the requested number of newline constants
 	 */
 	static public function eol( $aCount=1 )
-	{ return Strings::repeat( PHP_EOL, $aCount ) ; }
+	{ return self::repeat( PHP_EOL, $aCount ) ; }
 	
 	/**
 	 * Returns the requested number of spaces, or one if no number is specified.
@@ -788,7 +788,7 @@ class Strings {
 	 * @return string a string with the requested number of spaces
 	 */
 	static public function spaces( $aCount=1 )
-	{ return Strings::repeat( ' ', $aCount ) ; }
+	{ return self::repeat( ' ', $aCount ) ; }
 	
 	/**
 	 * Returns the requested string repeated some number of times.
@@ -1067,6 +1067,48 @@ class Strings {
 		{ throw new \Exception(); }
 		catch (\Exception $x)
 		{ return $x->getTraceAsString(); }
+	}
+	
+	/**
+	 * Since you cannot type the Zero Width Space, we create it.
+	 * @return string Returns the Zero Width Space.
+	 */
+	static public function createZeroWidthSpace()
+	{
+		//Zero Width Space is \ufeff in UTF-16 and \xEF\xBB\xBF in UTF-8
+		return pack('H*','EFBBBF');
+	}
+	
+	/**
+	 * Since you cannot type the BOM, we create it.
+	 * @return string Returns the BOM.
+	 */
+	static public function createBOM()
+	{
+		//The Byte Order Mark (BOM) is also known as the Zero Width Space.
+		return self::createZeroWidthSpace();
+	}
+	
+	/**
+	 * Strip Zero Width Space from content.
+	 * @param string $aStr - the string to cleanse.
+	 * @return string Returns the cleansed string.
+	 */
+	static public function removeZeroWidthSpace( $aStr )
+	{
+		$thePattern = '/' . self::createZeroWidthSpace() . '/';
+		return preg_replace($thePattern, '', $aStr);
+	}
+	
+	/**
+	 * Strip the BOM from the beginning of content.
+	 * @param string $aTextContent - the text to ltrim.
+	 * @return string Returns the cleansed content.
+	 */
+	static public function removeBOM( $aTextContent )
+	{
+		$theBOM = self::createBOM();
+		return preg_replace("/^$theBOM/", '', $aTextContent);
 	}
 	
 }//end class

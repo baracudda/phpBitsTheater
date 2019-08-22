@@ -107,7 +107,8 @@ class TicketViaRequest extends BaseCostume
 		//save ticket short term cache
 		$dbAuth->saveAccountToSessionCache($aAcctInfo);
 		//login success, bake our CSRF token cookie!
-		$bCsrfTokenWasBaked = $dbAuth->setCsrfTokenCookie();
+		//$bCsrfTokenWasBaked =
+				$dbAuth->setCsrfTokenCookie();
 		//if we have been asked to remember the ticket long term, save a cookie
 		if ( $this->bUpdateCookie ) {
 			//bake (create) a new cookie for next time

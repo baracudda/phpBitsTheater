@@ -1,5 +1,8 @@
 <?php
-use BitsTheater\Scene; /* @var $v Scene */
+use BitsTheater\Scene as MyScene;
+/* @var $recite MyScene */
+/* @var $v MyScene */
+
 /*
  * In the move to try and utilize costumes as much as possible, this output type calls upon
  * the object itself to deal with headers and actual output rather than creating several

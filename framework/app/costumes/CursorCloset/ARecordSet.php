@@ -19,7 +19,6 @@ namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\colspecs\IteratedSet as BaseCostume;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\WornByModel;
-use com\blackmoonit\FinallyBlock;
 {//namespace begin
 
 /**
@@ -116,11 +115,7 @@ abstract class ARecordSet extends BaseCostume
 	 */
 	public function printAsJson( $aEncodeOptions=null )
 	{
-		print( '{' ) ;
-		$theFinalEnclosure = new FinallyBlock(function($me) {
-			print( ',"count":' . $me->mFetchedCount );
-			print( '}' ) ;
-		}, $this);
+		print('{');
 		try
 		{
 			print( '"filter":"' . $this->filter . '"' );
@@ -134,6 +129,10 @@ abstract class ARecordSet extends BaseCostume
 		{
 			$this->errorLog( __METHOD__ . ' failed: ' . $x->getMessage() );
 			throw $x ;
+		}
+		finally {
+			print(',"count":' . $this->mFetchedCount);
+			print('}');
 		}
 		return $this ;
 	}

@@ -24,7 +24,7 @@ class BitsWebsite extends BaseResources
 	/** @var string The framework's sequence number. */
 	public $framework_version_seq = 13;
 	/** @var string The framework's displayed version number. */
-	public $framework_version = '[NEXT]';
+	public $framework_version = '4.3.1';
 	/**
 	 * Your website's build number.
 	 * This should only ever increase with each release you make.
@@ -223,10 +223,11 @@ class BitsWebsite extends BaseResources
 			case ($aSeqNum < 2):
 				//do your stuff here
 			}//end switch
-		} catch (\Exception $e) {
+		}
+		catch ( \Exception $x ) {
 			//throw expection if your update code fails (logging it would be a good idea, too).
-			$this->errorLog(__METHOD__.' '.$e->getMessage());
-			throw $e;
+			$this->logErrors(__METHOD__, ' ', $x->getMessage());
+			throw $x;
 		}
 	}
 	

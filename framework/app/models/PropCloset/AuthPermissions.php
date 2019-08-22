@@ -17,6 +17,7 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\outtakes\RightsException ;
@@ -69,11 +70,11 @@ class AuthPermissions extends BaseModel {
 						"( namespace CHAR(40) NOT NULL".
 						", permission CHAR(40) NOT NULL".
 						", group_id INT NOT NULL".
-						", value CHAR(1) CHARACTER SET ascii COLLATE ascii_bin NOT NULL".
+						", value " . CommonMySql::TYPE_ASCII_CHAR(1) . " NOT NULL".
 						", PRIMARY KEY (namespace, permission, group_id)".
 						", KEY IdxValuePermissions (namespace, value)".
 						", UNIQUE KEY IdxGroupPermissions (group_id, namespace, permission)".
-						") CHARACTER SET utf8 COLLATE utf8_general_ci";
+						') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 			}//switch dbType
 		}//switch TABLE const
 	}

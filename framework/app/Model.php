@@ -715,6 +715,25 @@ implements IDirected
 		}
 	}
 	
+	/**
+	 * Certain fields need to store JSON-serialized data in the database. These
+	 * can sometimes be inadvertently processed as objects when they arrive in
+	 * one of the costumes. This method can be used to ensure that the value
+	 * stored in the database is, indeed, a string, rather than an array or
+	 * object prematurely decoded from JSON inputs.
+	 * @param mixed $aValue any value
+	 * @return string If an object/array is passed in, this will return the JSON
+	 *   serialization of that entity; otherwise, it is returned as-is.
+	 * @since BitsTheater 4.3.1
+	 */
+	public function stringify( $aValue )
+	{
+		if ( is_array($aValue) || is_object($aValue) )
+			return json_encode($aValue);
+		else
+			return $aValue;
+	}
+
 }//end class
 
 }//end namespace

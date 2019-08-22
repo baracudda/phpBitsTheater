@@ -12,6 +12,29 @@ class AuthAccount extends BaseCostume
 	public $mapped_imei;
 	
 	/**
+	 * Set the list of fields to restrict export to use.
+	 * @param string[] $aFieldList - the field list.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setExportFieldList( $aFieldList )
+	{
+		parent::setExportFieldList($aFieldList);
+		$theFieldList = $this->getExportFieldList();
+		if ( !empty($theFieldList) ) {
+			if ( in_array('mapped_imei', $theFieldList) &&
+					!in_array('hardware_ids', $theFieldList) ) {
+				$theFieldList[] = 'hardware_ids';
+				$this->setExportFieldList($theFieldList);
+			}
+			else if ( in_array('hardware_ids', $theFieldList) &&
+					!in_array('mapped_imei', $theFieldList) ) {
+				$theFieldList[] = 'mapped_imei';
+				$this->setExportFieldList($theFieldList);
+			}
+		}
+	}
+	
+	/**
 	 * Construct the standard object with all data fields worth exporting defined.
 	 * @return object Returns a standard object with the properties to export defined.
 	 */

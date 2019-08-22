@@ -489,13 +489,15 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 
 					//If the model uses the app db, loop through all orgs to ensure they are updated.
 					if ($dbModel->dbConnName == APP_DB_CONN_NAME) {
+						//save off Root org info so we can swap back to it later
+						$theSavedDbInfo = new DbConnInfo(APP_DB_CONN_NAME);
 						$theOrgList = AuthOrgSet::withContextAndColumns($this)
 							->setPagerEnabled(false)
 							->getOrganizationsToDisplay();
-						if ( !empty($theOrgList) ) {
+						if ( !empty($theOrgList) ) try {
 							foreach ($theOrgList as $theOrg) {
-								$this->debugLog("Attempting feature upgrade: " .
-									$theOrg->org_name . " - " . $theFeatureData['feature_id']);
+								$theFeatureLabel = $theOrg->org_name . ' - ' . $theFeatureData['feature_id'];
+								$this->logStuff("Attempting feature upgrade: ", $theFeatureLabel);
 
 								$theNewDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
 								$theNewDbConnInfo->loadDbConnInfoFromString($theOrg->dbconn);
@@ -503,11 +505,11 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 
 								$dbModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
 
-								$theMsg = $this->getRes('admin', 'msg_update_success',
-									$theFeatureData['feature_id']
-								);
-								$this->outputUserMsg($aDataObject, $theMsg, Scene::USER_MSG_NOTICE);
+								$this->logStuff("Successful feature upgrade: ", $theFeatureLabel);
 							}
+						}
+						finally {
+							$this->getDirector()->setDbConnInfo($theSavedDbInfo);
 						}
 					}
 

@@ -39,8 +39,10 @@ try {
 	$theHttpCode = $blx->getCode();
 	http_response_code($theHttpCode);
 	if ( $theHttpCode!=401 && $theHttpCode!=403 ) {
-		Strings::errorLog($blx->getMessage(), ' cs:#012',
-				$blx->getTraceAsString()
+		Strings::errorLog($blx->getMessage(), ' c_stk:#012',
+				str_replace( realpath(BITS_ROOT),
+						'[%site]', $blx->getTraceAsString()
+				)
 		);
 	}
 } catch (IDebuggableException $e) {
@@ -49,7 +51,11 @@ try {
 	})->setCssFileUrl(BITS_RES.'/style/bits.css')->setFileRoot(realpath(BITS_ROOT));
 	$e->debugPrint();
 	if (ini_get('log_errors')) {
-		Strings::errorLog($e->getMessage().' c_stk: '.$e->getTraceAsString());
+		Strings::errorLog($e->getMessage(), ' c_stk:#012',
+				str_replace( realpath(BITS_ROOT),
+						'[%site]', $e->getTraceAsString()
+				)
+		);
 	}
 	header("HTTP/1.0 500 Internal Server Error");
 	die();
@@ -59,12 +65,16 @@ try {
 		$e->debugPrint();
 	} else if (ini_get('display_errors')) {
 		print($e->getMessage()."<br />\n");
-		$theTrace = str_replace("\n","<br />\n",$e->getTraceAsString());
-		$theTrace = str_replace(realpath(BITS_ROOT),'[%site]',$theTrace);
+		$theTrace = str_replace("\n","<br />\n", $e->getTraceAsString());
+		$theTrace = str_replace(realpath(BITS_ROOT),'[%site]', $theTrace);
 		print($theTrace);
 	}
 	if (ini_get('log_errors')) {
-		Strings::errorLog($e->getMessage().' cs: '.$e->getTraceAsString());
+		Strings::errorLog($e->getMessage(), ' c_stk:#012',
+				str_replace( realpath(BITS_ROOT),
+						'[%site]', $e->getTraceAsString()
+				)
+		);
 	}
 	header("HTTP/1.0 500 Internal Server Error");
 	die();

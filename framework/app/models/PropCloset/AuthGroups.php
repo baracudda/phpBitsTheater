@@ -187,17 +187,17 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				case self::DB_TYPE_MYSQL:
 				default:
 					return "CREATE TABLE IF NOT EXISTS {$theTableName} " .
-							'( group_id ' . CommonMySQL::TYPE_UUID . ' NOT NULL' .
+							'( group_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
 							', group_num INT NOT NULL AUTO_INCREMENT' . " COMMENT 'user-friendly ID'" .
 							', group_name VARCHAR(60) NOT NULL' .
 							', parent_group_id ' . CommonMySql::TYPE_UUID . ' NULL' .
 							', org_id ' . CommonMySql::TYPE_UUID . ' NULL' .
-							', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
+							', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 							', PRIMARY KEY (group_id)' .
 							', KEY (parent_group_id)' .
 							', KEY (org_id)' .
 							', UNIQUE KEY (group_num)' .
-							') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE;
+							') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 			}//switch dbType
 	}
 	
@@ -219,7 +219,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} " .
 						'( auth_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
 						', group_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
-						', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
+						', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 						', PRIMARY KEY (auth_id, group_id)' .
 						', UNIQUE KEY (group_id, auth_id)' .
 						')';
@@ -243,10 +243,10 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} " .
 						'( group_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
 						', reg_code VARCHAR(64) NOT NULL' .
-						', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
+						', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 						', PRIMARY KEY (reg_code)' .
 						', KEY (group_id, created_ts)' .
-						') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE .
+						') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE .
 						" COMMENT='Auto-assign group_id if Registration Code matches reg_code'";
 		}//switch dbType
 	}
@@ -270,10 +270,10 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 						', permission VARCHAR(40) NOT NULL' .
 						', group_id ' . CommonMySql::TYPE_UUID . ' NOT NULL' .
 						', value '. CommonMySql::TYPE_ASCII_CHAR(1) . ' NOT NULL' .
-						', ' . CommonMySQL::getAuditFieldsForTableDefSql() .
+						', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 						', PRIMARY KEY (namespace, permission, group_id)' .
 						', UNIQUE KEY IdxGroupPermissions (group_id, namespace, permission)' .
-						') ' . CommonMySQL::TABLE_SPEC_FOR_UNICODE;
+						') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 		}//switch dbType
 	}
 
@@ -1338,7 +1338,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	
 	/**
 	 * Retrieve a single group row.
-	 * @param number $aGroupID - the group_id to get.
+	 * @param string $aGroupID - the group_id to get.
 	 * @param string $aFieldList - which fields to return, default is all of them.
 	 * @return array Returns the row data.
 	 */
@@ -2090,6 +2090,33 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		);
 	}
 
+	/**
+	 * Check to see if s set of permissions are all allowed for an org.
+	 * A speed optimization, when necessary, rather than loading all rights.
+	 * @param array[] $aRightsList - the rights to check (must ALL pass); the array
+	 *   format must be a 2D array, [ namespace_name => [ permission_name=>boolean ] ]
+	 * @param string $aAuthID - the auth account ID to check.
+	 * @param string $aOrgID - the org ID to check.
+	 * @return boolean Returns TRUE if all rights pass permission check.
+	 */
+	public function isAllowedForOrg( $aRightsList, $aAuthID, $aOrgID )
+	{
+		if ( !empty($aRightsList) ) {
+			$theAuthGroupList = $this->getGroupIDListForAuthAndOrg($aAuthID, $aOrgID);
+			$theAssignedRightsList = $this->getAssignedRights(
+					$theAuthGroupList, $aRightsList, $aOrgID
+			);
+			foreach ( $aRightsList as $theNamespace => $thePermList ) {
+				foreach ( $thePermList as $thePermmission => $thePermValue ) {
+					if ( empty($theAssignedRightsList[$theNamespace]) ||
+							empty($theAssignedRightsList[$theNamespace][$thePermmission]) )
+					{ return false; }
+				}//foreach permission
+			}//foreach right namespace
+		}//if any rights to check per org
+		return true;
+	}
+	
 	//=========================================================================
 	//===============  AuthPermissions           ==============================
 	//=========================================================================

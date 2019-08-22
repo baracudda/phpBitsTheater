@@ -23,6 +23,7 @@ use BitsTheater\Scene;
 use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\AccountInfoCache ;
+use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthPasswordReset ;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\HttpAuthHeader;
@@ -137,13 +138,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-						"( `auth_id` ".CommonMySQL::TYPE_UUID." NOT NULL PRIMARY KEY".
+						"( `auth_id` ".CommonMySql::TYPE_UUID." NOT NULL PRIMARY KEY".
 						", `email` CHAR(255) NOT NULL".		//store as typed, but collate as case-insensitive
 						", `account_id` INT NOT NULL".		//link to Accounts
-						", `pwhash` CHAR(85) CHARACTER SET ascii NOT NULL COLLATE ascii_bin".	//blowfish hash of pw & its salt
+						", `pwhash` " . CommonMySql::TYPE_ASCII_CHAR(85) . " NOT NULL". //blowfish hash of pw & its salt
 						", `verified_ts` TIMESTAMP NULL DEFAULT NULL". //UTC of when acct was verified
-						", `is_active` " . CommonMySQL::TYPE_BOOLEAN_1 .
-						", ".CommonMySQL::getAuditFieldsForTableDefSql().
+						", `is_active` " . CommonMySql::TYPE_BOOLEAN_1 .
+						", ".CommonMySql::getAuditFieldsForTableDefSql().
 						", UNIQUE KEY IdxEmail (`email`)".
 						", INDEX IdxAcctId (`account_id`)".
 						") CHARACTER SET utf8 COLLATE utf8_general_ci";
@@ -154,42 +155,42 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
 						"( `id` INT NOT NULL AUTO_INCREMENT". //strictly for phpMyAdmin ease of use
-						", `auth_id` ".CommonMySQL::TYPE_UUID." NOT NULL".
+						", `auth_id` ".CommonMySql::TYPE_UUID." NOT NULL".
 						", `account_id` INT NOT NULL".
 						", `token` CHAR(128) NOT NULL".
-						", ".CommonMySQL::getAuditFieldsForTableDefSql().
+						", ".CommonMySql::getAuditFieldsForTableDefSql().
 						", PRIMARY KEY (`id`)".
 						", INDEX IdxAuthIdToken (`auth_id`, `token`)".
 						", INDEX IdxAcctIdToken (`account_id`, `token`)".
 						", INDEX IdxAuthToken (`token`, `updated_ts`)".
-						") CHARACTER SET ascii COLLATE ascii_bin";
+						') ' . CommonMySql::TABLE_SPEC_FOR_ASCII;
 			}//switch dbType
 		case self::TABLE_AuthMobile: //added in v3
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnAuthMobile;
 			switch ($this->dbType()) {
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
-						"( `mobile_id` ".CommonMySQL::TYPE_UUID." NOT NULL".
-						", `auth_id` ".CommonMySQL::TYPE_UUID." NOT NULL".
+						"( `mobile_id` ".CommonMySql::TYPE_UUID." NOT NULL".
+						", `auth_id` ".CommonMySql::TYPE_UUID." NOT NULL".
 						", `account_id` INT NOT NULL".
-						", `auth_type` CHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'FULL_ACCESS'".
-						", `account_token` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'STRANGE_TOKEN'".
-						", `device_name` CHAR(64) CHARACTER SET utf8 COLLATE utf8_general_ci DEFAULT NULL".
+						", `auth_type` " . CommonMySql::TYPE_ASCII_CHAR(16) . " NOT NULL DEFAULT 'FULL_ACCESS'".
+						", `account_token` " . CommonMySql::TYPE_ASCII_CHAR(64) . " NOT NULL DEFAULT 'STRANGE_TOKEN'".
+						", `device_name` CHAR(64) DEFAULT NULL".
 						", `latitude` DECIMAL(11,8) DEFAULT NULL".
 						", `longitude` DECIMAL(11,8) DEFAULT NULL".
 						/* might be considered "sensitive", storing hash instead
-						", `device_id` char(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
-						", `app_version_name` char(128) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
+						", `device_id` " . CommonMySql::TYPE_ASCII_CHAR(64) . " DEFAULT NULL".
+						", `app_version_name` " . CommonMySql::TYPE_ASCII_CHAR(128) . " DEFAULT NULL".
 						", `device_memory` BIGINT DEFAULT NULL".
-						", `locale` char(8) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
-						", `app_fingerprint` char(36) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL".
+						", `locale` " . CommonMySql::TYPE_ASCII_CHAR(8) . " DEFAULT NULL".
+						", `app_fingerprint` " . CommonMySql::TYPE_ASCII_CHAR(36) . " DEFAULT NULL".
 						*/
 						", `fingerprint_hash` CHAR(85) DEFAULT NULL".
-						", ".CommonMySQL::getAuditFieldsForTableDefSql().
+						", ".CommonMySql::getAuditFieldsForTableDefSql().
 						", PRIMARY KEY (`mobile_id`)".
 						", KEY `account_id` (`account_id`)".
 						", KEY `auth_id` (`auth_id`)".
-						") CHARACTER SET ascii COLLATE ascii_bin";
+						') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 			}//switch dbType
 
 		}//switch TABLE const
@@ -477,7 +478,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		$theQueryLimit = (!empty($aScene)) ? $aScene->getQueryLimit($this->dbType()) : null;
 		$theSql = SqlBuilder::withModel($this)->setSanitizer($aScene)->obtainParamsFrom(array(
 				'group_id' => $aGroupId,
-				'token' => self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%',
 		));
 		try {
 			//query field list
@@ -486,12 +486,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$theSql->startWith('SELECT')->add(SqlBuilder::FIELD_LIST_HINT_START);
 			$theSql->add('auth.*, acct.account_name');
 			//find mapped hardware ids, if any (AuthAccount costume will convert this field into appropriate string)
-			$theSql->add(', (')
-					->add("SELECT GROUP_CONCAT(`token` SEPARATOR ', ') FROM")->add($this->tnAuthTokens)
-					->add('WHERE auth.account_id=account_id')->setParamPrefix(' AND ')
-					->setParamOperator(' LIKE ')->mustAddParam('token')->setParamOperator('=')
-					->add(') AS hardware_ids')
-					;
+			$theSql->add(',')->add(AuthAccount::sqlForHardwareIDs($this, 'auth.auth_id'));
 			//done with fields
 			$theSql->add(SqlBuilder::FIELD_LIST_HINT_END);
 			//now for rest of query
@@ -531,20 +526,14 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	public function getAccountsByFilter( $aScene, $orderByList = null, $aFilter = null )
 	{
 		$theResultSet = null ;
-		$theSql = SqlBuilder::withModel($this)->setSanitizer($aScene)->obtainParamsFrom(array(
-				'token' => self::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ':%',
-		));
+		$theSql = SqlBuilder::withModel($this)->setSanitizer($aScene);
 		//query field list
 		$dbAccounts = $this->getProp('Accounts');
 		//NOTE: since we have a nested query in field list, must add HINT for getQueryTotals()
 		$theSql->startWith('SELECT')->add(SqlBuilder::FIELD_LIST_HINT_START);
 		$theSql->add('auth.*, acct.account_name');
 		//find mapped hardware ids, if any (AuthAccount costume will convert this field into appropriate string)
-		$theSql->add(', (')
-			->add("SELECT GROUP_CONCAT(`token` SEPARATOR ', ') FROM")->add($this->tnAuthTokens)
-			->add('WHERE auth.account_id=account_id')->setParamPrefix(' AND ')
-			->setParamOperator(' LIKE ')->mustAddParam('token')->setParamOperator('=')
-			->add(') AS hardware_ids');
+		$theSql->add(',')->add(AuthAccount::sqlForHardwareIDs($this, 'auth.auth_id'));
 		//done with fields
 		$theSql->add(SqlBuilder::FIELD_LIST_HINT_END);
 		//now for rest of query
@@ -1439,7 +1428,6 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$bAuthorizedViaSession = false;
 			$bAuthorizedViaWebForm = false;
 			$bAuthorizedViaCookies = false;
-			$bCsrfTokenWasBaked = false;
 
 			$bAuthorizedViaHeaders = $this->checkHeadersForTicket($dbAccounts, $aScene);
 //			if ($bAuthorizedViaHeaders) $this->debugLog(__METHOD__.' header auth'); //DEBUG
@@ -1466,7 +1454,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			if ($bAuthorized)
 			{
 				if ($bAuthorizedViaSession || $bAuthorizedViaWebForm || $bAuthorizedViaCookies)
-					$bCsrfTokenWasBaked = $this->setCsrfTokenCookie();
+					$this->setCsrfTokenCookie();
 			}
 //			else $this->debugLog(__METHOD__.' not authorized'); //DEBUG
 			$this->returnProp($dbAccounts);
@@ -1927,7 +1915,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			return false ;
 		}
 
-		$theOldTokens = $theResetUtils->getTokens() ;
+		$theResetUtils->getTokens() ;
 		if( $theResetUtils->hasRecentToken() )
 		{
 			$this->debugLog( 'Password reset request denied for ['
@@ -2000,7 +1988,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		if ($theMaxAttempts>0) {
 			//$this->debugLog(__METHOD__.' '.strval($theMaxAttempts));
 			//add token
-			$theAuthToken = $this->generateAuthToken(
+			$this->generateAuthToken(
 					$this->getDirector()->app_id,
 					0,
 					self::TOKEN_PREFIX_REGCAP
@@ -2045,7 +2033,9 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		if (!empty($theAuthTokenRows)) {
 			foreach ($theAuthTokenRows as $theRow) {
 				list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theRow['token']);
-				$theIds[] = $theHardwareId;
+				if ( !empty($thePrefix) && !empty($theHardwareId) && !empty($theUUID) ) {
+					$theIds[] = $theHardwareId;
+				}
 			}
 		}
 		return $theIds;

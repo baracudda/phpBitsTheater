@@ -53,7 +53,36 @@ class ARecord extends BaseCostume
 		$theClassName = get_called_class() ;
 		$aStmt->setFetchMode( \PDO::FETCH_CLASS | \PDO::FETCH_PROPS_LATE,
 				$theClassName, array( $aModel, $aFieldList ) ) ;
-		return $aStmt->fetch() ;
+		$o = $aStmt->fetch();
+		if ( method_exists($o, 'onFetch') ) {
+			$o->onFetch();
+		}
+		return $o;
+	}
+	
+	/**
+	 * Static helper function to create an instance of the record-wrapper
+	 * class based on row data already retrieved and possibly causing
+	 * additional data to be retrieved based on the field list passed in
+	 * (such as loading extra mapping information or additional properties
+	 * from additional tables).
+	 * @param array|object $aRow - row data already fetched.
+	 * @param MyModel|NULL $aModel - (OPTIONAL) the model instance.
+	 * @param string[]|NULL $aFieldList - (OPTIONAL) the list of fields to be
+	 *   exported.
+	 * @return $this Returns the newly created instance.
+	 * @since BitsTheater 4.3.1
+	 */
+	public static function fetchInstanceFromRow( $aRow,
+			$aModel=null, $aFieldList=null )
+	{
+		$theClassName = get_called_class();
+		$o = new $theClassName($aModel, $aFieldList);
+		$o->setDataFrom($aRow);
+		if ( method_exists($o, 'onFetch') ) {
+			$o->onFetch();
+		}
+		return $o;
 	}
 	
 	/**

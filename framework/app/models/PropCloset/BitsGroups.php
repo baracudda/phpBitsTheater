@@ -91,12 +91,12 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			case self::DB_TYPE_MYSQL: default:
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
 						"( group_id INT NOT NULL AUTO_INCREMENT".
-						", group_name NCHAR(60) NOT NULL".
+						", group_name CHAR(60) NOT NULL".
 						", parent_group_id INT NULL".
 						//", group_desc NCHAR(200) NULL".
-						", ".CommonMySQL::getAuditFieldsForTableDefSql().
+						", ".CommonMySql::getAuditFieldsForTableDefSql().
 						", PRIMARY KEY (group_id)".
-						") CHARACTER SET utf8 COLLATE utf8_general_ci";
+						') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 			}//switch dbType
 		case self::TABLE_GroupMap:
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnGroupMap;
@@ -105,10 +105,10 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
 						"( account_id INT NOT NULL".
 						", group_id INT NOT NULL".
-						", ".CommonMySQL::getAuditFieldsForTableDefSql().
+						", ".CommonMySql::getAuditFieldsForTableDefSql().
 						", PRIMARY KEY (account_id, group_id)".
 						//", UNIQUE KEY (group_id, account_id)".  IDK if it'd be useful
-						") CHARACTER SET utf8 COLLATE utf8_general_ci";
+						') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE;
 			}//switch dbType
 		case self::TABLE_GroupRegCodes:
 			$theTableName = (!empty($aTableNameToUse)) ? $aTableNameToUse : $this->tnGroupRegCodes;
@@ -117,9 +117,10 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 				return "CREATE TABLE IF NOT EXISTS {$theTableName} ".
 						"( group_id INT NOT NULL".
 						", reg_code NCHAR(64) NOT NULL".
-						", ".CommonMySQL::getAuditFieldsForTableDefSql().
+						", ".CommonMySql::getAuditFieldsForTableDefSql().
 						", PRIMARY KEY (reg_code, group_id)".
-						") CHARACTER SET utf8 COLLATE utf8_general_ci COMMENT='Auto-assign group_id if Registration Code matches reg_code'";
+						') ' . CommonMySql::TABLE_SPEC_FOR_UNICODE.
+						" COMMENT='Auto-assign group_id if Registration Code matches reg_code'";
 			}//switch dbType
 		}//switch TABLE const
 	}
