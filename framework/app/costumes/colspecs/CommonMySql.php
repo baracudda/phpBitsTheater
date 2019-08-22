@@ -139,7 +139,16 @@ class CommonMySql
 	const SQL_DATETIME_REGEX =
 		"/^\d\d\d\d-(\d)?\d-(\d)?\d \d\d:\d\d:\d\d$/" ;
 
-
+	/**
+	 * A regular expression which will recognize ISO8601 date strings when used
+	 * as the pattern in <code>preg_match()</code>. This is used when
+	 * discovering ISO8601 datetime fields to be converted to MySQL format.
+	 * @var string
+	 * @see \BitsTheater\costumes\colspecs\CommonMySql::deepConvertISO8601DateTimeToMySQLFormat()
+	 * @since BitsTheater 4.3.1
+	 */
+	const ISO8601_DATETIME_REGEX = "/^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ$/";
+	
 	/**
 	 * Insert standard audit fields into a table definition.
 	 * @return string
@@ -231,11 +240,13 @@ class CommonMySql
 	{
 		if ( is_object($aData) || is_array($aData) ) {
 			foreach( $aData as $theKey => &$theValue ) {
-				if( is_object($theValue) || is_array($theValue) ) {
-					$theValue = static::deepConvertSQLTimestampsToISOFormat($theValue) ;
+				if ( is_array($theValue) || is_object($theValue) ) {
+					if ( !($theValue instanceof \BitsTheater\Scene) ) {
+						$theValue = static::deepConvertSQLTimestampsToISOFormat($theValue) ;
+					}
 				}
-				else if ( preg_match( '/_ts$/', $theKey ) == 1
-						|| preg_match( static::SQL_DATETIME_REGEX, $theValue ) == 1 )
+				else if ( preg_match( '/_ts$/', $theKey ) == 1 || ( is_string($theValue)
+						&& preg_match( static::SQL_DATETIME_REGEX, $theValue ) == 1 ) )
 				{ // Key has timestamp suffix, or value matches SQL datetime
 					$theValue = static::convertSQLTimestampToISOFormat($theValue) ;
 				}
@@ -277,6 +288,54 @@ class CommonMySql
 				$sqlTimestamp .= 'Z'; //assume UTC
 		}
 		return $sqlTimestamp;
+	}
+	
+	/**
+	 * Searches an object for fields named like timestamps, and updates
+	 * them to MySQL format. Mirror method for deepConvertSQLTimestampsToISOFormat().
+	 * @param array|object|string $aData the data to be converted; may be
+	 *  an array, object, or scalar
+	 * @return array|object|string the same object, with all ISO 8601 datetime
+	 *  values replaced by MySQL datetime values.
+	 * @see \BitsTheater\costumes\colspecs\CommonMySql::SQL_DATETIME_REGEX
+	 * @since BitsTheater 4.3.1
+	 */
+	static public function deepConvertISO8601DateTimeToMySQLFormat( $aData )
+	{
+		if ( is_object($aData) || is_array($aData) ) {
+			foreach( $aData as $theKey => &$theValue ) {
+				if ( is_array($theValue) || is_object($theValue) ) {
+					if ( !($theValue instanceof \BitsTheater\Scene) ) {
+						$theValue = static::deepConvertISO8601DateTimeToMySQLFormat($theValue) ;
+					}
+				}
+				else if ( preg_match( '/_ts$/', $theKey ) == 1 || ( is_string($theValue)
+						&& preg_match( static::ISO8601_DATETIME_REGEX, $theValue ) == 1 ) )
+				{ // Key has timestamp suffix, or value matches SQL datetime
+					$theValue = static::convertISO8601DateTimeToMySQLFormat($theValue) ;
+				}
+			}
+			return $aData;
+		}
+		else {
+			return static::convertISO8601DateTimeToMySQLFormat($aData);
+		}
+	}
+	
+	/**
+	 * Mirror method for convertSQLTimestampToISOFormat().
+	 * @param string $aDateTimeISO8601 - a datetime string using ISO8601 format.
+	 * @return string Returns the string MySQL needs for it's SQL dialect.
+	 * @since BitsTheater 4.3.1
+	 */
+	static public function convertISO8601DateTimeToMySQLFormat( $aDateTimeISO8601 )
+	{
+		if (strlen($aDateTimeISO8601)>10)
+		{
+			$aDateTimeISO8601{10} = ' ';
+			$aDateTimeISO8601 = rtrim($aDateTimeISO8601, 'Z');
+		}
+		return $aDateTimeISO8601;
 	}
 
 	/**
