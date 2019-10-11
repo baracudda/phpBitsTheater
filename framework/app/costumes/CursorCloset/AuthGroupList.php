@@ -17,6 +17,7 @@
 
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\ARecordList as BaseCostume;
+use BitsTheater\costumes\AuthGroup as MyRecord;
 {//namespace begin
 
 /**
@@ -30,6 +31,9 @@ use BitsTheater\costumes\CursorCloset\ARecordList as BaseCostume;
  */
 class AuthGroupList extends BaseCostume
 {
+	/** @var string The name of the class to contain items. */
+	const DEFAULT_ITEM_CLASS = MyRecord::ITEM_CLASS;
+	
 	/**
 	 * Return the Model class or name to use in a getProp() call.
 	 * @return string
