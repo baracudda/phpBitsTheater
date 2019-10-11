@@ -824,8 +824,7 @@ class SqlBuilder extends BaseCostume {
 	{ return $this->applyOrderByList($aSortList, $aFieldList); }
 	
 	/**
-	 * If order by list is defined and its contents are also contained
-	 * in the non-empty $aFieldList, then apply the sort order as neccessary.
+	 * If order by list is defined, then apply the sort order as neccessary.
 	 * @param array $aOrderByList - keys are the fields => values are
 	 *   'ASC'|true or 'DESC'|false with null='ASC'.
 	 * @return $this Returns $this for chaining.

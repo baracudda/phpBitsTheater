@@ -302,7 +302,7 @@ class TicketViaAuthHeaderBroadway extends BaseCostume
 	 *   If the account info has <code>is_active=false</code>, auth failed.
 	 *   NULL means no ticket information was found to even attempt auth.
 	 */
-	protected function processTicket(Scene $aScene)
+	protected function processTicket( Scene $aScene )
 	{
 		$theResult = null;
 		$dbAuth = $this->getMyModel();

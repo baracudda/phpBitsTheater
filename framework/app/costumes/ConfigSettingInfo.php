@@ -127,13 +127,13 @@ class ConfigSettingInfo extends BaseCostume
 	public function getCurrentValue() {
 		if ($this->getDirector()->isInstalled()) {
 			/* @var $dbConfig Config */
-			$dbConfig = $this->getDirector()->getProp('Config');
+			$dbConfig = $this->getProp(Config::MODEL_NAME);
 			$this->value = $dbConfig->getMapValue($this->config_key);
 			if (!isset($this->mSettingInfo->default_value)) {
 				//preserve whatever default is now in the config table (admin set it, so honor it)
 				$this->mSettingInfo->default_value = $dbConfig->getMapDefault($this->config_key);
 			}
-			$this->getDirector()->returnProp($dbConfig);
+			$this->returnProp($dbConfig);
 		}
 		return (isset($this->value)) ? $this->value : $this->mSettingInfo->default_value;
 	}

@@ -31,11 +31,15 @@ if ( TicketViaInstallPw::checkInstallPwVsInput($theCliOptions['p']) ) {
 	try {
 	    if ($theParams->force_model_upgrade) print("Forcing model upgrade" . PHP_EOL);
 		$theUpdater->upgradeAllFeatures();
+		//end output with an EOL so CLI prompt will alway appear correctly on a fresh line
+		print(PHP_EOL);
 	}
-	catch( BrokenLeg $blx )
-	{ print $blx->toJson( JSON_PRETTY_PRINT ) ; }
-	catch( \Exception $x )
-	{ print BrokenLeg::tossException($director,$x)->toJson(JSON_PRETTY_PRINT) ; }
+	catch ( \Exception $x ) {
+		$blx = BrokenLeg::tossException($director,$x);
+		print($blx->getExtendedErrMsg().PHP_EOL);
+		print($blx->toJson(JSON_PRETTY_PRINT).PHP_EOL);
+		exit(1);
+	}
 	exit(0);
 }
 
@@ -47,14 +51,17 @@ try {
 	if ( !empty($dbAuth) && $dbAuth->isExists($dbAuth->tnAuthAccounts) ) {
 		$director->raiseCurtain('Admin/apiWebsiteUpgrade');
 	}
+	//end output with an EOL so CLI prompt will alway appear correctly on a fresh line
+	print(PHP_EOL);
 }
 catch (IDebuggableException $dx) {
 	print($dx->getMessage().PHP_EOL);
 	print($dx->getContextMsg().PHP_EOL);
+	exit(1);
 }
-catch (\Exception $x) {
-	print($x->getMessage().PHP_EOL);
+catch ( \Exception $x ) {
+	$blx = BrokenLeg::tossException($director,$x);
+	print($blx->getExtendedErrMsg().PHP_EOL);
+	print($blx->toJson(JSON_PRETTY_PRINT).PHP_EOL);
+	exit(1);
 }
-
-//end output with an EOL so CLI prompt will alway appear correctly on a fresh line
-print(PHP_EOL);

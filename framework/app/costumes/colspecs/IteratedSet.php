@@ -105,6 +105,7 @@ implements \Countable, \IteratorAggregate
 	/**
 	 * Return the appropriate iterator for the job so we can use this object
 	 * in a foreach() statement.
+	 * @return \Traversable Returns the thing to use in a foreach statement.
 	 */
 	public function getIterator()
 	{

@@ -47,7 +47,7 @@ class ARecord extends BaseCostume
 	 * @since BitsTheater v4.0.0
 	 * @see \BitsTheater\costumes\colspecs\IteratedSet::fetch()
 	 */
-	public static function fetchInstanceFromStatement( \PDOStatement $aStmt,
+	static public function fetchInstanceFromStatement( \PDOStatement $aStmt,
 			$aModel=null, $aFieldList=null )
 	{
 		$theClassName = get_called_class() ;
@@ -73,7 +73,7 @@ class ARecord extends BaseCostume
 	 * @return $this Returns the newly created instance.
 	 * @since BitsTheater 4.3.1
 	 */
-	public static function fetchInstanceFromRow( $aRow,
+	static public function fetchInstanceFromRow( $aRow,
 			$aModel=null, $aFieldList=null )
 	{
 		$theClassName = get_called_class();
@@ -142,7 +142,7 @@ class ARecord extends BaseCostume
 	 * @param string[] $aFieldList - (OPTIONAL) the field list to return.
 	 * @return static Returns an instance of the costume
 	 */
-	public static function withModel( MyModel $aModel, $aFieldList=null )
+	static public function withModel( MyModel $aModel, $aFieldList=null )
 	{
 		$theClassName = get_called_class() ;
 		return new $theClassName($aModel, $aFieldList);

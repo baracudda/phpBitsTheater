@@ -32,11 +32,7 @@ use BitsTheater\costumes\AuthOrg as MyRecord;
  */
 class AuthOrgList extends BaseCostume
 {
-	/**
-	 * The name of the class that will be used by default to contain items of
-	 * the set.
-	 * @var string
-	 */
+	/** @var string The name of the class to contain items. */
 	const DEFAULT_ITEM_CLASS = MyRecord::ITEM_CLASS;
 	
 	/**

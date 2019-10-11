@@ -316,10 +316,10 @@ class BitsAmazonS3 extends BaseModel
 	
 	/**
 	 * Uploads a file to S3 using the key as the new filename.
-	 * @param string $aFileToUpload - full path to the file.
+	 * @param resource $aFileStreamToUpload - the file resource stream.
 	 * @param string $aKeyToUse - full destination path and name.
 	 * @param string $aBucketName - (optional) specify another bucket to use.
-	 * @return array Returns the S3 results.
+	 * @return \Aws\Result Returns the S3 results.
 	 * @throws AwsException if S3 fails for some reason.
 	 */
 	public function uploadFileStreamAsKey( $aFileStreamToUpload, $aKeyToUse, $aBucketName=null )

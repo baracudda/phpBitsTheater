@@ -1,11 +1,10 @@
 <?php
 use BitsTheater\Regisseur; /* @var $theStageManager Regisseur */
 use BitsTheater\Director;
-use com\blackmoonit\Strings;
 
 //start the State Manager which sets up our run-time environment
 $theAppPath = dirname(__DIR__);
-global $theStageManager;
+global $theStageManager, $argv, $director;
 require_once( $theAppPath . DIRECTORY_SEPARATOR . 'Regisseur.php' );
 $theStageManager = Regisseur::requisition();
 // Bail out if this is not running under CLI mode. We don't want these
@@ -26,7 +25,7 @@ $director = Director::requisition();
 
 //define some generic functions
 function dumpvar($x)
-{ print( PHP_EOL . Strings::debugStr($x,null) ); }
+{ global $director; print( PHP_EOL . $director->logStuff($x) ); }
 
 //IMPORTANT!!!
 //  returns the processed CLI options

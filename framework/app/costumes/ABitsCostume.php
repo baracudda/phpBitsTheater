@@ -189,7 +189,7 @@ implements IDirected
 	 * array param.
 	 * @param IDirected $aContext - used to get Director object.
 	 * @param array $anArray - associative array of data
-	 * @return ABitsCostume Returns the new instance.
+	 * @return $this Returns the new instance.
 	 */
 	static public function fromArray(IDirected $aContext, $anArray) {
 		$theClassName = get_called_class();
@@ -204,7 +204,7 @@ implements IDirected
 	 * object param.
 	 * @param IDirected $aContext - used to get the Director object.
 	 * @param object $anObj - object to copy data from.
-	 * @return ABitsCostume Returns the new instance.
+	 * @return $this Returns the new instance.
 	 */
 	static public function fromObj(IDirected $aContext, $anObj) {
 		$theClassName = get_called_class();
@@ -219,7 +219,7 @@ implements IDirected
 	 * JSON param.
 	 * @param IDirected $aContext - used to get the Director object.
 	 * @param string $asJson - JSON encoded string
-	 * @return ABitsCostume Returns the new instance.
+	 * @return $this Returns the new instance.
 	 */
 	static public function fromJson(IDirected $aContext, &$asJson) {
 		$o = self::fromArray($aContext, json_decode($asJson,true));
@@ -232,7 +232,7 @@ implements IDirected
 	 * instance) and sets its properties to the values of the
 	 * object or array param.
 	 * @param array|object $aThing - thing to copy data from.
-	 * @return ABitsCostume Returns the new instance.
+	 * @return $this Returns the new instance.
 	 */
 	static public function fromThing(IDirected $aContext, $aThing) {
 		$theClassName = get_called_class();

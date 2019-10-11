@@ -1496,7 +1496,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		$theSql = "SELECT * FROM {$this->tnAuth} WHERE auth_id=:id";
 		return $this->getTheRow($theSql, array('id'=>$aAuthId));
 	}
-
+	
+	/**
+	 * Retrieve a specific token for a given auth ID, if it exists.
+	 * @param string $aAuthId - the Auth ID.
+	 * @param string $aAuthToken - the token (LIKE is not used).
+	 * @return string[]|null Returns the data row.
+	 */
 	public function getAuthTokenRow($aAuthId, $aAuthToken) {
 		$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 				'auth_id' => $aAuthId,

@@ -277,10 +277,12 @@ implements IDirected
 		if (!empty($aJsonData)) {
 			$theData = json_decode($aJsonData,true);
 			if (json_last_error() !== JSON_ERROR_NONE) {
-				$this->errorLog(__METHOD__.' json error: '.json_last_error().' data='.$this->debugStr($aJsonData));
+				$this->logErrors(__METHOD__, ' actor=', $this->_actor->mySimpleClassName, ' action=', $this->_action,
+						' json error: ', json_last_error(), ' data=', $aJsonData
+				);
 			}
 		}
-		if (!empty($theData)) {
+		if ( is_array($theData) || is_object($theData) ) {
 			foreach ($theData as $key => $val) {
 				$this->$key = $val;
 			}
