@@ -26,6 +26,7 @@ use Aws\Exception\AwsException;
 use Aws\CommandPool;
 use Aws\CommandInterface;
 use Aws\ResultInterface;
+use GuzzleHttp\Stream\StreamInterface as IGuzzleStream;
 use GuzzleHttp\Stream\Stream as GuzzleStream;
 use GuzzleHttp\Promise\PromiseInterface;
 {//begin namespace
@@ -51,6 +52,8 @@ class BitsAmazonS3 extends BaseModel
 	 * @var S3Client
 	 */
 	protected $mS3Client = null;
+	/** @var string The default Amazon Region to use. */
+	protected $mRegionName = self::DEFAULT_REGION;
 	/**
 	 * Bucket to use when accessing S3.
 	 * @var string
@@ -101,20 +104,20 @@ class BitsAmazonS3 extends BaseModel
 	{
 		$theAccountKey = $this->getSettingFor( $this->mConfigNameForAPIKey );
 		$theSecretKey = $this->getSettingFor( $this->mConfigNameForSecretKey );
-		$theRegionName = $this->getSettingFor( $this->mConfigNameForRegion );
+		$this->mRegionName = $this->getSettingFor( $this->mConfigNameForRegion );
 		$this->mBucketName = $this->getSettingFor( $this->mConfigNameForBucket );
 		$this->mPathPrefix = $this->getSettingFor( $this->mConfigNameForRootPath );
 		
 		$theOptions = array( 'version' => 'latest' );
-		if ( empty($theRegionName) )
-		{ $theRegionName = static::DEFAULT_REGION; }
-		if ( !empty($theAccountKey) && !empty($theSecretKey) && !empty($theRegionName) )
+		if ( empty($this->mRegionName) )
+		{ $this->mRegionName = static::DEFAULT_REGION; }
+		if ( !empty($theAccountKey) && !empty($theSecretKey) )
 		{
 			$theOptions['credentials'] = array(
 					'key' => $theAccountKey,
 					'secret' => $theSecretKey,
 			);
-			$theOptions['region'] = $theRegionName;
+			$theOptions['region'] = $this->mRegionName;
 			return S3Client::factory( $theOptions );
 		}
 		return null;
@@ -138,6 +141,10 @@ class BitsAmazonS3 extends BaseModel
 	 */
 	public function isConnected()
 	{ return ( !empty($this->mS3Client) ) ; }
+	
+	/** @return string Returns the Amazon Region in use. */
+	public function getS3Region()
+	{ return $this->mRegionName; }
 	
 	/**
 	 * @return S3Client|NULL Return the client object.
@@ -312,6 +319,32 @@ class BitsAmazonS3 extends BaseModel
 			$theKeyToUse .= '/';
 		$theKeyToUse .= basename($aName);
 		return $theKeyToUse;
+	}
+	
+	/**
+	 * Uploads a stream to S3 using the key as the new filename.
+	 * @param IGuzzleStream $aGuzzleStreamToCopy - a Guzzle stream.
+	 * @param string $aKeyToUse - full destination path and name.
+	 * @param string $aBucketName - (optional) specify another bucket to use.
+	 * @return \Aws\Result Returns the S3 results.
+	 * @throws AwsException if S3 fails for some reason.
+	 */
+	public function uploadGuzzleStreamAsKey( $aGuzzleStream, $aKeyToUse, $aBucketName=null )
+	{
+		if ( !$this->isConnected() )
+		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
+		
+		$theKeyToUse = trim($aKeyToUse);
+		$theBucketToUse = ( !empty($aBucketName) ) ? $aBucketName : $this->getS3Bucket();
+		$theOptions = array(
+				'Bucket' => $theBucketToUse,
+				'Key' => $theKeyToUse,
+				'Body' => $aGuzzleStream,
+		);
+		//$this->logStuff(__METHOD__, ' upload=', $theOptions); //DEBUG
+		$theResult = $this->getS3Client()->putObject( $theOptions );
+		//$this->logStuff(__METHOD__, ' ', $theResult); //DEBUG
+		return $theResult;
 	}
 	
 	/**
@@ -518,6 +551,27 @@ class BitsAmazonS3 extends BaseModel
 	{
 		$theKeyToUse = $this->localNameAsKeyPath( $aFolderToUpload, $aKeyPathToUse );
 		return $this->uploadFolderAsKey( $aFolderToUpload, $theKeyToUse, $aBucketName );
+	}
+	
+	/**
+	 * Delete a file from S3.
+	 * @param string $aS3Key - full destination path and name.
+	 * @param string $aBucketName - (optional) specify another bucket to use.
+	 * @return \Aws\Result Returns the result of the operation.
+	 * @throws AwsException if S3 fails for some reason.
+	 */
+	public function deleteKey( $aS3Key, $aBucketName=null )
+	{
+		if ( !$this->isConnected() )
+		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
+		
+		$theKeyToUse = Strings::sanitizeFilename(trim($aS3Key));
+		$theBucketToUse = ( !empty($aBucketName) ) ? $aBucketName : $this->getS3Bucket();
+		$theResult = $this->getS3Client()->deleteObject(array(
+				'Bucket'     => $theBucketToUse,
+				'Key'        => $theKeyToUse,
+		));
+		return $theResult;
 	}
 	
 }//end class
