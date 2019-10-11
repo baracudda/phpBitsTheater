@@ -18,6 +18,7 @@
 namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\Wardrobe\ATicketForVenue as BaseCostume;
 use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\models\Auth as AuthModel;
 use BitsTheater\Scene;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\Strings;
@@ -263,9 +264,15 @@ class TicketViaAuthHeaderBroadway extends BaseCostume
 			$theAuthMobileRows = $dbAuth->getAuthMobilesByAuthId($aAcctInfo->auth_id);
 			//$this->logStuff(__METHOD__, ' fp=', $this->fingerprints); //DEBUG
 			//$this->logStuff(__METHOD__, ' list=', $theAuthMobileRows); //DEBUG
-			foreach ($theAuthMobileRows as $theMobileRow) {
+			foreach ((array)$theAuthMobileRows as $theMobileRow) {
 				//$this->debugLog(__METHOD__.' chk against mobile_id='.$theMobileRow['mobile_id']); //DEBUG
-				if ( Strings::hasher($this->fingerprints, $theMobileRow['fingerprint_hash']) ) {
+				if ( $theMobileRow['auth_type'] == AuthModel::MOBILE_AUTH_TYPE_RESET ) {
+					//ignore the fingerprint_hash and reset this row to whatever was passed in
+					$dbAuth = $this->getProp(AuthModel::MODEL_NAME);
+					$this->mMobileRow = $dbAuth->resetMobileFingerprints($theMobileRow['mobile_id'], $this->fingerprints);
+					break;
+				}
+				else if ( Strings::hasher($this->fingerprints, $theMobileRow['fingerprint_hash']) ) {
 					//$this->debugLog(__METHOD__.' fmatch?=true'); //DEBUG
 					$this->mMobileRow = $theMobileRow;
 					break;

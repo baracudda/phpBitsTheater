@@ -170,6 +170,23 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @since BitsTheater 4.2.2
 	 */
 	const ORG_ID_4_ROOT = '__ROOT-ORG-ID__';
+	/**
+	 * Flag used to detect when a mobile device should be active.
+	 * @var string
+	 */
+	const MOBILE_AUTH_TYPE_ACTIVE = 'FULL_ACCESS';
+	/**
+	 * Flag used to detect when a mobile device should be denied.
+	 * @var string
+	 */
+	const MOBILE_AUTH_TYPE_INACTIVE = 'DENIED';
+	/**
+	 * Flag used to detect when a mobile device should be re-paired
+	 * with the server using IMEI or some such value instead of matching
+	 * the fingerprint hash.
+	 * @var string
+	 */
+	const MOBILE_AUTH_TYPE_RESET = '__RESET__';
 
 	public function setupAfterDbConnected()
 	{
@@ -1506,7 +1523,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 
 	public function getAuthMobilesByAuthId($aAuthId) {
-		$theSql = "SELECT * FROM {$this->tnAuthMobile} WHERE auth_id=:id";
+		$theSql = "SELECT * FROM {$this->tnAuthMobile} WHERE auth_id=:id ORDER BY created_ts DESC";
 		$ps = $this->query($theSql, array('id' => $aAuthId));
 		if (!empty($ps)) {
 			return $ps->fetchAll();
@@ -2351,7 +2368,8 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			//->logSqlDebug(__METHOD__, '[TRACE]')
 			;
 		try {
-			$theSql->execDML() ;
+			$theSql->execDML();
+			$this->updateMobileAuthForActiveFlag($aAuthID, $bActive);
 			//if we successfully toggle their active status,
 			//  clear out their status tokens
 			$this->removeAntiCsrfToken($aAuthID, $aAcctID);
@@ -2951,6 +2969,57 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	public function removeTaskToken( $aTaskID, $aToken )
 	{ $this->removeTokensFor($aTaskID, null, $aToken); }
+
+	/**
+	 * Mark the mobile records for an auth account "reset-able".
+	 * @param string $aAuthID - the auth ID.
+	 * @return string[] Returns the data updated.
+	 */
+	public function updateMobileAuthForActiveFlag( $aAuthID, $bActive )
+	{
+		if ( empty($aAuthID) ) return; //trivial
+		$theFlag = ( $bActive ) ? static::MOBILE_AUTH_TYPE_RESET : static::MOBILE_AUTH_TYPE_INACTIVE;
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('UPDATE')->add($this->tnAuthMobile)
+		;
+		$this->setAuditFieldsOnUpdate($theSql)
+			->mustAddParam('auth_type', $theFlag)
+			->startWhereClause()
+			->mustAddParam('auth_id', $aAuthID)
+			->endWhereClause()
+		;
+		try { return $theSql->execDMLandGetParams(); }
+		catch ( \PDOException $pdox )
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+	}
+	
+	/**
+	 * Reset device data due to factory reset of device.
+	 * @param string $aMobileID - the record ID to update.
+	 * @param string $aFingerprints - the fingerprints to register.
+	 * @return string[] Returns the updated row.
+	 */
+	public function resetMobileFingerprints( $aMobileID, $aFingerprints )
+	{
+		if ( empty($aMobileID) ) return; //trivial
+		//do not store the fingerprints as if db is compromised, this might be
+		//  considered "sensitive". just keep a hash instead, like a password.
+		$theFingerprintHash = Strings::hasher($aFingerprints);
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('UPDATE')->add($this->tnAuthMobile)
+		;
+		$this->setAuditFieldsOnUpdate($theSql)
+			->mustAddParam('auth_type', static::MOBILE_AUTH_TYPE_ACTIVE)
+			->mustAddParam('fingerprint_hash', $theFingerprintHash)
+			->startWhereClause()
+			->mustAddParam('mobile_id', $aMobileID)
+			->endWhereClause()
+		;
+		try { $theSql->execDML(); }
+		catch ( \PDOException $pdox )
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+		return $this->getAuthMobileRow($aMobileID);
+	}
 
 }//end class
 
