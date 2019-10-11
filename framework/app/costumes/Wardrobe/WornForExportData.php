@@ -110,7 +110,43 @@ trait WornForExportData
 		}
 		return $aFieldList;
 	}
+	
+	/**
+	 * Whenever a field list is undefined, we default to all publicly
+	 * defined fields in the class as valid fields to fetch. Sometimes
+	 * we want to have "expensive" fields that are only calculated/loaded
+	 * when specifically asked for and not just when null is passed in.
+	 * This method will remove these "expensive" fields if the field
+	 * list passed in is NULL or otherwise empty().
+	 * @param string[] $aFieldList
+	 * @param string[] $aRemovalList
+	 * @return string[] Returns the result
+	 */
+	static protected function restrictPublicFieldList( $aFieldList, $aRemovalList )
+	{
+		return ( !empty($aFieldList) ) ? $aFieldList : array_diff(
+				static::getDefinedFields(), $aRemovalList
+		);
+	}
 		
+	/**
+	 * Whenever a field list is undefined, we default to all publicly
+	 * defined fields in the class as valid fields to fetch. Sometimes
+	 * we want to have "expensive" fields that are only calculated/loaded
+	 * when specifically asked for and not just when null is passed in.
+	 * This method will remove these "expensive" fields as long as the
+	 * class defines them with RESTRICTED_EXPORT_FIELD_LIST.
+	 * @return string[] Returns the list of default export fields.
+	 */
+	static public function getDefaultExportFieldList()
+	{
+		$theFieldList = static::getDefinedFields();
+		if ( !empty(static::$RESTRICTED_EXPORT_FIELD_LIST) ) {
+			$theFieldList = array_diff($theFieldList, static::$RESTRICTED_EXPORT_FIELD_LIST);
+		}
+		return $theFieldList;
+	}
+	
 }//end trait
 
 }//end namespace

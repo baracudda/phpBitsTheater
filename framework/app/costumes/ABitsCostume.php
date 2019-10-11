@@ -245,8 +245,7 @@ implements IDirected
 	 * @return string Return self encoded as a standard class.
 	 */
 	public function exportData() {
-		//default export is "all public fields"
-		return (object) call_user_func('get_object_vars', $this);
+		return $this->constructExportObject();
 	}
 	
 	/**
