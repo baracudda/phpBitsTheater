@@ -158,6 +158,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	const TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT = 'hwid2acct';
 	/**
+	 * A long process is working.
+	 * @var string
+	 * @since BitsTheater [NEXT]
+	 */
+	const TOKEN_PREFIX_LONG_PROCESS_INPROGRESS = 'iP';
+	/**
 	 * Sometimes we need an actual value besides NULL to mean the
 	 * root org, use this value.
 	 * @var string
@@ -2878,6 +2884,74 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function getMyMobileRow()
 	{ return null; }
 		
+	/**
+	 * Insert the task token into the table.
+	 * @param string $aTaskID - token mapped to a task by this id.
+	 * @param string $aToken - the token.
+	 * @return array Returns the data inserted.
+	 * @since BitsTheater [NEXT]
+	 */
+	public function insertTaskToken( $aTaskID, $aToken )
+	{ return $this->insertAuthToken($aTaskID, 0, $aToken); }
+
+	/**
+	 * Update the task token with "amount left to do" integer.
+	 * @param string $aTaskID - token mapped to a task by this id.
+	 * @param string $aToken - the task token.
+	 * @param integer $aTaskAmount - the int to store.
+	 * @return array Returns the data parameters used in update query.
+	 * @since BitsTheater [NEXT]
+	 */
+	public function updateTask( $aTaskID, $aToken, $aTaskAmount )
+	{
+		$theSql = SqlBuilder::withModel($this);
+		$theSql->startWith('UPDATE')->add($this->tnAuthTokens);
+		$this->setAuditFieldsOnUpdate($theSql);
+		$theSql->mustAddParam('account_id', $aTaskAmount, PDO::PARAM_INT)
+			->startWhereClause()
+			->mustAddParam('auth_id', $aTaskID)
+			->setParamPrefix(' AND ')
+			->mustAddParam('token', $aToken)
+			->endWhereClause()
+			//->logSqlDebug(__METHOD__)
+			;
+		try { return $theSql->execDMLandGetParams(); }
+		catch (PDOException $pdox)
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+	}
+	
+	/**
+	 * Retrieve the "amount remaining" integer for a specific task.
+	 * @param string $aTaskID - token mapped to a task by this id.
+	 * @param string $aToken - the task token.
+	 * @return int|false Returns the stored task amount or FALSE if done.
+	 */
+	public function getTaskAmountRemaining( $aTaskID, $aToken )
+	{
+		$theSql = SqlBuilder::withModel($this);
+		$theSql->startWith('SELECT account_id')
+			->add('FROM')->add($this->tnAuthTokens)
+			->startWhereClause()
+			->mustAddParam('auth_id', $aTaskID)
+			->setParamPrefix(' AND ')
+			->mustAddParam('token', $aToken)
+			->endWhereClause()
+			//->logSqlDebug(__METHOD__)
+			;
+		try { return $theSql->query()->fetch(\PDO::FETCH_COLUMN); }
+		catch (PDOException $pdox)
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+	}
+	
+	/**
+	 * Delete the task token from the table.
+	 * @param string $aTaskID - token mapped to a task by this id.
+	 * @param string $aToken - the token.
+	 * @since BitsTheater [NEXT]
+	 */
+	public function removeTaskToken( $aTaskID, $aToken )
+	{ $this->removeTokensFor($aTaskID, null, $aToken); }
+
 }//end class
 
 }//end namespace
