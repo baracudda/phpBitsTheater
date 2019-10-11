@@ -340,7 +340,7 @@ class DbAdmin extends BaseCostume
 				$theModelClassName = $theMirror->getName();
 				/* @var $theModel \BitsTheater\Model */
 				$theModel = new $theModelClassName( $this->getDirector() );
-				if ( $theModel->dbConnName==$aDbConnName ) {
+				if ( $theModel::DB_CONN_NAME == $aDbConnName ) {
 					// found a model we need to setup
 					$theModel->connectTo($aDbConnInfo);
 					// call the setup methods for it

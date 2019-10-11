@@ -17,15 +17,18 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
-use BitsTheater\costumes\DbConnInfo;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\models\Auth as AuthModel;
 {//begin namespace
 
 class AOrgDbModel extends BaseModel
 {
-
-	public $dbConnName = APP_DB_CONN_NAME;
-
+	/**
+	 * The database connection name this model uses.
+	 * @var string
+	 */
+	const DB_CONN_NAME = APP_DB_CONN_NAME;
+	
 	/**
 	 * Add our database name before the defined table prefix so we can work
 	 * with multiple databases at once.
@@ -38,17 +41,26 @@ class AOrgDbModel extends BaseModel
 	
 	/**
 	 * Connect to a different org, null org data will connect to Root org.
-	 * @param array $aOrgRow - org data with the dbconn info to connect to.
+	 * @param string|array|object $aOrg - org ID (string), or org row data (array)
+	 *   or org object data with the org_id info available.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function connectToOrg( $aOrgRow )
+	public function connectToOrg( $aOrg )
 	{
-		$theNewDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
-		if ( !empty($aOrgRow) && !empty($aOrgRow['dbconn']) && $aOrgRow['org_id'] != AuthModel::ORG_ID_4_ROOT ) {
-			$theNewDbConnInfo->loadDbConnInfoFromString($aOrgRow['dbconn']);
+		$theOrgID = null;
+		if ( !empty($aOrg) ) {
+			if ( is_string($aOrg) ) {
+				$theOrgID = $aOrg;
+			}
+			else if ( is_array($aOrg) ) {
+				$theOrgID = ( !empty($aOrg['org_id']) ) ? $aOrg['org_id'] : null;
+			}
+			else if ( is_object($aOrg) ) {
+				$theOrgID = ( !empty($aOrg->org_id) ) ? $aOrg->org_id : null;
+			}
 		}
-		$this->connectTo($theNewDbConnInfo);
-		return $this;
+		$theNewDbConnInfo = $this->getDirector()->getPropsMaster()->getDbConnInfoForOrgData($theOrgID);
+		return $this->connectTo($theNewDbConnInfo);
 	}
 	
 	/**
@@ -59,16 +71,30 @@ class AOrgDbModel extends BaseModel
 	public function connectToOrgID( $aOrgID )
 	{
 		$theOrg = null;
-		$theNewDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
 		if ( !empty($aOrgID) && $aOrgID != AuthModel::ORG_ID_4_ROOT ) {
 			$dbAuth = $this->getAuthModel();
 			$theOrg = $dbAuth->getOrganization($aOrgID);
 			$this->returnProp($dbAuth);
-			if ( empty($theOrg) || empty($theOrg['dbconn']) ) return null; //trivial
-			$theNewDbConnInfo->loadDbConnInfoFromString($theOrg['dbconn']);
 		}
-		$this->connectTo($theNewDbConnInfo);
+		$this->connectToOrg($theOrg);
 		return $theOrg;
+	}
+	
+	/**
+	 * Factory method used to create, connect and call setup().
+	 * Useful in certain situations where we need two of the same model
+	 * pointing to different org connections at the same time.
+	 * @param IDirected $aContext - the context to use.
+	 * @param string|array|object $aOrg - org ID (string), or org row data (array)
+	 *   or org object data with the org_id info available.
+	 * @return AOrgDbModel Returns the model descentant.
+	 */
+	static public function newInstanceToOrg( IDirected $aContext, $aOrg )
+	{
+		$theClass = get_called_class();
+		$theModel = new $theClass();
+		$theModel->setDirector($aContext)->connectToOrg($aOrg)->setup($aContext);
+		return $theModel;
 	}
 	
 }//end class

@@ -20,15 +20,16 @@ use com\blackmoonit\AdamEve as BaseDirector;
 use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\costumes\PropsMaster;
 use BitsTheater\costumes\SiteSettings;
 use BitsTheater\costumes\venue\Usher;
+use BitsTheater\models\Config as ConfigModel;
 use BitsTheater\res\ResException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Arrays;
 use com\blackmoonit\FileUtils;
 use com\blackmoonit\exceptions\FourOhFourExit;
 use ArrayAccess;
-use ReflectionClass;
 use ReflectionMethod;
 use ReflectionException;
 use Exception;
@@ -65,15 +66,6 @@ implements ArrayAccess, IDirected
 	 */
 	public $account_info = null;
 	/**
-	 * Database connections to share with the models.
-	 * @var DbConnInfo[]
-	 */
-	public $dbConnInfo = array();
-	/**
-	 * Cache the models created so we do not create 12 instances of any single model.
-	 */
-	protected $_propMaster = array();
-	/**
 	 * Resource manager class (@var may not apply during installation).
 	 * @var res\ResI18N
 	 */
@@ -89,6 +81,8 @@ implements ArrayAccess, IDirected
 	protected $_logFilenameCache = array();
 	/** @var Usher The authorization costume used for permission checks. */
 	protected $mChiefUsher = null;
+	/** @var PropsMaster The models manager. */
+	public $mPropsMaster = null;
 	/**
 	 * Cache of the config model in use.
 	 * NOTE: If set to FALSE, then model is unavailable, use defined defaults.
@@ -163,6 +157,7 @@ implements ArrayAccess, IDirected
 		static::removeMagicQuotes();
 		static::unregisterGlobals();
 		register_shutdown_function(array($this, 'onShutdown'));
+		$this->mPropsMaster = new PropsMaster($this);
 		try {
 			if ( !$this->check_session_start() ) {
 				$this->regenerateSession();
@@ -198,12 +193,9 @@ implements ArrayAccess, IDirected
 	 */
 	public function cleanup() {
 		unset($this->account_info);
-		//destroy all cached models
-		array_walk($this->_propMaster, function(&$n) {$n['model'] = null;} );
-		unset($this->_propMaster);
-		//disconnect dbs
-		array_walk($this->dbConnInfo, function(&$dbci) {$dbci->disconnect();} );
-		unset($this->dbConnInfo);
+		if ( !empty($this->mPropsMaster) ) {
+			$this->mPropsMaster->closeAllConnections();
+		}
 		//free all resources
 		$this->freeRes();
 		//call parent
@@ -353,7 +345,7 @@ implements ArrayAccess, IDirected
 		return $this->canConnectDb() && class_exists(BITS_NAMESPACE_MODELS.'Auth');
 	}
 	
-	public function canConnectDb($aDbConnName='webapp') {
+	public function canConnectDb( $aDbConnName=PropsMaster::DB_CONN_NAME_FOR_AUTH ) {
 		return $this->getDbConnInfo($aDbConnName)->canAttemptConnectDb();
 	}
 	
@@ -585,132 +577,76 @@ implements ArrayAccess, IDirected
 	 * ReflectionClass of model in question.
 	 * @return string Returns the model class name with correct namespace.
 	 */
-	static public function getModelClass($aModelName) {
-		if (is_string($aModelName)) {
-			$theModelSegPos = strpos($aModelName, 'models\\');
-			if (class_exists($aModelName) && !empty($theModelSegPos))
-				return $aModelName;
-			$theModelName = Strings::getClassName($aModelName);
-			$theModelClass = BITS_NAMESPACE_MODELS.$theModelName;
-			if (!class_exists($theModelClass)) {
-				$theModelClass = WEBAPP_NAMESPACE.'models\\'.$theModelName;
-			}
-		} elseif ($aModelName instanceof ReflectionClass) {
-			$theModelClass = $aModelName->getName();
-		}
-		return $theModelClass;
-	}
+	static public function getModelClass( $aModelName )
+	{ return PropsMaster::getModelClass($aModelName); }
 	
 	/**
-	 * Cache the DB connection information for a specific connection name.
-	 * Any Models already connected to it will be re-connected to the new info.
-	 * @param DbConnInfo $aDbConnInfo - the DB connection info to cache.
+	 * @return \BitsTheater\costumes\PropsMaster Returns the PropsMaster in use.
 	 */
-	public function setDbConnInfo(DbConnInfo $aDbConnInfo)
-	{
-		if ( !empty($this->dbConnInfo[$aDbConnInfo->dbConnName]) ) {
-			$theOldDbConn = $this->dbConnInfo[$aDbConnInfo->dbConnName];
-		}
-		$this->dbConnInfo[$aDbConnInfo->dbConnName] = $aDbConnInfo;
-		if ( !empty($this->_propMaster) ) {
-			foreach($this->_propMaster as $theModelRefCountCell) {
-				/* @var $theModel Model */
-				$theModel = $theModelRefCountCell['model'];
-				if ( empty($theModel) ) continue; //trivial short-circuit
-				if ($theModel->dbConnName == $aDbConnInfo->dbConnName)
-				{ $theModel->connect($aDbConnInfo->dbConnName); }
-			}
-		}
-		//change the log prefix to help diagnose org-related errors
-		if ( !empty($aDbConnInfo->dbName) ) {
-			$theLogPrefix = '[';
-			if (defined('VIRTUAL_HOST_NAME') && VIRTUAL_HOST_NAME) {
-				$theLogPrefix .= VIRTUAL_HOST_NAME . '/';
-			}
-			$theLogPrefix .= $aDbConnInfo->dbName;
-			Strings::debugPrefix($theLogPrefix.'-dbg] ');
-			Strings::errorPrefix($theLogPrefix.'-err] ');
-		}
-		//disconnect (does nothing at this point, but may in future)
-		if ( !empty($theOldDbConn) )
-		{ $theOldDbConn->disconnect(); }
-	}
+	public function getPropsMaster()
+	{ return $this->mPropsMaster; }
 	
 	/**
 	 * Retrieve the connection information for a specific connection name.
 	 * @param string $aDbConnName - (optional) dbconn name, default="webapp".
-	 * @return DbConnInfo
+	 * @return DbConnInfo Returns the appropriate connection info.
 	 */
-	public function getDbConnInfo($aDbConnName='webapp')
+	public function getDbConnInfo( $aDbConnName=PropsMaster::DB_CONN_NAME_FOR_AUTH)
 	{
-		if ( empty($this->dbConnInfo[$aDbConnName]) )
-		{ $this->setDbConnInfo(new DbConnInfo($aDbConnName)); }
-		return $this->dbConnInfo[$aDbConnName];
+		if ( $aDbConnName == PropsMaster::DB_CONN_NAME_FOR_AUTH ) {
+			return $this->mPropsMaster->getDbConnInfoForAuthData();
+		}
+		else {
+			return $this->mPropsMaster->getDbConnInfoForOrgData(
+					$this->mPropsMaster->getDefaultOrgID()
+			);
+		}
 	}
 	
 	/**
-	 * Retrieve the singleton Model object for a given model class.
-	 * @param string $aModelClass - the model class to retrieve.
-	 * @throws Exception when the model fails to connect or is not found.
-	 * @return Model Returns the model class requested.
+	 * Set the default org all new data models should automatically connect to.
+	 * @param string $aOrgID - the new default org (NULL means Root).
+	 * @return $this Returns $this for chaining.
 	 */
-	public function getModel($aModelClass) {
-		$theModelClass = static::getModelClass($aModelClass);
-		if (class_exists($theModelClass)) {
-			if (empty($this->_propMaster[$theModelClass])) {
-				//ensure we have a non-empty reference in case of a dbconn exception
-				//  so that nested infinite loops can be avoided
-				$this->_propMaster[$theModelClass] = array(
-						'model' => null,
-						'ref_count' => 0,
-				);
-				try
-				{ $this->_propMaster[$theModelClass]['model'] = new $theModelClass($this); }
-				catch (Exception $e) {
-					$this->errorLog(__METHOD__.' '.$e->getMessage());
-					throw $e ;
+	public function setPropDefaultOrg( $aOrgID )
+	{
+		$theNewDbConnInfo = $this->mPropsMaster->getDbConnInfoForOrgData($aOrgID);
+		//if no new dbconn info, continue on as if nothing happened
+		//  else, change our default log prefix to show the org name
+		if ( !empty($theNewDbConnInfo) ) {
+			//valid org ID, change the default
+			$this->mPropsMaster->setDefaultOrgID($aOrgID);
+			//change the log prefix to help diagnose org-related errors
+			if ( !empty($theNewDbConnInfo->dbName) ) {
+				$theLogPrefix = '[';
+				if (defined('VIRTUAL_HOST_NAME') && VIRTUAL_HOST_NAME) {
+					$theLogPrefix .= VIRTUAL_HOST_NAME . '/';
 				}
+				$theLogPrefix .= $theNewDbConnInfo->dbName;
+				Strings::debugPrefix($theLogPrefix . '-dbg] ');
+				Strings::errorPrefix($theLogPrefix . '-err] ');
 			}
-			$this->_propMaster[$theModelClass]['ref_count'] += 1;
-			return $this->_propMaster[$theModelClass]['model'];
-		} else {
-			$theError = __METHOD__.' cannot find Model class: '.$theModelClass ;
-			$this->errorLog( $theError ) ;
-			throw new Exception( $theError ) ;
 		}
-	}
-	
-	public function unsetModel($aModel) {
-		if (isset($aModel)) {
-			$theModelClass = get_class($aModel);
-			if (isset($this->_propMaster[$theModelClass])) {
-				$this->_propMaster[$theModelClass]['ref_count'] -= 1;
-				if ($this->_propMaster[$theModelClass]['ref_count']<1) {
-					$this->_propMaster[$theModelClass]['model'] = null;
-					unset($this->_propMaster[$theModelClass]);
-				}
-			}
-			$aModel = null;
-		}
+		return $this;
 	}
 	
 	/**
-	 * Return a Model object, creating it if necessary.
+	 * Return a Model object for a given org, creating it if necessary.
 	 * @param string $aName - name of the model object.
+	 * @param string $aOrgID - (optional) the org ID whose data we want.
 	 * @return Model Returns the model object.
 	 */
-	public function getProp($aModelClass) {
-		return $this->getModel($aModelClass);
-	}
+	public function getProp( $aModelClass, $aOrgID=null )
+	{ return $this->mPropsMaster->getPropFromRoom($aModelClass, $aOrgID); }
 	
 	/**
 	 * Let the system know you do not need a Model anymore so it
 	 * can close the database connection as soon as possible.
 	 * @param Model $aProp - the Model object to be returned to the prop closet.
+	 * @return $this Returns $this for chaining.
 	 */
-	public function returnProp($aModel) {
-		$this->unsetModel($aModel);
-	}
+	public function returnProp( $aModel )
+	{ $this->mPropsMaster->returnPropToRoom($aModel); return $this; }
 
 	/**
 	 * Calls methodName for every model class that matches the class patern and returns an array of results.
@@ -723,6 +659,24 @@ implements ArrayAccess, IDirected
 	public function foreachModel($aModelClassPattern, $aMethodName, $args=null) {
 		return Model::foreachModel($this, $aModelClassPattern, $aMethodName, $args);
 	}
+	
+	/**
+	 * Retrieve the singleton Model object for a given model class.
+	 * @param string $aModelClass - the model class to retrieve.
+	 * @throws Exception when the model fails to connect or is not found.
+	 * @return Model Returns the model class requested.
+	 */
+	public function getModel( $aModelClass, $aOrgID=null )
+	{ return $this->getProp($aModelClass, $aOrgID); }
+	
+	/**
+	 * Let the system know you do not need a Model anymore so it
+	 * can close the database connection as soon as possible.
+	 * @param Model $aProp - the Model object to be returned to the prop closet.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function unsetModel( $aModel )
+	{ return $this->returnProp($aModel); }
 	
 	
 	//===========================================================
@@ -1022,26 +976,42 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
+	 * Get the code-defined default setting from config resources.
+	 * @param string $aSetting - setting in form of "namespace/setting"
+	 * @return string|null Returns the default value for setting, if any.
+	 */
+	public function getConfigDefault( $aSetting )
+	{
+		list($theNamespace, $theSettingName) = explode('/', $aSetting, 2);
+		$res = $this->getRes('config', $theNamespace);
+		if ( !empty($res[$theSettingName]) ) {
+			/* @var $theConfigRes \BitsTheater\costumes\ConfigResEntry */
+			$theConfigRes = $res[$theSettingName];
+			return $theConfigRes->default_value;
+		}
+	}
+
+	/**
 	 * Get the setting from the configuration model.
 	 * @param string $aSetting - setting in form of "namespace/setting"
+	 * @param string $aOrgID - (optional) the org ID whose data we want.
 	 * @throws \Exception
 	 */
-	public function getConfigSetting($aSetting) {
-		if ( is_null($this->dbConfig) )
-		{ $this->dbConfig = $this->getProp('Config'); }
-		if ( !empty($this->dbConfig) )
-		{ return $this->dbConfig[$aSetting]; }
+	public function getConfigSetting( $aSetting, $aOrgID=null )
+	{
+		if ( empty($this->dbConfig) && empty($aOrgID) ) {
+			$this->dbConfig = $this->getProp(ConfigModel::MODEL_NAME);
+		}
+		$dbConfig = empty($aOrgID) ? $this->dbConfig : $this->getProp(
+				ConfigModel::MODEL_NAME, $aOrgID
+		);
+		if ( !empty($dbConfig) ) {
+			return $dbConfig[$aSetting];
+		}
 		else {
 			//if dbConfig is empty, means dbconn error
 			//  return the pre-defined default value, if any
-			list($theAreaName, $theSettingName) = explode('/', $aSetting, 2);
-			$res = $this->getRes('config/' . $theAreaName);
-			if ( array_key_exists($theSettingName, $res) )
-			{
-				/* @var $theConfigRes \BitsTheater\costumes\ConfigResEntry */
-				$theConfigRes = $res[$theSettingName];
-				return $theConfigRes->default_value;
-			}
+			return $this->getConfigDefault($aSetting);
 		}
 	}
 
@@ -1195,6 +1165,48 @@ implements ArrayAccess, IDirected
 		$theInstalledSettingsClass = BITS_NAMESPACE_CFGS . 'Settings';
 		return $theInstalledSettingsClass;
 	}
+	
+	/**
+	 * Helper function for debugging code to format an abbreviated stack trace.
+	 * @param string $aStackTrace - the stack trace.
+	 * @param boolean $bTruncateAtPerformAct - (optional, default TRUE) if TRUE, the
+	 *   stack trace only goes as far back as which Actor::method() was called.
+	 * @return string Returns the stack trace string with site-relative paths.
+	 */
+	public function formatCallStackAsLogStr( $aStackTrace, $bTruncateAtPerformAct=true )
+	{
+		$theStr = str_replace("\n", '#012', $aStackTrace);
+		$bSnippedGenStack = false;
+		//strip the Strings::getStackTrace() and this method call from stack.
+		if ( strpos($aStackTrace, 'getCallStackAsStr') !== false ) {
+			$bSnippedGenStack = true;
+			$theStr = '#2 ' . Strings::strstr_after($theStr, '#012#2 ');
+		}
+		//remove trailing stack just dealing with URL parsing.
+		if ( $bTruncateAtPerformAct ) {
+			$thePatterns = array(
+					'~app/Actor\\.php\\(\\d+\\): call_user_func_array\\(Array, Array\\).+~',
+					'~Director->raiseCurtain\\(.+~',
+			);
+			$theReplacements = array_fill(0, count($thePatterns), '…[snip-parse-URL]…');
+			$c = 0;
+			$theStr = preg_replace($thePatterns, $theReplacements, $theStr, 1, $c);
+		}
+		//prefix with a standard string for debugging and shorten paths.
+		$thePrefix = ' c_stk:';
+		$thePrefix .= ( $bSnippedGenStack ) ? ' #0,#1: gen stack#012' : '#012';
+		return $thePrefix . str_replace(realpath(BITS_ROOT), '[%site]', $theStr);
+	}
+	
+	/**
+	 * Helper function for debugging code by dumping an optionally
+	 * abbreviated stack trace to the logs.
+	 * @param boolean $bTruncateAtPerformAct - (optional, default TRUE) if TRUE, the
+	 *   stack trace only goes as far back as which Actor::method() was called.
+	 * @return string Returns the stack trace string with site-relative paths.
+	 */
+	public function getCallStackAsStr( $bTruncateAtPerformAct=true )
+	{ return $this->formatCallStackAsLogStr(Strings::getStackTrace(), $bTruncateAtPerformAct); }
 	
 }//end class
 

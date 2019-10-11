@@ -21,13 +21,14 @@ use com\blackmoonit\Strings;
 use com\blackmoonit\database\DbConnOptions;
 use com\blackmoonit\database\DbConnSettings;
 use com\blackmoonit\exceptions\DbException;
+use BitsTheater\costumes\PropsMaster as PropsMasterInUse;
 use PDO;
 {//begin namespace
 
 class DbConnInfo extends BaseDbConnInfo
 {
 	/** @var string The connection name. */
-	public $dbConnName = 'webapp';
+	public $dbConnName = PropsMasterInUse::DB_CONN_NAME_FOR_AUTH;
 	/** @var string The database name used by the connection. */
 	public $dbName = null;
 	/** @var string Prefix for every table used by this connection */
@@ -36,6 +37,8 @@ class DbConnInfo extends BaseDbConnInfo
 	public $dbConn = null;
 	/** @var boolean Have we successfully loaded our dbconn info yet? */
 	public $bDbConnInfoLoaded = false;
+	/** @var string Used to mark a connection for a specific org. */
+	public $mOrgID = null;
 	
 	/**
 	 * Create the object and set the dbConnName, if not empty.

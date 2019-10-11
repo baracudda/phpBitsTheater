@@ -66,11 +66,12 @@ interface IDirected {
 	public function checkPermission($aNamespace, $aPermission, $acctInfo=null);
 	
 	/**
-	 * Return a Model object, creating it if necessary.
+	 * Return a Model object for a given org, creating it if necessary.
 	 * @param string $aName - name of the model object.
+	 * @param string $aOrgID - (optional) the org ID whose data we want.
 	 * @return \BitsTheater\Model Returns the model object.
 	 */
-	public function getProp($aName);
+	public function getProp( $aName, $aOrgID=null );
 	
 	/**
 	 * Let the system know you do not need a Model anymore so it
@@ -98,9 +99,10 @@ interface IDirected {
 	/**
 	 * Get the setting from the configuration model.
 	 * @param string $aSetting - setting in form of "namespace/setting"
+	 * @param string $aOrgID - (optional) the org ID whose data we want.
 	 * @throws \Exception
 	 */
-	public function getConfigSetting($aSetting);
+	public function getConfigSetting( $aSetting, $aOrgID=null );
 
 }//end interface
 

@@ -22,6 +22,7 @@ use BitsTheater\scenes\Install as MyScene; /* @var $v MyScene */
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\DbAdmin;
+use BitsTheater\costumes\PropsMaster;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\database\DbConnOptions;
 use com\blackmoonit\Strings;
@@ -149,7 +150,7 @@ class BitsInstall extends BaseActor
 	{
 		$db_conns = array();
 	
-		$theDbConnInfo = DbConnInfo::asSchemeINI('webapp');
+		$theDbConnInfo = DbConnInfo::asSchemeINI(PropsMaster::DB_CONN_NAME_FOR_AUTH);
 		$theDbConnInfo->dbConnSettings->dbname = '';
 		$theDbConnInfo->dbConnSettings->host = '';
 		$theDbConnInfo->dbConnSettings->username = '';

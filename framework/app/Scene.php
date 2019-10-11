@@ -491,13 +491,13 @@ implements IDirected
 	}
 	
 	/**
-	 * Return a Model object, creating it if necessary.
+	 * Return a Model object for a given org, creating it if necessary.
 	 * @param string $aName - name of the model object.
+	 * @param string $aOrgID - (optional) the org ID whose data we want.
 	 * @return Model Returns the model object.
 	 */
-	public function getProp($aName) {
-		return $this->getDirector()->getProp($aName);
-	}
+	public function getProp( $aName, $aOrgID=null )
+	{ return $this->getDirector()->getProp($aName, $aOrgID); }
 	
 	/**
 	 * Let the system know you do not need a Model anymore so it
@@ -531,11 +531,11 @@ implements IDirected
 	/**
 	 * Get the setting from the configuration model.
 	 * @param string $aSetting - setting in form of "namespace/setting"
+	 * @param string $aOrgID - (optional) the org ID whose data we want.
 	 * @throws \Exception
 	 */
-	public function getConfigSetting($aSetting) {
-		return $this->getDirector()->getConfigSetting($aSetting);
-	}
+	public function getConfigSetting( $aSetting, $aOrgID=null )
+	{ return $this->getDirector()->getConfigSetting($aSetting, $aOrgID); }
 	
 	/**
 	 * @see Director::getSiteMode()

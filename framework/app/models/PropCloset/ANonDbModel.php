@@ -17,19 +17,37 @@
 
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
+use BitsTheater\costumes\DbConnInfo;
+use com\blackmoonit\exceptions\DbException;
 {//begin namespace
 
 abstract class ANonDbModel extends BaseModel
 {
+	/** @var NULL Non DB Models have no connection. */
+	const DB_CONN_NAME = null;
 	
-	public function connect($aDbConnName=null)
+	/**
+	 * While not connecting to a database, we need the org ID info it
+	 * contains in order to direct our getConfigSetting() calls to it.
+	 * @param DbConnInfo $aDbConnInfo - the connection information.
+	 * @throws DbException - if failed to connect, this exception is thrown.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function connectTo( DbConnInfo $aDbConnInfo )
 	{
-		//do not call parent::connect() since we are not connecting to a db.
+		//even though we have no DB Connection, by default when none
+		//  are specified, the Root org's db conn info will be used.
+		//  This is great because Config Settings are defined by org
+		//  and now we know which org settings will be used whenever
+		//  model code tries to use getConfigSetting() method.
+		$this->myDbConnInfo = $aDbConnInfo;
+		//call our own setup method rather than the typical one.
 		$this->setupNonDbModel();
 	}
 	
 	/**
-	 * Generic setup method for non-Db Models
+	 * Generic setup method for non-Db Models since most Db models use
+	 * setupAfterDbConnected() method.
 	 */
 	public function setupNonDbModel()
 	{

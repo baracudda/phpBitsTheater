@@ -839,21 +839,6 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
-	 * Swap our APP_DB_CONN_NAME db connection with a new connection string.
-	 * @param string $aNewDbConnString - the dbconn string to utilize, if it
-	 *   is empty, use the original app dbconn definition.
-	 * @throws \InvalidArgumentException if the dbconn string fails somehow.
-	 */
-	public function swapAppDataDbConnInfo($aNewDbConnString)
-	{
-		$theNewDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
-		if ( !empty($aNewDbConnString) ) {
-			$theNewDbConnInfo->loadDbConnInfoFromString($aNewDbConnString);
-		}
-		$this->getDirector()->setDbConnInfo($theNewDbConnInfo);
-	}
-	
-	/**
 	 * Get the current org ID being viewed.
 	 * @return string|NULL Returns the org_id.
 	 */
@@ -881,22 +866,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		//$this->logStuff(__METHOD__, ' switch2org=', $aOrgRow); //DEBUG
 		if ( !empty($aOrgRow) && !empty($aOrgRow['dbconn']) ) {
 			$theOrg = AuthOrg::getInstance($this, $aOrgRow);
-			$theOrgConn = $aOrgRow['dbconn'];
+			$theOrgID = $theOrg->org_id;
 		}
 		else {
 			$theOrg = null;
-			$theOrgConn = null;
+			$theOrgID = null;
 		}
-		try {
-			//ensure we are using the org's dbconn defined
-			$this->swapAppDataDbConnInfo($theOrgConn);
-		}
-		catch ( \InvalidArgumentException $iax ) {
-			if ( !empty($theOrg) )
-			{ $this->logErrors(__METHOD__, ' org=', $theOrg->exportData()); }
-			$theOrgName = isset($theOrg->org_name) ? $theOrg->org_name : 'Root';
-			throw new DbException($iax, 'fail2swap2org=[' . $theOrgName . ']');
-		}
+		$this->getDirector()->setPropDefaultOrg($theOrgID);
 		//ensure we store the current org
 		$theAcctInfo->setSeatingSection($theOrg);
 		// (#6288) Need to reload groups as well, since we may have switched orgs

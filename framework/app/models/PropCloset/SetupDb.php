@@ -16,14 +16,16 @@
  */
 
 namespace BitsTheater\models\PropCloset;
-use BitsTheater\costumes\AuthOrgSet;
-use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\Model as BaseModel;
-use BitsTheater\Scene ;
+use BitsTheater\costumes\AuthOrg;
+use BitsTheater\costumes\AuthOrgSet;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\colspecs\CommonMySql ;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\WornForFeatureVersioning;
+use BitsTheater\models\Auth as AuthModel;
+use BitsTheater\BrokenLeg;
+use BitsTheater\Scene ;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\FileUtils;
 use PDO;
@@ -249,36 +251,32 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	 * @param object $aScene - the currently running page's Scene object or generic object.
 	 */
 	public function setupModels($aScene) {
+		$theDirector = $this->getDirector();
 		$this->setupModel($aScene);
 		$this->setupDefaultData($aScene);
 		
-		$models = self::getAllModelClassInfo();
+		$theModelList = self::getAllModelClassInfo();
 		
-		//$this->debugLog('SetupModels: '.$this->debugStr($models));
-
-		$this->callModelMethod($this->director, $models,'setupModel',$aScene);
-		$this->callModelMethod($this->director, $models,'setupDefaultData',$aScene);
+		$this->logStuff('Create missing tables on org: Root');
+		$this->callModelMethod($theDirector, $theModelList, 'setupModel', $aScene);
+		$this->callModelMethod($theDirector, $theModelList, 'setupDefaultData', $aScene);
 
 		$theOrgList = AuthOrgSet::withContextAndColumns($this)
 			->setPagerEnabled(false)
-			->getOrganizationsToDisplay();
-		if ( !empty($theOrgList) ) {
+			->getOrganizationsToDisplay()
+			;
+		if ( !empty($theOrgList) && !empty($theModelList) ) {
 			foreach ($theOrgList as $theOrg) {
-				$this->debugLog("Create missing tables on org: " . $theOrg->org_name);
-
-				$theNewDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
-				$theNewDbConnInfo->loadDbConnInfoFromString($theOrg->dbconn);
-				$this->getDirector()->setDbConnInfo($theNewDbConnInfo);
-
-				$this->callModelMethod($this->director, $models,'setupModel',$aScene);
-				$this->callModelMethod($this->director, $models,'setupDefaultData',$aScene);
+				/* @var $theOrg AuthOrg */
+				$this->getDirector()->setPropDefaultOrg($theOrg->org_id);
+				$this->logStuff('Create missing tables on org: ', $theOrg->org_name);
+				$this->callModelMethod($theDirector, $theModelList, 'setupModel', $aScene);
+				$this->callModelMethod($theDirector, $theModelList, 'setupDefaultData', $aScene);
+				$this->getDirector()->getPropsMaster()->closeConnection($theOrg->org_id);
 			}
 		}
 
-		$this->callModelMethod($this->director, $models,'setupFeatureVersion',$aScene);
-		
-		array_walk($models, function(&$n) { unset($n); } );
-		unset($models);
+		$this->callModelMethod($theDirector, $theModelList, 'setupFeatureVersion', $aScene);
 	}
 	
 	/**
@@ -484,32 +482,42 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 			//$this->debugLog('feature='.$this->debugStr($theFeatureData));
 			if (!empty($theFeatureData)) {
 				try {
-					$dbModel = $this->getProp($theFeatureData['model_class']);
+					$dbModel = $this->getProp($theFeatureData['model_class'], AuthModel::ORG_ID_4_ROOT);
 					$dbModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
 
 					//If the model uses the app db, loop through all orgs to ensure they are updated.
-					if ($dbModel->dbConnName == APP_DB_CONN_NAME) {
-						//save off Root org info so we can swap back to it later
-						$theSavedDbInfo = new DbConnInfo(APP_DB_CONN_NAME);
+					if ($dbModel::DB_CONN_NAME == APP_DB_CONN_NAME) {
 						$theOrgList = AuthOrgSet::withContextAndColumns($this)
 							->setPagerEnabled(false)
 							->getOrganizationsToDisplay();
 						if ( !empty($theOrgList) ) try {
 							foreach ($theOrgList as $theOrg) {
+								/* @var $theOrg AuthOrg */
 								$theFeatureLabel = $theOrg->org_name . ' - ' . $theFeatureData['feature_id'];
 								$this->logStuff("Attempting feature upgrade: ", $theFeatureLabel);
-
-								$theNewDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
-								$theNewDbConnInfo->loadDbConnInfoFromString($theOrg->dbconn);
-								$this->getDirector()->setDbConnInfo($theNewDbConnInfo);
-
-								$dbModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
+								try {
+									$this->getDirector()->setPropDefaultOrg($theOrg->org_id);
+									$dbOrgModel = $this->getProp($theFeatureData['model_class']);
+									$dbOrgModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
+									$this->getDirector()->getPropsMaster()->closeConnection($theOrg->org_id);
+								}
+								catch ( \Exception $x ) {
+									$blx = BrokenLeg::tossException($this, $x);
+									$blx->addReasonForUI('Database Scheme Update')
+										->addExtraMsgForUI('org_name=[' . $theOrg->org_name . '] ID=[' . $theOrg->org_id . ']')
+										->addExtraMsgForUI('Model Class=' . $theFeatureData['model_class'])
+										->addExtraMsgForUI('Feature [' . $theFeatureData['feature_id'] .
+												'] v' . $theFeatureData['version_seq']
+										)
+										;
+									throw $blx;
+								}
 
 								$this->logStuff("Successful feature upgrade: ", $theFeatureLabel);
 							}
 						}
 						finally {
-							$this->getDirector()->setDbConnInfo($theSavedDbInfo);
+							$this->getDirector()->setPropDefaultOrg(null);
 						}
 					}
 
@@ -525,6 +533,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					);
 					$this->errorLog($theMsg);
 					$this->outputUserMsg($aDataObject, $theMsg, Scene::USER_MSG_ERROR);
+					throw $e;
 				}
 			}
 		} else if (!empty($aDataObject)) {
@@ -545,6 +554,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 				);
 				$this->errorLog($theMsg);
 				$this->outputUserMsg($aDataObject, $theMsg, Scene::USER_MSG_ERROR);
+				throw $e;
 			}
 		}
 	}

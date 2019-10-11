@@ -163,7 +163,7 @@ class BitsConfig extends BaseModel implements IFeatureVersioning
 				$this->logErrors(__METHOD__, ' [', get_called_class(),
 						'] unknown configuration key [' . $aNsKey . ']'
 				);
-				$this->logErrors(Strings::getStackTrace());
+				$this->logErrors($this->getDirector()->getCallStackAsStr());
 			}
 			return array(
 					'namespace' => $theConfigResEntry->config_namespace(),
@@ -284,11 +284,13 @@ class BitsConfig extends BaseModel implements IFeatureVersioning
 	/**
 	 * Get the setting from the configuration model.
 	 * @param string $aSetting - setting in form of "namespace/setting"
+	 * @param string $aDummyArg - IDirected interface uses this for
+	 *   org ID, but here we just ignore it as this is the ultimate
+	 *   call for the getConfigSetting() chain of methods.
 	 * @throws \Exception
 	 */
-	public function getConfigSetting($aSetting) {
-		return $this[$aSetting];
-	}
+	public function getConfigSetting($aSetting, $aDummyArg=null)
+	{ return $this[$aSetting]; }
 	
 	/**
 	 * Return all the defined config settings in the system.

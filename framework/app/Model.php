@@ -19,6 +19,7 @@ namespace BitsTheater;
 use com\blackmoonit\database\GenericDb as BaseModel;
 use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\IDirected;
+use BitsTheater\costumes\PropsMaster;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForCLI;
 use com\blackmoonit\database\DbUtils;
@@ -43,11 +44,9 @@ implements IDirected
 	 * @var number
 	 */
 	const _SetupArgCount = 1;
-	/**
-	 * Use the named connection found in director->dbConnInfo[].
-	 * @var string
-	 */
-	public $dbConnName = 'webapp';
+	
+	/** @var string The db connection name we should be using. */
+	const DB_CONN_NAME = PropsMaster::DB_CONN_NAME_FOR_AUTH;
 	/**
 	 * Add our database name before the defined table prefix so we can work
 	 * with multiple databases at once.
@@ -79,12 +78,23 @@ implements IDirected
 	}
 	
 	/**
-	 * Setup Model for use; connect to db if not done yet.
-	 * @param Director $aDirector - site director object
+	 * Set our director instance given a Context to retrieve it.
+	 * @param IDirected $aContext - the Context object.
+	 * @return $this Returns $this for chaining.
 	 */
-	public function setup(Director $aDirector) {
-		$this->director = $aDirector;
-		$this->connect($this->dbConnName);
+	public function setDirector( IDirected $aContext )
+	{ $this->director = $aContext->getDirector(); return $this; }
+	
+	/**
+	 * Setup Model for use; connect to db if not done yet.
+	 * @param IDirected $aContext - the Context object.
+	 */
+	public function setup( IDirected $aContext )
+	{
+		$this->setDirector($aContext);
+		if ( !$this->isConnected() ) {
+			$this->connect();
+		}
 		$this->bHasBeenSetup = true;
 	}
 	
@@ -96,8 +106,34 @@ implements IDirected
 		parent::cleanup();
 	}
 	
-	static public function newModel($aModelClassName, Director $aDirector) {
-		return new $aModelClassName($aDirector);
+	/**
+	 * Ancient factory method kept around for backwards compatibility.
+	 * @param string $aModelClassName - the descendant class to create.
+	 * @param IDirected $aContext - the context to use.
+	 * @return Model Returns a model descendant.
+	 * @deprecated
+	 */
+	static public function newModel( $aModelClassName, IDirected $aContext )
+	{ return new $aModelClassName($aContext); }
+	
+	/**
+	 * Factory method used to create, connect and call setup().
+	 * Useful in certain situations where we need two of the same model
+	 * pointing to different db connections at the same time.
+	 * @param IDirected $aContext - the context to use.
+	 * @param DbConnInfo $aDbConnInfo - (optional) the db to connect to.
+	 * @return Model Returns the model descentant.
+	 */
+	static public function newInstance( IDirected $aContext, DbConnInfo $aDbConnInfo=null )
+	{
+		$theClass = get_called_class();
+		$theModel = new $theClass();
+		$theModel->setDirector($aContext);
+		if ( !empty($aDbConnInfo) ) {
+			$theModel->connectTo($aDbConnInfo);
+		}
+		$theModel->setup($aContext);
+		return $theModel;
 	}
 	
 	/**
@@ -112,10 +148,11 @@ implements IDirected
 	 * Connect to the database. May also be called to reconnect after timeout.
 	 * @param string $aDbConnName - connection info name to load
 	 * @throws DbException - if failed to connect, this exception is thrown.
+	 * @deprecated connectTo() is the preferred method now.
 	 */
 	public function connect($aDbConnName=null) {
 		if (empty($aDbConnName)) {
-			$aDbConnName = $this->dbConnName;
+			$aDbConnName = static::DB_CONN_NAME;
 		}
 		$this->connectTo($this->director->getDbConnInfo($aDbConnName));
 	}
@@ -509,8 +546,8 @@ implements IDirected
 		if (!is_array($args))
 			$args = array($args);
 		foreach ($aModelList as $modelInfo) {
-			//Strings::debugLog($modelInfo->getShortName().' calling: '.$aMethodName);
-			if ($modelInfo->hasMethod($aMethodName)) {
+			//$aDirector->logStuff(__METHOD__, ' calling: ', $modelInfo->getShortName(), '->', $aMethodName);
+			if ( $modelInfo->hasMethod($aMethodName) ) {
 				$theModel = $aDirector->getProp($modelInfo);
 				$theResult[$modelInfo->getShortName()] = call_user_func_array(array($theModel,$aMethodName),$args);
 			}
@@ -602,13 +639,13 @@ implements IDirected
 	}
 	
 	/**
-	 * Return a Model object, creating it if necessary.
+	 * Return a Model object for a given org, creating it if necessary.
 	 * @param string $aName - name of the model object.
+	 * @param string $aOrgID - (optional) the org ID whose data we want.
 	 * @return Model Returns the model object.
 	 */
-	public function getProp($aName) {
-		return $this->getDirector()->getProp($aName);
-	}
+	public function getProp( $aName, $aOrgID=null )
+	{ return $this->getDirector()->getProp($aName, $aOrgID); }
 	
 	/**
 	 * Let the system know you do not need a Model anymore so it
@@ -642,10 +679,16 @@ implements IDirected
 	/**
 	 * Get the setting from the configuration model.
 	 * @param string $aSetting - setting in form of "namespace/setting"
+	 * @param string $aOrgID - (optional) the org ID whose data we want.
 	 * @throws \Exception
 	 */
-	public function getConfigSetting($aSetting) {
-		return $this->getDirector()->getConfigSetting($aSetting);
+	public function getConfigSetting( $aSetting, $aOrgID=null )
+	{
+		//if the model is specific to a particular org, default our
+		//  config query to using that org ID rather than the system
+		//  default org.
+		$theOrgID = ( !empty($aOrgID) ) ? $aOrgID : $this->myDbConnInfo->mOrgID;
+		return $this->getDirector()->getConfigSetting($aSetting, $theOrgID);
 	}
 	
 	/**
