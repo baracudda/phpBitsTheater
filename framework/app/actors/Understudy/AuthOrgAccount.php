@@ -1819,10 +1819,8 @@ class AuthOrgAccount extends BaseActor
 			$theResult = $dbPrefs->setPreference(
 					$theAuthID, $theSpace, $theKey, $theValue ) ;
 			$theSummary['pref_value'] = $theResult['value'] ;
-			if( $theResult['status'] == 200 || $theResult['status'] == 201 )
-			{
-				http_response_code($theResult['status']) ;
-				$this->setApiResults($theSummary) ;
+			if ( $theResult['status'] == 200 || $theResult['status'] == 201 ) {
+				$this->setApiResults($theSummary, $theResult['status']);
 			}
 			else
 			{ // Some exception handler override returned some data to us.

@@ -737,12 +737,14 @@ implements IDirected
 	/**
 	 * Helper method to easily set the successful results of an API endpoint.
 	 * @param mixed $aResults - the result data you wish to return.
+	 * @param integer $aRespCode (optional) an HTTP response code to be set; if
+	 *  omitted, then the current response code will be retained
 	 * @return APIResponse Returns the response object so you can work with it
 	 *   if you have more to do.
 	 */
-	public function setApiResults( $aResults )
+	public function setApiResults( $aResults, $aRespCode=null )
 	{
-		$this->scene->results = APIResponse::resultsWithData($aResults);
+		$this->scene->results = APIResponse::resultsWithData($aResults, $aRespCode);
 		return $this->scene->results;
 	}
 	
