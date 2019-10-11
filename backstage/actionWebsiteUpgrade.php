@@ -11,7 +11,7 @@ global $director;
 /**
  * The short argument whose presence specifies that updates should be forced.
  * @var string
- * @since BitsTheater [NEXT]
+ * @since BitsTheater 4.4.0
  */
 define( 'ARG_SHORT_FORCE_UPDATE' , 'f' ) ;
 

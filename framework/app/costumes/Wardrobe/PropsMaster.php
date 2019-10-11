@@ -27,7 +27,7 @@ use com\blackmoonit\Strings;
 
 /**
  * Model Manager class used to keep track of connections to various orgs.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater 4.4.0
  */
 class PropsMaster extends BaseCostume
 {

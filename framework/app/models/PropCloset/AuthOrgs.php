@@ -160,7 +160,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	/**
 	 * A long process is working.
 	 * @var string
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater 4.4.0
 	 */
 	const TOKEN_PREFIX_LONG_PROCESS_INPROGRESS = 'iP';
 	/**
@@ -2907,7 +2907,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @param string $aTaskID - token mapped to a task by this id.
 	 * @param string $aToken - the token.
 	 * @return array Returns the data inserted.
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater 4.4.0
 	 */
 	public function insertTaskToken( $aTaskID, $aToken )
 	{ return $this->insertAuthToken($aTaskID, 0, $aToken); }
@@ -2918,7 +2918,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @param string $aToken - the task token.
 	 * @param integer $aTaskAmount - the int to store.
 	 * @return array Returns the data parameters used in update query.
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater 4.4.0
 	 */
 	public function updateTask( $aTaskID, $aToken, $aTaskAmount )
 	{
@@ -2965,7 +2965,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * Delete the task token from the table.
 	 * @param string $aTaskID - token mapped to a task by this id.
 	 * @param string $aToken - the token.
-	 * @since BitsTheater [NEXT]
+	 * @since BitsTheater 4.4.0
 	 */
 	public function removeTaskToken( $aTaskID, $aToken )
 	{ $this->removeTokensFor($aTaskID, null, $aToken); }
