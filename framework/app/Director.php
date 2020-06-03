@@ -986,6 +986,29 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
+	 * Get data cached for a specific org (usually current one).
+	 * @param string $aOrgDbName - (OPTIONAL) the org_name, uses current if null.
+	 * @return object Returns the cached object of data.
+	 */
+	public function getSessionCacheForOrg( $aOrgDbName=null )
+	{
+		if ( empty($aOrgDbName) ) {
+			if ($this->account_info && $this->account_info->mSeatingSection ) {
+				$aOrgDbName = $this->account_info->mSeatingSection->org_name;
+			}
+			else {
+				$aOrgDbName = $this->getDbConnInfo(APP_DB_CONN_NAME)->dbName;
+			}
+		}
+		$theResult = $this[$aOrgDbName];
+		if ( $theResult === null ) {
+			$theResult = new \stdClass();
+			$this[$aOrgDbName] = $theResult;
+		}
+		return $theResult;
+	}
+	
+	/**
 	 * Get the code-defined default setting from config resources.
 	 * @param string $aSetting - setting in form of "namespace/setting"
 	 * @return string|null Returns the default value for setting, if any.
@@ -1009,14 +1032,27 @@ implements ArrayAccess, IDirected
 	 */
 	public function getConfigSetting( $aSetting, $aOrgID=null )
 	{
-		if ( empty($this->dbConfig) && empty($aOrgID) ) {
+		//ensure our dbConfig is always defined as current
+		if ( empty($this->dbConfig) || $this->dbConfig->getDbConnInfo()->mOrgID != $this->getDbConnInfo()->mOrgID ) {
 			$this->dbConfig = $this->getProp(ConfigModel::MODEL_NAME);
 		}
+		//if we want the config from a specific org, load that one
 		$dbConfig = empty($aOrgID) ? $this->dbConfig : $this->getProp(
 				ConfigModel::MODEL_NAME, $aOrgID
 		);
 		if ( !empty($dbConfig) ) {
-			return $dbConfig[$aSetting];
+			$theOrgCache = $this->getSessionCacheForOrg($dbConfig->getDbConnInfo()->dbName);
+			if ( !empty($theOrgCache->configs) ) {
+				if ( isset($theOrgCache->configs[$aSetting]) ) {
+					return $theOrgCache->configs[$aSetting];
+				}
+			}
+			else {
+				$theOrgCache->configs = array();
+			}
+			$theValue = $dbConfig[$aSetting];
+			$theOrgCache->configs[$aSetting] = $theValue;
+			return $theValue;
 		}
 		else {
 			//if dbConfig is empty, means dbconn error
