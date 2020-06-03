@@ -925,6 +925,12 @@ class AuthOrgAccount extends BaseActor
 			$theAddedOrgs = array_diff($theOrgList, $theAuthAccount->org_ids);
 			//removed orgs can just be safely removed
 			if ( !empty($theRemovedOrgs) ) {
+				foreach( $theRemovedOrgs as $theRemovedOrg ) {
+					$theRolesToRemove = $dbAuthGroups->getAcctGroupsForOrg($theAuthAccount->auth_id, $theRemovedOrg);
+					foreach( $theRolesToRemove as $theRemovedRoleID ) {
+						$dbAuthGroups->delMap($theRemovedRoleID, $theAuthAccount->auth_id);
+					}
+				}
 				$dbAuth->delOrgsForAuth($theAuthAccount->auth_id, $theRemovedOrgs);
 			}
 			if ( !empty($theAddedOrgs) ) {
