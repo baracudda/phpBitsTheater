@@ -27,7 +27,7 @@ use BitsTheater\BrokenLeg;
 
 /**
  * Class used to help manage some endpoints in multi-tenancy.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater 4.5.0
  */
 class MultiOrgProcessor extends BaseCostume
 { use WornByActor;

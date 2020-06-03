@@ -6,7 +6,7 @@ use BitsTheater\costumes\Wardrobe\ManagedConfig as BaseCostume;
 
 /**
  * Manage a config file stored as local, mmr, s3, or URL.
- * @since BitsTheater [NEXT]
+ * @since BitsTheater 4.5.0
  */
 class ManagedConfig extends BaseCostume
 {

@@ -33,7 +33,7 @@ use BitsTheater\Scene;
  *   <li>mmr://</li>
  *   <li>http(s)://</li>
  * </ol>
- * @since BitsTheater [NEXT]
+ * @since BitsTheater 4.5.0
  */
 class ManagedConfig extends BaseCostume
 {
