@@ -30,6 +30,7 @@ class ConfigResEntry extends BaseCostume {
 	public $input_type = null;
 	public $input_enums = null;
 	public $default_value = null;
+	public $placeholder = null;
 	
 	public function __construct($aConfigNamespace=null, $aConfigSetting=null, $aLabel=null, $aDesc=null) {
 		parent::__construct($aConfigSetting, $aLabel, $aDesc);
@@ -85,6 +86,9 @@ class ConfigResEntry extends BaseCostume {
 			if (isset($aInput['default']))
 				$this->default_value = $aInput['default'];
 			
+			if ( !empty($aInput['placeholder']) )
+				$this->placeholder = $aInput['placeholder'];
+			
 			if (isset($aInput['is_editable']))
 				$this->config_is_allowed(!empty($aInput['is_editable']));
 			
@@ -106,6 +110,7 @@ class ConfigResEntry extends BaseCostume {
 		$o->desc = $this->desc;
 		$o->is_editable = $this->config_is_allowed();
 		$o->default_value = $this->default_value;
+		if ( !empty($this->placeholder) ) $o->placeholder = $this->placeholder;
 		$o->input_type = $this->input_type;
 		$o->input_enums = $this->input_enums;
 		return $o;

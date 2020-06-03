@@ -87,6 +87,7 @@ class CurlRequestBuilder extends BaseCostume
 	 */
 	static public function withURL( IDirected $aContext, $aBaseURL, $aAction=null )
 	{
+		//$aContext->getDirector()->logStuff(__METHOD__, ' curl=', $aBaseURL);//debug
 		$theClassName = get_called_class();
 		$o = new $theClassName($aContext->getDirector());
 		$o->setURL(trim($aBaseURL));
@@ -307,7 +308,7 @@ class CurlRequestBuilder extends BaseCostume
 	 */
 	public function useBufferedOutput( $aCallback=null )
 	{
-		$this->setBufferSize(655360); //640K buffer
+		$this->setBufferSize(655360*10); //6400k buffer
 		if ( !empty($aCallback) ) {
 			$this->setOutputRoutine($aCallback);
 		}
@@ -361,11 +362,12 @@ class CurlRequestBuilder extends BaseCostume
 		}
 		return strlen($aHeaderLine);
 	}
+	
 	/**
-	 * Create the cURL request and return it.
-	 * @return resource Returns the created cURL request.
+	 * Create the cURL request and set common options.
+	 * @return $this Returns $this for chaining.
 	 */
-	public function createRequest()
+	public function initRequest()
 	{
 		$this->mRequest = curl_init($this->mURL);
 		if ( $this->bExpectResponse )
@@ -392,7 +394,28 @@ class CurlRequestBuilder extends BaseCostume
 		{ curl_setopt($this->mRequest, CURLOPT_WRITEFUNCTION, $this->mOutputRoutine); }
 		curl_setopt($this->mRequest, CURLOPT_HEADER, $this->bIncludeHeadersInResponse);
 		curl_setopt($this->mRequest, CURLOPT_HEADERFUNCTION, array($this, 'onResponseHeader'));
-		return $this->mRequest;
+		return $this;
+	}
+	
+	/**
+	 * Create the cURL request and return it.
+	 * @return resource Returns the created cURL request.
+	 */
+	public function createRequest()
+	{
+		return $this->initRequest()->mRequest;
+	}
+	
+	/**
+	 * Set a cURL option for our request.
+	 * @param int $aOptConst - the CURLOPT_* constant.
+	 * @param mixed $aOptValue - the value of the option.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setOption( $aOptConst, $aOptValue )
+	{
+		curl_setopt($this->mRequest, $aOptConst, $aOptValue);
+		return $this;
 	}
 	
 	/**
@@ -402,7 +425,7 @@ class CurlRequestBuilder extends BaseCostume
 	public function execute()
 	{
 		if ( empty($this->mRequest) )
-		{ $this->createRequest(); }
+		{ $this->initRequest(); }
 		$this->bRequestNotClosed = true;
 		$theResponse = curl_exec($this->mRequest);
 		$this->mCurlInfo = $this->getInfo();
@@ -473,7 +496,7 @@ class CurlRequestBuilder extends BaseCostume
 	public function getLogLines($aResponseData=null)
 	{
 		return array(
-			'[1/2] - ' .
+			'[1/2] - ' . $this->mRequestMethod . ' ' .
 				'URL [' . $this->mURL, ']; req headers=[' .
 				$this->debugStr($this->mHeaders) .
 				']; request data=' .

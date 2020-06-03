@@ -24,6 +24,7 @@ if (!headers_sent()) {
 }
 if ($v->results) {
 	$theCSV = OutputToCSV::newInstance()->setInput($v->results);
+	$theCSV->bUseBOM = !empty($v->bUseBOM);
 	//default to "true" for backward compatibility
 	$bGenerateHeaderRow = (isset($v->bUseResultsForHeaderRow))
 			? $v->bUseResultsForHeaderRow
@@ -32,6 +33,9 @@ if ($v->results) {
 	$theCSV->useInputForHeaderRow($bGenerateHeaderRow);
 	if (isset($v->bUseUserAgentToDetermineLineEnding))
 		$theCSV->determineClientLineEnding($v->bUseUserAgentToDetermineLineEnding);
+		if ( !empty($v->csv_opt_col_names_to_prepend_equal) ) {
+		$theCSV->setColNamesToPrependEqual($v->csv_opt_col_names_to_prepend_equal);
+	}
 	if (isset($v->csv_opt_delimiter))
 		$theCSV->setDelimiter($v->csv_opt_delimiter);
 	if (isset($v->csv_opt_enclosure))

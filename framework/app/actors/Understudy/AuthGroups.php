@@ -21,6 +21,7 @@ use BitsTheater\BrokenLeg ;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\RightsMatrixProcessor;
+use BitsTheater\models\Auth;
 use BitsTheater\models\AuthGroups as MyModel;
 use BitsTheater\outtakes\RightsException ;
 use BitsTheater\scenes\Rights as MyScene;
@@ -153,8 +154,21 @@ class AuthGroups extends BaseActor
 		try
 		{
 			$dbAuthGroups = $this->getMyModel();
+			$theParentGroupID = $aDataObject->parent_group_id;
+			//check for "no parent", only allowed if Root.
+			if ( empty($theParentGroupID) ) {
+				$theOrgID = $dbAuthGroups->getDbConnInfo()->mOrgID;
+				//if not Root org
+				if ( !empty($theOrgID) && $theOrgID != Auth::ORG_ID_4_ROOT ) {
+					//force non-Root org Role parent to be role 1.
+					$theGroup1Row = $dbAuthGroups->getGroupByNum(1, 'group_id');
+					if ( !empty($theGroup1Row) ) {
+						$theParentGroupID = $theGroup1Row['group_id'];
+					}
+				}
+			}
 			return $dbAuthGroups->createGroup( $aDataObject->group_name,
-					$aDataObject->parent_group_id, $aDataObject->group_num,
+					$theParentGroupID, $aDataObject->group_num,
 					$aDataObject->reg_code, $aDataObject->source_group_id
 			);
 		}

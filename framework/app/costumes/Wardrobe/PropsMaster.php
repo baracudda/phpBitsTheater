@@ -40,7 +40,7 @@ class PropsMaster extends BaseCostume
 	/** @var DbConnInfoInUse The Org data db connection info. */
 	public $mDbConnInfoForOrg = array(AuthModel::ORG_ID_4_ROOT => null);
 	
-	/** @var DbConnInfoInUse[] The Org connections in use. */
+	/** @var array $[orgID][$theModelClass]['model'|'ref_count']; model=DbConnInfoInUse */
 	public $mPropRooms = [];
 	
 	/** @var string The default Org ID to use when not specified. */
@@ -275,8 +275,9 @@ class PropsMaster extends BaseCostume
 		if ( !empty($this->mDbConnInfoForOrg[$theOrgID]) ) {
 			if ( !empty($this->mPropRooms[$theOrgID]) ) {
 				array_walk($this->mPropRooms[$theOrgID], function(&$n) {
-					$n['model'] = null;
-					$n['ref_count'] = 0;
+					if ( !empty($n) ) {
+						$n = array();
+					}
 				});
 				$this->mDbConnInfoForOrg[$theOrgID]->disconnect();
 				unset($this->mDbConnInfoForOrg[$theOrgID]);

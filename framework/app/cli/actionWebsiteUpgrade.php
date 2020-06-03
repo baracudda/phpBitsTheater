@@ -24,7 +24,7 @@ $_POST['force_model_upgrade'] = isset($theCliOptions['f']);
 
 //if using the install pw, bypass the normal auth mechanism and upgrade the schema using
 //  the costume.
-if ( TicketViaInstallPw::checkInstallPwVsInput($theCliOptions['p']) ) {
+if ( !empty($theCliOptions['p']) && TicketViaInstallPw::checkInstallPwVsInput($theCliOptions['p']) ) {
 	$theParams = new \stdClass() ;
 	$theParams->force_model_upgrade = isset($theCliOptions['f']);
 	$theUpdater = new SiteUpdater($director, $theParams, 'SetupDb');

@@ -105,7 +105,19 @@ class OutputToCSV {
 	 * @var string
 	 */
 	protected $csv = '';
-	
+	/**
+	 * The csv output should start with a Byte Order Mark to signify
+	 * non-ASCII content. Only applicable when using generateCSVfromInput().
+	 * @var boolean
+	 */
+	public $bUseBOM = false;
+	/**
+	 * The list of named columns that require an `=` prepended to the value
+	 * in order for Excel to treat is as General Text rather than a number.
+	 * @var string[]
+	 */
+	protected $mColNamesToPrependEqual = null;
+
 	/**
 	 * Factory method for those that like to use them.
 	 * @return $this Returns $this for chaining.
@@ -153,6 +165,18 @@ class OutputToCSV {
 	 */
 	public function setDelimiter($aDelimiter) {
 		$this->mDelimiter = $aDelimiter;
+		return $this;
+	}
+	
+	/**
+	 * Set column headers names that should have `=` prepended to the value
+	 * so Excel will treat them as-is rather than try to convert.
+	 * @param string[] $aColNamesToPrependEqual - list of column names.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setColNamesToPrependEqual( $aColNamesToPrependEqual )
+	{
+		$this->mColNamesToPrependEqual = $aColNamesToPrependEqual;
 		return $this;
 	}
 	
@@ -253,7 +277,18 @@ class OutputToCSV {
 			if (!empty($this->mInputArray[$aIdx]))
 				return $this->mInputArray[$aIdx];
 		} else if (!empty($this->mInputPDOStatement)) {
-			return $this->mInputPDOStatement->fetch();
+			$theRow = $this->mInputPDOStatement->fetch();
+			if ( is_object($theRow) ) {
+				if ( method_exists($theRow, 'exportData') ) {
+					return $theRow->exportData();
+				}
+				else {
+					return $theRow;
+				}
+			}
+			else {
+				return $theRow;
+			}
 		}
 		return null;
 	}
@@ -276,13 +311,23 @@ class OutputToCSV {
 		return $this->mEnclosureLeft.implode($theSeparator, $theOutput).$this->mEnclosureRight.$this->mLineDelimiter;
 	}
 	
+	protected function isColumnPrependEqual( $aColName, $aColValue )
+	{
+		if ( !empty($this->mColNamesToPrependEqual) ) {
+			if ( in_array($aColName, $this->mColNamesToPrependEqual) ) {
+				return true;
+			}
+		}
+		return ( Strings::beginsWith($aColValue, '+') || Strings::beginsWith($aColValue, '0') );
+	}
+	
 	/**
 	 * Workhorse method that actually generates the CSV and either outputs each line to the
 	 * defined output stream or caches the entire CSV into an object property.
 	 */
 	protected function generateCSVfromInput() {
 		// using concatenation since it is faster than fputcsv, and file size is smaller
-		$this->csv = '';
+		$this->csv = ( $this->bUseBOM ) ? Strings::createBOM() : '';
 
 		$theIdx = 0;
 		$theRow = $this->getInputRow($theIdx);
@@ -314,8 +359,9 @@ class OutputToCSV {
 				// Carriage Return and/or New Line converted to the literal '\n'
 				$theColValue = str_replace(array("\r\n", "\n", "\r"),'\n',$theColValue);
 				//to prevent Excel from converting value to formula, prepend with '=' before enclosure.
-				if (Strings::beginsWith($theColValue, '+') || Strings::beginsWith($theColValue, '0'))
+				if ( $this->isColumnPrependEqual($theColName, $theColValue) ) {
 					$this->csv .= '=';
+				}
 				$this->csv .= $this->mEnclosureLeft.$theColValue.$this->mEnclosureRight.$this->mValueDelimiter;
 			}
 			$theDelimSize = strlen($this->mValueDelimiter);

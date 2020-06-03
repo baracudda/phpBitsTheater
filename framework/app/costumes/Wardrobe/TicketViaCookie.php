@@ -106,10 +106,10 @@ class TicketViaCookie extends BaseCostume
 		//login success, bake our CSRF token cookie!
 		//$bCsrfTokenWasBaked =
 				$dbAuth->setCsrfTokenCookie();
-		//so updateCookie() has audit info
+		//so updateCookiesForAuth() has audit info
 		$this->getDirector()->account_info = $aAcctInfo;
 		//bake (re-create) a new cookie for next time
-		$dbAuth->updateCookie($aAcctInfo);
+		$dbAuth->updateCookiesForAuth($aAcctInfo);
 		return $this;
 	}
 	

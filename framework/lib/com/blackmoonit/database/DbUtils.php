@@ -222,7 +222,7 @@ class DbUtils {
 	}
 	
 	/**
-	 * @return string Returns a SQL datetime string representing now() in UTC.
+	 * @return string Returns an ISO-8601 datetime string representing now() in UTC.
 	 */
 	static public function utc_now($bUseMicroseconds=false) {
 		/* PHP is bugged, the "u" format does not work!
