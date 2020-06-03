@@ -414,18 +414,19 @@ class Strings {
 				}//switch
 			}
 		} catch (Exception $e) {
-			$depth = 0;
 			$output .= ' ERR='.$e->getMessage();
 		}
-		if ($depth===0) {
-			foreach ($varList as $var) {
-				if (is_array($var))
-					unset($var[self::DEBUG_VAR_DUMP_FLAG]);
-				else if (is_object($var))
-					unset($var->{self::DEBUG_VAR_DUMP_FLAG});
+		finally {
+			if ($depth===0) {
+				foreach ($varList as &$var) {
+					if (is_array($var))
+						unset($var[self::DEBUG_VAR_DUMP_FLAG]);
+					else if (is_object($var))
+						unset($var->{self::DEBUG_VAR_DUMP_FLAG});
+				}
+				$varList = array();
+				$varCount = 0;
 			}
-			unset($varList);
-			unset($varCount);
 		}
 		return $output.$nl;
 	}
@@ -1111,6 +1112,32 @@ class Strings {
 		return preg_replace("/^$theBOM/", '', $aTextContent);
 	}
 	
+	/**
+	 * Given two microtime() values, calc the diff and return the humanized string.
+	 * @param number $aStart - a starting microtime.
+	 * @param number $aEnd - an ending microtime.
+	 * @return string Returns the diff between them.
+	 */
+	static public function diffTime( $aStart, $aEnd )
+	{
+		$theDiff = $aEnd - $aStart;
+		$theDiff_ms = (int) round(($theDiff - floor($theDiff)) * 1000000.0, 0);
+		return date('H:i:s.',$theDiff) . sprintf('%06d', $theDiff_ms);
+	}
+	
+	/**
+	 * Create the header string that would be used for "Expires: now()+ X days" where
+	 * X can be greater than or equal to 0 and also be fractional to calc less a day.
+	 * @param number $aExpireXDaysFromNow - (optional, default 1) can be fractional.
+	 * @return string Returns the header to output using header().
+	 */
+	static public function calcExpiresHeader( $aExpireXDaysFromNow=1 )
+	{
+		return self::createHttpHeader('Expires',
+				gmdate('D, d M Y H:i:s \G\M\T', time() + ((60 * 60 * 24) * $aExpireXDaysFromNow))
+		);
+	}
+		
 }//end class
 
 /* increase default crypto strength (04-31) based on PHP version

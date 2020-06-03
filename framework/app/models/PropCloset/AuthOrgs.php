@@ -1843,11 +1843,27 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
+	 * Given the tokens to store, create the auth cookies using the configured
+	 * expiration date for them. This method is used to refresh the expiration
+	 * timestamps without having to recycle the tokens so that stale auth
+	 * cookies are recycled after they aren't used for the stale period
+	 * defined rather than after date of creation.
+	 * @param string $aUserToken - the user token to store in the userinfo cookie.
+	 * @param string $aAuthToken = the auth token to store in the auth token cookie.
+	 */
+	public function setAuthCookies( $aUserToken, $aAuthToken )
+	{
+		$theStaleTime = $this->getCookieStaleTimestamp();
+		$this->setMySiteCookie(static::KEY_userinfo, $aUserToken, $theStaleTime);
+		$this->setMySiteCookie(static::KEY_token, $aAuthToken, $theStaleTime);
+	}
+	
+	/**
 	 * Create the set of cookies which will be used the next session to re-auth.
 	 * @param AccountInfoCache $aAcctInfo - the auth info.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function updateCookie( AccountInfoCache $aAcctInfo )
+	public function updateCookiesForAuth( AccountInfoCache $aAcctInfo )
 	{
 		try {
 			$theUserToken = $this->createUserInfoTokenForAuthCookie(
@@ -1856,9 +1872,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$theAuthToken = $this->createNonceTokenForAuthCookie(
 					$aAcctInfo->auth_id, $aAcctInfo->account_id
 			);
-			$theStaleTime = $this->getCookieStaleTimestamp();
-			$this->setMySiteCookie(static::KEY_userinfo, $theUserToken, $theStaleTime);
-			$this->setMySiteCookie(static::KEY_token, $theAuthToken, $theStaleTime);
+			$this->setAuthCookies($theUserToken, $theAuthToken);
 		}
 		catch ( \Exception $x ) {
 			//do not care if setting cookies fails, log it so admin knows about it, though
@@ -1866,6 +1880,16 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		}
 		return $this;
 	}
+	
+	/**
+	 * Create the set of cookies which will be used the next session to re-auth.
+	 * @param AccountInfoCache $aAcctInfo - the auth info.
+	 * @return $this Returns $this for chaining.
+	 * @deprecated use updateCookiesForAuth() instead.
+	 */
+	public function updateCookie( AccountInfoCache $aAcctInfo )
+	{ return $this->updateCookiesForAuth($aAcctInfo); }
+	
 	
 	/**
 	 * Return the auth ID token encoded however we wish to be saved in our
@@ -1973,8 +1997,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 
 	/**
 	 * Remove stale tokens.
+	 * @param string $aTokenPattern - the token pattern is usually "TOKEN_PREFIX.'%'".
+	 * @param string $aExpireInterval - is a valid interval like "7 DAYS".
+	 * @param SqlBuilder $aFilter - (OPTIONAL) additional criteria desired.
 	 */
-	public function removeStaleTokens($aTokenPattern, $aExpireInterval) {
+	public function removeStaleTokens( $aTokenPattern, $aExpireInterval, SqlBuilder $aFilter=null )
+	{
+		
 		$theSql = SqlBuilder::withModel($this);
 		if (!empty($aExpireInterval) && $this->isConnected()) try {
 			$theSql->obtainParamsFrom(array(
@@ -1985,6 +2014,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$theSql->setParamOperator(' LIKE ')->mustAddParam('token');
 			$theDeltaField = 'updated_ts';
 			$theSql->add("AND {$theDeltaField}<(NOW() - INTERVAL {$aExpireInterval})");
+			$theSql->setParamPrefix(' AND ')->applyFilter($aFilter);
 			$theSql->endWhereClause();
 			//$theSql->logSqlDebug(__METHOD__); //DEBUG
 			$theSql->execDML();
@@ -2002,6 +2032,17 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		if (!empty($delta)) {
 			$this->removeStaleTokens(static::TOKEN_PREFIX_COOKIE.'%', $delta.' DAY');
 		}
+		//NOTE: in order to support multiple simultaneous request ops, each referencing
+		//  the same valid cookie at that time, we don't DELETE cookie tokens immediately.
+		//  Instead we mark them so they will be removed "very soon" so that all the
+		//  simultaneous requests will succeed, at the cost of recycling through several
+		//  cookie tokens. A small price to pay for a better user experience for multi-
+		//  threaded webapps.
+		$theFilter = SqlBuilder::withModel($this)
+			->mustAddParam('account_id', 0, \PDO::PARAM_INT)
+		;
+		//also remove any cookie tokens marked for garbage collection (account_id = 0)
+		$this->removeStaleTokens(static::TOKEN_PREFIX_COOKIE.'%', '5 MINUTE', $theFilter);
 	}
 
 	/**
@@ -2087,20 +2128,25 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		//now see if our cookie token still exists
 		$theAuthTokenRow = $this->getAuthTokenRow($aAuthId, $aAuthToken);
 		$theSql = SqlBuilder::withModel($this);
-		if (!empty($theAuthTokenRow)) try {
+		if ( !empty($theAuthTokenRow) ) try {
 			//consume this particular cookie
-			$theSql->obtainParamsFrom(array(
-					'auth_id' => $aAuthId,
-					'token' => $aAuthToken,
-			));
-			$theSql->startWith('DELETE FROM')->add($this->tnAuthTokens);
-			$theSql->startWhereClause()->mustAddParam('auth_id');
-			$theSql->setParamPrefix(' AND ')->mustAddParam('token');
-			$theSql->endWhereClause();
+			//NOTE: in order to support multiple simultaneous request ops, each referencing
+			//  the same valid cookie at that time, we don't DELETE cookie tokens immediately.
+			//  Instead we mark them so they will be removed "very soon" so that all the
+			//  simultaneous requests will succeed, at the cost of recycling through several
+			//  cookie tokens. A small price to pay for a better user experience for multi-
+			//  threaded webapps.
+			$theSql->startWith('UPDATE')->add($this->tnAuthTokens);
+			$this->setAuditFieldsOnUpdate($theSql);
+			$theSql->mustAddParam('account_id', 0, \PDO::PARAM_INT)
+				->startWhereClause()->mustAddParam('auth_id', $aAuthId)
+				->setParamPrefix(' AND ')->mustAddParam('token', $aAuthToken)
+				->endWhereClause()
+			;
 			$theSql->execDML();
-		} catch (Exception $e) {
+		} catch ( Exception $x ) {
 			//do not care if removing cookie fails, log it so admin knows about it, though
-			$theSql->logSqlFailure(__METHOD__, $e);
+			$theSql->logSqlFailure(__METHOD__, $x);
 		}
 		return $theAuthTokenRow;
 	}

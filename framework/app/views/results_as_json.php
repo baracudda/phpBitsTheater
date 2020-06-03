@@ -4,8 +4,12 @@ use BitsTheater\Scene as MyScene;
 /* @var $v MyScene */
 
 //if no headers are sent, send some
-if (!headers_sent()) {
+if ( !headers_sent() ) {
 	header('Content-Type: application/json; charset=utf-8');
+	if ( !empty($v->output_filename) ) {
+		// disposition / encoding on response body
+		header("Content-Disposition: attachment;filename={$v->output_filename}");
+	}
 }
 $jsonEncodeOptions = null;
 if (filter_var($v->UseJsonPrettyPrint, FILTER_VALIDATE_BOOLEAN) || filter_var($v->pretty, FILTER_VALIDATE_BOOLEAN))

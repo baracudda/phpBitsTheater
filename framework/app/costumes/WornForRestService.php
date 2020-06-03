@@ -33,35 +33,46 @@ trait WornForRestService
 	protected $mConfigNameForPassword = 'password';
 	
 	/**
+	 * Given some URL parts, fill in any gaps and return the result.
+	 * @param string[] $aUrlParts - the result of a parse_url() call.
+	 * @param string $aConfigNamespace - the config namespace to use.
+	 * @param number $aDefaultPort - (optional) the port to use if not part of $aHost.
+	 * @return string[] The URL parts all ready for a recombineUrl() call.
+	 */
+	protected function constructHostUrlParts($aUrlParts, $aConfigNamespace, $aDefaultPort=null)
+	{
+		if ( !empty($aUrlParts['path']) && empty($aUrlParts['host']) ) {
+			$thePathParts = explode('/', $aUrlParts['path']);
+			$aUrlParts['host'] = array_shift($thePathParts);
+			$aUrlParts['path'] = implode('/', $thePathParts);
+			if ( !empty($aUrlParts['path']) )
+				$aUrlParts['path'] = '/'.$aUrlParts['path'];
+		}
+		
+		$theConfigPort = $this->getConfigSetting($aConfigNamespace.'/'.$this->mConfigNameForPort);
+		$aUrlParts['port'] = ( !empty($theConfigPort) ) ? $theConfigPort : $aDefaultPort;
+		
+		$theConfigUser = $this->getConfigSetting($aConfigNamespace.'/'.$this->mConfigNameForUsername);
+		$theConfigPw = $this->getConfigSetting($aConfigNamespace.'/'.$this->mConfigNameForPassword);
+		if ( !empty($theConfigUser) && !empty($theConfigPw) ) {
+			$aUrlParts['user'] = $theConfigUser;
+			$aUrlParts['pass'] = $theConfigPw;
+		}
+		return $aUrlParts;
+	}
+	
+	/**
 	 * Given a base host name, add on the user/pw and port parts.
+	 * @param string $aHost - the host string to parse.
+	 * @param string $aConfigNamespace - the config namespace to use.
+	 * @param number $aDefaultPort - (optional) the port to use if not part of $aHost.
+	 * @return string Return the parsed/constructed host string to use.
 	 */
 	protected function constructHostString($aHost, $aConfigNamespace, $aDefaultPort=null)
 	{
 		$theUrlParts = parse_url(rtrim(trim($aHost), '/'));
-		if (!empty($theUrlParts))
-		{
-			if ( !empty($theUrlParts['path']) && empty($theUrlParts['host']) )
-			{
-				$thePathParts = explode('/', $theUrlParts['path']);
-				$theUrlParts['host'] = array_shift($thePathParts);
-				$theUrlParts['path'] = implode('/', $thePathParts);
-				if ( !empty($theUrlParts['path']) )
-					$theUrlParts['path'] = '/'.$theUrlParts['path'];
-			}
-			$theUrlParts['port'] = $aDefaultPort;
-			$theConfigPort = $this->getConfigSetting($aConfigNamespace.'/'.$this->mConfigNameForPort);
-			if ( !empty($theConfigPort) )
-			{
-				$theUrlParts['port'] = $theConfigPort;
-			}
-			$theConfigUser = $this->getConfigSetting($aConfigNamespace.'/'.$this->mConfigNameForUsername);
-			$theConfigPw = $this->getConfigSetting($aConfigNamespace.'/'.$this->mConfigNameForPassword);
-			if ( !empty($theConfigUser) &&
-					!empty($theConfigPw) )
-			{
-				$theUrlParts['user'] = $theConfigUser;
-				$theUrlParts['pass'] = $theConfigPw;
-			}
+		if ( !empty($theUrlParts) ) {
+			$theUrlParts = $this->constructHostUrlParts($theUrlParts, $aConfigNamespace, $aDefaultPort);
 			//$this->debugLog(__METHOD__.' '.Strings::recombineUrl($theUrlParts));
 			return Strings::recombineUrl($theUrlParts);
 		}

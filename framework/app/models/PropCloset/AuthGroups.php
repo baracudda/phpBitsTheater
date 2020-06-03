@@ -26,7 +26,7 @@ use BitsTheater\costumes\ISqlSanitizer;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\costumes\WornForFeatureVersioning;
-use BitsTheater\models\Auth as AuthDB;
+use BitsTheater\models\Auth as AuthModel;
 use BitsTheater\outtakes\RightsException ;
 use BitsTheater\BrokenLeg ;
 use com\blackmoonit\exceptions\DbException;
@@ -288,6 +288,13 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$this->setupTable( self::TABLE_GroupRegCodes, $this->tnGroupRegCodes ) ;
 		$this->setupTable( self::TABLE_Permissions, $this->tnPermissions ) ;
 	}
+	
+	/**
+	 * @return AuthModel Returns the database model reference.
+	 */
+	protected function getAuthModel()
+	{ return $this->getProp(AuthModel::MODEL_NAME); }
+
 
 	/**
 	 * Constructs the group information for insertion into the database.
@@ -1367,7 +1374,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			$aAuthOrg=null )
 	{
 		$theSql = $aSqlBuilder;
-		$theAuthOrg = ( empty($aAuthOrg) ) ? AuthDB::getCurrentOrg($this) : $aAuthOrg;
+		$theAuthOrg = ( empty($aAuthOrg) ) ? AuthModel::getCurrentOrg($this) : $aAuthOrg;
 		if ( !empty($theAuthOrg) ) {
 			$theSql->setParamValue('org_id', $theAuthOrg->org_id);
 		}
@@ -1698,7 +1705,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	{
 		if ( empty($aAuthID) )
 		{ throw new \InvalidArgumentException('invalid $aAuthID param'); }
-		if ( $aOrgID == AuthDB::ORG_ID_4_ROOT ) {
+		if ( $aOrgID == AuthModel::ORG_ID_4_ROOT ) {
 			$aOrgID = null;
 		}
 		$theSql = SqlBuilder::withModel($this);
@@ -2057,7 +2064,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		if ( empty($aAcctInfo) ) return false; //trivial
 		//$this->logStuff(__METHOD__, ' acctinfo=', $aAcctInfo); //DEBUG
 		//NULL means we have not even tried to check permissions.
-		if ( is_null($aAcctInfo->groups) )
+		if ( $aAcctInfo->groups === null )
 		{
 			$theOrgID = null;
 			if ( !empty($aAcctInfo->mSeatingSection) ) {
@@ -2070,7 +2077,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			{ $aAcctInfo->groups = array(static::UNREG_GROUP_ID); }
 		}
 		//NULL means we have not even tried to check permissions.
-		if ( is_null($aAcctInfo->rights) ) try
+		if ( $aAcctInfo->rights === null ) try
 		{
 			$aAcctInfo->rights = (object)$this->getGrantedRights(
 					$aAcctInfo->groups, $aListOfRights
@@ -2081,11 +2088,15 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 					$aAcctInfo->rights->{$theNS} = (object)$thePerms;
 				}
 			}
+			//if all still well, cache our findings
+			$this->getAuthModel()->saveAccountToSessionCache($aAcctInfo);
 		} catch (DbException $dbx) {
-			$aAcctInfo->rights = array();
+			$aAcctInfo->rights = null;
 		}
-		//$this->logStuff(__METHOD__, ' acctInfo=', $aAcctInfo); //DEBUG
-		return ( !empty($aAcctInfo->rights->{$aNamespace}) &&
+		//$this->logStuff(__METHOD__, ' [DEBUG] acctInfo=', $aAcctInfo);
+		//$this->logStuff(__METHOD__, ' [DEBUG] acctInfo->rights->', $aNamespace, '=', !empty($aAcctInfo->rights->{$aNamespace}->{$aPermission})?'true':'false');
+		return ( !empty($aAcctInfo->rights) &&
+				!empty($aAcctInfo->rights->{$aNamespace}) &&
 				!empty($aAcctInfo->rights->{$aNamespace}->{$aPermission})
 		);
 	}
@@ -2206,7 +2217,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			 SqlBuilder $aFilter=null, $aFieldList=null)
 	{
 		//restrict results to current org
-		$theOrg = AuthDB::getCurrentOrg($this);
+		$theOrg = AuthModel::getCurrentOrg($this);
 		$theOrgID = ( !empty($theOrg) ) ? $theOrg->org_id : null;
 		$theSql = SqlBuilder::withModel($this)->setSanitizer($aSqlSanitizer);
 		//query field list NOTE: since we may have a nested query in
@@ -2333,9 +2344,9 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		if ( !empty($theCompleteList) )
 		{
 			if ( empty($aOrgID) ) {
-				$theOrgID = $this->getProp(AuthDB::MODEL_NAME)->getCurrentOrgID();
+				$theOrgID = $this->getAuthModel()->getCurrentOrgID();
 			}
-			else if ( $aOrgID==AuthDB::ORG_ID_4_ROOT ) {
+			else if ( $aOrgID==AuthModel::ORG_ID_4_ROOT ) {
 				$theOrgID = null;
 			}
 			else {

@@ -150,6 +150,12 @@ class CommonMySql
 	const ISO8601_DATETIME_REGEX = "/^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ$/";
 	
 	/**
+	 * Used to avoid infinite recursion while performing the deepConvert*() methods.
+	 * @var string
+	 */
+	const DEEP_CONVERT_FLAG = '__DEEP_CONVERT_FLAG';
+	
+	/**
 	 * Insert standard audit fields into a table definition.
 	 * @return string
 	 */
@@ -238,24 +244,7 @@ class CommonMySql
 	 */
 	static public function deepConvertSQLTimestampsToISOFormat( $aData )
 	{
-		if ( is_object($aData) || is_array($aData) ) {
-			foreach( $aData as $theKey => &$theValue ) {
-				if ( is_array($theValue) || is_object($theValue) ) {
-					if ( !($theValue instanceof \BitsTheater\Scene) ) {
-						$theValue = static::deepConvertSQLTimestampsToISOFormat($theValue) ;
-					}
-				}
-				else if ( preg_match( '/_ts$/', $theKey ) == 1 || ( is_string($theValue)
-						&& preg_match( static::SQL_DATETIME_REGEX, $theValue ) == 1 ) )
-				{ // Key has timestamp suffix, or value matches SQL datetime
-					$theValue = static::convertSQLTimestampToISOFormat($theValue) ;
-				}
-			}
-			return $aData;
-		}
-		else {
-			return static::convertSQLTimestampToISOFormat($aData);
-		}
+		return static::deepConvert($aData, static::SQL_DATETIME_REGEX, 'convertSQLTimestampToISOFormat');
 	}
 	
 	/**
@@ -302,24 +291,100 @@ class CommonMySql
 	 */
 	static public function deepConvertISO8601DateTimeToMySQLFormat( $aData )
 	{
-		if ( is_object($aData) || is_array($aData) ) {
-			foreach( $aData as $theKey => &$theValue ) {
-				if ( is_array($theValue) || is_object($theValue) ) {
-					if ( !($theValue instanceof \BitsTheater\Scene) ) {
-						$theValue = static::deepConvertISO8601DateTimeToMySQLFormat($theValue) ;
-					}
-				}
-				else if ( preg_match( '/_ts$/', $theKey ) == 1 || ( is_string($theValue)
-						&& preg_match( static::ISO8601_DATETIME_REGEX, $theValue ) == 1 ) )
-				{ // Key has timestamp suffix, or value matches SQL datetime
-					$theValue = static::convertISO8601DateTimeToMySQLFormat($theValue) ;
-				}
-			}
+		return static::deepConvert($aData, static::ISO8601_DATETIME_REGEX, 'convertISO8601DateTimeToMySQLFormat');
+	}
+	
+	/**
+	 * Searches an object for fields named like timestamps, and updates
+	 * them to a different format based on the convert function name passed in.
+	 * @param array|object|string $aData the data to be converted; may be
+	 *   an array, object, or scalar
+	 * @param string $aValueFormatRegex - a value test to see if $aConvertFuncName
+	 *   should be called.
+	 * @param string $aConvertFuncName - a method name to static::call when converting.
+	 * @param number $depth - how deep into the var we've delved (25 is a hard limit).
+	 * @return array|object|string the same object, with all datetime
+	 *   values replaced accordingly.
+	 */
+	static protected function deepConvert( &$aData, $aValueFormatRegex, $aConvertFuncName, $depth=0 )
+	{
+		static $arrList;
+		static $objList;
+		if ( $depth===0 ) {
+			$arrList = array();
+			$objList = array();
+		}
+		else if ( $depth > 25 ) {
 			return $aData;
 		}
-		else {
-			return static::convertISO8601DateTimeToMySQLFormat($aData);
+		//inline functions return their type as type 'object', however,
+		//  "Closure objects cannot have properties", so check for Closures.
+		if ( $aData instanceof \Closure ) return $aData;
+		//do not loop through PDOStatements either
+		if ( $aData instanceof \PDOStatement ) return $aData;
+		//do not loop through Models
+		if ( $aData instanceof \BitsTheater\Model ) return $aData;
+		//do not loop through Director
+		if ( $aData instanceof \BitsTheater\Director ) return $aData;
+		try {
+			$bIsObject = is_object($aData);
+			$bIsArray = is_array($aData);
+			if ( $bIsObject && isset($aData->{self::DEEP_CONVERT_FLAG}) ) {
+				return $aData;
+			}
+			if ( $bIsArray && isset($aData[self::DEEP_CONVERT_FLAG]) ) {
+				return $aData;
+			}
+			if ( $bIsObject || $bIsArray ) {
+				//update debug flag to preven recusion
+				if ( $bIsObject ) {
+					$objList[] = $aData;
+					$aData->{self::DEEP_CONVERT_FLAG} = count($objList);
+				}
+				else if ( $bIsArray ) {
+					$arrList[] = &$aData;
+					$aData[self::DEEP_CONVERT_FLAG] = count($arrList);
+				}
+				//Strings::debugLog('deepConvert PUSH data=', $aData);//DEBUG
+				//convert
+				foreach( $aData as $theKey => &$theValue ) {
+					if ( $theKey !== self::DEEP_CONVERT_FLAG && !empty($theValue) ) {
+						if ( is_string($theValue) && (
+								( preg_match('/_ts$/', $theKey) == 1 ) ||
+								( preg_match($aValueFormatRegex, $theValue) == 1 )
+							)
+						)
+						{ // Key has timestamp suffix, or value matches SQL datetime
+							$theValue = static::$aConvertFuncName($theValue);
+						}
+						else if ( is_array($theValue) || is_object($theValue) ) {
+							$theValue = static::deepConvert($theValue,
+									$aValueFormatRegex, $aConvertFuncName, $depth+1
+							);
+						}
+					}
+				}
+			}
+			else if ( is_string($aData) ) {
+				$aData = static::$aConvertFuncName($aData);
+			}
 		}
+		catch ( \Exception $x ) {
+			Strings::errorLog(__METHOD__, ' ', $x);
+		}
+		finally {
+			if ( $depth===0 ) {
+				foreach ($arrList as &$var) {
+					unset($var[self::DEEP_CONVERT_FLAG]);
+				}
+				$arrList = null;
+				foreach ($objList as &$var) {
+					unset($var->{self::DEEP_CONVERT_FLAG});
+				}
+				$objList = null;
+			}
+		}
+		return $aData;
 	}
 	
 	/**
@@ -388,6 +453,18 @@ class CommonMySql
 		//Oracle, and others use AS instead of LIKE
 		return "CREATE TABLE {$aNewTableName} LIKE {$aOldTableName}";
 	}
+	
+	/**
+	 * The SQL used to determine if a column value is non-ASCII.
+	 * @param string $aFieldName - the referenced column/field name.
+	 * @return string Returns the SQL to be used in WHERE clause.
+	 */
+	static public function getIsUnicodeValueSQLWhereClause( $aFieldName )
+	{
+		//a value converted to ASCII and compared to itself will differ if Unicode.
+		return $aFieldName . ' <> CONVERT(' . $aFieldName . ' USING ASCII)';
+	}
+	
 	
 }//end class
 

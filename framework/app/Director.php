@@ -313,28 +313,33 @@ implements ArrayAccess, IDirected
 	 */
 	public function regenerateSession()
 	{
-		//A new_session_id is required to set proper session ID
-		//  when session ID is not set due to unstable network.
-		$theNewID = function_exists('session_create_id') ? session_create_id() : uniqid();
-		$_SESSION['new_session_id'] = $theNewID;
-		//Set destroyed error state timestamp to 1 min from now.
-		$_SESSION['destroyed_ts'] = time()+60;
-		//This can be used by forms to prevent cross-site forgery attempts
-		$_SESSION['nonce'] = bin2hex(openssl_random_pseudo_bytes(32));
-		//Create new session without destroying the old one.
-		session_regenerate_id(false);
-		//Grab current session ID and flush the memory cache.
-		$theCurrID = session_id();
-		session_write_close();
-		//Set the ID to the new one, and start it back up again
-		if ( !empty($theCurrID) )
-		{ session_id($theCurrID); }
-		else //occationally get an empty ID, cannot start a session with it.
-		{ session_id($theNewID); }
-		session_start();
-		//Do not want this session to expire, yet.
-		unset($_SESSION['destroyed_ts']);
-		unset($_SESSION['new_session_id']);
+		if (session_status() != PHP_SESSION_NONE) {
+			//A new_session_id is required to set proper session ID
+			//  when session ID is not set due to unstable network.
+			$theNewID = function_exists('session_create_id') ? session_create_id() : uniqid();
+			$_SESSION['new_session_id'] = $theNewID;
+			//Set destroyed error state timestamp to 1 min from now.
+			$_SESSION['destroyed_ts'] = time()+60;
+			//This can be used by forms to prevent cross-site forgery attempts
+			$_SESSION['nonce'] = bin2hex(openssl_random_pseudo_bytes(32));
+			//Create new session without destroying the old one.
+			session_regenerate_id(false);
+			//Grab current session ID and flush the memory cache.
+			$theCurrID = session_id();
+			session_write_close();
+			//Set the ID to the new one, and start it back up again
+			if ( !empty($theCurrID) )
+			{ session_id($theCurrID); }
+			else //occationally get an empty ID, cannot start a session with it.
+			{ session_id($theNewID); }
+			session_start();
+			//Do not want this session to expire, yet.
+			unset($_SESSION['destroyed_ts']);
+			unset($_SESSION['new_session_id']);
+		}
+		else {
+			session_start();
+		}
 	}
 
 	public function isInstalled() {
@@ -435,13 +440,13 @@ implements ArrayAccess, IDirected
 	 */
 	public function routeRequest( $aUrlPath )
 	{
+		//$starttime = microtime(true);
 		//$this->logStuff('[TRACE] URL=[', $aUrlPath, ']');
 		//if ( $aUrlPath=='phpinfo' ) { print(phpinfo()); return; } //DEBUG
 		if ( empty($aUrlPath) ) {
 			if ( $this->isInstalled() ) {
 				//if website has been installed, redirect to landing page
-				$theSettingsClass = $this->getSiteSettingsClass();
-				header('Location: ' . $theSettingsClass::getLandingPage());
+				header('Location: ' . $this->getSiteLandingPage());
 			}
 			//otherwise if we have an Install actor, open with install wizard
 			else if ( class_exists($this->getActorClass('Install')) ) {
@@ -471,6 +476,7 @@ implements ArrayAccess, IDirected
 					{ throw new FourOhFourExit($this->getSiteUrl($aUrlPath)); }
 			}//switch
 		}
+		//$this->logStuff(' REQUEST timediff=', Strings::diffTime($starttime, microtime(true)), ' url=', $aUrlPath);
 	}
 	
 	
@@ -663,6 +669,7 @@ implements ArrayAccess, IDirected
 	/**
 	 * Retrieve the singleton Model object for a given model class.
 	 * @param string $aModelClass - the model class to retrieve.
+	 * @param string $aOrgID - the org_id in case we want something other than current org.
 	 * @throws Exception when the model fails to connect or is not found.
 	 * @return Model Returns the model class requested.
 	 */
@@ -904,6 +911,9 @@ implements ArrayAccess, IDirected
 			$this->mChiefUsher->ripTicket();
 			unset($this->account_info);
 		}
+		//remove our session cache as well
+		unset($_SESSION[$this->app_id]);
+		//return to our landing page
 		return BITS_URL;
 	}
 	
@@ -976,6 +986,29 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
+	 * Get data cached for a specific org (usually current one).
+	 * @param string $aOrgDbName - (OPTIONAL) the org_name, uses current if null.
+	 * @return object Returns the cached object of data.
+	 */
+	public function getSessionCacheForOrg( $aOrgDbName=null )
+	{
+		if ( empty($aOrgDbName) ) {
+			if ($this->account_info && $this->account_info->mSeatingSection ) {
+				$aOrgDbName = $this->account_info->mSeatingSection->org_name;
+			}
+			else {
+				$aOrgDbName = $this->getDbConnInfo(APP_DB_CONN_NAME)->dbName;
+			}
+		}
+		$theResult = $this[$aOrgDbName];
+		if ( $theResult === null ) {
+			$theResult = new \stdClass();
+			$this[$aOrgDbName] = $theResult;
+		}
+		return $theResult;
+	}
+	
+	/**
 	 * Get the code-defined default setting from config resources.
 	 * @param string $aSetting - setting in form of "namespace/setting"
 	 * @return string|null Returns the default value for setting, if any.
@@ -999,14 +1032,27 @@ implements ArrayAccess, IDirected
 	 */
 	public function getConfigSetting( $aSetting, $aOrgID=null )
 	{
-		if ( empty($this->dbConfig) && empty($aOrgID) ) {
+		//ensure our dbConfig is always defined as current
+		if ( empty($this->dbConfig) || $this->dbConfig->getDbConnInfo()->mOrgID != $this->getDbConnInfo()->mOrgID ) {
 			$this->dbConfig = $this->getProp(ConfigModel::MODEL_NAME);
 		}
+		//if we want the config from a specific org, load that one
 		$dbConfig = empty($aOrgID) ? $this->dbConfig : $this->getProp(
 				ConfigModel::MODEL_NAME, $aOrgID
 		);
 		if ( !empty($dbConfig) ) {
-			return $dbConfig[$aSetting];
+			$theOrgCache = $this->getSessionCacheForOrg($dbConfig->getDbConnInfo()->dbName);
+			if ( !empty($theOrgCache->configs) ) {
+				if ( isset($theOrgCache->configs[$aSetting]) ) {
+					return $theOrgCache->configs[$aSetting];
+				}
+			}
+			else {
+				$theOrgCache->configs = array();
+			}
+			$theValue = $dbConfig[$aSetting];
+			$theOrgCache->configs[$aSetting] = $theValue;
+			return $theValue;
 		}
 		else {
 			//if dbConfig is empty, means dbconn error
@@ -1166,6 +1212,16 @@ implements ArrayAccess, IDirected
 		return $theInstalledSettingsClass;
 	}
 	
+	/**
+	 * Get the website's landing page.
+	 * @return string Returns the landing page URL.
+	 */
+	public function getSiteLandingPage()
+	{
+		$theSettingsClass = $this->getSiteSettingsClass();
+		return $this->getSiteUrl($theSettingsClass::getLandingPage());
+	}
+		
 	/**
 	 * Helper function for debugging code to format an abbreviated stack trace.
 	 * @param string $aStackTrace - the stack trace.
