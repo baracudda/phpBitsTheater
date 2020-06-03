@@ -313,28 +313,33 @@ implements ArrayAccess, IDirected
 	 */
 	public function regenerateSession()
 	{
-		//A new_session_id is required to set proper session ID
-		//  when session ID is not set due to unstable network.
-		$theNewID = function_exists('session_create_id') ? session_create_id() : uniqid();
-		$_SESSION['new_session_id'] = $theNewID;
-		//Set destroyed error state timestamp to 1 min from now.
-		$_SESSION['destroyed_ts'] = time()+60;
-		//This can be used by forms to prevent cross-site forgery attempts
-		$_SESSION['nonce'] = bin2hex(openssl_random_pseudo_bytes(32));
-		//Create new session without destroying the old one.
-		session_regenerate_id(false);
-		//Grab current session ID and flush the memory cache.
-		$theCurrID = session_id();
-		session_write_close();
-		//Set the ID to the new one, and start it back up again
-		if ( !empty($theCurrID) )
-		{ session_id($theCurrID); }
-		else //occationally get an empty ID, cannot start a session with it.
-		{ session_id($theNewID); }
-		session_start();
-		//Do not want this session to expire, yet.
-		unset($_SESSION['destroyed_ts']);
-		unset($_SESSION['new_session_id']);
+		if (session_status() != PHP_SESSION_NONE) {
+			//A new_session_id is required to set proper session ID
+			//  when session ID is not set due to unstable network.
+			$theNewID = function_exists('session_create_id') ? session_create_id() : uniqid();
+			$_SESSION['new_session_id'] = $theNewID;
+			//Set destroyed error state timestamp to 1 min from now.
+			$_SESSION['destroyed_ts'] = time()+60;
+			//This can be used by forms to prevent cross-site forgery attempts
+			$_SESSION['nonce'] = bin2hex(openssl_random_pseudo_bytes(32));
+			//Create new session without destroying the old one.
+			session_regenerate_id(false);
+			//Grab current session ID and flush the memory cache.
+			$theCurrID = session_id();
+			session_write_close();
+			//Set the ID to the new one, and start it back up again
+			if ( !empty($theCurrID) )
+			{ session_id($theCurrID); }
+			else //occationally get an empty ID, cannot start a session with it.
+			{ session_id($theNewID); }
+			session_start();
+			//Do not want this session to expire, yet.
+			unset($_SESSION['destroyed_ts']);
+			unset($_SESSION['new_session_id']);
+		}
+		else {
+			session_start();
+		}
 	}
 
 	public function isInstalled() {
@@ -435,13 +440,13 @@ implements ArrayAccess, IDirected
 	 */
 	public function routeRequest( $aUrlPath )
 	{
+		//$starttime = microtime(true);
 		//$this->logStuff('[TRACE] URL=[', $aUrlPath, ']');
 		//if ( $aUrlPath=='phpinfo' ) { print(phpinfo()); return; } //DEBUG
 		if ( empty($aUrlPath) ) {
 			if ( $this->isInstalled() ) {
 				//if website has been installed, redirect to landing page
-				$theSettingsClass = $this->getSiteSettingsClass();
-				header('Location: ' . $theSettingsClass::getLandingPage());
+				header('Location: ' . $this->getSiteLandingPage());
 			}
 			//otherwise if we have an Install actor, open with install wizard
 			else if ( class_exists($this->getActorClass('Install')) ) {
@@ -471,6 +476,7 @@ implements ArrayAccess, IDirected
 					{ throw new FourOhFourExit($this->getSiteUrl($aUrlPath)); }
 			}//switch
 		}
+		//$this->logStuff(' REQUEST timediff=', Strings::diffTime($starttime, microtime(true)), ' url=', $aUrlPath);
 	}
 	
 	
@@ -905,6 +911,9 @@ implements ArrayAccess, IDirected
 			$this->mChiefUsher->ripTicket();
 			unset($this->account_info);
 		}
+		//remove our session cache as well
+		unset($_SESSION[$this->app_id]);
+		//return to our landing page
 		return BITS_URL;
 	}
 	
