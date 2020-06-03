@@ -99,7 +99,7 @@ class CacheForAuthAccountInfo extends BaseCostume
 		$dbAuth = $this->getProp(AuthDB::MODEL_NAME);
 		switch ($dbAuth->dbType()) {
 			case $dbAuth::DB_TYPE_MYSQL:
-				$o = CommonMySql::deepConvertSQLTimestampsToISOFormat($o);
+				$o->last_seen_ts = CommonMySql::convertSQLTimestampToISOFormat($o->last_seen_ts);
 				break;
 		}//switch
 		$this->returnProp($dbAuth);

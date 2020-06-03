@@ -275,8 +275,9 @@ class PropsMaster extends BaseCostume
 		if ( !empty($this->mDbConnInfoForOrg[$theOrgID]) ) {
 			if ( !empty($this->mPropRooms[$theOrgID]) ) {
 				array_walk($this->mPropRooms[$theOrgID], function(&$n) {
-					$n['model'] = null;
-					$n['ref_count'] = 0;
+					if ( !empty($n) ) {
+						$n = array();
+					}
 				});
 				$this->mDbConnInfoForOrg[$theOrgID]->disconnect();
 				unset($this->mDbConnInfoForOrg[$theOrgID]);
