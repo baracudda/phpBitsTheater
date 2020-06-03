@@ -246,6 +246,22 @@ class TicketViaAuthHeaderBroadway extends BaseCostume
 		}
 		return $theResult;
 	}
+	
+	/**
+	 * Reset the mobile data given for the mobile ID provided.
+	 * @param string $aMobileID - our record ID mapping to device info.
+	 * @return string[] Returns the mobile record data.
+	 */
+	protected function resetMobileData( $aMobileID )
+	{
+		$dbAuth = $this->getMyModel();
+		try {
+			return $dbAuth->resetMobileFingerprints($aMobileID, $this->fingerprints);
+		}
+		finally {
+			$this->returnProp($dbAuth);
+		}
+	}
 
 	/**
 	 * See if we can map the account to a mobile record.
@@ -268,8 +284,7 @@ class TicketViaAuthHeaderBroadway extends BaseCostume
 				//$this->debugLog(__METHOD__.' chk against mobile_id='.$theMobileRow['mobile_id']); //DEBUG
 				if ( $theMobileRow['auth_type'] == AuthModel::MOBILE_AUTH_TYPE_RESET ) {
 					//ignore the fingerprint_hash and reset this row to whatever was passed in
-					$dbAuth = $this->getProp(AuthModel::MODEL_NAME);
-					$this->mMobileRow = $dbAuth->resetMobileFingerprints($theMobileRow['mobile_id'], $this->fingerprints);
+					$this->mMobileRow = $this->resetMobileData($theMobileRow['mobile_id']);
 					break;
 				}
 				else if ( Strings::hasher($this->fingerprints, $theMobileRow['fingerprint_hash']) ) {

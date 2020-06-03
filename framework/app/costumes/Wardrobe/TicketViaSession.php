@@ -65,6 +65,28 @@ class TicketViaSession extends BaseCostume
 	}
 	
 	/**
+	 * If we successfully authorize, do some additional things.
+	 * @param Scene $aScene - var container object for auth info.
+	 * @param AccountInfoCache $aAcctInfo - the account info to use.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function onTicketAccepted( Scene $aScene, AccountInfoCache $aAcctInfo )
+	{
+		parent::onTicketAccepted($aScene, $aAcctInfo);
+		$dbAuth = $this->getMyModel();
+		//login success, ensure our CSRF token hasn't gone stale.
+		$dbAuth->setCsrfTokenCookie();
+		if ( $dbAuth->isAccountInCookieJar() ) {
+			//ensure our login ticket only gets stale when unused
+			$dbAuth->setAuthCookies(
+					$dbAuth->getAuthIDFromAuthCookieUserInfoToken(),
+					$dbAuth->getAuthNonceFromCookieJar()
+			);
+		}
+		return $this;
+	}
+	
+	/**
 	 * Log the current user out and wipe the slate clean.
 	 * Each venue may cache specific items which this should clear out.
 	 * @param AccountInfoCache $aAcctInfo - the account info to use.
