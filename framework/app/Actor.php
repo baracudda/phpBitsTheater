@@ -618,8 +618,7 @@ implements IDirected
 	 */
 	public function getHomePage()
 	{
-		$theSettingsClass = $this->director->getSiteSettingsClass();
-		return BITS_URL . '/' . $theSettingsClass::getLandingPage();
+		return $this->getDirector()->getSiteLandingPage();
 	}
 	
 	/**

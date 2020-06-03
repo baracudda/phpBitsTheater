@@ -1168,6 +1168,16 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
+	 * Get the website's landing page.
+	 * @return string Returns the landing page URL.
+	 */
+	public function getSiteLandingPage()
+	{
+		$theSettingsClass = $this->getSiteSettingsClass();
+		return $this->getSiteUrl($theSettingsClass::getLandingPage());
+	}
+		
+	/**
 	 * Helper function for debugging code to format an abbreviated stack trace.
 	 * @param string $aStackTrace - the stack trace.
 	 * @param boolean $bTruncateAtPerformAct - (optional, default TRUE) if TRUE, the
