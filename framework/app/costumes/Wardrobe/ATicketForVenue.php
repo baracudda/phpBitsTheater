@@ -209,7 +209,9 @@ implements IWillCall
 				$this->getRes('account', 'err_pw_failed_account_locked'),
 				$aScene::USER_MSG_ERROR
 		);
-		$this->logStuff("[{$this->ticket_name}] is being session banned.");
+		$theBanMsg = "[{$this->ticket_name}] submitting [{$this->mySimpleClassName}] is being session banned.";
+		$theAction = "[{$aScene->_actor->mySimpleClassName}/{$aScene->_action}]";
+		$this->logStuff($theBanMsg, ' action=', $theAction);
 		//once you get on the soft-ban list, your session needs to expire
 		//  before you can try again, even if your tokens expire.
 		//  since sessions expire every ~20min of inactivity, this is no
