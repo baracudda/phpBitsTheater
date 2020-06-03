@@ -663,6 +663,7 @@ implements ArrayAccess, IDirected
 	/**
 	 * Retrieve the singleton Model object for a given model class.
 	 * @param string $aModelClass - the model class to retrieve.
+	 * @param string $aOrgID - the org_id in case we want something other than current org.
 	 * @throws Exception when the model fails to connect or is not found.
 	 * @return Model Returns the model class requested.
 	 */

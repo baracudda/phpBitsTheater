@@ -40,7 +40,7 @@ class PropsMaster extends BaseCostume
 	/** @var DbConnInfoInUse The Org data db connection info. */
 	public $mDbConnInfoForOrg = array(AuthModel::ORG_ID_4_ROOT => null);
 	
-	/** @var DbConnInfoInUse[] The Org connections in use. */
+	/** @var array $[orgID][$theModelClass]['model'|'ref_count']; model=DbConnInfoInUse */
 	public $mPropRooms = [];
 	
 	/** @var string The default Org ID to use when not specified. */
