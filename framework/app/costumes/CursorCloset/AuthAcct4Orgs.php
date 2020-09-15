@@ -162,6 +162,17 @@ class AuthAcct4Orgs extends BaseCostume
 		$this->getOrgsList();
 	}
 	
+	/**
+	 * What fields are text searchable?
+	 * @return string[] Returns the list of searchable fields.
+	 */
+	static public function getSearchFieldList()
+	{
+		return array_merge(parent::getSearchFieldList(), array(
+				'comments',
+		));
+	}
+	
 }//end class
 
 }//end namespace

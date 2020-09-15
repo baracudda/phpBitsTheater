@@ -72,18 +72,21 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * changes to the schema.
 	 * <ol type="1">
 	 *  <li value="1">
-	 *   Initial schema design.
+	 *    Initial schema design.
 	 *  </li>
 	 *  <li value="2">
-	 *   Add Org <span style="font-family:monospace">`dbconn`</span> string field.
+	 *    Add Org <span style="font-family:monospace">`dbconn`</span> string field.
 	 *  </li>
 	 *  <li value="3">
-	 *   Add Org <span style="font-family:monospace">`parent_authgroup_id`</span> UUID field.
+	 *    Add Org <span style="font-family:monospace">`parent_authgroup_id`</span> UUID field.
+	 *  </li>
+	 *  <li value="4">
+	 *    Add "comments" to accounts table.
 	 *  </li>
 	 * </ol>
 	 * @var integer
 	 */
-	const FEATURE_VERSION_SEQ = 3; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 4; //always ++ when making db schema changes
 
 	const TYPE = 'multitenant';
 	const ALLOW_REGISTRATION = true;
@@ -232,6 +235,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 						', verified_ts TIMESTAMP NULL' . //useless until email verification implemented
 						', last_seen_ts TIMESTAMP NULL' .
 						', is_active ' . CommonMySql::TYPE_BOOLEAN_1 .
+                    	', `comments` VARCHAR(2048) NULL' .
 						', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 						', PRIMARY KEY (auth_id)' .
 						', UNIQUE KEY (account_id)' .
@@ -344,6 +348,8 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 					return 1;
 				else if ( !$this->isFieldExists('parent_authgroup_id', $this->tnAuthOrgs) )
 					return 2;
+				else if ( !$this->isFieldExists('comments', $this->tnAuthAccounts) )
+					return 3;
 		}//switch
 		return static::FEATURE_VERSION_SEQ ;
 	}
@@ -394,7 +400,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 				$this->execDML($theSql);
 				$this->logStuff('[v3] added index for parent_authgroup_id.');
 			}
-			case ( $theSeq < 4 ):
+			case ( $theSeq < 4 ): {
+				$this->addFieldToTable(4, 'comments', $this->tnAuthAccounts,
+						'`comments` VARCHAR(2048) NULL',
+						'is_active'
+				);
+			}
+			case ( $theSeq < 5 ):
 			{
 				// Next update goes here.
 			}
@@ -611,6 +623,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			->setParamType(\PDO::PARAM_INT)
 			->addParam('account_id')
 			->addParam('is_active')
+			->addParam('comments')
 			->addParam('external_id')
 			//->logSqlDebug(__METHOD__)
 			;
@@ -703,6 +716,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		$theSql->addParamIfDefined('verified_ts');
 		$theSql->addParamIfDefined('last_seen_ts');
 		$theSql->addParamIfDefined('is_active', PDO::PARAM_INT);
+		$theSql->addParamIfDefined('comments');
 		$theSql->startWhereClause()->mustAddParam( 'auth_id' )->endWhereClause();
 		try { return $theSql->execDMLandGetParams(); }
 		catch (PDOException $pdox)
@@ -791,16 +805,38 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		if ( !empty($aAuthAccount) && //ensure we have a valid auth & account_id
 				!empty($aAuthAccount->auth_id) && $aAuthAccount->account_id > 0 )
 		{
-			$this->getDirector()->setMyAccountInfo($aAuthAccount);
 			//update last login info
 			$aAuthAccount->last_seen_dt = new \DateTime('now', new \DateTimeZone('UTC'));
 			$aAuthAccount->last_seen_ts = $this->getDateTimeAsDbTimestampFormat(
 					$aAuthAccount->last_seen_dt
 			);
-			$this->updateAuthAccount((object)array(
-					'auth_id' => $aAuthAccount->auth_id,
-					'last_seen_ts' => $aAuthAccount->last_seen_ts,
-			));
+			$this->getDirector()->setMyAccountInfo($aAuthAccount);
+		}
+	}
+	
+	/**
+	 * The onDetermineAuthAccount() method executes with every page/endpoint request.
+	 * Sometimes we do not wish to execute routines more frequently than
+	 * necessary, so this method executes roughly every other minute even
+	 * if the user pokes the server many times in between.
+	 * Similar to onCheckTicketPollInterval(), but this occurs after login is successful.
+	 * @param object $aScene - the Scene object in use that holds client input.
+	 * @param AccountInfoCache $aAuthAccount - the logged in auth account.
+	 */
+	protected function onDetermineAuthAccountPollInterval( $aScene, AccountInfoCache $aAuthAccount )
+	{
+		//only update last seen ts every other minute
+		if ( !empty($aAuthAccount) && !empty($aAuthAccount->auth_id) ) {
+			$theSql = SqlBuilder::withModel($this)
+				->startWith('UPDATE')->add($this->tnAuthAccounts)->add('SET')
+				->mustAddParam('last_seen_ts', $aAuthAccount->last_seen_ts)
+				->startWhereClause()
+				->mustAddParam('auth_id', $aAuthAccount->auth_id)
+				->endWhereClause()
+				;
+			try { $theSql->execDML(); }
+			catch (PDOException $pdox)
+			{ $theSql->logSqlFailure('update last_seen_ts', $pdox); }
 		}
 	}
 	
@@ -896,16 +932,25 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$theOrgID = null;
 		}
 		$this->getDirector()->setPropDefaultOrg($theOrgID);
-		//ensure we store the current org
-		$theAcctInfo->setSeatingSection($theOrg);
-		// (#6288) Need to reload groups as well, since we may have switched orgs
-		$theAcctInfo->loadGroupsList();
-		if( $this->isAccountInSessionCache() )
-		{ // Ensure that the session's account cache is really updated.
-			$this->saveAccountToSessionCache($theAcctInfo);
+		//if the org indeed changed from what our account had before, do some stuff
+		if ( (empty($theOrg) && !empty($theAcctInfo->mSeatingSection)) || //root vs non-root
+			(!empty($theOrg) && empty($theAcctInfo->mSeatingSection)) ||  //non-root vs root
+			(!empty($theOrg) && !empty($theAcctInfo->mSeatingSection) &&  //non-root for both, compare IDs
+					$theOrg->org_id != $theAcctInfo->mSeatingSection->org_id
+			)
+		) {
+			//ensure we store the current org
+			$theAcctInfo->setSeatingSection($theOrg);
+			// (#6288) Need to reload groups as well, since we may have switched orgs
+			$theAcctInfo->loadGroupsList();
+			if( $this->isAccountInSessionCache() )
+			{ // Ensure that the session's account cache is really updated.
+				$this->saveAccountToSessionCache($theAcctInfo);
+			}
+			// Ensure that the if cookies are used, we save org info, too.
+			$this->updateCookieForOrg($theOrg);
 		}
-		// Ensure that the if cookies are used, we save org info, too.
-		return $this->updateCookieForOrg($theOrg);
+		return $this;
 	}
 	
 	/**
@@ -1161,7 +1206,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 	}
-
+	
 	/**
 	 * For a given auth id, return all organizations that are mapped to it.
 	 * @param array/string $aAuthId - UUID string for a single auth id or array of several ids.
@@ -1414,7 +1459,14 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			return $aContext->getDirector()->account_info->mSeatingSection;
 		}
 		else {
-			return null;
+			$theOrgID = $aContext->getDirector()->getPropsMaster()->getDefaultOrgID();
+			if ( !empty($theOrgID) && $theOrgID != static::ORG_ID_4_ROOT ) {
+				$dbAuth = $aContext->getDirector()->getPropsMaster()->getAuthModel();
+				return AuthOrg::getInstance($aContext, $dbAuth->getOrganization($theOrgID));
+			}
+			else {
+				return null;
+			}
 		}
 	}
 	
@@ -2355,11 +2407,14 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	{
 		$theAuthAccount = null;
 		if ( $this->getDirector()->canConnectDb() ) try {
+			$bDetermineAuthPollInterval = false;
 			//some routines should only check every other minute
-			$theLastPollCheck = $this->getDirector()['check_ticket_poll_ts'];
-			if ( empty($theLastPollCheck) || ((time() - $theLastPollCheck) > 100) ) {
+			$tsNow = time(); //in seconds
+			$tsLastPollCheck = $this->getDirector()['check_ticket_poll_ts'];
+			if ( empty($tsLastPollCheck) || (($tsNow - $tsLastPollCheck) > 100) ) {
+				$bDetermineAuthPollInterval = true;
 				$this->onCheckTicketPollInterval($aScene);
-				$this->getDirector()['check_ticket_poll_ts'] = time();
+				$this->getDirector()['check_ticket_poll_ts'] = $tsNow;
 			}
 			$theVenueList = $this->getVenuesToCheckForTickets($aScene);
 			//$this->logStuff(__METHOD__, ' venues=', $theVenueList); //DEBUG
@@ -2368,7 +2423,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 						$theVenueClass::withAuthDB($this)
 				);
 				//$this->logStuff(__METHOD__, ' venue=', $theVenueClass, ' determined=', $theAuthAccount); //DEBUG
-				if ( !empty($theAuthAccount) ) break;
+				if ( !empty($theAuthAccount) ) {
+					if ( $bDetermineAuthPollInterval ) {
+						$this->onDetermineAuthAccountPollInterval($aScene, $theAuthAccount);
+					}
+					break;
+				}
 			}
 			//if ( empty($theAuthAccount) )
 			//{ $this->logStuff(__METHOD__, ' account not found cs=', Strings::getStackTrace()); } //DEBUG
@@ -3065,6 +3125,30 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		catch ( \PDOException $pdox )
 		{ throw $theSql->newDbException(__METHOD__, $pdox); }
 		return $this->getAuthMobileRow($aMobileID);
+	}
+
+	/**
+	 * Set comments on an account.
+	 * @param string $aAuthID - the auth_id of the account.
+	 * @param string $aComments - the comments to save.
+	 * @since BitsTheater 5.0.0
+	 */
+	public function setAuthComments( $aAuthID, $aComments )
+	{
+		$theSql = SqlBuilder::withModel($this);
+		$theSql->startWith( 'UPDATE ' . $this->tnAuthAccounts );
+		$this->setAuditFieldsOnUpdate($theSql)
+			->mustAddParam( 'comments', $aComments )
+			->startWhereClause()
+			->mustAddParam( 'auth_id', $aAuthID )
+			->endWhereClause()
+			//->logSqlDebug(__METHOD__, '[TRACE]')
+			;
+		try {
+			$theSql->execDML();
+		}
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 
 }//end class
