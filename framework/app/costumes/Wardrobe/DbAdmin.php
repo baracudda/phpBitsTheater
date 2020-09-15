@@ -344,12 +344,30 @@ class DbAdmin extends BaseCostume
 					// found a model we need to setup
 					$theModel->connectTo($aDbConnInfo);
 					// call the setup methods for it
-					if ( $theMirror->hasMethod('setupModel') )
-					{ $theModel->setupModel($aScene); }
-					if ( $theMirror->hasMethod('setupDefaultData') )
-					{ $theModel->setupDefaultData($aScene); }
-					if ( $theMirror->hasMethod('setupFeatureVersion') )
-					{ $theModel->setupFeatureVersion($aScene); }
+					if ( $theMirror->hasMethod('setupModel') ) {
+						try {
+							$theModel->setupModel($aScene);
+						}
+						catch ( \Exception $x ) {
+							$this->logErrors($theModel->mySimpleClassName, ' setupModel exception: ', $x);
+						}
+					}
+					if ( $theMirror->hasMethod('setupDefaultData') ) {
+						try {
+							$theModel->setupDefaultData($aScene);
+						}
+						catch ( \Exception $x ) {
+							$this->logErrors($theModel->mySimpleClassName, ' setupDefaultData exception: ', $x);
+						}
+					}
+					if ( $theMirror->hasMethod('setupFeatureVersion') ) {
+						try {
+							$theModel->setupFeatureVersion($aScene);
+						}
+						catch ( \Exception $x ) {
+							$this->logErrors($theModel->mySimpleClassName, ' setupFeatureVersion exception: ', $x);
+						}
+					}
 				}
 				unset($theModel); //recycle for immediate reuse
 			}

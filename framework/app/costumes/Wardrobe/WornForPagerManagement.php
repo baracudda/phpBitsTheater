@@ -178,6 +178,15 @@ trait WornForPagerManagement
 	 */
 	public function setupPagerDataFromUserData( $aScene )
 	{
+		if ( isset($aScene->mPagerEnabled) ) {
+			$this->setPagerEnabled($aScene->mPagerEnabled);
+		}
+		else if ( isset($aScene->pager_enabled) ) {
+			$this->setPagerEnabled($aScene->pager_enabled);
+		}
+		else if ( isset($aScene->enable_pager) ) {
+			$this->setPagerEnabled($aScene->enable_pager);
+		}
 		// see if we have a defined page size
 		if ( !empty($aScene->query_limit) && is_numeric($aScene->query_limit) )
 		{ $this->setPagerSize($aScene->query_limit); }

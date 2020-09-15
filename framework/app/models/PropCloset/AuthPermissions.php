@@ -360,7 +360,9 @@ class AuthPermissions extends BaseModel {
 		$theRightsList = array();
 		$theRightGroups = $aScene->getPermissionRes('namespace');
 		foreach ($theRightGroups as $ns => $nsInfo) {
+			$nsInfo; //no-op to avoid warning of not using var
 			foreach ($aScene->getPermissionRes($ns) as $theRight => $theRightInfo) {
+				$theRightInfo; //no-op to avoid warning of not using var
 				$varName = $ns.'__'.$theRight;
 				$theAssignment = $aScene->$varName;
 				//$this->debugLog($varName.'='.$theAssignment);

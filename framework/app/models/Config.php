@@ -22,9 +22,8 @@ class Config extends BaseModel
 	 */
 	const TABLE_PREFIX_INCLUDES_DB_NAME = true;
 	
-	/** @var string */
-	public $dbConnName = APP_DB_CONN_NAME;
-	
+	const DB_CONN_NAME = APP_DB_CONN_NAME;
+
 	public function setupAfterDbConnected() {
 		parent::setupAfterDbConnected();
 		$this->migrateToNewConnName();
@@ -44,7 +43,7 @@ class Config extends BaseModel
 			{ return; } //trivial, if nothing to copy from, no need to copy.
 			
 			$this->logStuff(__METHOD__, ' migrating Config table to new dbconn [',
-					$this->dbConnName, ']');
+					static::DB_CONN_NAME, ']');
 			$theSql = SqlBuilder::withModel($this);
 			//the parent model did not include dbname in its table name, manually mix it in
 			$theOldDbName = $dbOldConfig->getDbConnInfo()->dbName;
@@ -72,7 +71,7 @@ class Config extends BaseModel
 					$this->logStuff(__METHOD__, ' removed old table [', $theOldTableName, ']');
 				}
 				$this->logStuff(__METHOD__, ' FINISHED migrating Config table to new dbconn [',
-						$this->dbConnName, ']');
+						static::DB_CONN_NAME, ']');
 			}
 			catch ( \PDOException $pdox )
 			{ /* eat the exception */ }

@@ -21,6 +21,7 @@ use BitsTheater\Director;
 use BitsTheater\Model;
 use stdClass as StandardClass;
 use com\blackmoonit\exceptions\IllegalArgumentException;
+use com\blackmoonit\Arrays;
 {//namespace begin
 
 abstract class ABitsCostume extends BaseCostume
@@ -253,7 +254,12 @@ implements IDirected
 	 * @return string Return self encoded to JSON.
 	 */
 	public function toJson($aJsonEncodeOptions=null) {
-		return json_encode($this->exportData(), $aJsonEncodeOptions);
+		$o = $this->exportData();
+		$s = json_encode($o, $aJsonEncodeOptions);
+		if ( json_last_error() != JSON_ERROR_NONE ) {
+			$this->logErrors(get_called_class(), '::toJson error: ', json_last_error_msg());
+		}
+		return $s;
 	}
 	
 	/**
@@ -285,7 +291,7 @@ implements IDirected
 		//$aContext->debugLog('costume stdcls: '.$aContext->debugStr($aStdClass));
 		$o = self::cnvStdClassToXClass($aStdClass, get_called_class());
 		//$aContext->debugLog('costume cls: '.$aContext->debugStr($o));
-		$o->director = $aContext->getDirector();
+		$o->setDirector($aContext->getDirector());
 		return $o;
 	}
 
@@ -295,7 +301,7 @@ implements IDirected
 	 */
 	protected function constructExportObject()
 	{
-		$o = (object) call_user_func('get_object_vars', $this);
+		$o = (object) Arrays::getPublicPropertiesOfObject($this);
 		unset($o->myClassName);
 		unset($o->mySimpleClassName);
 		unset($o->myNamespaceName);
@@ -310,7 +316,14 @@ implements IDirected
 	 * @return string[]
 	 */
 	static public function getDefinedFields() {
-		return array_keys( call_user_func('get_class_vars', get_called_class()) );
+		return array_diff(Arrays::getPublicPropertiesOfClass(get_called_class()), array(
+				'myClassName',
+				'mySimpleClassName',
+				'myNamespaceName',
+				'lastClassLoaded1',
+				'lastClassLoaded2',
+				'lastClassLoaded3',
+		));
 	}
 	
 }//end class

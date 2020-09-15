@@ -24,7 +24,6 @@ use BitsTheater\costumes\ConfigResEntry;
 use BitsTheater\costumes\WornForFeatureVersioning;
 use BitsTheater\Scene;
 use com\blackmoonit\exceptions\DbException;
-use com\blackmoonit\Strings;
 use PDOException;
 {//namespace begin
 

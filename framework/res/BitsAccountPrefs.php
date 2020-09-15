@@ -105,8 +105,10 @@ class BitsAccountPrefs extends BaseResources
 	{
 		parent::setup($aDirector) ;
 		$this->mergePreferenceInfo( self::ROOT_ENUMERATION ) ;
-		foreach( $this->{self::ROOT_ENUMERATION} as $theName => $theEntry )
+		foreach( $this->{self::ROOT_ENUMERATION} as $theName => $theEntry ) {
+			$theEntry; //no-op to avoid warning of not using var
 			$this->mergePreferenceInfo( $theName ) ;
+		}
 		return $this ;
 	}
 	

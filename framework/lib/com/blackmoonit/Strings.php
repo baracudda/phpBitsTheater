@@ -141,7 +141,7 @@ class Strings {
 	static public function randomSalt($aLen=16) {
 		$salt = str_repeat('.',$aLen);
 		for ($i = 0; $i<$aLen; $i++) {
-			$salt{$i} = substr("./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,63), 1);
+			$salt[$i] = substr("./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,63), 1);
 		}
 		return $salt;
 	}
@@ -154,7 +154,7 @@ class Strings {
 	static public function urlSafeRandomChars($aLen=16) {
 		$salt = str_repeat('.',$aLen);
 		for ($i = 0; $i<$aLen; $i++) {
-			$salt{$i} = substr(".ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,62), 1);
+			$salt[$i] = substr(".ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", mt_rand(0,62), 1);
 		}
 		return $salt;
 	}
@@ -245,9 +245,14 @@ class Strings {
 		}
 		//if encrypted data is passed, check it against input ($info)
 		if ($aEncryptedData) {
-			$saltCrypto = substr($aEncryptedData,0,-16);
-			$saltPw = substr($aEncryptedData,-16);
-			if ($aEncryptedData==crypt($thePwInput.$saltPw,$saltCrypto).$saltPw) {
+			$saltCrypto = substr($aEncryptedData, 0, -16);
+			$saltPw = substr($aEncryptedData, -16);
+			$theUserAttempt = crypt($thePwInput . $saltPw, $saltCrypto) . $saltPw;
+			if ( function_exists('hash_equals') ) {
+				//It is important to provide the user-supplied string as the second parameter, rather than the first.
+				return hash_equals($aEncryptedData, $theUserAttempt);
+			}
+			else if ( $aEncryptedData == $theUserAttempt) {
 				return true;
 			} else {
 				return false;
@@ -635,7 +640,7 @@ class Strings {
 		$bin = '';
 		$max = strlen($aData);
 		for ($i=0; $i<$max; $i+=2) {
-			$bin .= chr(hexdec($aData{$i}.$aData{($i+1)}));
+			$bin .= chr(hexdec($aData[$i].$aData[($i+1)]));
 		}
 		return $bin;
 	}
@@ -650,7 +655,7 @@ class Strings {
 		$hex = '';
 		$max = strlen($aData);
 		for ($i=0; $i<$max; $i++) {
-			$hex .= sprintf("%02x",ord($aData{$i}));
+			$hex .= sprintf("%02x",ord($aData[$i]));
 		}
 		return $hex;
 	}
@@ -1136,6 +1141,16 @@ class Strings {
 		return self::createHttpHeader('Expires',
 				gmdate('D, d M Y H:i:s \G\M\T', time() + ((60 * 60 * 24) * $aExpireXDaysFromNow))
 		);
+	}
+	
+	/**
+	 * Get ENV var, checking "local" first (works for cli/fcgi/web).
+	 * @param string $aEnvVarName - the ENV var name.
+	 * @return string Returns the value, if ENV var name is found.
+	 */
+	static public function getEnvVar( $aEnvVarName )
+	{
+		return getenv($aEnvVarName, true) ?: getenv($aEnvVarName);
 	}
 		
 }//end class

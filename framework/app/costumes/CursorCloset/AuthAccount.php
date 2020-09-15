@@ -40,6 +40,8 @@ class AuthAccount extends BaseCostume
 	//public $pwhash; do not export!
 	public $verified_ts;
 	public $is_active;
+	/** @var string */
+	public $comments;
 	public $hardware_ids;
 	public $created_by;
 	public $updated_by;

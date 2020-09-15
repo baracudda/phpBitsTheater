@@ -93,6 +93,13 @@ interface ISqlSanitizer
 	 */
 	function setPagerTotalRowCount( $aTotalRowCount ) ;
 	
+	/**
+	 * Long processes may desire a total up front like a pager.
+	 * @return boolean Returns TRUE if SqlBuilder should auto-calc SELECT query total.
+	 * @return $this Returns $this for chaining.
+	 */
+	function isTotalRowsDesired();
+	
 }//end interface
 
 }//end namespace

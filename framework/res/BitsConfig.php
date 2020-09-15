@@ -66,6 +66,7 @@ class BitsConfig extends BaseResources {
 
 		$this->mergeConfigEntryInfo('namespace');
 		foreach ($this->namespace as $theEnumName => $theEnumEntry) {
+			$theEnumEntry; //no-op to avoid warning of not using var
 			$this->mergeConfigEntryInfo($theEnumName);
 		}
 	}

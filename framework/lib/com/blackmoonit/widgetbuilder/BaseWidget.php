@@ -249,7 +249,7 @@ class BaseWidget
 	/**
 	 * Sets whether element is a block. If true, isSingleton() becomes
 	 * false.
-	 * @param boolean $b new value
+	 * @param boolean $b - (OPTIONAL) new value, default TRUE
 	 * @return \com\blackmoonit\widgetbuilder\BaseWidget the updated widget
 	 */
 	public function setIsBlock( $b=true )

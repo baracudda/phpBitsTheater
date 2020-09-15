@@ -54,14 +54,24 @@ abstract class ARecordSet extends BaseCostume
 	 * Return the Model class or name to use in a getProp() call.
 	 * @return string
 	 */
-	abstract protected function getModelClassToUse();
+	protected function getModelClassToUse()
+	{ return static::MY_MODEL_CLASS; }
+	
+	/**
+	 * Get this record set's model to use given a context and org_id.
+	 * @param IDirected $aContext - the context to get models with.
+	 * @param string $aOrgID - the org_id to connect this model to.
+	 * @return \BitsTheater\Model Returns the model to use.
+	 */
+	static public function getMyModelToUse( IDirected $aContext, $aOrgID=null )
+	{ return $aContext->getProp(static::MY_MODEL_CLASS, $aOrgID); }
 	
 	/**
 	 * Costume classes know about the Director via IDirected context.
 	 * @param IDirected $aContext - used to get the Director object.
 	 */
 	public function setup(IDirected $aContext) {
-		$this->setModel( $aContext->getProp( $this->getModelClassToUse() ) );
+		$this->setModel( static::getMyModelToUse($aContext) );
 		$this->mItemClassArgs = array( $this->getModel() );
 		parent::setup($aContext);
 	}
@@ -74,13 +84,54 @@ abstract class ARecordSet extends BaseCostume
 	 * @param string[] $aExportFieldList - fields we intend to export.
 	 * @return $this Returns $this for chaining.
 	 */
-	static public function withContextAndColumns( IDirected $aContext,
-			$aExportFieldList=null )
+	static public function withContextAndColumns( IDirected $aContext, $aExportFieldList=null )
 	{
 		$theClassName = get_called_class();
 		$o = new $theClassName($aContext); //which will run self::setup()
 		//once we have an object, set our default item class constructor args.
 		$o->setItemClassArgs($o->getModel(), $aExportFieldList);
+		return $o;
+	}
+	
+	/**
+	 * ARecord descendants need at least a model and an export field list.
+	 * Helper factory method designed to promote using the defined model
+	 * with the ARecordSet descendant, but with an explicit org to connect
+	 * to and an export field/column name list.
+	 * @param IDirected $aContext - used to get the Director object.
+	 * @param string $aOrgID - the org ID used to connect the model.
+	 * @param string[] $aExportFieldList - fields we intend to export.
+	 * @return $this Returns $this for chaining.
+	 */
+	static public function withOrgIDAndColumns( IDirected $aContext, $aOrgID, $aExportFieldList=null )
+	{
+		$theClassName = get_called_class();
+		$o = new $theClassName();
+		$o->setDirector($aContext->getDirector());
+		$o->setModel(static::getMyModelToUse($aContext, $aOrgID));
+		//once we have an object, set our default item class constructor args.
+		$o->setItemClass(static::DEFAULT_ITEM_CLASS, $o->getModel(), $aExportFieldList);
+		return $o;
+	}
+	
+	/**
+	 * ARecord descendants need at least a model and an export field list.
+	 * Helper factory method designed to use an explicit org to connect
+	 * to and an export field/column name list.
+	 * @param IDirected $aContext - used to get the Director object.
+	 * @param \BitsTheater\Model $dbToUse - the model to use.
+	 * @param string[] $aExportFieldList - fields we intend to export.
+	 * @return $this Returns $this for chaining.
+	 */
+	static public function withModelAndColumns( $dbToUse, $aExportFieldList=null )
+	{
+		if ( empty($dbToUse) ) throw new \InvalidArgumentException('$dbToUse is empty');
+		$theClassName = get_called_class();
+		$o = new $theClassName();
+		$o->setDirector($dbToUse->getDirector());
+		$o->setModel($dbToUse);
+		//once we have an object, set our default item class constructor args.
+		$o->setItemClass(static::DEFAULT_ITEM_CLASS, array($o->getModel(), $aExportFieldList));
 		return $o;
 	}
 	

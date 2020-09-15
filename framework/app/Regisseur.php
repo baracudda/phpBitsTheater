@@ -257,6 +257,7 @@ class Regisseur
 		//if a custom WEBAPP_NAMESPACE was not defined, ensure the constant has meaning.
 		if ( !defined('WEBAPP_NAMESPACE') )
 			define('WEBAPP_NAMESPACE', BITS_NAMESPACE);
+		//define('IS_PHP_7', version_compare(phpversion(), '7', '>=') ? '1' : '0');
 		return $this;
 	}
 	
@@ -286,7 +287,7 @@ class Regisseur
 		//print __METHOD__ . ": classname=[{$aClassName}], ns=[{$aRootNamespace}]\n"; //DEBUG
 		$theRootNamespaceLen = strlen($aRootNamespace);
 		//if root namespace does not end in \, ensure it does.
-		if ( $theRootNamespaceLen>0 && $aRootNamespace{$theRootNamespaceLen-1}!='\\')
+		if ( $theRootNamespaceLen>0 && $aRootNamespace[$theRootNamespaceLen-1]!='\\')
 		{
 			$aRootNamespace .= '\\';
 			$theRootNamespaceLen += 1;
@@ -316,7 +317,7 @@ class Regisseur
 		//is translated resource file?
 		$theResPos = strpos( $aClassName, $aRootNamespace ) ;
 		//en, de, es, etc. 2 letter language codes get directed to the i18n folder
-		if ( $theResPos===0 && $aClassName{strlen($aRootNamespace)+2}=='\\' )
+		if ( $theResPos===0 && $aClassName[strlen($aRootNamespace)+2]=='\\' )
 			$theRootPath .= 'i18n' . DIRECTORY_SEPARATOR ;
 		return $this->classNameToPath( $aClassName, $aRootNamespace, $theRootPath ) ;
 	}
@@ -451,14 +452,16 @@ class Regisseur
 	 */
 	public function registerClassLoaders()
 	{
-		//lib/* loaders first
-		$this->registerLibLoaders();
-		//configs/* loaders next so we can get Settings and DB connections
-		$this->registerConfigLoaders();
-		//res/* loaders next for strings and resources, and because is subset of app namespace
-		$this->registerResLoaders();
-		//app/* loaders next for the main website app classes
+		// register loaders based on frequency/priority
+		
+		//app/* loaders for the main website app classes
 		$this->registerAppLoaders();
+		//res/* loaders for strings and resources, and because is subset of app namespace
+		$this->registerResLoaders();
+		//configs/* loaders for Settings and DB connections
+		$this->registerConfigLoaders();
+		//lib/* loaders
+		$this->registerLibLoaders();
 		//miscellaneous loaders
 		$this->registerCatchAllLoaders();
 		return $this;

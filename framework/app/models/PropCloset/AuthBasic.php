@@ -1384,6 +1384,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 	 * When a login attempt fails, update our count in case we need to lockout that account.
 	 * @param Accounts $dbAccounts - the accounts model.
 	 * @param object $aScene - var container object for user/pw info.
+	 * @return string Returns the lockout token, if any.
 	 */
 	protected function updateFailureLockout(Accounts $dbAccounts, Scene $aScene) {
 		//NOTE: code executing here means user is NOT LOGGED IN, but need to see if tried to do so.
@@ -1398,7 +1399,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			//$this->debugLog(__METHOD__.' '.$this->debugStr($theLockoutTokenInfo));
 			if (!empty($theLockoutTokenInfo)) {
 				//add lockout token
-				$theAuthToken = $this->generateAuthToken(
+				return $this->generateAuthToken(
 						$theLockoutTokenInfo['auth_id'],
 						$theLockoutTokenInfo['account_id'],
 						self::TOKEN_PREFIX_LOCKOUT

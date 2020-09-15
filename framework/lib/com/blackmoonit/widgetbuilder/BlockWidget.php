@@ -32,10 +32,10 @@ class BlockWidget extends BaseWidget
 	protected $myAppendIndents = 1 ;
 	protected $myLastAppendEndedALine = false ;
 	
-	public function setIsSingleton($b)
+	public function setIsSingleton( $b=true )
 	{ return $this ; }
 	
-	public function setIsBlock($b)
+	public function setIsBlock( $b=true )
 	{ return $this ; }
 	
 	/**

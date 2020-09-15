@@ -44,6 +44,7 @@ function printFileList( $aList )
 	}
 }
 
+global $director;
 /* @var $dbS3 AmazonS3DB */
 $dbS3 = $director->getProp(AmazonS3DB::MODEL_NAME);
 
@@ -83,7 +84,7 @@ if ($dbS3->isConnected())
 			{ $theKeyPath = $theCliOptions['upload-as']; }
 			else
 			{ $theKeyPath = $dbS3->localNameAsKeyPath($theThingToUpload, $theCliOptions['upload-to']); }
-			$dbS3->uploadFileAsKey( $theFilename, $theKeyPath );
+			$dbS3->uploadFileAsKey( $theThingToUpload, $theKeyPath );
 			print('Listing files for key path [' . $theKeyPath . ']' . PHP_EOL);
 			printFileList( $dbS3->getFileList($theKeyPath) );
 		} break;

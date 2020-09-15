@@ -58,6 +58,7 @@ class BitsPermissions extends BaseResource {
 		
 		$this->mergeEnumEntryInfo('namespace');
 		foreach ($this->namespace as $theEnumName => $theEnumEntry) {
+			$theEnumEntry; //no-op to avoid warning of not using var
 			$this->mergeEnumEntryInfo($theEnumName);
 		}
 	}

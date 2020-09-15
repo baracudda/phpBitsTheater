@@ -232,7 +232,7 @@ implements IDirected
 	protected function performAct($aAction, $aQuery) {
 		$theThingToCall = array($this, $aAction);
 		if (is_callable($theThingToCall))
-		{ return call_user_func_array($theThingToCall, $aQuery); }
+		{ return $theThingToCall(...$aQuery); }
 		else {
 			$theUrlNotFound = BITS_URL . '/' . $this->mySimpleClassName
 					. '/' . $aAction . '/' . implode('/', $aQuery);
@@ -324,6 +324,7 @@ implements IDirected
 				throw new FourOhFourExit(str_replace(BITS_ROOT,'',$myView));
 			}
 		}
+		$recite; $v; //no-op to avoid warning of not using var
 	}
 	
 	/**
@@ -340,6 +341,25 @@ implements IDirected
 		} else {
 			return $this->renderThisView;
 		}
+	}
+	
+	/**
+	 * Set the view to render. If NULL or file not found, '_blank' is used.
+	 * @param string $aViewName - the view file name.
+	 */
+	public function setView( $aViewFileName )
+	{
+		if ( isset($aViewFileName) && $aViewFileName != '_blank' ) {
+			$v = $this->getMyScene();
+			$theView = $v->getViewPath($v->actor_view_path . $aViewFileName);
+			if ( !is_file($theView) ) {
+				$theView = $v->getViewPath($v->view_path . $aViewFileName);
+			}
+			if ( is_file($theView) ) {
+				return $this->viewToRender($aViewFileName);
+			}
+		}
+		return $this->viewToRender('_blank');
 	}
 	
 	/**
@@ -361,6 +381,7 @@ implements IDirected
 			include($myView);
 			return ob_get_clean();
 		}
+		$recite; $v; //no-op to avoid warning of not using var
 	}
 	
 	/**

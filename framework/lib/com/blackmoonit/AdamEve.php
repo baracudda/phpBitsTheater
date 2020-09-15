@@ -219,7 +219,7 @@ class AdamEve extends BaseClass {
 	}
 	
 	/**
-	 * Send string out to the debug log (or std log as [dbg]).
+	 * Send string out to the error log (or std log as [err]).
 	 * Accepts any number of parameters and will convert all non-strings with debugStr().
 	 */
 	public function logErrors( $_ ) {

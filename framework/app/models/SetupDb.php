@@ -2,6 +2,7 @@
 
 namespace BitsTheater\models;
 use BitsTheater\models\PropCloset\SetupDb as BaseModel;
+use BitsTheater\costumes\DbConnInfo;
 {//begin namespace
 
 class SetupDb extends BaseModel
@@ -12,6 +13,26 @@ class SetupDb extends BaseModel
 	 * @since BitsTheater 3.6.1
 	 */
 	const MODEL_NAME = __CLASS__ ;
+	
+	/**
+	 * Connect to a different org by its ID.
+	 * @param string $aOrgID - org_id with the dbconn info to connect to.
+	 * @return string[] Returns the org data loaded, if any.
+	 */
+	public function connectToOrgID( $aOrgID )
+	{
+		$theOrg = null;
+		$theNewDbConnInfo = new DbConnInfo(APP_DB_CONN_NAME);
+		if ( !empty($aOrgID) && $aOrgID != AuthModel::ORG_ID_4_ROOT ) {
+			$dbAuth = $this->getAuthProp();
+			$theOrg = $dbAuth->getOrganization($aOrgID);
+			$this->returnProp($dbAuth);
+			if ( empty($theOrg) || empty($theOrg['dbconn']) ) return null; //trivial
+			$theNewDbConnInfo->loadDbConnInfoFromString($theOrg['dbconn']);
+		}
+		$this->connectTo($theNewDbConnInfo);
+		return $theOrg;
+	}
 	
 	/**
 	 * During website development, some models may get orphaned. Prevent them

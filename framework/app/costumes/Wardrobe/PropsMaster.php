@@ -47,7 +47,7 @@ class PropsMaster extends BaseCostume
 	protected $mDefaultOrgID = AuthModel::ORG_ID_4_ROOT;
 
 	/** @return AuthModel */
-	protected function getAuthModel()
+	public function getAuthModel()
 	{ return $this->getPropFromRoom(AuthModel::MODEL_NAME); }
 	
 	/**

@@ -19,6 +19,7 @@ namespace BitsTheater\costumes;
 use \stdClass as BaseCostume;
 use \stdClass as StandardClass;
 use com\blackmoonit\exceptions\IllegalArgumentException;
+use com\blackmoonit\Arrays;
 {//namespace begin
 
 abstract class ASimpleCostume extends BaseCostume {
@@ -113,12 +114,21 @@ abstract class ASimpleCostume extends BaseCostume {
 	}
 	
 	/**
+	 * Construct the standard object with all data fields worth exporting defined.
+	 * @return object Returns a standard object with the properties to export defined.
+	 */
+	protected function constructExportObject()
+	{
+		//default export is "all public fields"
+		return (object) Arrays::getPublicPropertiesOfObject($this);
+	}
+	
+	/**
 	 * Return this payload data as a simple class, minus any metadata this class might have.
 	 * @return string Return self encoded as a standard class.
 	 */
 	public function exportData() {
-		//default export is "all public fields"
-		return (object) call_user_func('get_object_vars', $this);
+		return $this->constructExportObject();
 	}
 	
 	/**
@@ -165,7 +175,7 @@ abstract class ASimpleCostume extends BaseCostume {
 	 * @return string[]
 	 */
 	static public function getDefinedFields() {
-		return array_keys( call_user_func('get_class_vars', get_called_class()) );
+		return Arrays::getPublicPropertiesOfClass(get_called_class());
 	}
 	
 }//end class

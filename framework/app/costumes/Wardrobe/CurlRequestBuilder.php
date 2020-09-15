@@ -308,7 +308,7 @@ class CurlRequestBuilder extends BaseCostume
 	 */
 	public function useBufferedOutput( $aCallback=null )
 	{
-		$this->setBufferSize(655360*10); //6400k buffer
+		$this->setBufferSize(1024*256); //256k buffer
 		if ( !empty($aCallback) ) {
 			$this->setOutputRoutine($aCallback);
 		}

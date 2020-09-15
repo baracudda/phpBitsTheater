@@ -21,7 +21,6 @@ use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\SqlBuilder;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\exceptions\DbException;
-use com\blackmoonit\FinallyBlock;
 use ArrayAccess;
 {//namespace begin
 
@@ -115,6 +114,7 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 					$this->defineMapValue($mapInfo);
 				}
 			}
+			$this->logStuff('Default data for ', $this->getTableName(), ' done.');
 		}
 	}
 	
@@ -297,14 +297,6 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 		if ($old_value !== $aNewValue) {
 			//$this->debugLog(__METHOD__.' o='.$this->debugStr($old_value).' n='.$this->debugStr($aNewValue));
 			$this->_mapdata[$theNsKeyStr] = $aNewValue;
-			$theFinally = new FinallyBlock(function($aModel) {
-				if (!is_null($aModel->value_update)) {
-					$aModel->value_update->closeCursor();
-				}
-				if (!is_null($aModel->value_insert)) {
-					$aModel->value_insert->closeCursor();
-				}
-			},$this);
 			if (!is_null($this->value_update) && !is_null($this->value_insert)) try {
 				$this->bindValues($this->value_update,array(
 						'ns' => $theNsKey['ns'],
@@ -334,6 +326,14 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 			} catch (\PDOException $e) {
 				if ($this->exists($this->getTableName())) {
 					throw new DbException($e,'dbError@'.$this->getTableName().' '.__METHOD__."({$this->debugStr($aNsKey)},{$aNewValue})\n");
+				}
+			}
+			finally {
+				if ( !empty($this->value_update) ) {
+					$this->value_update->closeCursor();
+				}
+				if ( !empty($this->value_insert) ) {
+					$this->value_insert->closeCursor();
 				}
 			}
 		}
