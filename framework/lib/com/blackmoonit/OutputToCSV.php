@@ -313,6 +313,7 @@ class OutputToCSV {
 	
 	protected function isColumnPrependEqual( $aColName, $aColValue )
 	{
+		if ( strpos($aColValue, ',') !== false ) return false; //do not need if contains a comma.
 		if ( !empty($this->mColNamesToPrependEqual) ) {
 			if ( in_array($aColName, $this->mColNamesToPrependEqual) ) {
 				return true;
@@ -358,11 +359,14 @@ class OutputToCSV {
 					$theColValue = str_replace($this->mEnclosureRight,$this->mReplaceEnclosureRight,$theColValue);
 				// Carriage Return and/or New Line converted to the literal '\n'
 				$theColValue = str_replace(array("\r\n", "\n", "\r"),'\n',$theColValue);
-				//to prevent Excel from converting value to formula, prepend with '=' before enclosure.
-				if ( $this->isColumnPrependEqual($theColName, $theColValue) ) {
-					$this->csv .= '=';
+				if ( !empty($theColValue) ) {
+					//to prevent Excel from converting value to formula, prepend with '=' before enclosure.
+					if ( $this->isColumnPrependEqual($theColName, $theColValue) ) {
+						$this->csv .= '=';
+					}
+					$this->csv .= $this->mEnclosureLeft.$theColValue.$this->mEnclosureRight;
 				}
-				$this->csv .= $this->mEnclosureLeft.$theColValue.$this->mEnclosureRight.$this->mValueDelimiter;
+				$this->csv .= $this->mValueDelimiter;
 			}
 			$theDelimSize = strlen($this->mValueDelimiter);
 			$this->csv = substr_replace($this->csv, $this->mLineDelimiter, -$theDelimSize, $theDelimSize);
