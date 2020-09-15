@@ -177,7 +177,7 @@ class MenuItemResEntry extends BaseCostume {
 	public function cnvToText($aValue) {
 		if (empty($aValue))
 			return '';
-		if ($aValue{0}=='&') {
+		if ($aValue[0]=='&') {
 			$sa = explode('@',$aValue,2);
 			switch ($sa[0]) {
 				case '&res':
@@ -235,7 +235,7 @@ class MenuItemResEntry extends BaseCostume {
 	protected function isPassFilterSegment($aFilterSegment) {
 		if (empty($aFilterSegment))
 			return true;
-		if ($aFilterSegment{0}=='&') {
+		if ($aFilterSegment[0]=='&') {
 			$sa = explode('@',$aFilterSegment,2);
 			switch ($sa[0]) {
 				case '&right':

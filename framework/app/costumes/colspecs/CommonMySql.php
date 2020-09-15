@@ -267,7 +267,7 @@ class CommonMySql
 		//  server timezone.
 		if (strlen($sqlTimestamp)>10)
 		{
-			$sqlTimestamp{10} = 'T';
+			$sqlTimestamp[10] = 'T';
 			//If the time is in UTC, add a Z directly after the time without a space.
 			//  Z is the zone designator for the zero UTC offset.
 			//  UTC time is also known as Zulu time, since Zulu is the NATO
@@ -397,7 +397,7 @@ class CommonMySql
 	{
 		if (strlen($aDateTimeISO8601)>10)
 		{
-			$aDateTimeISO8601{10} = ' ';
+			$aDateTimeISO8601[10] = ' ';
 			$aDateTimeISO8601 = rtrim($aDateTimeISO8601, 'Z');
 		}
 		return $aDateTimeISO8601;

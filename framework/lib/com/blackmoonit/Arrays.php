@@ -310,6 +310,26 @@ class Arrays {
 		return $theResult;
 	}
 	
+	/**
+	 * Retrieve the publicly accessible properties of an object as an array.
+	 * @param object $aObj - the object to read.
+	 * @return string[] Returns the string array of public property names.
+	 */
+	static public function getPublicPropertiesOfObject( $aObj )
+	{
+		return get_object_vars($aObj);
+	}
+	
+	/**
+	 * Retrieve the publicly accessible properties of a class as an array.
+	 * @param class|string $aClass - the class to read.
+	 * @return string[] Returns the string array of public property names.
+	 */
+	static public function getPublicPropertiesOfClass( $aClass )
+	{
+		return array_keys(get_class_vars($aClass));
+	}
+	
 	
 }//end class
 

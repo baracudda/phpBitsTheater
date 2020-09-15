@@ -429,6 +429,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			if ( empty($aSkipPermissionList) ||
 					!in_array($thePerm, $aSkipPermissionList) )
 			{
+				$thePermInfo; //no-op to avoid warning of not using var
 				$theResults[] = array(
 						'namespace' => $aNamespace,
 						'permission' => $thePerm,
@@ -461,6 +462,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$theResults = array();
 		$theNamespaceList = $this->getRes('permissions', 'namespace');
 		foreach ( $theNamespaceList as $theNS => $theNSInfo ) {
+			$theNSInfo; //no-op to avoid warning of not using var
 			switch ( $theNS ) {
 				case 'auth_orgs':
 				case 'config':
@@ -485,6 +487,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$theResults = array();
 		$theNamespaceList = $this->getRes('permissions', 'namespace');
 		foreach ( $theNamespaceList as $theNS => $theNSInfo ) {
+			$theNSInfo; //no-op to avoid warning of not using var
 			$theResults = array_merge( $theResults,
 					$this->assignAllRightsInANamespace($theNS, $aGroupID)
 			);
@@ -1057,22 +1060,22 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		//$dbOldPermissions did not have a FEATURE_ID to remove.
 		$this->returnProp($dbMeta);
 		//remove old tables
-		$theSql = SqlBuilder::withModel($dbOldPermissions)
+		SqlBuilder::withModel($dbOldPermissions)
 			->startWith('DROP TABLE')->add($dbOldPermissions->tnPermissions)
 			->execDML()
 			;
 		$this->logStuff(' dropped old table ', $dbOldPermissions->tnPermissions);
-		$theSql = SqlBuilder::withModel($dbOldAuthGroups)
+		SqlBuilder::withModel($dbOldAuthGroups)
 			->startWith('DROP TABLE')->add($dbOldAuthGroups->tnGroupRegCodes)
 			->execDML()
 			;
 		$this->logStuff(' dropped old table ', $dbOldAuthGroups->tnGroupRegCodes);
-		$theSql = SqlBuilder::withModel($dbOldAuthGroups)
+		SqlBuilder::withModel($dbOldAuthGroups)
 			->startWith('DROP TABLE')->add($dbOldAuthGroups->tnGroupMap)
 			->execDML()
 			;
 		$this->logStuff(' dropped old table ', $dbOldAuthGroups->tnGroupMap);
-		$theSql = SqlBuilder::withModel($dbOldAuthGroups)
+		SqlBuilder::withModel($dbOldAuthGroups)
 			->startWith('DROP TABLE')->add($dbOldAuthGroups->tnGroups)
 			->execDML()
 			;
@@ -2119,6 +2122,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 			);
 			foreach ( $aRightsList as $theNamespace => $thePermList ) {
 				foreach ( $thePermList as $thePermmission => $thePermValue ) {
+					$thePermValue; //no-op to avoid warning of not using var
 					if ( empty($theAssignedRightsList[$theNamespace]) ||
 							empty($theAssignedRightsList[$theNamespace][$thePermmission]) )
 					{ return false; }
@@ -2146,10 +2150,13 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$theNSList = $aContext->getRes( 'permissions/namespace' ) ;
 		foreach( $theNSList as $theNS => $theNSInfo )
 		{
+			$theNSInfo; //no-op to avoid warning of not using var
 			$theResults[$theNS] = array() ;
 			$thePerms = $aContext->getRes( 'permissions/' . $theNS ) ;
-			foreach( $thePerms as $thePerm => $thePermInfo )
+			foreach( $thePerms as $thePerm => $thePermInfo ) {
+				$thePermInfo; //no-op to avoid warning of not using var
 				$theResults[$theNS][$thePerm] = $aRightGranted ;
+			}
 		}
 		//$aContext->getDirector()->logStuff(__METHOD__, $theResults); //DEBUG
 		return $theResults ;
@@ -2493,8 +2500,10 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$theRightGroups = $this->getRes('permissions/namespace');
 		foreach ($theRightGroups as $ns => $nsInfo)
 		{
+			$nsInfo; //no-op to avoid warning of not using var
 			foreach ($this->getRes('permissions/' . $ns) as $theRight => $theRightInfo)
 			{
+				$theRightInfo; //no-op to avoid warning of not using var
 				$varName = $ns.'__'.$theRight;
 				$theAssignment = $aDataObject->$varName;
 				//$this->debugLog($varName.'='.$theAssignment);
@@ -2561,13 +2570,13 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		//source group ID
 		if( ! isset( $aSourceGroupID ) )
 		{ throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', '$aSourceGroupID' ) ; }
-		$theSourceGroupRow = $this->getGroup($aSourceGroupID, 'group_name');
+		$theSourceGroupRow = $this->getGroup($aSourceGroupID, array('group_name', 'org_id'));
 		if ( empty($theSourceGroupRow) )
 		{ throw RightsException::toss( $this, 'GROUP_NOT_FOUND', $aSourceGroupID ) ; }
 		//target group ID
 		if( ! isset( $aTargetGroupID ) )
 		{ throw BrokenLeg::toss( $this, 'MISSING_ARGUMENT', '$aTargetGroupID' ) ; }
-		$theTargetGroupRow = $this->getGroup($aTargetGroupID, 'group_name');
+		$theTargetGroupRow = $this->getGroup($aTargetGroupID, array('group_name', 'org_id'));
 		if ( empty($theTargetGroupRow) )
 		{ throw RightsException::toss( $this, 'GROUP_NOT_FOUND', $aTargetGroupID ) ; }
 		//ensure source and target share the same org_id

@@ -17,7 +17,7 @@
 
 namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\ASimpleCostume as BaseCostume;
-use BitsTheater\BrokenLeg;
+use BitsTheater\BrokenLeg as BaseApiException;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -57,7 +57,7 @@ class APIResponse extends BaseCostume
 	/**
 	 * If an exception is caught, set the API response as a failure
 	 * and return the error information.
-	 * @param BrokenLeg $aError - the standard API error class.
+	 * @param BaseApiException $aError - the standard API error class.
 	 * @param boolean $bSetResponseCode specifies whether to overwrite the
 	 *   response code of the ongoing HTTP transaction with the error code of the
 	 *   `BrokenLeg` instance. Defaults to true, but you might want to set as
@@ -65,7 +65,7 @@ class APIResponse extends BaseCostume
 	 *   structure for some more elaborate transaction.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function setError( BrokenLeg $aError, $bSetResponseCode=true )
+	public function setError( BaseApiException $aError, $bSetResponseCode=true )
 	{
 		$this->status = self::STATUS_FAILURE ;
 		$this->error = $aError->toResponseObject() ;
@@ -115,10 +115,10 @@ class APIResponse extends BaseCostume
 						. '","error":'
 					);
 				$theError = $x ;
-				if( ! ( $x instanceof BrokenLeg ) )
+				if( ! ( $x instanceof BaseApiException ) )
 				{
-					$theError = BrokenLeg::pratfall( 'RESPONSE_FAILED',
-							BrokenLeg::HTTP_INTERNAL_SERVER_ERROR,
+					$theError = BaseApiException::pratfall( 'RESPONSE_FAILED',
+							BaseApiException::HTTP_INTERNAL_SERVER_ERROR,
 							$x->getMessage() ) ;
 				}
 				print( $theError->toJson($aEncodeOptions) ) ;

@@ -186,7 +186,7 @@ implements IFeatureVersioning
 		}
 		try
 		{
-			$theNamespaceDef = $this->getRes( 'account_prefs/' . $aSpace ) ;
+			$theNamespaceDef = $this->getRes('account_prefs', $aSpace);
 			if( array_key_exists( $aPrefKey, $theNamespaceDef ) )
 			{ // This should already be stored as an AccountPrefSpec object.
 //				$this->debugLog( __METHOD__ . ' [TRACE] Pref spec: ' . json_encode( $theNamespaceDef[$aPrefKey] ) ) ;
@@ -195,6 +195,7 @@ implements IFeatureVersioning
 		}
 		catch( \Exception $x )
 		{
+			$this->logErrors(__METHOD__, $x);
 			throw AccountAdminException::toss( $this,
 					AccountAdminException::ACT_NO_SUCH_PREFERENCE,
 					array( $aSpace, $aPrefKey )

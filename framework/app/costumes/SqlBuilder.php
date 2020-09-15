@@ -756,7 +756,7 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 	/**
-	 * Sub-query gets added to the SQL string .
+	 * Sub-query gets added to the SQL string.
 	 * @param SqlBuilder $aSubQuery - the sub-query object to copy the SQL
 	 *   string from and insert as "("+SubQuery->SQL+")".
 	 * @param string $aColumnName - the table column (aka field) name.
@@ -1279,8 +1279,7 @@ class SqlBuilder extends BaseCostume {
 	 */
 	public function retrieveQueryTotalsForSanitizer()
 	{
-		if ( !empty($this->mySqlSanitizer) &&
-				$this->mySqlSanitizer->getPagerPageSize()>0 )
+		if ( !empty($this->mySqlSanitizer) && $this->mySqlSanitizer->isTotalRowsDesired() )
 		{
 			$theCount = $this->getQueryTotals();
 			if ( !empty($theCount) ) {

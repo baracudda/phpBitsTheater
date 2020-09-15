@@ -144,8 +144,10 @@ trait WornForSqlSanitize
 		$theOrderByList = $this->getSortColumns();
 		foreach ($theOrderByList as $theFieldName => $bSortAscending)
 		{
-			if ( !$this->isFieldSortable($theFieldName) )
+			$bSortAscending; //no-op to avoid warning of not using var
+			if ( !$this->isFieldSortable($theFieldName) ) {
 				unset($theOrderByList[$theFieldName]);
+			}
 		}
 		return $theOrderByList;
 	}
@@ -156,7 +158,14 @@ trait WornForSqlSanitize
 	 * @return string[] Returns the array of valid fields.
 	 */
 	static public function getSanitizedFieldList( $aFieldList )
-	{ return array_intersect( static::getDefinedFields() , $aFieldList ) ; }
+	{
+		if ( !empty($aFieldList) && is_array($aFieldList) ) {
+			return array_intersect(static::getDefinedFields() , $aFieldList);
+		}
+		else if ( !empty($aFieldList) && is_string($aFieldList) ) {
+			return array_intersect(static::getDefinedFields() , array($aFieldList));
+		}
+	}
 	
 	/**
 	 * Check for what fields to return by API request, allowing for default if
@@ -233,6 +242,29 @@ trait WornForSqlSanitize
 		return $this;
 	}
 	
+	/** @var boolean Set TRUE if SqlBuilder should auto-calc SELECT totals even if not using a pager. */
+	protected $bTotalRowsDesired = false;
+	
+	/**
+	 * Set whether or not to auto-calc SELECT totals.
+	 * @param boolean $aBool - set TRUE if SqlBuilder should auto-calc SELECT query total_count.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function setTotalRowsDesired( $aBool )
+	{
+		$this->bTotalRowsDesired = $aBool;
+		return $this;
+	}
+	
+	/**
+	 * Long processes may desire a total up front like a pager.
+	 * @return boolean Returns TRUE if SqlBuilder should auto-calc SELECT query total.
+	 */
+	public function isTotalRowsDesired()
+	{
+		return ( $this->getPagerPageSize() > 0 || $this->bTotalRowsDesired );
+	}
+		
 }//end trait
 
 }//end namespace

@@ -79,7 +79,8 @@ abstract class ARecordList extends BaseCostume
 	 * @return string
 	 * @see Director::getProp()
 	 */
-	abstract protected function getModelClassToUse();
+	protected function getModelClassToUse()
+	{ return static::MY_MODEL_CLASS; }
 	
 	/**
 	 * Costume classes know about the Director.
@@ -87,7 +88,7 @@ abstract class ARecordList extends BaseCostume
 	 */
 	public function setup(IDirected $aContext)
 	{
-		$this->setModel( $aContext->getProp( $this->getModelClassToUse() ) );
+		$this->setModel( $aContext->getProp(static::MY_MODEL_CLASS) );
 		$this->mItemClassArgs = array( $this->getModel() );
 		parent::setup( $aContext);
 	}

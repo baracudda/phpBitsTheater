@@ -43,17 +43,15 @@ implements ISqlSanitizer
 	 * @var string
 	 */
 	const DEFAULT_ITEM_CLASS = MyRecord::ITEM_CLASS;
-	
 	/**
 	 * Return the Model class or name to use in a getProp() call.
-	 * @return string
+	 * @var string
 	 */
-	protected function getModelClassToUse()
-	{ return MyModel::MODEL_NAME; }
+	const MY_MODEL_CLASS = MyModel::MODEL_NAME;
 	
 	/** @return MyModel Returns my model to use. */
-	protected function getMyModel()
-	{ return $this->getProp($this->getModelClassToUse()); }
+	protected function getMyModel( $aOrgID=null)
+	{ return $this->getProp(static::MY_MODEL_CLASS, $aOrgID); }
 	
 	/**
 	 * Return the property name the JSON export should use for the array of records.

@@ -97,11 +97,14 @@ class RightsMatrixProcessor extends BaseCostume
 							)
 					)
 			;
-			$this->mParentRights[$aAuthGroup->group_id] = $this->convertToFormValues(
-					$dbAuthGroups->getAssignedPermissionMap(
-							array_keys($this->mInfluentialButOffstageParents[$aAuthGroup->group_id])
-					)->fetchAll()
+			$thePermsMap = $dbAuthGroups->getAssignedPermissionMap(
+					array_keys($this->mInfluentialButOffstageParents[$aAuthGroup->group_id])
 			);
+			if ( !empty($thePermsMap) ) {
+				$this->mParentRights[$aAuthGroup->group_id] = $this->convertToFormValues(
+						$thePermsMap->fetchAll()
+				);
+			}
 		}
 		$this->mAssignedRights[$aAuthGroup->group_id] = $this->convertToFormValues(
 				$dbAuthGroups->getAssignedPermissionMap($aAuthGroup->group_id)->fetchAll()

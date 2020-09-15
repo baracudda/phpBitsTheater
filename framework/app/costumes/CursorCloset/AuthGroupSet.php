@@ -36,14 +36,11 @@ class AuthGroupSet extends BaseCostume
 	 * @var string
 	 */
 	const DEFAULT_ITEM_CLASS = 'AuthGroup';
-	
 	/**
 	 * Return the Model class or name to use in a getProp() call.
-	 * @return string
+	 * @var string
 	 */
-	protected function getModelClassToUse() {
-		return 'AuthGroups';
-	}
+	const MY_MODEL_CLASS = 'AuthGroups';
 	
 	/**
 	 * Return the property name the JSON export should use for the array of records.

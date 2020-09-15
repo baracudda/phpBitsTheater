@@ -112,6 +112,7 @@ class TicketViaInstallPw extends BaseCostume
 					'account_id' => -1,
 					'account_name' => $theAcctName,
 					'groups' => array(),
+					'is_active' => true,
 			));
 		}
 	}
@@ -132,6 +133,7 @@ class TicketViaInstallPw extends BaseCostume
 		/* @var $dbAuthGroups AuthGroupsDB */
 		$dbAuthGroups = $this->getProp(AuthGroupsDB::MODEL_NAME);
 		$aAcctInfo->rights = $dbAuthGroups->getAllAccessPass();
+		$this->getDirector()->setMyAccountInfo($aAcctInfo);
 		return $this;
 	}
 	

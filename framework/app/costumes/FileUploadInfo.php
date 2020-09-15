@@ -17,6 +17,7 @@
 
 namespace BitsTheater\costumes;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
+use com\blackmoonit\Strings;
 {//namespace begin
 
 class FileUploadInfo extends BaseCostume {
@@ -96,7 +97,39 @@ class FileUploadInfo extends BaseCostume {
 	{
 		return $this->constructExportObject();
 	}
-
+	
+	/**
+	 * Browsers from different OS report the content types of uploaded files in different
+	 * manners. Try to determine if the reported content might actually be `application/zip`.
+	 * @return boolean Returns TRUE if uploaded file is likely an `application/zip` MIME type.
+	 */
+	public function isZipArchive()
+	{
+		if ( $this->type == 'application/zip' ) return true; //trivial
+		if ( $this->type == 'application/x-zip-compressed' || // Support IE11 formData Content Type
+			 $this->type == 'application/octet-stream' )
+		{ // Guess whether it's something we support.
+			return ( Strings::endsWith($this->name, '.zip') );
+		}
+		return false;
+	}
+	
+	/**
+	 * Browsers from different OS report the content types of uploaded files in different
+	 * manners. Try to determine if the reported content might actually be `text/csv`.
+	 * @return boolean Returns TRUE if uploaded file is likely an `text/csv` MIME type.
+	 */
+	public function isCSV()
+	{
+		if ( $this->type == 'text/csv' ) return true; //trivial
+		if ( $this->type == 'application/octet-stream' ||
+			 $this->type == 'application/vnd.ms-excel' ) //Windows uploads .csv as this type
+		{ // Guess whether it's something we support.
+			return ( Strings::endsWith($this->name, '.csv') );
+		}
+		return false;
+	}
+		
 }//end class
 
 }//end namespace

@@ -105,14 +105,10 @@ implements ArrayAccess, IDirected
 	
 	/**
 	 * Check for Magic Quotes and remove them.
+	 * @deprecated Magic Quotes PHP feature was deprecated.
 	 */
 	static public function removeMagicQuotes() {
-		if ( get_magic_quotes_gpc() )
-		{
-			Strings::stripSlashesDeep($_GET);
-			Strings::stripSlashesDeep($_POST);
-			Strings::stripSlashesDeep($_COOKIE);
-		}
+		//deprecated feature removed in PHP7
 	}
 
 	/**
@@ -509,7 +505,7 @@ implements ArrayAccess, IDirected
 			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
 				->setContextMsg('actor not found');
 		}
-		$thePathSegments = explode('/', $aUrlPath);
+		$thePathSegments = explode('/', trim($aUrlPath, '/'));
 		$theActorClass = $this::getActorClass(array_shift($thePathSegments));
 		if ( !class_exists($theActorClass) ) {
 			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))

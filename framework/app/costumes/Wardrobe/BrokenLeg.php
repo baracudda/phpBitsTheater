@@ -17,7 +17,7 @@
 
 namespace BitsTheater\costumes\Wardrobe;
 use \Exception as BaseException;
-use BitsTheater\costumes\APIResponse;
+use BitsTheater\costumes\APIResponse as APIResponseInUse;
 use BitsTheater\costumes\IDirected;
 use com\blackmoonit\exceptions\IDebuggableException;
 use com\blackmoonit\exceptions\DbException;
@@ -428,10 +428,10 @@ class BrokenLeg extends BaseException
 		http_response_code( $this->code ) ;
 
 		if ( is_object($aContext) ) {
-			/* @var APIResponse $theResponse */
-			if ( !($aContext instanceof APIResponse) ) {
+			/* @var APIResponseInUse $theResponse */
+			if ( !($aContext instanceof APIResponseInUse) ) {
 				if ( empty($aContext->results) ) {
-					$aContext->results = new APIResponse();
+					$aContext->results = new APIResponseInUse();
 				}
 				$theResponse = $aContext->results;
 			}

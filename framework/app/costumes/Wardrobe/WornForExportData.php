@@ -17,6 +17,7 @@
 
 namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\SimpleCostume;
+use com\blackmoonit\Arrays;
 {//begin namespace
 
 trait WornForExportData
@@ -72,7 +73,9 @@ trait WornForExportData
 	 *   defined and filled in with this objects current property values.
 	 */
 	protected function constructExportObject()
-	{ return (object) call_user_func('get_object_vars', $this); }
+	{
+		return (object) Arrays::getPublicPropertiesOfObject($this);
+	}
 	
 	/**
 	 * Return this payload data as a simple class,

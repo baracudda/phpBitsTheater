@@ -33,14 +33,11 @@ class AuthGroupList extends BaseCostume
 {
 	/** @var string The name of the class to contain items. */
 	const DEFAULT_ITEM_CLASS = MyRecord::ITEM_CLASS;
-	
 	/**
 	 * Return the Model class or name to use in a getProp() call.
-	 * @return string
+	 * @var string
 	 */
-	protected function getModelClassToUse() {
-		return 'AuthGroups';
-	}
+	const MY_MODEL_CLASS = 'AuthGroups';
 	
 	/**
 	 * Name of the ID field to use.

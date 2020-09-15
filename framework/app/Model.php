@@ -547,9 +547,13 @@ implements IDirected
 			$args = array($args);
 		foreach ($aModelList as $modelInfo) {
 			//$aDirector->logStuff(__METHOD__, ' calling: ', $modelInfo->getShortName(), '->', $aMethodName);
-			if ( $modelInfo->hasMethod($aMethodName) ) {
+			if ( $modelInfo->hasMethod($aMethodName) ) try {
 				$theModel = $aDirector->getProp($modelInfo);
 				$theResult[$modelInfo->getShortName()] = call_user_func_array(array($theModel,$aMethodName),$args);
+			}
+			catch ( \Exception $x ) {
+				$aDirector->logErrors($modelInfo->getShortName(), '->', $aMethodName, ' exception: ', $x);
+				throw $x;
 			}
 		}
 		return $theResult;

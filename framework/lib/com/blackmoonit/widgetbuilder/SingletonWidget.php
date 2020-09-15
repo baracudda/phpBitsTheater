@@ -28,13 +28,13 @@ class SingletonWidget extends BaseWidget
 	/** Is the element a "block" element? */
 	protected $isBlock = false ;
 
-	public function setIsSingleton($b)
+	public function setIsSingleton( $b=true )
 	{ return $this ; }
 
-	public function setIsBlock($b)
+	public function setIsBlock( $b=true )
 	{ return $this ; }
 	
-	public function setContent($aContent)
+	public function setContent( $aContent=true )
 	{ return $this ; }
 	
 	public function getContent()

@@ -210,7 +210,7 @@ implements \Countable, \IteratorAggregate
 	}
 
 	/**
-	 * Creates an iterated set based on an already-obtained PDOStatement.
+	 * Creates an iterated set.
 	 * @param IDirected $aContext the context in which to create the object
 	 * @return $this Returns a new instance
 	 */
@@ -259,9 +259,8 @@ implements \Countable, \IteratorAggregate
 	 * @param array $ctor_args - (OPTIONAL) some fetch styles need more args.
 	 * @return array
 	 * @see PDOStatement::fetchAll()
-	 * @deprecated Nice to know it can be done, but do not wish to encourage use anywhere.
-	 * /
-	private function fetchAll($aFetchStyle=null, $aFetchArg=null, $ctor_args=null)
+	 */
+	public function fetchAll($aFetchStyle=null, $aFetchArg=null, $ctor_args=null)
 	{
 		if ( !($this->mDataSet instanceof PDOStatement) ) return; //trivial
 		$theResults = $this->mDataSet->fetchAll(...func_get_args());
@@ -277,7 +276,6 @@ implements \Countable, \IteratorAggregate
 		}
 		return $theResults;
 	}
-	*/
 
 	/**
 	 * Prints the entire data set to the output stream, item by item as array.

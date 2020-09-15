@@ -411,6 +411,7 @@ implements IDirected
 			$recite =& $this; $v =& $this; //$this, $recite, $v are all the same
 			$myView = $myHeader;
 			include_once($myHeader);
+			$recite; $v; $myView; //no-op to avoid warning of not using var
 		}
 	}
 
@@ -422,6 +423,7 @@ implements IDirected
 			$recite =& $this; $v =& $this; //$this, $recite, $v are all the same
 			$myView = $myFooter;
 			include_once($myFooter);
+			$recite; $v; $myView; //no-op to avoid warning of not using var
 		}
 	}
 	
@@ -433,6 +435,7 @@ implements IDirected
 			$recite =& $this; $v =& $this; //$this, $recite, $v are all the same
 			$myView = $myUserMsgs;
 			include_once($myUserMsgs);
+			$recite; $v; $myView; //no-op to avoid warning of not using var
 		} else {
 			$this->debugPrint($myUserMsgs.' not found.');
 		}
@@ -443,6 +446,13 @@ implements IDirected
 		$this->includeMyUserMsgs();
 		return ob_get_clean();
 	}
+	
+	/**
+	 * Return the actor property.
+	 * @return Actor||null Returns the actor object, if assigned.
+	 */
+	public function getActor()
+	{ return $this->_actor; }
 	
 	/**
 	 * Return the director object.
@@ -910,7 +920,7 @@ implements IDirected
 				} else {
 					$thePager .= '<span class="current-page">('.$i.')</span>';
 				}
-				$final_i = $i;
+				//$final_i = $i;
 			}
 			//if ($final_i < $theTotalPages) {
 			//	$thePager .= $theLabelSpacer.'… ';

@@ -394,24 +394,37 @@ class AuthOrgAccount extends BaseActor
 	 * API for changing account information returning JSON rather than render a page.
 	 * Endpoint will return the standard API response object with User info.
 	 * @return string Returns the redirect URL, if defined.
+	 * @see AuthOrgAccount::ajajUpdateProfile()
+	 * @deprecated use ajajUpdateProfile() instead.
 	 */
 	public function ajajModify()
+	{ return $this->ajajUpdateProfile(); }
+	
+	/**
+	 * Alias for ajajModify() since /api/account/modify would call $this->modify().
+	 * API for changing account information returning JSON rather than render a page.
+	 * Endpoint will return the standard API response object with User info.
+	 * @return string Returns the redirect URL, if defined.
+	 */
+	public function ajajUpdateProfile()
 	{
-		//do not use the form vars being used for the modify() endpoint, treat like login().
+		//do not use the form vars being used for the modify() endpoint.
 		$v = $this->getMyScene();
-		if ($this->isGuest())
+		//$this->logStuff(__METHOD__, ' update an account: ', $v);
+		if ( $this->isGuest() ) {
 			throw BrokenLeg::toss($this, BrokenLeg::ACT_NOT_AUTHENTICATED);
-		
+		}
 		$dbAccounts = $this->getProp('Accounts');
 		$dbAuth = $this->getProp('Auth');
 		//get username and convert to account_id, if possible
 		$theAcctName = $v->account_name;
 		$theAcctInfo = $dbAccounts->getByName($theAcctName);
-		if (!empty($theAcctInfo))
+		if ( !empty($theAcctInfo) ) {
 			$theAcctId = $theAcctInfo['account_id'];
-		else
+		}
+		else {
 			throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
-		
+		}
 		//check pw
 		$pwKeyOld = $v->getPwInputKey().'_old';
 		$bCurrentPwMatch = (
@@ -426,7 +439,8 @@ class AuthOrgAccount extends BaseActor
 				$this->isAllowed('account','modify')
 		);
 		
-		if ($bCurrentPwMatch && $bAuthorized) {
+		if ( $bCurrentPwMatch && $bAuthorized ) {
+			//$this->logStuff(__METHOD__, ' current pw matches & is authorized, continue.');
 			try {
 				//update EMAIL
 				$theOldEmail = trim($v->email_old);
@@ -447,7 +461,9 @@ class AuthOrgAccount extends BaseActor
 				$pwKeyConfirm = $v->getPwInputKey().'_confirm';
 				if (!empty($v->$pwKeyNew) && ($v->$pwKeyNew===$v->$pwKeyConfirm))
 				{ // Verify that the input is acceptable, and if so, use it.
+					//$this->logStuff(__METHOD__, ' validate pw change input.');
 					$this->validatePswdChangeInput( $v->$pwKeyNew ) ;
+					//$this->logStuff(__METHOD__, ' no exception, update pw.');
 					$dbAuth->updatePassword($theAcctId, $v->$pwKeyNew);
 				}
 
@@ -457,13 +473,17 @@ class AuthOrgAccount extends BaseActor
 					//if changing my own account, update my account cache
 					$this->getDirector()->setMyAccountInfo( $theChangedAccountInfo );
 				}
-				$theChangedAccountInfo->account_id += 0; //ensure what is returned is not a string
-				$v->results = APIResponse::resultsWithData($theChangedAccountInfo);
-			} catch (Exception $e) {
-				throw BrokenLeg::tossException($this, $e);
+				$v->results = APIResponse::resultsWithData($theChangedAccountInfo->exportData());
 			}
-		} else
+			catch ( Exception $x ) {
+				$this->logErrors(__METHOD__, ' exception updating account [', $theAcctName, ']: ', $x);
+				throw BrokenLeg::tossException($this, $x);
+			}
+		} else {
+			//if ( !$bCurrentPwMatch ) $this->logStuff(__METHOD__, ' pw does not match, kicked.');
+			//if ( !$bAuthorized ) $this->logStuff(__METHOD__, ' not authorized, kicked.');
 			throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
+		}
 	}
 
 	/**
@@ -853,6 +873,7 @@ class AuthOrgAccount extends BaseActor
 		$aEmail 	= trim ( $v->email );
 		$aIsActive  = (isset($v->account_is_active)) ? $v->account_is_active : null;
 		$aGroupIds  = $v->account_group_ids;
+		$theComments= $v->comments;
 
 		$theAuthAccount = $this->getAuthAccount($theID);
 		if ( !empty($theAuthAccount) ) try {
@@ -865,6 +886,10 @@ class AuthOrgAccount extends BaseActor
 				$updatedEmail = $aEmail;
 			if ( isset( $aIsActive ) && $aIsActive != $theAuthAccount->is_active )
 				$updatedIsActive = $aIsActive;
+			if ( $theComments != $theAuthAccount->comments ) {
+				//they could be updated to NULL, so just use boolean here.
+				$updatedComments = true;
+			}
 
 			// Update email, if applicable.
 			if ( !empty ( $updatedEmail )) {
@@ -900,6 +925,10 @@ class AuthOrgAccount extends BaseActor
 			//update is_active, if applicable
 			if ( isset($updatedIsActive) ) {
 				$dbAuth->setAuthIsActive($updatedIsActive, $theAuthAccount->auth_id);
+			}
+			
+			if ( isset($updatedComments) ) {
+				$dbAuth->setAuthComments($theAuthAccount->auth_id, $theComments);
 			}
 
 			// Update account group, if applicable.

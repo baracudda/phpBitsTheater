@@ -97,7 +97,7 @@ class ConfigNamespaceInfo extends BaseCostume {
 		$o->desc = $this->desc;
 		//NOTE: group_id is manufactured from namespace at this time, no export needed.
 		$o->settings_list = array();
-		foreach ($this->settings_list as $key => $theSettingInfo) {
+		foreach ($this->settings_list as $theSettingInfo) {
 			$o->settings_list[] = $theSettingInfo->exportData();
 		}
 		return $o;

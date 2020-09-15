@@ -610,6 +610,7 @@ class BitsInstall extends BaseActor
 				array_push($aApiResponse->data['messages'],
 						$this->getRes('install', 'msg_config_x_updated', $theConfigName)
 				);
+				$theOldValue; //no-op to avoid warning of not using var
 			}
 		}
 	}

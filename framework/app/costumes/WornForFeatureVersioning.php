@@ -367,6 +367,45 @@ trait WornForFeatureVersioning
 		return false;
 	}
 	
+	/**
+	 * Return TRUE if the field is NULLable.
+	 * @param string $aFieldName - the field name to check.
+	 * @param string $aTableName - the table to check.
+	 * @return boolean Return TRUE if thefield
+	 *   exists in table and can be set to NULL, FALSE otherwise.
+	 */
+	public function isFieldNullable($aFieldName, $aTableName)
+	{
+		$theSql = SqlBuilder::withModel($this);
+		switch ( $this->dbType() ) {
+			case static::DB_TYPE_MYSQL:
+			default:
+				$theSql->startWith('SHOW FULL COLUMNS FROM')
+					->add($aTableName)
+					->startWhereClause()
+					->mustAddParam('Field', $aFieldName)
+					->endWhereClause()
+					;
+		}
+		try {
+			switch ( $this->dbType() ) {
+				case static::DB_TYPE_MYSQL:
+				default:
+					$rs = $theSql->getTheRow();
+					if ( !empty($rs) && !empty($rs['Null']) ) {
+						return ($rs['Null'] === 'YES');
+					}
+			}
+		}
+		catch ( \Exception $x )
+		{
+			//if there is any kind of exception, just eat so
+			//  we can return FALSE to the caller.
+			//echo $e->getMessage();
+		}
+		return false;
+	}
+	
 	
 } // end trait
 

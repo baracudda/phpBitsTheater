@@ -163,7 +163,7 @@ class ARecord extends BaseCostume
 	 */
 	protected function constructExportObject()
 	{
-		$o = (object) call_user_func('get_object_vars', $this);
+		$o = parent::constructExportObject();
 		$theModel = $this->getModel();
 		if ( empty($theModel) ) {
 			//PHP < 7, cannot catch "Call to a member function on NULL"
