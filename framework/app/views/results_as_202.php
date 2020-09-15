@@ -74,5 +74,5 @@ try {
 	$theProcessor->startProcessAfter202($v);
 }
 finally {
-	$theProcessor->finishProcessTask();
+	$theProcessor->finishProcessTask($v);
 }
