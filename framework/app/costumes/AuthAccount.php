@@ -12,26 +12,43 @@ class AuthAccount extends BaseCostume
 	public $mapped_imei;
 	
 	/**
-	 * Set the list of fields to restrict export to use.
-	 * @param string[] $aFieldList - the field list.
-	 * @return $this Returns $this for chaining.
-	 */
-	public function setExportFieldList( $aFieldList )
-	{
-		parent::setExportFieldList($aFieldList);
-		$theFieldList = $this->getExportFieldList();
-		if ( !empty($theFieldList) ) {
-			if ( in_array('mapped_imei', $theFieldList) &&
-					!in_array('hardware_ids', $theFieldList) ) {
-				$theFieldList[] = 'hardware_ids';
-				$this->setExportFieldList($theFieldList);
-			}
-			else if ( in_array('hardware_ids', $theFieldList) &&
-					!in_array('mapped_imei', $theFieldList) ) {
-				$theFieldList[] = 'mapped_imei';
-				$this->setExportFieldList($theFieldList);
+	 * Sometimes you need to debug protected properties as well as public.
+	 * @return array Returns the public/protected fields for debugging.
+	 * /
+	public function __debugInfo() {
+		$theResult = array();
+		$o = new \ReflectionClass($this);
+		$theList = $o->getProperties(\ReflectionProperty::IS_PUBLIC | \ReflectionProperty::IS_PROTECTED);
+		foreach( $theList as $theProp ) {
+			if ( !in_array($theProp->name, array(
+					'dbAuth', 'dbAuthGroups', 'dbModel', '$mapInfoFields', 'mapInfoFields'
+			)) ) {
+				$theResult[$theProp->name] = $this->{$theProp->name};
 			}
 		}
+		return $theResult;
+	}
+	/**/
+	
+	/**
+	 * Return the list of fields to restrict export to use given a list
+	 * of fields and shorthand meta names or flags.
+	 * @param string[] $aMetaFieldList - the field/meta name list.
+	 * @return string[] Returns the export field name list to use.
+	 */
+	static public function getExportFieldListUsingShorthand( $aMetaFieldList )
+	{
+		$theFieldList = parent::getExportFieldListUsingShorthand($aMetaFieldList);
+		if ( !empty($theFieldList) ) {
+			//ensure both fields exists in our export list as they are aliases of one another
+			if ( in_array('mapped_imei', $theFieldList) && !in_array('hardware_ids', $theFieldList) ) {
+				$theFieldList[] = 'hardware_ids';
+			}
+			if ( in_array('hardware_ids', $theFieldList) && !in_array('mapped_imei', $theFieldList) ) {
+				$theFieldList[] = 'mapped_imei';
+			}
+		}
+		return $theFieldList;
 	}
 	
 	/**
@@ -41,8 +58,9 @@ class AuthAccount extends BaseCostume
 	protected function constructExportObject()
 	{
 		$o = parent::constructExportObject();
-		if (property_exists($o, 'hardware_ids'))
+		if ( isset($o->hardware_ids) ) {
 			$o->mapped_imei = $o->hardware_ids;
+		}
 		return $o;
 	}
 	

@@ -190,6 +190,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @var string
 	 */
 	const MOBILE_AUTH_TYPE_RESET = '__RESET__';
+	
+	/**
+	 * The max login failures before lockout mechanism kicks in.
+	 * @var integer
+	 * @see AuthOrgs::getMaxLoginAttempts()
+	 */
+	protected $mMaxLoginAttempts; //cache for config setting value
 
 	public function setupAfterDbConnected()
 	{
@@ -1336,7 +1343,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		}
 		if ( empty($aOrgIDs) ) return; //trivial
 		$theSql = SqlBuilder::withModel($this);
-		$theSql->startWith('INSERT INTO')->add($this->tnAuthOrgMap);
+		$theSql->startWith('INSERT IGNORE INTO')->add($this->tnAuthOrgMap);
 		$this->setAuditFieldsOnInsert($theSql);
 		$theSql->mustAddParam('auth_id', $aAuthID);
 		$theSql->mustAddParam('org_id', '__placeholder__');
@@ -1603,13 +1610,24 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			);
 		}
 		if ( is_array($aFieldList) ) {
+			$theAuthIDAlias = $this->tnAuthAccounts . '.auth_id';
 			$theIdx = array_search('hardware_ids', $aFieldList);
 			if ( $theIdx !== false ) {
 				//find mapped hardware ids, if any
 				//  NOTE: AuthAccount costume converts this field into the appropriate string
-				$aFieldList[$theIdx] = AuthAccount::sqlForHardwareIDs($this,
-						$this->tnAuthAccounts . '.auth_id'
-				);
+				$aFieldList[$theIdx] = AuthAccount::sqlForHardwareIDs($this, $theAuthIDAlias);
+			}
+			$theIdx = array_search('lockout_count', $aFieldList);
+			if ( $theIdx !== false ) {
+				$aFieldList[$theIdx] = AuthAccount::sqlForLockoutCount($this, $theAuthIDAlias);
+			}
+			$theIdx = array_search('org_ids', $aFieldList);
+			if ( $theIdx !== false ) {
+				$aFieldList[$theIdx] = AuthAccount::sqlForOrgList($this, $theAuthIDAlias);
+			}
+			$theIdx = array_search('groups', $aFieldList);
+			if ( $theIdx !== false ) {
+				$aFieldList[$theIdx] = AuthAccount::sqlForGroupList($this->getAuthGroupsProp(), $theAuthIDAlias);
 			}
 		}
 		//restrict results to current org and its children
@@ -1767,7 +1785,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		catch( PDOException $pdox )
 		{ $theSql->logSqlFailure(__METHOD__, $pdox); }
 	}
-
+	
 	/**
 	 * Insert the token into the table.
 	 * @param string $aAuthId - token mapped to auth record by this id.
@@ -3151,6 +3169,49 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
 
+	/**
+	 * Return the number of lockout tokens an auth_id has accumulated.
+	 * @param string $aAuthID - the auth_id to count lockout tokens.
+	 * @return array
+	 */
+	public function getAuthLockoutCount( $aAuthID )
+	{
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('SELECT * FROM')->add($this->tnAuthTokens)
+			->startWhereClause()
+			->mustAddParam('auth_id', $aAuthID)
+			->setParamPrefix(' AND ')
+			->setParamOperator(' LIKE ')
+			->mustAddParam('token', self::TOKEN_PREFIX_LOCKOUT . '%')
+			->endWhereClause()
+			//->logSqlDebug(__METHOD__) //DEBUG
+			;
+		try {
+			$theCount = $theSql->getQueryTotals();
+			if ( !empty($theCount['total_rows']) ) {
+				return $theCount['total_rows']+0; //+0 coerces to int
+			}
+		}
+		catch( PDOException $pdox )
+		{ $theSql->logSqlFailure(__METHOD__, $pdox); }
+		return 0;
+	}
+	
+	/**
+	 * The max login attempts as defined in settings, cached here in case we are
+	 * fetching a large set of account records or running through a number of venues.
+	 * @return number The max number of failed login attempts before lockout occurs.
+	 */
+	public function getMaxLoginAttempts()
+	{
+		if ( empty($this->mMaxLoginAttempts) ) {
+			$this->mMaxLoginAttempts = intval(
+					$this->getConfigSetting('auth/login_fail_attempts'), 10
+			);
+		}
+		return $this->mMaxLoginAttempts;
+	}
+	
 }//end class
 
 }//end namespace

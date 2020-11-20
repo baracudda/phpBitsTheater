@@ -128,13 +128,13 @@ class AuthOrg extends BaseCostume
 	public function setExportFieldList($aFieldList)
 	{
 		if ( empty($aFieldList) ) {
-			$aFieldList = array_diff(static::getDefinedFields(), array(
+			$aFieldList = array_values(array_diff(static::getDefinedFields(), array(
 					'created_by',
 					'created_ts',
 					'updated_by',
 					'updated_ts',
 					'parent_org',      // Don't export the parent org if loaded.
-			));
+			)));
 		}
 		return parent::setExportFieldList($aFieldList);
 	}

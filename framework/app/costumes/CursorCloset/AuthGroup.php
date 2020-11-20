@@ -36,6 +36,10 @@ class AuthGroup extends BaseCostume
 	public $group_num;
 	public $group_name;
 	public $parent_group_id;
+	public $org_id;
+	
+	/** @var string[] field names that are non-sortable. */
+	static protected $mNonSortableFields = array();
 	
 	/**
 	 * Construct the standard object with all data fields worth exporting defined.
@@ -56,6 +60,24 @@ class AuthGroup extends BaseCostume
 		return $o;
 	}
 
+	/**
+	 * Return the default columns to sort by and whether or not they should be ascending.
+	 * @return array Returns <code>array[fieldname => ascending=true]</code>.
+	 */
+	static public function getDefaultSortColumns()
+	{ return array('group_name' => true); }
+	
+	/**
+	 * Returns TRUE if the fieldname specified is sortable.
+	 * @param string $aFieldName - the field name to check.
+	 * @return boolean Returns TRUE if sortable, else FALSE.
+	 */
+	static public function isFieldSortable($aFieldName)
+	{
+		$theAllowedSorts = array_diff(static::getDefinedFields(), static::$mNonSortableFields);
+		return ( array_search($aFieldName, $theAllowedSorts)!==false );
+	}
+	
 }//end class
 	
 }//end namespace

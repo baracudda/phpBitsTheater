@@ -20,6 +20,7 @@ use BitsTheater\Actor as BaseActor;
 use BitsTheater\BrokenLeg ;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\AuthGroup;
+use BitsTheater\costumes\AuthGroupSet;
 use BitsTheater\costumes\RightsMatrixProcessor;
 use BitsTheater\models\Auth;
 use BitsTheater\models\AuthGroups as MyModel;
@@ -341,6 +342,37 @@ class AuthGroups extends BaseActor
 		{ throw BrokenLeg::tossException( $this, $x ) ; }
 	}
 
+	/**
+	 * Retrieve the list of roles available for current and child orgs.
+	 */
+	public function ajajGetAssignableRoles()
+	{
+		$v = $this->getMyScene();
+		$this->viewToRender('results_as_json') ;
+		
+		$this->getDirector()->checkIfAnyAllowed(array(
+				'auth/modify',
+				'auth_orgs/create',
+		));
+				
+		// check to see if caller realllly wants UNKNOWN role (not logged in)
+		$bIncludeSystemGroups = filter_var($v->include_system_groups, FILTER_VALIDATE_BOOLEAN);
+		$theFieldList = $v->getRequestedFieldList(array(
+				'group_id', 'group_name', 'group_num', 'org_id', 'parent_group_id'
+		));
+		try {
+			$theIterator = AuthGroupSet::withContextAndColumns($this, $theFieldList)
+				->setupPagerDataFromUserData($v)
+				->setupSqlDataFromUserData($v)
+				->setTotalRowsDesired(true) //ensure we always get a total even if not paged.
+				;
+			$theIterator->mPrintAsJsonObjectWithIdKey = 'group_id';
+			$this->setApiResults($theIterator->getAuthGroupsToDisplay(null, $bIncludeSystemGroups));
+		}
+		catch ( \Exception $x )
+		{ throw BrokenLeg::tossException($this, $x); }
+	}
+	
 }//end class
 
 }//end namespace
