@@ -420,7 +420,7 @@ class CommonMySql
 		AND table_name = [TABLE NAME] AND column_name = [COLUMN NAME]
 		*/
 		$theSql = 'SHOW KEYS FROM ' . $aTableName;
-		$theSql += " WHERE Column_name='" . $aFieldName. "'";
+		$theSql .= " WHERE Column_name='" . $aFieldName. "'";
 		return $theSql;
 	}
 	

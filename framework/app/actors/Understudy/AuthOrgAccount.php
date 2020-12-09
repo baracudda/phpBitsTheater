@@ -867,6 +867,7 @@ class AuthOrgAccount extends BaseActor
 	{
 		return AuthGroupSet::withContextAndColumns($this, array('group_id'))
 			->setTotalRowsDesired(true) //ensure we always get a total even if not paged.
+			->setPagerEnabled(false)
 			->getAuthGroupsToDisplay(null, true)
 			->fetchAll(\PDO::FETCH_COLUMN);
 	}
@@ -1055,7 +1056,9 @@ class AuthOrgAccount extends BaseActor
 				}
 			}
 			$theRowSet = $this->searchAuthAccountSet(array('auth_id' => $theAuthAccount->auth_id));
-			$this->setApiResults($theRowSet->fetch());
+			/* @var $theResult AuthAccount */
+			$theResult = $theRowSet->fetch();
+			$this->setApiResults($theResult->exportData());
 		}
 		catch( Exception $x )
 		{ throw BrokenLeg::tossException( $this, $x ); }
@@ -2109,6 +2112,7 @@ class AuthOrgAccount extends BaseActor
 	 * @param string[] $aFieldFilter - filter these specific fields.
 	 * @param string[] $aSearchText - (OPTIONAL) search for this set of text.
 	 * @param boolean $bAndSearchText - (OPTIONAL) search set rows are AND'ed (default=FALSE).
+	 * @return AuthAccountSet Returns the account set requested.
 	 */
 	protected function searchAuthAccountSet( $aFieldFilter, $aSearchText=null, $bAndSearchText=false )
 	{
