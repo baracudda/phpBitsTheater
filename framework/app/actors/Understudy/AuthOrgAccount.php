@@ -23,6 +23,7 @@ use BitsTheater\costumes\AuthPasswordReset;
 use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthAccountSet;
 use BitsTheater\costumes\AuthGroupList;
+use BitsTheater\costumes\AuthGroupSet;
 use BitsTheater\costumes\AuthOrgSet;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForAuditFields;
@@ -401,6 +402,44 @@ class AuthOrgAccount extends BaseActor
 	{ return $this->ajajUpdateProfile(); }
 	
 	/**
+	 * Checking for who is allowed to modify a profile is its own method so
+	 * websites may override it easily.
+	 * @param AuthAccount $aAuthAccount - the account being modified.
+	 * @return boolean Returns TRUE if current user is allowed to modify.
+	 */
+	protected function isAllowedToModifyProfile( AuthAccount $aAuthAccount )
+	{
+		return
+			//everyone is allowed to modify email/pw of their own account
+			$aAuthAccount->auth_id == $this->getDirector()->getMyAccountInfo()->auth_id ||
+			//admins may be allowed to modify someone else's account
+			$this->isAllowed('account','modify')
+		;
+	}
+	
+	/**
+	 * Checking for who is allowed to modify a profile's email is its own method so
+	 * websites may override it easily.
+	 * @param AuthAccount $aAuthAccount - the account being modified.
+	 * @return boolean Returns TRUE if current user is allowed to modify.
+	 */
+	protected function isAllowedToModifyProfileEmail( AuthAccount $aAuthAccount )
+	{
+		return true; //if allowed to modify at all, allowed to modify the email
+	}
+	
+	/**
+	 * Checking for who is allowed to modify a profile's password is its own method so
+	 * websites may override it easily.
+	 * @param AuthAccount $aAuthAccount - the account being modified.
+	 * @return boolean Returns TRUE if current user is allowed to modify.
+	 */
+	protected function isAllowedToModifyProfilePassword( AuthAccount $aAuthAccount )
+	{
+		return true; //if allowed to modify at all, allowed to modify password
+	}
+	
+	/**
 	 * Alias for ajajModify() since /api/account/modify would call $this->modify().
 	 * API for changing account information returning JSON rather than render a page.
 	 * Endpoint will return the standard API response object with User info.
@@ -420,7 +459,8 @@ class AuthOrgAccount extends BaseActor
 		$theAcctName = $v->account_name;
 		$theAcctInfo = $dbAccounts->getByName($theAcctName);
 		if ( !empty($theAcctInfo) ) {
-			$theAcctId = $theAcctInfo['account_id'];
+			$theAuthInfo = AuthAccount::withModel($dbAuth)->setDataFrom($theAcctInfo);
+			$theAcctId = $theAuthInfo->account_id;
 		}
 		else {
 			throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
@@ -432,12 +472,7 @@ class AuthOrgAccount extends BaseActor
 				$dbAuth->cudo($theAcctId, $v->$pwKeyOld)
 		);
 		//check permissions
-		$bAuthorized = (
-				//everyone is allowed to modify email/pw of their own account
-				$theAcctId==$this->director->account_info->account_id ||
-				//admins may be allowed to modify someone else's account
-				$this->isAllowed('account','modify')
-		);
+		$bAuthorized = $this->isAllowedToModifyProfile($theAuthInfo);
 		
 		if ( $bCurrentPwMatch && $bAuthorized ) {
 			//$this->logStuff(__METHOD__, ' current pw matches & is authorized, continue.');
@@ -445,7 +480,10 @@ class AuthOrgAccount extends BaseActor
 				//update EMAIL
 				$theOldEmail = trim($v->email_old);
 				$theNewEmail = trim($v->email_new);
-				if (strcmp($theOldEmail,$theNewEmail)!=0) {
+				if ( strcmp($theOldEmail, $theNewEmail) != 0) {
+					if ( !$this->isAllowedToModifyProfileEmail($theAuthInfo) ) {
+						throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
+					}
 					//Strings::debugLog('email is not 0:'.strcmp($theOldEmail,$theNewEmail));
 					if ($dbAuth->getAuthByEmail($theNewEmail)) {
 						throw BrokenLeg::pratfallRes($this, 'EMAIL_EXISTS', 400,
@@ -461,6 +499,9 @@ class AuthOrgAccount extends BaseActor
 				$pwKeyConfirm = $v->getPwInputKey().'_confirm';
 				if (!empty($v->$pwKeyNew) && ($v->$pwKeyNew===$v->$pwKeyConfirm))
 				{ // Verify that the input is acceptable, and if so, use it.
+					if ( !$this->isAllowedToModifyProfilePassword($theAuthInfo) ) {
+						throw BrokenLeg::toss($this, BrokenLeg::ACT_FORBIDDEN);
+					}
 					//$this->logStuff(__METHOD__, ' validate pw change input.');
 					$this->validatePswdChangeInput( $v->$pwKeyNew ) ;
 					//$this->logStuff(__METHOD__, ' no exception, update pw.');
@@ -795,12 +836,12 @@ class AuthOrgAccount extends BaseActor
 		//AuthOrg info
 		$theOrgList = (isset($v->account_org_ids)) ? $v->account_org_ids : null;
 		//limit org list to only ones I belong to, unless I have permission
-		if ( !$this->isAllowed('auth','assign-to-any-org') ) {
+		if ( !$this->isAllowed('auth_orgs', 'transcend') ) {
 			$myOrgList = $dbAuth->getOrgsForAuthCursor(
 					$this->getDirector()->account_info->auth_id
 			)->fetchAll();
 			if ( !empty($myOrgList) ) {
-				$theOrgList = array_intersect($theOrgList, $myOrgList);
+				$theOrgList = array_values(array_intersect($theOrgList, $myOrgList));
 			}
 		}
 		if ( isset($theOrgList) )
@@ -816,6 +857,19 @@ class AuthOrgAccount extends BaseActor
 		{ throw BrokenLeg::tossException( $this, $x ); }
 		$theResult = $this->getAuthAccount($registrationResult['auth_id']);
 		$this->setApiResults($theResult->exportData());
+	}
+	
+	/**
+	 * Get all possible roles the current org can assign so we know what is updatable.
+	 * @return string[] The list of all possible group_id that could be assigned.
+	 */
+	protected function getAssignableRoleIDs()
+	{
+		return AuthGroupSet::withContextAndColumns($this, array('group_id'))
+			->setTotalRowsDesired(true) //ensure we always get a total even if not paged.
+			->setPagerEnabled(false)
+			->getAuthGroupsToDisplay(null, true)
+			->fetchAll(\PDO::FETCH_COLUMN);
 	}
 
 	/**
@@ -865,17 +919,25 @@ class AuthOrgAccount extends BaseActor
 		
 		// Retrieve our passed-in values.
 		$v = $this->getMyScene();
-		$theID = trim($this->getRequestData($aID, 'account_id', false));
-		$theID = trim($this->getRequestData($theID, 'auth_id', false));
-		$dbAuth->checkIsNotEmpty('auth_id, account_id, or URL/id', $theID);
+		$theAuthID = trim($this->getRequestData($aID, 'auth_id', false));
+		if ( !empty($theAuthID) ) {
+			$theFilter = array('auth_id' => $theAuthID);
+		}
+		else {
+			$theAcctID = trim($this->getRequestData($aID, 'account_id', false));
+			if ( is_numeric($theAcctID) ) {
+				$theFilter = array('account_id' => $theAcctID);
+			}
+		}
+		$dbAuth->checkIsNotEmpty('auth_id, account_id, or URL/id', $theFilter);
 		$aName 		= trim ( $v->account_name );
 		$aPassword 	= trim ( $v->account_password );
 		$aEmail 	= trim ( $v->email );
 		$aIsActive  = (isset($v->account_is_active)) ? $v->account_is_active : null;
-		$aGroupIds  = $v->account_group_ids;
 		$theComments= $v->comments;
-
-		$theAuthAccount = $this->getAuthAccount($theID);
+		
+		$theRowSet = $this->searchAuthAccountSet($theFilter);
+		if ( !empty($theRowSet) ) $theAuthAccount = $theRowSet->fetch();
 		if ( !empty($theAuthAccount) ) try {
 			// Determine what values are different than existing values.
 			if ( !empty($aName) && ($aName !== $theAuthAccount->account_name) )
@@ -932,39 +994,51 @@ class AuthOrgAccount extends BaseActor
 			}
 
 			// Update account group, if applicable.
-			if ( isset ( $aGroupIds )) {
+			$theRoleList = ( !empty($v->account_group_ids) ) ? $v->account_group_ids : array();
+			$myRoleList = ( !empty($theAuthAccount->groups) ) ? $theAuthAccount->groups : array();
+			$myEditableRoles = array_intersect($myRoleList, $this->getAssignableRoleIDs());
+			$theRemovedRoles = array_diff($myEditableRoles, $theRoleList);
+			$theAddedRoles = array_diff($theRoleList, $myEditableRoles);
+			//$this->logStuff(__METHOD__, ' rolesEdited=', $theRoleList);//DEBUG
+			//$this->logStuff(__METHOD__, ' rolesOnAcct=', $myEditableRoles);//DEBUG
+			//$this->logStuff(__METHOD__, ' roles2rem=', $theRemovedRoles);//DEBUG
+			//$this->logStuff(__METHOD__, ' roles2add=', $theAddedRoles);//DEBUG
+			$theAddedRoles = array_diff($theRoleList, $myEditableRoles);
+			if ( !empty($theRemovedRoles) ) {
 				// First we want to remove existing mappings of group ids for this account.
-				foreach ($theAuthAccount->groups as $thisGroupId) {
-					$dbAuthGroups->delMap(
-							$thisGroupId, $theAuthAccount->auth_id
-					);
+				foreach ($theRemovedRoles as $theRemovedRoleID) {
+					$dbAuthGroups->delMap($theRemovedRoleID, $theAuthAccount->auth_id);
 				}
+			}
+			if ( !empty($theAddedRoles) ) {
 				// Now insert mapping of account with updated group id values.
-				foreach ($aGroupIds as $thisNewGroupId) {
-					// Add mapping.
-					$dbAuthGroups->addMap(
-							$thisNewGroupId, $theAuthAccount->auth_id
-					);
+				foreach ($theAddedRoles as $theAddedRoleID) {
+					$dbAuthGroups->addMap($theAddedRoleID, $theAuthAccount->auth_id);
 				}
 			}
 			
 			// update AuthOrg info, if different
-			$theOrgList = (isset($v->account_org_ids)) ? $v->account_org_ids : array();
-			$theRemovedOrgs = array_diff($theAuthAccount->org_ids, $theOrgList);
-			$theAddedOrgs = array_diff($theOrgList, $theAuthAccount->org_ids);
+			$theOrgList = ( !empty($v->account_org_ids) ) ? $v->account_org_ids : array();
+			$myOrgList = ( !empty($theAuthAccount->org_ids) ) ? $theAuthAccount->org_ids : array();
+			$theRemovedOrgs = array_diff($myOrgList, $theOrgList);
+			$theAddedOrgs = array_diff($theOrgList, $myOrgList);
+			//$this->logStuff(__METHOD__, ' orgsEdited=', $theOrgList);//DEBUG
+			//$this->logStuff(__METHOD__, ' orgsOnAcct=', $myOrgList);//DEBUG
+			//$this->logStuff(__METHOD__, ' orgs2rem=', $theRemovedOrgs);//DEBUG
+			//$this->logStuff(__METHOD__, ' orgs2add=', $theAddedOrgs);//DEBUG
 			//removed orgs can just be safely removed
 			if ( !empty($theRemovedOrgs) ) {
 				foreach( $theRemovedOrgs as $theRemovedOrg ) {
-					$theRolesToRemove = $dbAuthGroups->getAcctGroupsForOrg($theAuthAccount->auth_id, $theRemovedOrg);
-					foreach( $theRolesToRemove as $theRemovedRoleID ) {
-						$dbAuthGroups->delMap($theRemovedRoleID, $theAuthAccount->auth_id);
+					$theRolesToRemove = $dbAuthGroups->getAuthGroupsForOrg(true, $theRemovedOrg)->fetchAll();
+					if ( !empty($theRolesToRemove) ) {
+						$dbAuthGroups->delMap(array_column($theRolesToRemove, 'group_id'), $theAuthAccount->auth_id);
 					}
 				}
 				$dbAuth->delOrgsForAuth($theAuthAccount->auth_id, $theRemovedOrgs);
 			}
 			if ( !empty($theAddedOrgs) ) {
 				//limit org list to only ones I can access, unless I have permission
-				if ( !$this->isAllowed('auth','assign-to-any-org') ) {
+				if ( !$this->isAllowed('auth_orgs', 'transcend') ) {
 					$theLimitedOrgSet = $this->getOrgs();
 					if ( !empty($theLimitedOrgSet) ) {
 						$theLimitedOrgs = array();
@@ -981,11 +1055,13 @@ class AuthOrgAccount extends BaseActor
 					$dbAuth->addOrgsToAuth($theAuthAccount->auth_id, $theAddedOrgs);
 				}
 			}
+			$theRowSet = $this->searchAuthAccountSet(array('auth_id' => $theAuthAccount->auth_id));
+			/* @var $theResult AuthAccount */
+			$theResult = $theRowSet->fetch();
+			$this->setApiResults($theResult->exportData());
 		}
 		catch( Exception $x )
 		{ throw BrokenLeg::tossException( $this, $x ); }
-		$theResult = $this->getAuthAccount($theAuthAccount->auth_id);
-		$this->setApiResults($theResult->exportData());
 	}
 	
 	/**
@@ -1028,10 +1104,42 @@ class AuthOrgAccount extends BaseActor
 						'token'
 					)
 			);
-			$theResult = AuthAccount::fetchInstanceFromRow($theAuthRow, $dbAuth, array(
-					'with_map_info',
-					'limited_orgs',
-			));
+			
+			$theOrgID = $this->getDirector()->getPropsMaster()->getDefaultOrgID();
+			if ( $theOrgID == AuthDB::ORG_ID_4_ROOT ) $theOrgID = null;
+			$dbAuthGroups = $this->getAuthGroupsModel();
+			//currOrgRoles gets only those roles for current org
+			$theAuthRow['currOrgRoles'] = SqlBuilder::withModel($dbAuthGroups)
+					->startWith('SELECT')
+					->add("IFNULL(GROUP_CONCAT(__CurrOrgRoleMapAlias.group_id SEPARATOR ','), '') AS currOrgRoles")
+					->add("FROM")->add($dbAuthGroups->tnGroupMap)->add("AS __CurrOrgRoleMapAlias")
+					->add("JOIN")->add($dbAuthGroups->tnGroups)->add("AS __CurrOrgRolesAlias USING (group_id)")
+					->startWhereClause('__CurrOrgRoleMapAlias.')
+					->mustAddParam('auth_id', $theAuthRow['auth_id'])
+					->setParamPrefix(' AND __CurrOrgRolesAlias.')
+					->mustAddParam('org_id', $theOrgID)
+					->endWhereClause()
+					//->logSqlDebug(__METHOD__)
+					->query()->fetchColumn();
+			;
+			
+			//typical AuthAccount obj does not get all defined orgs (just ones with roles)
+			$theAuthRow['org_ids'] = SqlBuilder::withModel($dbAuth)
+					->startWith('SELECT')
+					->add("IFNULL(GROUP_CONCAT(__AuthOrgAlias.org_id SEPARATOR ','), '') AS org_ids")
+					->add("FROM")->add($dbAuth->tnAuthOrgMap)->add("AS __AuthOrgAlias")
+					->startWhereClause('__AuthOrgAlias.')
+					->mustAddParam('auth_id', $theAuthRow['auth_id'])
+					->endWhereClause()
+					//->logSqlDebug(__METHOD__)
+					->query()->fetchColumn();
+			;
+			
+			$theFieldList = AuthAccount::getExportFieldListUsingShorthand(array('with_map_info'));
+			$theOptions = AuthAccount::getOptionsListUsingShorthand($this, $theFieldList, array('limited_orgs'=>true));
+			//$this->logStuff(__METHOD__, ' opts=', $theOptions);//DEBUG
+			$theResult = AuthAccount::withRow($theAuthRow, $dbAuth, $theFieldList, $theOptions);
+			//$this->logStuff(__METHOD__, ' auth=', $theResult);//DEBUG
 			return $theResult;
 		}
 		catch( \Exception $x )
@@ -1165,7 +1273,7 @@ class AuthOrgAccount extends BaseActor
 	}
 	
 	/**
-	 * Standard output for either getAll.
+	 * Standard output for either getAll or getAllInGroup.
 	 * @param \PDOStatement $aRowSet - the result set to return.
 	 * @return AuthAccountSet Returns the wrapper class used.
 	 * @since BitsTheater 3.7.0
@@ -1174,22 +1282,31 @@ class AuthOrgAccount extends BaseActor
 	{
 		$v = $this->getMyScene();
 		//get all fields, even the optional ones
-		$theFieldList = AuthAccount::getDefinedFields();
+		$theFields = AuthAccount::getDefinedFields();
+		$theFields[] = 'groups';
+		$theFieldList = AuthAccount::getExportFieldListUsingShorthand($theFields);
+		//flag to limit orgs to current + children only
+		$theOptions = AuthAccount::getOptionsListUsingShorthand($this, $theFieldList, array(
+				'limited_orgs' => true,
+		));
 		//construct our iterator object
-		$theAccountSet = AuthAccountSet::create( $this )
-				->setItemClassArgs($this->getMyModel(), $theFieldList)
-				->setDataFromPDO($aRowSet)
-				;
-		$theAccountSet->filter = $v->filter ;
-		$theAccountSet->total_count = $v->getPagerTotalRowCount() ;
-		
-		//include group details.
+		$theAccountSet = AuthAccountSet::create($this);
+		$theAccountSet->setItemClassArgs($this->getMyModel(), $theFieldList, $theOptions);
+		//limit the results of the groups list, too
+		if ( empty($theAccountSet->mGroupList) ) {
+			//should never occur, but just in case, check for non-existance and create.
+			$theAccountSet->mGroupList = AuthGroupList::create($this);
+		}
+		//restrict group details.
 		$theGroupFieldList = array('group_id', 'group_name');
-		$theAccountSet->mGroupList = AuthGroupList::create( $this )
-				->setFieldList($theGroupFieldList)
+		$theAccountSet->mGroupList->setFieldList($theGroupFieldList)
 				->setItemClassArgs($this->getAuthGroupsModel(), $theGroupFieldList)
 				;
-					
+		
+		$theAccountSet->setDataFromPDO($aRowSet);
+		$theAccountSet->filter = $v->filter ;
+		$theAccountSet->setTotalRowsDesired(true); //ensure we always get a total even if not paged.
+		
 		return $theAccountSet;
 	}
 
@@ -1288,7 +1405,7 @@ class AuthOrgAccount extends BaseActor
 		$dbAuth = $this->getMyModel();
 		$theAuthRow = $dbAuth->getAuthByAccountId($theAccountID);
 		$theFieldList = AuthAccount::getDefinedFields();
-		$theFieldList[] = 'load_hardware_ids';
+		$theFieldList[] = 'hardware_ids';
 		$theAcct = AuthAccount::fetchInstanceFromRow($theAuthRow, $dbAuth, $theFieldList);
 		$theAuthsToRemove = $this->getAuthIDPatternsToRemove($theAcct);
 		$theTokensToRemove = $this->getAuthTokenPatternsToRemove();
@@ -1565,6 +1682,7 @@ class AuthOrgAccount extends BaseActor
 		$theRecordSet = AuthOrgSet::create($this)
 			->setupPagerDataFromUserData($this->scene)
 			->setItemClassArgs($dbAuth, $theFieldList)
+			->setPagerEnabled(false)
 			->getOrganizationsToDisplay($theFilter)
 			;
 		return $theRecordSet;
@@ -1585,7 +1703,10 @@ class AuthOrgAccount extends BaseActor
 		// Ensure view set to response in JSON format for this endpoint.
 		$this->viewToRender('results_as_json');
 		// Ensure required endpoint permissions are held, throwing BrokenLeg otherwise.
-		$this->checkAllowed('auth_orgs', 'view');
+		$this->getDirector()->checkIfAnyAllowed(array(
+				'auth_orgs/view',
+				'accounts/view',
+		));
 		// sort_by is an alias for orderby in this endpoint
 		$v->orderby = $this->getRequestData($v->orderby, 'sort_by', false);
 		// get all data, or just a single one?
@@ -1654,26 +1775,9 @@ class AuthOrgAccount extends BaseActor
 			else //if it is not an array, it is an object
 			{ $v->filter->org_id = $v->authorgs; }
 		}
-		//we wish to return auth groups and orgs list details
-		$bIncMaps = true;
-		//get default field list
-		$theFieldList = array();
-		if ( $bIncMaps )
-		{
-			$theFieldList[] = 'with_map_info';
-			$theFieldList[] = 'limited_orgs'; //flag to limit orgs to current + children only
-		}
 		try
 		{
-			//construct our iterator object
-			$theIterator = AuthAccountSet::create($this)
-				->setupPagerDataFromUserData($this->scene)
-				->setupSqlDataFromUserData($this->scene)
-				->setItemClassArgs($this->getMyModel(), $theFieldList)
-				;
-			$theFilter = $theIterator->getFilterForSearch($v->filter,
-					$theSearchText, $bAndSearchText);
-			$theRowSet = $theIterator->getAccountsToDisplay($theFilter);
+			$theRowSet = $this->searchAuthAccountSet($v->filter, $theSearchText, $bAndSearchText);
 			$this->setApiResults($theRowSet);
 		}
 		catch ( \Exception $x )
@@ -2001,6 +2105,38 @@ class AuthOrgAccount extends BaseActor
 		else if( $theAuthID != $theCurrentAuthID ) // Requestor needs rights.
 			$this->checkAllowed( 'accounts', 'modify' ) ;
 		return $theAuthID ;
+	}
+	
+	/**
+	 * Standardized way of getting a set of accounts.
+	 * @param string[] $aFieldFilter - filter these specific fields.
+	 * @param string[] $aSearchText - (OPTIONAL) search for this set of text.
+	 * @param boolean $bAndSearchText - (OPTIONAL) search set rows are AND'ed (default=FALSE).
+	 * @return AuthAccountSet Returns the account set requested.
+	 */
+	protected function searchAuthAccountSet( $aFieldFilter, $aSearchText=null, $bAndSearchText=false )
+	{
+		//we wish to return auth groups and orgs list details
+		$bIncMaps = true;
+		//get default field list
+		$theFieldList = array();
+		if ( $bIncMaps ) {
+			$theFieldList = AuthAccount::getExportFieldListUsingShorthand(array('with_map_info'));
+			//flag to limit orgs to current + children only
+			$theOptions = AuthAccount::getOptionsListUsingShorthand($this, $theFieldList, array(
+					'with_map_info' => true,
+					'limited_orgs' => true,
+			));
+		}
+		//construct our iterator object
+		$theIterator = AuthAccountSet::create($this)
+			->setupPagerDataFromUserData($this->scene)
+			->setupSqlDataFromUserData($this->scene)
+			->setItemClassArgs($this->getMyModel(), $theFieldList, $theOptions)
+			->setTotalRowsDesired(true) //ensure we always get a total even if not paged.
+			;
+		$theFilter = $theIterator->getFilterForSearch($aFieldFilter, $aSearchText, $bAndSearchText);
+		return $theIterator->getAccountsToDisplay($theFilter);
 	}
 	
 }//end class

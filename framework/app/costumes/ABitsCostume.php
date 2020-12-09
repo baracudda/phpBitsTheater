@@ -316,14 +316,14 @@ implements IDirected
 	 * @return string[]
 	 */
 	static public function getDefinedFields() {
-		return array_diff(Arrays::getPublicPropertiesOfClass(get_called_class()), array(
+		return array_values(array_diff(Arrays::getPublicPropertiesOfClass(get_called_class()), array(
 				'myClassName',
 				'mySimpleClassName',
 				'myNamespaceName',
 				'lastClassLoaded1',
 				'lastClassLoaded2',
 				'lastClassLoaded3',
-		));
+		)));
 	}
 	
 }//end class

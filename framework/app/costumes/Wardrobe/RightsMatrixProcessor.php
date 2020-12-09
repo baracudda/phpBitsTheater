@@ -93,7 +93,7 @@ class RightsMatrixProcessor extends BaseCostume
 			$this->mInfluentialButOffstageParents[$aAuthGroup->group_id] =
 					$dbAuthGroups->getAuthGroupsAndParents(
 							$aAuthGroup->parent_group_id, array(
-								'group_id', 'group_num', 'group_name', 'parent_group_id',
+								'group_id', 'group_num', 'group_name', 'parent_group_id', 'org_id',
 							)
 					)
 			;

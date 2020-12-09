@@ -527,8 +527,8 @@ class Strings {
 	/**
 	 * Writes log messages to the logging destination
 	 * Defaults to syslog unless $_ENV['LOG_PATH'] is set
-	 * @param int $priority - log level, one of the LOG_* consts.
-	 * @param string $message - log message
+	 * @param int $level - log level, one of the LOG_* consts.
+	 * @param string|object $message - log message
 	 */
 	static public function log($level, $message)
 	{
@@ -567,16 +567,19 @@ class Strings {
 			}
 		}
 
-		// do we encode the log as JSON? Add a timestamp either way
-		$ts = gmdate("Y-m-d\TH:i:s\Z");
-		if (self::$log_config['JSON']) {
-			$theMsg = json_encode(array('level' => $level, 'message' => $message, 'timestamp' => $ts)) . PHP_EOL;
-		} else {
-			$theMsg = '[' . gmdate("Y-m-d\TH:i:s\Z") . ']: ' . $message . PHP_EOL;
-		}
-
+		$theMsg = is_string($message) ? $message : $message->getMessage();
+		$theLevel = is_string($message) ? $level : $message->getLevel();
 		// do we use a custom log file?
-		if (self::$log_config['PATH']) {
+		if ( !empty(self::$log_config['PATH']) ) {
+			// do we encode the log as JSON? Add a timestamp either way
+			$ts = gmdate("Y-m-d\TH:i:s\Z");
+			if ( !empty(self::$log_config['JSON']) && is_string($message) ) {
+				$theMsg = json_encode(array('level' => $theLevel, 'message' => $theMsg, 'timestamp' => $ts)) . PHP_EOL;
+			} else if ( !empty(self::$log_config['JSON']) ) {
+				$theMsg = $message->toJson() . PHP_EOL;;
+			} else {
+				$theMsg = '[' . $ts . ']: ' . $theMsg . PHP_EOL;
+			}
 			try {
 				$handle = fopen(self::$log_config['PATH'], 'a');
 				fwrite($handle, $theMsg);
@@ -588,8 +591,8 @@ class Strings {
 			}
 		}
 		// if custom log not used or fails, ensure we write to system log at least
-		$theLogLevel = (self::$log_config['LOG_LEVEL']) ? self::$log_config['LOG_LEVEL'] : $level;
-		syslog($theLogLevel, $message);
+		$theLogLevel = (!empty(self::$log_config['LOG_LEVEL'])) ? self::$log_config['LOG_LEVEL'] : $theLevel;
+		syslog($theLogLevel, $theMsg);
 	}
 	
 	/**

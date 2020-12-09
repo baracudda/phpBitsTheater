@@ -2,6 +2,7 @@
 
 namespace BitsTheater\models;
 use BitsTheater\models\PropCloset\SetupDb as BaseModel;
+use BitsTheater\models\Auth as AuthModel;
 use BitsTheater\costumes\DbConnInfo;
 {//begin namespace
 

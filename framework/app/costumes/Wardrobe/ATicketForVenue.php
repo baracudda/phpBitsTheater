@@ -98,10 +98,7 @@ implements IWillCall
 			//not banned, so let us count the number of lockouts they have
 			$theMaxAttempts = 0;
 			if ( $this->getDirector()->isInstalled() ) {
-				$theMaxAttempts = intval(
-						$this->getConfigSetting('auth/login_fail_attempts'),
-						10
-				);
+				$theMaxAttempts = $this->getMyModel()->getMaxLoginAttempts();
 			}
 			if ( $theMaxAttempts > 0 ) {
 				//  once the number of lockout attempts >= lockout tokens,

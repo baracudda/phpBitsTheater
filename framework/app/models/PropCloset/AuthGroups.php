@@ -1540,7 +1540,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	public function addMap($aGroupID, $aAuthID)
 	{
 		$theSql = SqlBuilder::withModel($this);
-		$theSql->startWith('INSERT INTO')->add($this->tnGroupMap);
+		$theSql->startWith('INSERT IGNORE INTO')->add($this->tnGroupMap);
 		$this->setAuditFieldsOnInsert($theSql);
 		$theSql->mustAddParam('auth_id', $aAuthID);
 		$theSql->mustAddParam('group_id', $aGroupID);
@@ -2439,25 +2439,90 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
+	 * Get list of roles for display (pager and such).
+	 * @param ISqlSanitizer $aSqlSanitizer - (OPTIONAL) the SQL sanitizer obj being used.
+	 * @param SqlBuilder $aFilter - (OPTIONAL) Specifies restrictions on
+	 *   data to return; effectively populating a WHERE filter for the query.
+	 * @param string[]|NULL $aFieldList - (OPTIONAL) String list representing
+	 *   which columns to return. Leaving this argument blank defaults to
+	 *   returning all table column fields.
+	 * @param boolean $bIncludeSystemGroups - (OPTIONAL) includes the system roles if
+	 *   set to TRUE (default=FALSE).
+	 * @throws DBException
+	 * @return \PDOStatement Returns the query result.
+	 */
+	public function getAuthGroupsToDisplay(ISqlSanitizer $aSqlSanitizer=null,
+			 SqlBuilder $aFilter=null, $aFieldList=null, $bIncludeSystemGroups=false)
+	{
+		$dbAuth = $this->getAuthModel();
+		//restrict results to current org and its children
+		$theOrgIDList = null;
+		$theCurrOrgID = $dbAuth->getCurrentOrgID();
+		if ( !empty($theCurrOrgID) ) {
+			$theOrgIDList = $dbAuth->getOrgAndAllChildrenIDs($theCurrOrgID);
+		}
+		$theSql = SqlBuilder::withModel($this)->setSanitizer($aSqlSanitizer);
+		//query field list NOTE: since we may have a nested query in
+		//  the field list, must add HINT for getQueryTotals()
+		$theSql->startWith('SELECT')
+			->add(SqlBuilder::FIELD_LIST_HINT_START)
+			->addFieldList($aFieldList)
+			->add(SqlBuilder::FIELD_LIST_HINT_END)
+			;
+		$theSql->add('FROM')->add($this->tnGroups);
+		//regardless of what is "passed in" via SqlSanitizer object, force
+		//  results to be restricted to "curr org or its sub-orgs"
+		$theSql->startWhereClause('(');
+		if ( empty($theOrgIDList) ) {
+			$theSql->mustAddParam('org_id', null);
+			$theSql->setParamPrefix(' OR ');
+			//ensure we exclude orphaned groups (hidden/removed orgs)
+			$theOrgSet = $dbAuth->getOrgsCursor(array('org_id'));
+			if ( !empty($theOrgSet) ) {
+				$theOrgIDList = $theOrgSet->fetchAll(\PDO::FETCH_COLUMN);
+			}
+		}
+		$theSql->mustAddParam('org_id', $theOrgIDList);
+		$theSql->add(')');
+		$theSql->setParamPrefix(' AND ');
+		if ( !$bIncludeSystemGroups ) {
+			$theSql->setParamOperator(SqlBuilder::OPERATOR_NOT_EQUAL);
+			$theSql->mustAddParam('group_id', static::UNREG_GROUP_ID);
+			$theSql->setParamPrefix(' AND ');
+			$theSql->setParamOperator(SqlBuilder::OPERATOR_NOT_EQUAL);
+			$theSql->mustAddParam('group_num', 1);
+		}
+		$theSql->applyFilter($aFilter);
+		$theSql->retrieveQueryTotalsForSanitizer()
+			->applyOrderByListFromSanitizer()
+			->applyQueryLimitFromSanitizer()
+			;
+		//$theSql->logSqlDebug(__METHOD__); //DEBUG
+		try { return $theSql->query() ; }
+		catch( PDOException $pdox )
+		{ throw $theSql->newDbException(__METHOD__, $pdox); }
+	}
+	
+	/**
 	 * Returns a dictionary of all permission group data.
 	 * @param boolean $bIncludeSystemGroups - (OPTIONAL) indicates whether to
 	 *   include the "unregistered" group, defaults to FALSE.
-	 * @param string|null $aOrgID - the org to use besides the current one.
+	 * @param string|string[]|null $aOrgIDorList - the org to use besides the current one.
 	 * @return \PDOStatement Returns the query results unfetched.
 	 * @throws DbException if an error happens in the query itself
 	 */
 	public function getAuthGroupsForOrg( $bIncludeSystemGroups=false,
-			$aOrgID=null )
+			$aOrgIDorList=null )
 	{
-		$theOrgID = ( empty($aOrgID) )
-				? $this->getProp('Auth')->getCurrentOrgID() : $aOrgID;
+		$theOrgIDorList = ( empty($aOrgIDorList) )
+				? $this->getProp('Auth')->getCurrentOrgID() : $aOrgIDorList;
 		//now get our list of groups restricted by org
 		$theSql = SqlBuilder::withModel($this)
 			->startWith('SELECT')
-			->add('group_id, group_num, group_name, parent_group_id')
+			->add('group_id, group_num, group_name, parent_group_id, org_id')
 			->add('FROM')->add($this->tnGroups)
 			->startWhereClause()
-			->mustAddParam('org_id', $theOrgID)
+			->mustAddParam('org_id', $theOrgIDorList)
 		;
 		if ( !$bIncludeSystemGroups ) {
 			$theSql->setParamPrefix(' AND ');
@@ -2470,8 +2535,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		catch( PDOException $pdox )
 		{ throw $theSql->newDbException( __METHOD__, $pdox ) ; }
 	}
-
-		
+	
 	/**
 	 * Remove existing permissions for a particular group.
 	 * @param string $aGroupId - the group ID.

@@ -499,6 +499,9 @@ class SqlBuilder extends BaseCostume {
 			$this->myParamOperator = $saveParamOp;
 		}
 		else {
+			if ( is_array($aParamValue) && empty($aParamValue) ) {
+				$aParamValue = null;
+			}
 			if ( !is_null($aParamValue) || !$this->bUseIsNull ) {
 				$this->mySql .= $this->myParamPrefix .
 						$this->field_quotes . $aFieldName . $this->field_quotes .

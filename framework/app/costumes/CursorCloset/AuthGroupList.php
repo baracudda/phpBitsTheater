@@ -18,6 +18,8 @@
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\ARecordList as BaseCostume;
 use BitsTheater\costumes\AuthGroup as MyRecord;
+use BitsTheater\models\AuthGroups as MyModel;
+use BitsTheater\models\Auth as AuthModel;
 {//namespace begin
 
 /**
@@ -37,7 +39,7 @@ class AuthGroupList extends BaseCostume
 	 * Return the Model class or name to use in a getProp() call.
 	 * @var string
 	 */
-	const MY_MODEL_CLASS = 'AuthGroups';
+	const MY_MODEL_CLASS = MyModel::MODEL_NAME;
 	
 	/**
 	 * Name of the ID field to use.
@@ -46,29 +48,38 @@ class AuthGroupList extends BaseCostume
 	protected function getIdFieldName()
 	{ return 'group_id'; }
 	
+	/** @return MyModel */
+	protected function getMyModel()
+	{ return $this->getModel(); }
+	
+	/** @return AuthModel */
+	protected function getAuthModel()
+	{ return $this->getModel()->getProp(AuthModel::MODEL_NAME); }
+	
 	/**
 	 * Name of the table where to get the record from.
 	 * @return string
 	 */
 	protected function getIdTableName()
-	{ return $this->getModel()->tnGroups; }
+	{ return $this->getMyModel()->tnGroups; }
 	
 	/**
 	 * Instead of returning all groups lists, only return the ones
-	 * for my current Org.
+	 * for my current Org and its children.
 	 * {@inheritDoc}
 	 * @see \BitsTheater\costumes\CursorCloset\ARecordList::createSqlQuery()
 	 */
 	protected function createSqlQuery( $aListOfIds )
 	{
 		$theSql = parent::createSqlQuery($aListOfIds);
-		/* @var $dbAuth \BitsTheater\models\Auth */
-		$dbAuth = $this->getModel()->getProp('Auth');
-		$theCurrOrgID = $dbAuth->getCurrentOrgID();
-		if ( !empty($theCurrOrgID) ) {
+		$theCurrOrgID = $this->getDirector()->getPropsMaster()->getDefaultOrgID();
+		if ( !empty($theCurrOrgID) && $theCurrOrgID != AuthModel::ORG_ID_4_ROOT ) {
+			$theOrgIDs = array();
+			$theOrgRows = $this->getAuthModel()->getOrgChildrenForOrgCursor($theCurrOrgID, array('org_id'));
+			$theOrgIDs = $theOrgRows->fetchAll(\PDO::FETCH_COLUMN);
 			$theSql->startWhereClause()
 				->setParamPrefix(' AND ')
-				->mustAddParam('org_id', $theCurrOrgID)
+				->mustAddParam('org_id', $theOrgIDs)
 				->endWhereClause()
 				;
 		}

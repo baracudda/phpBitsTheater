@@ -147,8 +147,22 @@ implements ISqlSanitizer
 	 */
 	public function getAccountsToDisplay(SqlBuilder $aFilter=null)
 	{
+		$theFieldsToGet = array('*');
+		$theExportList = $this->getExportFieldsList();
+		if ( is_array($theExportList) && in_array('groups', $theExportList) ) {
+			$theFieldsToGet[] = 'groups';
+		}
+		if ( is_array($theExportList) && in_array('hardware_ids', $theExportList) ) {
+			$theFieldsToGet[] = 'hardware_ids';
+		}
+		if ( is_array($theExportList) && in_array('lockout_count', $theExportList) ) {
+			$theFieldsToGet[] = 'lockout_count';
+		}
+		if ( is_array($theExportList) && in_array('org_ids', $theExportList) ) {
+			$theFieldsToGet[] = 'org_ids';
+		}
 		$theRowSet = $this->getMyModel()
-			->getAuthAccountsToDisplay($this, $aFilter);
+			->getAuthAccountsToDisplay($this, $aFilter, $theFieldsToGet);
 		$this->setDataFromPDO($theRowSet);
 		//$this->filter = $aFilter->?; //not supported yet
 		return $this;
