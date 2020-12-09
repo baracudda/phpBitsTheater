@@ -25,7 +25,6 @@ use BitsTheater\costumes\HttpAuthHeader;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\AuthAccount;
 use BitsTheater\costumes\AuthAccountSet;
-use BitsTheater\costumes\AuthGroup;
 use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\models\Accounts;
@@ -1009,26 +1008,31 @@ class AuthBasicAccount extends BaseActor
 	 * @since BitsTheater 3.7.0
 	 */
 	protected function getAuthAccountSet($aRowSet) {
-		$v =& $this->scene ;
+		$v = $this->getMyScene();
 		//get all fields, even the optional ones
-		$theFieldList = AuthAccount::getDefinedFields();
+		$theFields = AuthAccount::getDefinedFields();
+		$theFields[] = 'groups';
+		$theFieldList = AuthAccount::getExportFieldListUsingShorthand($theFields);
+		//flag to limit orgs to current + children only
+		$theOptions = AuthAccount::getOptionsListUsingShorthand($this, $theFieldList, array(
+		));
 		//construct our iterator object
-		$theAccountSet = AuthAccountSet::create( $this->getDirector() )
-				->setItemClass(AuthAccount::ITEM_CLASS,
-						array($this->getProp('Auth'), $theFieldList) )
-				->setDataFromPDO($aRowSet)
-				;
-		$theAccountSet->filter = $v->filter ;
-		$theAccountSet->total_count = $v->getPagerTotalRowCount() ;
-					
-		//include group details.
+		$theAccountSet = AuthAccountSet::create($this);
+		$theAccountSet->setItemClassArgs($this->getMyModel(), $theFieldList, $theOptions);
+		//limit the results of the groups list, too
+		if ( empty($theAccountSet->mGroupList) ) {
+			//should never occur, but just in case, check for non-existance and create.
+			$theAccountSet->mGroupList = AuthGroupList::create($this);
+		}
+		//restrict group details.
 		$theGroupFieldList = array('group_id', 'group_name');
-		$theAccountSet->mGroupList = AuthGroupList::create( $this->getDirector() )
-				->setFieldList($theGroupFieldList)
-				->setItemClass(AuthGroup::ITEM_CLASS,
-						array($this->getProp('AuthGroups'), $theGroupFieldList) )
+		$theAccountSet->mGroupList->setFieldList($theGroupFieldList)
+				->setItemClassArgs($this->getAuthGroupsModel(), $theGroupFieldList)
 				;
-					
+		
+		$theAccountSet->setDataFromPDO($aRowSet);
+		$theAccountSet->filter = $v->filter ;
+		$theAccountSet->setTotalRowsDesired(true); //ensure we always get a total even if not paged.
 		return $theAccountSet;
 	}
 

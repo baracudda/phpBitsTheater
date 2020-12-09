@@ -95,8 +95,7 @@ trait WornForExportData
 	 * @return string[] Returns the munged $aFieldList with "with_map_info"
 	 *   entry replaced by appending the $aMapFieldList entries.
 	 */
-	protected function appendFieldListWithMapInfo( $aFieldList, $aMapFieldList,
-			$bForceAppend=false )
+	static protected function appendFieldListWithMapInfo( $aFieldList, $aMapFieldList, $bForceAppend=false )
 	{
 		if ( $aFieldList==null ) $aFieldList = array();
 		if ( $aMapFieldList==null ) $aMapFieldList = array();
@@ -106,7 +105,7 @@ trait WornForExportData
 			array_splice($aFieldList, $theIndex, 1);
 		}
 		if ( empty($aFieldList) ) {
-			$aFieldList = array_diff($this::getDefinedFields(), $aMapFieldList);
+			$aFieldList = array_values(array_diff(static::getDefinedFields(), $aMapFieldList));
 		}
 		if ( $bIncMapInfo ) {
 			$aFieldList = array_merge($aFieldList, $aMapFieldList);
@@ -127,9 +126,9 @@ trait WornForExportData
 	 */
 	static protected function restrictPublicFieldList( $aFieldList, $aRemovalList )
 	{
-		return ( !empty($aFieldList) ) ? $aFieldList : array_diff(
+		return ( !empty($aFieldList) ) ? $aFieldList : array_values(array_diff(
 				static::getDefinedFields(), $aRemovalList
-		);
+		));
 	}
 		
 	/**
@@ -145,7 +144,7 @@ trait WornForExportData
 	{
 		$theFieldList = static::getDefinedFields();
 		if ( !empty(static::$RESTRICTED_EXPORT_FIELD_LIST) ) {
-			$theFieldList = array_diff($theFieldList, static::$RESTRICTED_EXPORT_FIELD_LIST);
+			$theFieldList = array_values(array_diff($theFieldList, static::$RESTRICTED_EXPORT_FIELD_LIST));
 		}
 		return $theFieldList;
 	}

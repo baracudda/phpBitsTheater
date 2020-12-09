@@ -17,6 +17,7 @@
 
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\ARecord as BaseCostume;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\models\Auth as AuthModel;
 use BitsTheater\models\AuthGroups as AuthGroupsModel;
 {//namespace begin
@@ -49,6 +50,13 @@ class AuthAccount extends BaseCostume
 	public $updated_ts;
 	
 	//extended info (optional - must be explicitly asked for via mExportTheseFields)
+
+	/** @var string[] The list of fields "with_map_info" will expand to become. */
+	static protected $mapInfoFields = array(
+			'groups',
+			'lockout_count',
+			'hardware_ids',
+	);
 	
 	/** @var string[] Array of group_id values the account belongs to. */
 	public $groups;
@@ -79,29 +87,92 @@ class AuthAccount extends BaseCostume
 	protected $bLoadHardwareIDs = false;
 	
 	/**
-	 * Set the list of fields to restrict export to use.
-	 * @param array $aFieldList - the field list.
-	 * @return $this Returns $this for chaining.
+	 * Constructor for an AuthAccount entails a Model reference, a fieldset
+	 * to return, and a set of options to load extra info.
+	 * @param AuthModel $aDbModel - the db model to use.
+	 * @param string[] $aFieldList - the field list to return.
+	 * @param string[] $aOptions - (OPTIONAL) options like bLoadHardwareIDs=true.
 	 */
-	public function setExportFieldList($aFieldList)
+	public function __construct($aDbModel, $aFieldList, $aOptions=null )
 	{
-		$aFieldList = $this->appendFieldListWithMapInfo($aFieldList, array(
-				'groups',
-				'lockout_count',
-		));
-		if ( in_array('load_hardware_ids', $aFieldList) ) {
-			$aFieldList = array_diff($aFieldList, array('load_hardware_ids'));
-			$this->bLoadHardwareIDs = true;
+		parent::__construct($aDbModel, $aFieldList);
+		$this->parseOptions($aOptions);
+	}
+	
+	/**
+	 * Static helper function to create an instance of the record-wrapper
+	 * class based on row data already retrieved and possibly causing
+	 * additional data to be retrieved based on the field list passed in
+	 * (such as loading extra mapping information or additional properties
+	 * from additional tables).
+	 * @param array|object $aRow - row data already fetched.
+	 * @param AuthModel $aModel - the model instance.
+	 * @param string[]|NULL $aFieldList - the list of fields to be exported.
+	 * @param string[]|NULL $aOptions - the options.
+	 * @return $this Returns the newly created instance.
+	 */
+	static public function withRow( $aRow, $aModel, $aFieldList, $aOptions )
+	{
+		$theClassName = get_called_class();
+		$o = new $theClassName($aModel, $aFieldList, $aOptions);
+		$o->setDataFrom($aRow);
+		$o->onFetch();
+		return $o;
+	}
+	
+	/**
+	 * Parse options array into various properties for our object.
+	 * @param string[] $aOptions - options like ['bLoadHardwareIDs'=>true].
+	 */
+	protected function parseOptions( $aOptions )
+	{
+		if ( is_array($aOptions) ) {
+			$this->bLoadAuthGroupInfo = !empty($aOptions['bLoadAuthGroupInfo']);
+			$this->bLoadLockoutInfo = !empty($aOptions['bLoadLockoutInfo']);
+			$this->bLoadHardwareIDs = !empty($aOptions['bLoadHardwareIDs']);
 		}
-		parent::setExportFieldList($aFieldList);
-		if ( in_array('groups', $aFieldList) ) {
-			$this->bLoadAuthGroupInfo = true;
-			$this->dbAuthGroups = $this->getAuthGroupsProp();
+	}
+	
+	/**
+	 * Return the list of fields to restrict export to use given a list
+	 * of fields and shorthand meta names or flags.
+	 * @param string[] $aMetaFieldList - the field/meta name list.
+	 * @return string[] Returns the export field name list to use.
+	 */
+	static public function getExportFieldListUsingShorthand( $aMetaFieldList )
+	{
+		$theFieldList = static::appendFieldListWithMapInfo($aMetaFieldList, static::$mapInfoFields);
+		$theIndex = array_search('load_hardware_ids', $theFieldList);
+		if ( $theIndex !== false ) {
+			$theFieldList[$theIndex] = 'hardware_ids';
 		}
-		if ( in_array('lockout_count', $aFieldList) ) {
-			$this->bLoadLockoutInfo = true;
+		return $theFieldList;
+	}
+	
+	/**
+	 * Return the list of options to use given a list of key=>values.
+	 * @param IDirected $aContext - the context to use (can be handy to get settings).
+	 * @param string[] $aExportFieldList - the fields that will be exported.
+	 * @param string[] $aMetaOptions - the key=>value list.
+	 * @return string[] Returns the options list to use.
+	 */
+	static public function getOptionsListUsingShorthand( IDirected $aContext,
+			$aExportFieldList, $aMetaOptions )
+	{
+		$theOptions = array();
+		if ( in_array('groups', $aExportFieldList) ) {
+			$theOptions['bLoadAuthGroupInfo'] = true;
 		}
-		return $this;
+		if ( in_array('lockout_count', $aExportFieldList) ) {
+			$theOptions['bLoadLockoutInfo'] = true;
+		}
+		if ( in_array('hardware_ids', $aExportFieldList) ) {
+			$theOptions['bLoadHardwareIDs'] = true;
+		}
+		if ( !empty($aMetaOptions['load_hardware_ids']) ) {
+			$theOptions['bLoadHardwareIDs'] = true;
+		}
+		return $theOptions;
 	}
 	
 	/**
@@ -114,11 +185,7 @@ class AuthAccount extends BaseCostume
 		unset($o->pwhash); //never export this value
 		$o->is_active = filter_var($o->is_active, FILTER_VALIDATE_BOOLEAN);
 		if ( isset($o->lockout_count) ) {
-			$theMaxAttempts = intval(
-					$this->getMyModel()->getConfigSetting('auth/login_fail_attempts'),
-					10
-			);
-			$o->is_locked = ( $o->lockout_count >= $theMaxAttempts );
+			$o->is_locked = ( $o->lockout_count >= $this->getMyModel()->getMaxLoginAttempts() );
 		}
 		else {
 			unset($o->lockout_count);
@@ -133,7 +200,12 @@ class AuthAccount extends BaseCostume
 	
 	/** @return AuthGroupsModel */
 	protected function getAuthGroupsProp()
-	{ return $this->getModel()->getProp('AuthGroups'); }
+	{
+		if ( empty($this->dbAuthGroups) ) {
+			$this->dbAuthGroups = $this->getModel()->getProp('AuthGroups');
+		}
+		return $this->dbAuthGroups;
+	}
 	
 	/**
 	 * groups ID list was requested, this method fills in that property.
@@ -141,8 +213,15 @@ class AuthAccount extends BaseCostume
 	protected function getGroupsList()
 	{
 		if ( !empty($this->account_id) ) try {
-			$this->groups = $this->getAuthGroupsProp()->getAcctGroups($this->account_id);
-			if ( !empty($this->groups) ) {
+			//check to see if the initial SQL result has the data we need already
+			if ( is_string($this->groups) ) {
+				$this->groups = ( !empty($this->groups) ) ? explode(',', $this->groups) : null;
+			}
+			else {
+				$this->groups = $this->getAuthGroupsProp()->getAcctGroups($this->account_id);
+			}
+			//if one of the groups has a numeric ID, convert them all to be int types
+			if ( !empty($this->groups) && is_numeric($this->groups[0]) ) {
 				foreach ($this->groups as &$theGroupID) {
 					if ( is_numeric($theGroupID) ) {
 						$theGroupID = strval($theGroupID);
@@ -170,19 +249,20 @@ class AuthAccount extends BaseCostume
 	 */
 	protected function parseHardwareIDs()
 	{
-		if ( !empty($this->hardware_ids) )
-		{
+		if ( !empty($this->hardware_ids) ) {
 			//convert string field to a proper list of items
-			$this->hardware_ids = explode($this::HARDWARE_IDS_SEPARATOR, $this->hardware_ids);
-			foreach ($this->hardware_ids as &$theToken) {
+			$theList = explode($this::HARDWARE_IDS_SEPARATOR, $this->hardware_ids);
+			foreach ($theList as &$theToken) {
 				list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theToken);
 				if ( !empty($thePrefix) && !empty($theHardwareId) && !empty($theUUID) ) {
 					$theToken = $theHardwareId;
 				}
 			}
-			//if there is only 1 item, ensure it is just a string, not an array
-			if (count($this->hardware_ids)==1)
-			{ $this->hardware_ids = $this->hardware_ids[0]; }
+			//ensure it is just a string, not an array
+			$this->hardware_ids = implode(',', $theList);
+		}
+		else {
+			$this->hardware_ids = null;
 		}
 	}
 	
@@ -191,15 +271,12 @@ class AuthAccount extends BaseCostume
 	 */
 	protected function getLockoutCount()
 	{
-		if ( !empty($this->auth_id) ) try {
-			$dbAuth = $this->getMyModel();
-			$theTokens = $dbAuth->getAuthTokens($this->auth_id, $this->account_id,
-					$dbAuth::TOKEN_PREFIX_LOCKOUT . "%", true
-			);
-			$this->lockout_count = ( !empty($theTokens) ) ? count($theTokens) : 0;
+		if ( is_numeric($this->lockout_count) ) {
+			$this->lockout_count = intval($this->lockout_count);
 		}
-		catch (\Exception $x)
-		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
+		else if ( !empty($this->auth_id) && !is_numeric($this->lockout_count) ) {
+			$this->lockout_count = $this->getMyModel()->getAuthLockoutCount($this->auth_id);
+		}
 	}
 	
 	/**
@@ -207,16 +284,23 @@ class AuthAccount extends BaseCostume
 	 */
 	protected function getHardwareIDs()
 	{
-		if ( !empty($this->auth_id) && empty($this->hardware_ids) ) try {
-			$dbAuth = $this->getMyModel();
-			$theTokens = $dbAuth->getAuthTokens($this->auth_id, $this->account_id,
-					$dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ":%", true
-			);
-			if ( !empty($theTokens) ) {
-				$this->hardware_ids = implode(static::HARDWARE_IDS_SEPARATOR,
-						array_column($theTokens, 'token')
-				);
+		if ( !empty($this->auth_id) ) try {
+			//check to see if the initial SQL result has the data we need already
+			if ( is_string($this->hardware_ids) ) {
+				$this->hardware_ids = ( !empty($this->hardware_ids) ) ? $this->hardware_ids : null;
 				$this->parseHardwareIDs();
+			}
+			else {
+				$dbAuth = $this->getMyModel();
+				$theTokens = $dbAuth->getAuthTokens($this->auth_id, $this->account_id,
+						$dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ":%", true
+				);
+				if ( !empty($theTokens) ) {
+					$this->hardware_ids = implode(static::HARDWARE_IDS_SEPARATOR,
+							array_column($theTokens, 'token')
+					);
+					$this->parseHardwareIDs();
+				}
 			}
 		}
 		catch (\Exception $x)
@@ -231,7 +315,6 @@ class AuthAccount extends BaseCostume
 		if ( $this->bLoadAuthGroupInfo ) {
 			$this->getGroupsList();
 		}
-		$this->parseHardwareIDs();
 		if ( $this->bLoadLockoutInfo ) {
 			$this->getLockoutCount();
 		}
@@ -303,12 +386,64 @@ class AuthAccount extends BaseCostume
 			case $dbAuth::DB_TYPE_MYSQL:
 			default:
 				$theSqlStr = '(SELECT'
-					. " GROUP_CONCAT(__AuthTknsAlias.token SEPARATOR {$theSeparator})"
+					. " IFNULL(GROUP_CONCAT(__AuthTknsAlias.token SEPARATOR {$theSeparator}), '')"
 					. " FROM {$dbAuth->tnAuthTokens} AS __AuthTknsAlias"
 					. " WHERE {$aAuthIDAlias}=__AuthTknsAlias.auth_id"
 					. "   AND __AuthTknsAlias.token LIKE '" . $dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ":%'"
 					. ") AS hardware_ids"
 					;
+		}//switch
+		return $theSqlStr;
+	}
+	
+	/**
+	 * Ensure we get the lockout count for an account.
+	 * @param AuthModel $dbAuth - the auth model.
+	 * @param string $aAuthIDAlias - the auth_id value to match against.
+	 * @return string Returns the SQL used for defining the "lockout_count" field.
+	 */
+	static public function sqlForLockoutCount( $dbAuth, $aAuthIDAlias )
+	{
+		if ( empty($dbAuth) ) {
+			throw new \InvalidArgumentException('$dbAuth cannot be empty');
+		}
+		if ( empty($aAuthIDAlias) ) {
+			throw new \InvalidArgumentException('$aAuthIDAlias cannot be empty');
+		}
+		switch ( $dbAuth->dbType() ) {
+			case $dbAuth::DB_TYPE_MYSQL:
+			default:
+				$theSqlStr = "(SELECT count(*) FROM {$dbAuth->tnAuthTokens} AS __LockoutAlias"
+					. " WHERE {$aAuthIDAlias}=__LockoutAlias.auth_id"
+					. "   AND __LockoutAlias.token LIKE '" . $dbAuth::TOKEN_PREFIX_LOCKOUT . ":%'"
+					. ") AS lockout_count"
+					;
+		}//switch
+		return $theSqlStr;
+	}
+	
+	/**
+	 * Ensure we get the org list for an account.
+	 * @param AuthGroupsModel $dbAuthGroups - the auth groups (roles) model.
+	 * @param string $aAuthIDAlias - the auth_id value to match against.
+	 * @return string Returns the SQL used for defining the "groups" field.
+	 */
+	static public function sqlForGroupList( $dbAuthGroups, $aAuthIDAlias )
+	{
+		if ( empty($dbAuthGroups) ) {
+			throw new \InvalidArgumentException('$dbAuthGroups cannot be empty');
+		}
+		if ( empty($aAuthIDAlias) ) {
+			throw new \InvalidArgumentException('$aAuthIDAlias cannot be empty');
+		}
+		switch ( $dbAuthGroups->dbType() ) {
+			case $dbAuthGroups::DB_TYPE_MYSQL:
+			default:
+				$theSqlStr = '(SELECT' .
+					" IFNULL(GROUP_CONCAT(__RoleMapAlias.group_id SEPARATOR ','), '')" .
+					" FROM {$dbAuthGroups->tnGroupMap} AS __RoleMapAlias" .
+					" WHERE {$aAuthIDAlias}=__RoleMapAlias.auth_id" .
+					") AS groups" ;
 		}//switch
 		return $theSqlStr;
 	}

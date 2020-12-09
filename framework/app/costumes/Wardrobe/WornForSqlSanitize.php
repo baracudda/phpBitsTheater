@@ -160,10 +160,10 @@ trait WornForSqlSanitize
 	static public function getSanitizedFieldList( $aFieldList )
 	{
 		if ( !empty($aFieldList) && is_array($aFieldList) ) {
-			return array_intersect(static::getDefinedFields() , $aFieldList);
+			return array_values(array_intersect(static::getDefinedFields(), $aFieldList));
 		}
 		else if ( !empty($aFieldList) && is_string($aFieldList) ) {
-			return array_intersect(static::getDefinedFields() , array($aFieldList));
+			return array_values(array_intersect(static::getDefinedFields(), array($aFieldList)));
 		}
 	}
 	

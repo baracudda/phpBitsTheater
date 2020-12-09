@@ -17,7 +17,10 @@
 
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\AuthAccount as BaseCostume;
+use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\SqlBuilder;
+use BitsTheater\models\Auth as AuthModel;
+use BitsTheater\models\AuthGroups as AuthGroupsModel;
 use com\blackmoonit\exceptions\DbException;
 {//namespace begin
 
@@ -33,6 +36,18 @@ class AuthAcct4Orgs extends BaseCostume
 	// basic info
 	public $last_seen_ts;
 	
+	/** @var string[] The list of fields "with_map_info" will expand to become. */
+	static protected $mapInfoFields = array(
+			'groups',
+			'currOrgRoles',
+			'lockout_count',
+			'hardware_ids',
+			'org_ids',
+	);
+	
+	/** @var string[] Lists only roles for current org as opposed to all in groups. */
+	public $currOrgRoles;
+	
 	//extended info (optional - must be explicitly asked for via mExportTheseFields)
 	//  alias: "with_map_info" will include all of these fields
 	//public $groups will be included if you specify the alias ^
@@ -41,65 +56,56 @@ class AuthAcct4Orgs extends BaseCostume
 	/** @var string Used to limit what groups are returned. */
 	protected $mCurrOrgID = null;
 	/** @var boolean Used to limit what org_ids are returned. */
-	protected $bLimitOrgsToCurrentPlusChildren = false;
 	protected $mLimitedOrgs = null;
+	/** @var AuthModel */
+	protected $dbAuth;
 	
 	/**
-	 * Set the list of fields to restrict export to use.
-	 * @param array $aFieldList - the field list.
-	 * @return $this Returns $this for chaining.
+	 * Parse options array into various properties for our object.
+	 * @param string[] $aOptions - options like ['bLoadHardwareIDs'=>true].
 	 */
-	public function setExportFieldList( $aFieldList )
+	protected function parseOptions( $aOptions )
 	{
-		//check for "limited_orgs" and treat as flag for setOrgsLimited() as
-		//  some static factory methods do not allow a direct call to it.
-		if ( !empty($aFieldList) ) {
-			$theIndex = array_search('limited_orgs', $aFieldList);
-			if ( $theIndex !== false ) {
-				array_splice($aFieldList, $theIndex, 1); //its a flag, just remove it
-				$this->setOrgsLimited(true);
+		parent::parseOptions($aOptions);
+		if ( is_array($aOptions) ) {
+			if ( !empty($aOptions['mCurrOrgID']) ) {
+				$this->mCurrOrgID = $aOptions['mCurrOrgID'];
+			}
+			if ( !empty($aOptions['mLimitedOrgs']) ) {
+				$this->mLimitedOrgs = $aOptions['mLimitedOrgs'];
 			}
 		}
-		$aFieldList = $this->appendFieldListWithMapInfo($aFieldList, array(
-				'groups',
-				'org_ids',
-		));
-		parent::setExportFieldList($aFieldList);
-		if ( in_array('groups', $this->getExportFieldList()) ) {
-			$this->mCurrOrgID = $this->getAuthProp()->getCurrentOrgID();
-		}
-		return $this;
 	}
 	
-	/** @return \BitsTheater\models\Auth */
+	/**
+	 * Return the list of options to use given a list of key=>values.
+	 * @param IDirected $aContext - the context to use (can be handy to get settings).
+	 * @param string[] $aExportFieldList - the fields that will be exported.
+	 * @param string[] $aMetaOptions - the key=>value list.
+	 * @return string[] Returns the options list to use.
+	 */
+	static public function getOptionsListUsingShorthand( IDirected $aContext,
+			$aExportFieldList, $aMetaOptions )
+	{
+		$theOptions = parent::getOptionsListUsingShorthand($aContext, $aExportFieldList, $aMetaOptions);
+		$theOptions['mCurrOrgID'] = $aContext->getDirector()->getPropsMaster()->getDefaultOrgID();
+		if ( !empty($aMetaOptions['limited_orgs']) ) {
+			if ( !empty($theOptions['mCurrOrgID']) && $theOptions['mCurrOrgID'] != AuthModel::ORG_ID_4_ROOT ) {
+				$theOptions['mLimitedOrgs'] = $aContext->getProp(AuthModel::MODEL_NAME)
+					->getOrgAndAllChildrenIDs($theOptions['mCurrOrgID']);
+			}
+		}
+		return $theOptions;
+	}
+		
+	/** @return AuthModel */
 	protected function getAuthProp()
-	{ return $this->getModel()->getProp( 'Auth' ); }
-	
-	/**
-	 * Set if we limit orgs or not, default is no limits.
-	 * @param boolean $aBool - the value to set.
-	 * @return $this Returns $this for chaining.
-	 */
-	public function setOrgsLimited( $aBool )
 	{
-		$this->bLimitOrgsToCurrentPlusChildren = $aBool;
-		$this->mLimitedOrgs = null;
-		if ( $aBool ) {
-			$dbAuth = $this->getAuthProp();
-			$theCurrOrgID = $dbAuth->getCurrentOrgID();
-			if ( !empty($theCurrOrgID) && $theCurrOrgID != $dbAuth::ORG_ID_4_ROOT ) {
-				$this->mLimitedOrgs = $dbAuth->getOrgAndAllChildrenIDs($theCurrOrgID);
-			}
+		if ( empty($this->dbAuth ) ) {
+			$this->dbAuth = $this->getModel()->getProp( 'Auth' );
 		}
-		return $this;
+		return $this->dbAuth;
 	}
-	
-	/**
-	 * Get the flag value for if orgs are limited or not.
-	 * @return boolean Returns TRUE if we are limiting orgs result.
-	 */
-	public function isOrgsLimited()
-	{ return $this->bLimitOrgsToCurrentPlusChildren; }
 	
 	/**
 	 * groups ID list was requested, this method fills in that property.
@@ -107,13 +113,21 @@ class AuthAcct4Orgs extends BaseCostume
 	protected function getGroupsList()
 	{
 		if ( !empty($this->auth_id) ) try {
-			$dbAuthGroups = $this->getAuthGroupsProp();
-			$this->groups = $dbAuthGroups->getAcctGroupsForOrg(
-					$this->auth_id, $this->mCurrOrgID
-			);
+			//check to see if the initial SQL result has the data we need already
+			if ( is_string($this->groups) ) {
+				$this->groups = ( !empty($this->groups) ) ? explode(',', $this->groups) : null;
+			}
+			else {
+				$dbAuthGroups = $this->getAuthGroupsProp();
+				$this->groups = $dbAuthGroups->getAcctGroupsForOrg(
+						$this->auth_id, $this->mCurrOrgID
+				);
+			}
+			if ( is_string($this->currOrgRoles) ) {
+				$this->currOrgRoles = ( !empty($this->currOrgRoles) ) ? explode(',', $this->currOrgRoles) : null;
+			}
 		}
-		catch ( DbException $dbx )
-		{
+		catch ( DbException $dbx ) {
 			if ( $dbx->getCode()==$dbAuthGroups::ERR_CODE_EMPTY_AUTHGROUP_TABLE ) {
 				parent::getGroupsList();
 			}
@@ -134,7 +148,7 @@ class AuthAcct4Orgs extends BaseCostume
 			if ( in_array('org_ids', $this->getExportFieldList()) ) {
 				$dbAuth = $this->getAuthProp();
 				$theFilter = null;
-				if ( $this->isOrgsLimited() && !empty($this->mLimitedOrgs) ) {
+				if ( !empty($this->mLimitedOrgs) ) {
 					//instead of returning all the orgs the account belongs to, restrict it to
 					//  only returning the orgs based on current org and its children.
 					$theFilter = SqlBuilder::withModel($dbAuth)
@@ -159,7 +173,18 @@ class AuthAcct4Orgs extends BaseCostume
 	public function onFetch()
 	{
 		parent::onFetch();
-		$this->getOrgsList();
+		if ( is_string($this->org_ids) ) {
+			$theList = ( !empty($this->org_ids) ) ? explode(',', $this->org_ids) : null;
+			if ( !empty($theList) && !empty($this->mLimitedOrgs) ) {
+				$this->org_ids = array_values(array_intersect($this->mLimitedOrgs, $theList));
+			}
+			else {
+				$this->org_ids = $theList;
+			}
+		}
+		else {
+			$this->getOrgsList();
+		}
 	}
 	
 	/**
@@ -171,6 +196,60 @@ class AuthAcct4Orgs extends BaseCostume
 		return array_merge(parent::getSearchFieldList(), array(
 				'comments',
 		));
+	}
+	
+	/**
+	 * Ensure we get the org list for an account.
+	 * @param AuthGroupsModel $dbAuthGroups - the auth groups (roles) model.
+	 * @param string $aAuthIDAlias - the auth_id value to match against.
+	 * @return string Returns the SQL used for defining the "groups" field.
+	 */
+	static public function sqlForGroupList( $dbAuthGroups, $aAuthIDAlias )
+	{
+		$theSqlStr = parent::sqlForGroupList($dbAuthGroups, $aAuthIDAlias);
+		switch ( $dbAuthGroups->dbType() ) {
+			case $dbAuthGroups::DB_TYPE_MYSQL:
+			default:
+				$theOrgIDWhere = ' IS NULL';
+				$theOrgID = $dbAuthGroups->getDirector()->getPropsMaster()->getDefaultOrgID();
+				if ( !empty($theOrgID) && $theOrgID != AuthModel::ORG_ID_4_ROOT ) {
+					$theOrgIDWhere = "='{$theOrgID}'";
+				}
+				$theSqlStr .= ', (SELECT' .
+					" IFNULL(GROUP_CONCAT(__CurrOrgRoleMapAlias.group_id SEPARATOR ','), '')" .
+					" FROM {$dbAuthGroups->tnGroupMap} AS __CurrOrgRoleMapAlias" .
+					" JOIN {$dbAuthGroups->tnGroups} AS __CurrOrgRolesAlias USING (group_id)" .
+					" WHERE {$aAuthIDAlias}=__CurrOrgRoleMapAlias.auth_id" .
+					"   AND __CurrOrgRolesAlias.org_id" . $theOrgIDWhere .
+					") AS currOrgRoles" ;
+		}//switch
+		return $theSqlStr;
+	}
+	
+	/**
+	 * Ensure we get the org list for an account.
+	 * @param AuthModel $dbAuth - the auth model.
+	 * @param string $aAuthIDAlias - the auth_id value to match against.
+	 * @return string Returns the SQL used for defining the "org_ids" field.
+	 */
+	static public function sqlForOrgList( $dbAuth, $aAuthIDAlias )
+	{
+		if ( empty($dbAuth) ) {
+			throw new \InvalidArgumentException('$dbAuth cannot be empty');
+		}
+		if ( empty($aAuthIDAlias) ) {
+			throw new \InvalidArgumentException('$aAuthIDAlias cannot be empty');
+		}
+		switch ( $dbAuth->dbType() ) {
+			case $dbAuth::DB_TYPE_MYSQL:
+			default:
+				$theSqlStr = '(SELECT' .
+					" IFNULL(GROUP_CONCAT(__AuthOrgAlias.org_id SEPARATOR ','), '')" .
+					" FROM {$dbAuth->tnAuthOrgMap} AS __AuthOrgAlias" .
+					" WHERE {$aAuthIDAlias}=__AuthOrgAlias.auth_id" .
+					") AS org_ids" ;
+		}//switch
+		return $theSqlStr;
 	}
 	
 }//end class
