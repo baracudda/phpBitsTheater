@@ -1282,7 +1282,7 @@ class AuthOrgAccount extends BaseActor
 	{
 		$v = $this->getMyScene();
 		//get all fields, even the optional ones
-		$theFields = AuthAccount::getDefinedFields();
+		$theFields = AuthAccount::getDefaultExportFieldList();
 		$theFields[] = 'groups';
 		$theFieldList = AuthAccount::getExportFieldListUsingShorthand($theFields);
 		//flag to limit orgs to current + children only
@@ -1322,6 +1322,7 @@ class AuthOrgAccount extends BaseActor
 		$this->checkAllowed( 'accounts', 'view' );
 		$theGroupID = $this->getRequestData( $aGroupID, 'group_id', false ) ;
 		try {
+			$theFilter = null;
 			if ( !empty($theGroupID) ) {
 				$dbAuthGroups = $this->getAuthGroupsModel();
 				if ( $dbAuthGroups->groupExists($theGroupID) ) {

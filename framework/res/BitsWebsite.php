@@ -24,7 +24,7 @@ class BitsWebsite extends BaseResources
 	/** @var string The framework's sequence number. */
 	public $framework_version_seq = 14;
 	/** @var string The framework's displayed version number. */
-	public $framework_version = '5.1.0';
+	public $framework_version = '5.1.1';
 	/**
 	 * Your website's build number.
 	 * This should only ever increase with each release you make.
