@@ -3,6 +3,7 @@
 use BitsTheater\Director; /* @var $director Director */
 use BitsTheater\Regisseur; /* @var $theStageManager Regisseur */
 use BitsTheater\costumes\DbAdmin;
+use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\models\Auth as AuthDB;
 use com\blackmoonit\Strings;
 
@@ -52,7 +53,7 @@ if ( isset($theCliOptions['b']) )  {
 		$theData->dbname = getMyDbConnEnvVar('DBNAME');
 		$theData->dbuser = getMyDbConnEnvVar('DBUSER');
 		$theData->dbpass = getMyDbConnEnvVar('DBPSWD');
-		$theMsg = "Creating database [{$theData->dbname}]";
+		$theMsg = "Creating database [{$theData->dbname}] (IFF non-existant).";
 		print($theMsg . PHP_EOL); Strings::debugLog($theMsg);
 		$theDbAdmin = new DbAdmin($director);
 		$theDbAdmin->createDbFromUserInput($theData);
@@ -63,8 +64,14 @@ if ( isset($theCliOptions['b']) )  {
 		$theMsg = "Not enough info to create a database, skipping creation.";
 		print($theMsg . PHP_EOL); Strings::debugLog($theMsg);
 	}
-	//once db exists, we can create all the model tables
+	//once db exists, we can create all the model tables, IFF DB IS EMPTY! (f*ks with MigrateWebsiteTo4 otherwise).
 	$dbSetup = $director->getProp('SetupDb');
+	$theTableCount = Strings::toInt(SqlBuilder::withModel($dbSetup)
+		->add('SELECT COUNT(DISTINCT `table_name`) FROM `information_schema`.`columns` WHERE `table_schema` =')
+		->add("'{$theData->dbname}'")
+		->query()->fetchColumn()
+	);
+	if ( empty($theTableCount) )
 	try {
 		$theMsg = "Attempting to create tables and default data.";
 		print($theMsg . PHP_EOL); Strings::debugLog($theMsg);
@@ -75,6 +82,10 @@ if ( isset($theCliOptions['b']) )  {
 		$theMsg = $x->getMessage();
 		print($theMsg . PHP_EOL); Strings::errorLog($theMsg);
 		exit(1);
+	}
+	else {
+		$theMsg = "Database exists with tables, will let other scripts deal with migration or schema updates.";
+		print($theMsg . PHP_EOL); Strings::debugLog($theMsg);
 	}
 }
 

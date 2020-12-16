@@ -105,7 +105,7 @@ trait WornForExportData
 			array_splice($aFieldList, $theIndex, 1);
 		}
 		if ( empty($aFieldList) ) {
-			$aFieldList = array_values(array_diff(static::getDefinedFields(), $aMapFieldList));
+			$aFieldList = array_values(array_diff(static::getDefaultExportFieldList(), $aMapFieldList));
 		}
 		if ( $bIncMapInfo ) {
 			$aFieldList = array_merge($aFieldList, $aMapFieldList);
