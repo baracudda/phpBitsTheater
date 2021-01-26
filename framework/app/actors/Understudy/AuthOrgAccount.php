@@ -994,67 +994,72 @@ class AuthOrgAccount extends BaseActor
 			}
 
 			// Update account group, if applicable.
-			$theRoleList = ( !empty($v->account_group_ids) ) ? $v->account_group_ids : array();
-			$myRoleList = ( !empty($theAuthAccount->groups) ) ? $theAuthAccount->groups : array();
-			$myEditableRoles = array_intersect($myRoleList, $this->getAssignableRoleIDs());
-			$theRemovedRoles = array_diff($myEditableRoles, $theRoleList);
-			$theAddedRoles = array_diff($theRoleList, $myEditableRoles);
-			//$this->logStuff(__METHOD__, ' rolesEdited=', $theRoleList);//DEBUG
-			//$this->logStuff(__METHOD__, ' rolesOnAcct=', $myEditableRoles);//DEBUG
-			//$this->logStuff(__METHOD__, ' roles2rem=', $theRemovedRoles);//DEBUG
-			//$this->logStuff(__METHOD__, ' roles2add=', $theAddedRoles);//DEBUG
-			$theAddedRoles = array_diff($theRoleList, $myEditableRoles);
-			if ( !empty($theRemovedRoles) ) {
-				// First we want to remove existing mappings of group ids for this account.
-				foreach ($theRemovedRoles as $theRemovedRoleID) {
-					$dbAuthGroups->delMap($theRemovedRoleID, $theAuthAccount->auth_id);
+			if ( isset($v->account_group_ids) ) {
+				$theRoleList = ( !empty($v->account_group_ids) ) ? $v->account_group_ids : array();
+				$myRoleList = ( !empty($theAuthAccount->groups) ) ? $theAuthAccount->groups : array();
+				$myEditableRoles = array_intersect($myRoleList, $this->getAssignableRoleIDs());
+				$theRemovedRoles = array_diff($myEditableRoles, $theRoleList);
+				$theAddedRoles = array_diff($theRoleList, $myEditableRoles);
+				//$this->logStuff(__METHOD__, ' rolesEdited=', $theRoleList);//DEBUG
+				//$this->logStuff(__METHOD__, ' rolesOnAcct=', $myEditableRoles);//DEBUG
+				//$this->logStuff(__METHOD__, ' roles2rem=', $theRemovedRoles);//DEBUG
+				//$this->logStuff(__METHOD__, ' roles2add=', $theAddedRoles);//DEBUG
+				$theAddedRoles = array_diff($theRoleList, $myEditableRoles);
+				if ( !empty($theRemovedRoles) ) {
+					// First we want to remove existing mappings of group ids for this account.
+					foreach ($theRemovedRoles as $theRemovedRoleID) {
+						$dbAuthGroups->delMap($theRemovedRoleID, $theAuthAccount->auth_id);
+					}
 				}
-			}
-			if ( !empty($theAddedRoles) ) {
-				// Now insert mapping of account with updated group id values.
-				foreach ($theAddedRoles as $theAddedRoleID) {
-					$dbAuthGroups->addMap($theAddedRoleID, $theAuthAccount->auth_id);
+				if ( !empty($theAddedRoles) ) {
+					// Now insert mapping of account with updated group id values.
+					foreach ($theAddedRoles as $theAddedRoleID) {
+						$dbAuthGroups->addMap($theAddedRoleID, $theAuthAccount->auth_id);
+					}
 				}
 			}
 			
 			// update AuthOrg info, if different
-			$theOrgList = ( !empty($v->account_org_ids) ) ? $v->account_org_ids : array();
-			$myOrgList = ( !empty($theAuthAccount->org_ids) ) ? $theAuthAccount->org_ids : array();
-			$theRemovedOrgs = array_diff($myOrgList, $theOrgList);
-			$theAddedOrgs = array_diff($theOrgList, $myOrgList);
-			//$this->logStuff(__METHOD__, ' orgsEdited=', $theOrgList);//DEBUG
-			//$this->logStuff(__METHOD__, ' orgsOnAcct=', $myOrgList);//DEBUG
-			//$this->logStuff(__METHOD__, ' orgs2rem=', $theRemovedOrgs);//DEBUG
-			//$this->logStuff(__METHOD__, ' orgs2add=', $theAddedOrgs);//DEBUG
-			//removed orgs can just be safely removed
-			if ( !empty($theRemovedOrgs) ) {
-				foreach( $theRemovedOrgs as $theRemovedOrg ) {
-					$theRolesToRemove = $dbAuthGroups->getAuthGroupsForOrg(true, $theRemovedOrg)->fetchAll();
-					if ( !empty($theRolesToRemove) ) {
-						$dbAuthGroups->delMap(array_column($theRolesToRemove, 'group_id'), $theAuthAccount->auth_id);
-					}
-				}
-				$dbAuth->delOrgsForAuth($theAuthAccount->auth_id, $theRemovedOrgs);
-			}
-			if ( !empty($theAddedOrgs) ) {
-				//limit org list to only ones I can access, unless I have permission
-				if ( !$this->isAllowed('auth_orgs', 'transcend') ) {
-					$theLimitedOrgSet = $this->getOrgs();
-					if ( !empty($theLimitedOrgSet) ) {
-						$theLimitedOrgs = array();
-						while ( ($theOrg = $theLimitedOrgSet->fetch()) !== false ) {
-							$theLimitedOrgs[] = $theOrg->org_id;
-						}
-						$theOrgsToAdd = array_intersect($theAddedOrgs, $theLimitedOrgs);
-						if ( !empty($theOrgsToAdd) ) {
-							$dbAuth->addOrgsToAuth($theAuthAccount->auth_id, $theOrgsToAdd);
+			if ( isset($v->account_org_ids) ) {
+				$theOrgList = ( !empty($v->account_org_ids) ) ? $v->account_org_ids : array();
+				$myOrgList = ( !empty($theAuthAccount->org_ids) ) ? $theAuthAccount->org_ids : array();
+				$theRemovedOrgs = array_diff($myOrgList, $theOrgList);
+				$theAddedOrgs = array_diff($theOrgList, $myOrgList);
+				//$this->logStuff(__METHOD__, ' orgsEdited=', $theOrgList);//DEBUG
+				//$this->logStuff(__METHOD__, ' orgsOnAcct=', $myOrgList);//DEBUG
+				//$this->logStuff(__METHOD__, ' orgs2rem=', $theRemovedOrgs);//DEBUG
+				//$this->logStuff(__METHOD__, ' orgs2add=', $theAddedOrgs);//DEBUG
+				//removed orgs can just be safely removed
+				if ( !empty($theRemovedOrgs) ) {
+					foreach( $theRemovedOrgs as $theRemovedOrg ) {
+						$theRolesToRemove = $dbAuthGroups->getAuthGroupsForOrg(true, $theRemovedOrg)->fetchAll();
+						if ( !empty($theRolesToRemove) ) {
+							$dbAuthGroups->delMap(array_column($theRolesToRemove, 'group_id'), $theAuthAccount->auth_id);
 						}
 					}
+					$dbAuth->delOrgsForAuth($theAuthAccount->auth_id, $theRemovedOrgs);
 				}
-				else {
-					$dbAuth->addOrgsToAuth($theAuthAccount->auth_id, $theAddedOrgs);
+				if ( !empty($theAddedOrgs) ) {
+					//limit org list to only ones I can access, unless I have permission
+					if ( !$this->isAllowed('auth_orgs', 'transcend') ) {
+						$theLimitedOrgSet = $this->getOrgs();
+						if ( !empty($theLimitedOrgSet) ) {
+							$theLimitedOrgs = array();
+							while ( ($theOrg = $theLimitedOrgSet->fetch()) !== false ) {
+								$theLimitedOrgs[] = $theOrg->org_id;
+							}
+							$theOrgsToAdd = array_intersect($theAddedOrgs, $theLimitedOrgs);
+							if ( !empty($theOrgsToAdd) ) {
+								$dbAuth->addOrgsToAuth($theAuthAccount->auth_id, $theOrgsToAdd);
+							}
+						}
+					}
+					else {
+						$dbAuth->addOrgsToAuth($theAuthAccount->auth_id, $theAddedOrgs);
+					}
 				}
 			}
+			
 			$theRowSet = $this->searchAuthAccountSet(array('auth_id' => $theAuthAccount->auth_id));
 			/* @var $theResult AuthAccount */
 			$theResult = $theRowSet->fetch();
