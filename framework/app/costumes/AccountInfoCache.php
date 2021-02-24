@@ -1,7 +1,7 @@
 <?php
 
 namespace BitsTheater\costumes ;
-use BitsTheater\costumes\Wardrobe\CacheForAuthAccountInfo as BaseCostume ;
+use BitsTheater\costumes\Wardrobe\CacheForAuthAccountInfo as BaseCostume;
 {//begin namespace
 
 /**

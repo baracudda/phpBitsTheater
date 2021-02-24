@@ -571,10 +571,10 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$theSql = SqlBuilder::withModel($this)
 			->startWith('INSERT INTO')->add($this->tnGroups);
 		$this->setAuditFieldsOnInsert($theSql);
-		$theSql->mustAddParam('group_id')
-			->mustAddParam('group_name')
-			->mustAddParam('parent_group_id')
-			->mustAddParam('org_id')
+		$theSql->mustAddParam('group_id', '__PLACEHOLDER__')
+			->mustAddParam('group_name', '__PLACEHOLDER__')
+			->mustAddParam('parent_group_id', '__PLACEHOLDER__')
+			->mustAddParam('org_id', '__PLACEHOLDER__')
 			//->logSqlDebug(__METHOD__, 'DEBUG')
 		;
 		$theDefaultData = array() ;
