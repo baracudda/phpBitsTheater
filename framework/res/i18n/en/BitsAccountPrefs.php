@@ -62,17 +62,23 @@ class BitsAccountPrefs extends BaseResources
 	
 	public $label_organization = array(
 			'default_org' => 'Default Organization',
-		);
+			'last_org' => 'Last Org Used',
+	);
 	
 	public $desc_organization = array(
 			'default_org' => 'Specifies the organization to which sessions should be linked upon initial login.',
-		);
+			'last_org' => 'Last Org they were in so they can get back there after re-login.',
+	);
 	
 	public $schema_organization = array(
 			'default_org' => array(
 					'type' => AccountPrefSpec::TYPE_OPTION_LIST
-				)
-		);
+			),
+			'last_org' => array(
+					'type' => AccountPrefSpec::TYPE_STRING,
+					'is_editable' => false,
+			),
+	);
 	
 	public $label_search_results = array(
 			'page_size' => 'Page Size',
@@ -123,7 +129,7 @@ class BitsAccountPrefs extends BaseResources
 	protected function generateListOfVisibleOrganizations( Director $aContext )
 	{
 		$dbAuth = $aContext->getProp( AuthModel::MODEL_NAME ) ;
-		$theAuthID = $aContext->account_info->auth_id ;
+		$theAuthID = (!empty($aContext->account_info->auth_id) ) ? $aContext->account_info->auth_id : null;
 		
 		if( empty($theAuthID) ) return $this->disableDefaultOrgList($dbAuth) ;
 		

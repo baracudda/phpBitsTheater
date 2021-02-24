@@ -1114,6 +1114,9 @@ implements ArrayAccess, IDirected
 		if ( !empty($this->mChiefUsher) ) {
 			$this->account_info = $this->mChiefUsher->createAccountInfoObj($aAcctInfo);
 		}
+		else if ( $aAcctInfo instanceof AccountInfoCache ) {
+			$this->account_info = $aAcctInfo;
+		}
 		return $this->account_info;
 	}
 	
@@ -1255,7 +1258,7 @@ implements ArrayAccess, IDirected
 					'~app/Actor\\.php\\(\\d+\\): call_user_func_array\\(Array, Array\\).+~',
 					'~Director->raiseCurtain\\(.+~',
 			);
-			$theReplacements = array_fill(0, count($thePatterns), '…[snip-parse-URL]…');
+			$theReplacements = array_fill(0, count($thePatterns), 'â€¦[snip-parse-URL]â€¦');
 			$c = 0;
 			$theStr = preg_replace($thePatterns, $theReplacements, $theStr, 1, $c);
 		}
