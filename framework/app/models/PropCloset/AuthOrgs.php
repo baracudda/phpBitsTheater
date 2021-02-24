@@ -755,6 +755,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 				$theDefaultOrgID = $dbPrefs->getPreference(
 						$aAuthAccount->auth_id, 'organization', 'default_org'
 				);
+				//if no default org, see if we have a "last accessed" org.
+				if ( empty($theDefaultOrgID) ) {
+					$theDefaultOrgID = $dbPrefs->getPreference(
+							$aAuthAccount->auth_id, 'organization', 'last_org'
+					);
+				}
 				$this->returnProp($dbPrefs);
 			}
 			if ( !empty($theDefaultOrgID) && $theDefaultOrgID != static::ORG_ID_4_ROOT ) {
@@ -927,8 +933,6 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	public function setCurrentOrg( $aOrgRow=null )
 	{
-		$theAcctInfo = $this->getDirector()->getMyAccountInfo();
-		if ( empty($theAcctInfo) ) return; //trivial
 		//$this->logStuff(__METHOD__, ' switch2org=', $aOrgRow); //DEBUG
 		if ( !empty($aOrgRow) && !empty($aOrgRow['dbconn']) ) {
 			$theOrg = AuthOrg::getInstance($this, $aOrgRow);
@@ -939,23 +943,10 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$theOrgID = null;
 		}
 		$this->getDirector()->setPropDefaultOrg($theOrgID);
-		//if the org indeed changed from what our account had before, do some stuff
-		if ( (empty($theOrg) && !empty($theAcctInfo->mSeatingSection)) || //root vs non-root
-			(!empty($theOrg) && empty($theAcctInfo->mSeatingSection)) ||  //non-root vs root
-			(!empty($theOrg) && !empty($theAcctInfo->mSeatingSection) &&  //non-root for both, compare IDs
-					$theOrg->org_id != $theAcctInfo->mSeatingSection->org_id
-			)
-		) {
-			//ensure we store the current org
-			$theAcctInfo->setSeatingSection($theOrg);
-			// (#6288) Need to reload groups as well, since we may have switched orgs
-			$theAcctInfo->loadGroupsList();
-			if( $this->isAccountInSessionCache() )
-			{ // Ensure that the session's account cache is really updated.
-				$this->saveAccountToSessionCache($theAcctInfo);
-			}
-			// Ensure that the if cookies are used, we save org info, too.
-			$this->updateCookieForOrg($theOrg);
+		
+		$theAcctInfo = $this->getDirector()->getMyAccountInfo();
+		if ( !empty($theAcctInfo) ) {
+			$theAcctInfo->onChangeOrg($theOrg);
 		}
 		return $this;
 	}

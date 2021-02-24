@@ -20,7 +20,8 @@ use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\costumes\AuthOrg;
 use BitsTheater\costumes\WornForExportData as ExportDataTrait;
 use BitsTheater\costumes\colspecs\CommonMySql;
-use BitsTheater\models\Auth as AuthDB;
+use BitsTheater\models\Auth as AuthModel;
+use BitsTheater\models\AccountPrefs as AuthPrefsModel;
 use com\blackmoonit\Strings;
 {//namespace begin
 
@@ -60,6 +61,14 @@ class CacheForAuthAccountInfo extends BaseCostume
 		$this->mExportTheseFields = $aFieldList;
 	}
 
+	/** @return AuthModel Returns the database model reference. */
+	protected function getAuthModel()
+	{ return $this->getProp(AuthModel::MODEL_NAME); }
+	
+	/** @return AuthPrefsModel Returns the database model reference. */
+	protected function getAuthPrefsModel()
+	{ return $this->getProp(AuthPrefsModel::MODEL_NAME); }
+	
 	/**
 	 * Copies values into matching property names
 	 * based on the array keys or object property names.
@@ -96,7 +105,7 @@ class CacheForAuthAccountInfo extends BaseCostume
 		unset($o->mSeatingSection);
 		if ( !empty($this->mSeatingSection) )
 		{ $o->curr_org = $this->mSeatingSection->exportData(); }
-		$dbAuth = $this->getProp(AuthDB::MODEL_NAME);
+		$dbAuth = $this->getAuthModel();
 		switch ($dbAuth->dbType()) {
 			case $dbAuth::DB_TYPE_MYSQL:
 				$o->last_seen_ts = CommonMySql::convertSQLTimestampToISOFormat($o->last_seen_ts);
@@ -135,7 +144,7 @@ class CacheForAuthAccountInfo extends BaseCostume
 			return $this->mSeatingSection->org_id;
 		}
 		else {
-			return AuthDB::ORG_ID_4_ROOT;
+			return AuthModel::ORG_ID_4_ROOT;
 		}
 	}
 	
@@ -152,9 +161,9 @@ class CacheForAuthAccountInfo extends BaseCostume
 				return $this->mSeatingSection->parent_org_id;
 			}
 			else if ( !empty($this->mSeatingSection->org_id) &&
-					$this->mSeatingSection->org_id != AuthDB::ORG_ID_4_ROOT )
+					$this->mSeatingSection->org_id != AuthModel::ORG_ID_4_ROOT )
 			{
-				return AuthDB::ORG_ID_4_ROOT;
+				return AuthModel::ORG_ID_4_ROOT;
 			}
 		}
 		return null;
@@ -178,6 +187,50 @@ class CacheForAuthAccountInfo extends BaseCostume
 			$this->returnProp($dbAuthGroups);
 			// (#6288) Now check a permission to kickstart regeneration of rights.
 			$this->isAllowed('auth_orgs', 'transcend');
+		}
+		return $this;
+	}
+	
+	/**
+	 * The state for "current org" is changing for an account.
+	 * @param AuthOrg $aOrg - the new org.
+	 * @return $this Returns $this for chaining.
+	 */
+	protected function doWhenChangeOrg( AuthOrg $aNewOrg=null )
+	{
+		$dbAuth = $this->getAuthModel();
+		//ensure we store the current org
+		$this->setSeatingSection($aNewOrg);
+		// (#6288) Need to reload groups as well, since we may have switched orgs
+		$this->loadGroupsList();
+		if( $dbAuth->isAccountInSessionCache() )
+		{ // Ensure that the session's account cache is really updated.
+			$dbAuth->saveAccountToSessionCache($this);
+		}
+		// Ensure that the if cookies are used, we save org info, too.
+		$dbAuth->updateCookieForOrg($aNewOrg);
+		//save which org we last accessed.
+		$dbAuthPrefs = $this->getAuthPrefsModel();
+		$theOrgID = ( !empty($aNewOrg->org_id) ) ? $aNewOrg->org_id : AuthModel::ORG_ID_4_ROOT;
+		$dbAuthPrefs->setPreference($this->auth_id, 'organization', 'last_org', $theOrgID);
+		$this->returnProp($dbAuthPrefs);
+	}
+	
+	/**
+	 * The system is switching to a different org, see if we should act.
+	 * @param AuthOrg $aNewOrg - the new org.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function onChangeOrg( AuthOrg $aNewOrg=null )
+	{
+		//if the org indeed changed from what our account had before, do some stuff
+		if ( (empty($aNewOrg) && !empty($this->mSeatingSection)) || //root vs non-root
+			(!empty($aNewOrg) && empty($this->mSeatingSection)) ||  //non-root vs root
+			(!empty($aNewOrg) && !empty($this->mSeatingSection) &&  //non-root for both, compare IDs
+					$aNewOrg->org_id != $this->mSeatingSection->org_id
+			)
+		) {
+			$this->doWhenChangeOrg($aNewOrg);
 		}
 		return $this;
 	}

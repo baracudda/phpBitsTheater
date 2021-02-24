@@ -154,7 +154,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 			
 			// Now continue building the query.
 			$theSql->mustAddParam('group_id', 0, PDO::PARAM_INT);
-			$theSql->mustAddParam('group_name');
+			$theSql->mustAddParam('group_name', '__PLACEHOLDER__');
 			try {
 				$theSql->execMultiDML($theDefaultData);
 			} catch (PDOException $pdoe) {

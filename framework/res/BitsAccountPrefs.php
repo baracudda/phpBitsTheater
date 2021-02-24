@@ -83,7 +83,10 @@ class BitsAccountPrefs extends BaseResources
 	 * Organization-related preferences.
 	 * @var string[]
 	 */
-	public $enum_organization = array( 'default_org' ) ;
+	public $enum_organization = array(
+			'default_org',
+			'last_org',
+	) ;
 	
 	/**
 	 * Preferences related to the display of search results.
