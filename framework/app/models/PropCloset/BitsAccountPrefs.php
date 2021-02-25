@@ -535,6 +535,30 @@ implements IFeatureVersioning
 //		$this->debugLog( __METHOD__ . ' [TRACE] Resolved preferences for [' . $aAuthID . ']: ' . json_encode($theProfile) ) ;
 		return $theProfile ;
 	}
-}
 
-}
+	/**
+	 * Deletes all of the account's preferences.
+	 * @param string $aAuthID - the auth_id of the account.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function deletePreferences( $aAuthID )
+	{
+		if ( empty($aAuthID) ) {
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_MISSING_ARGUMENT, 'auth_id');
+		}
+		$theSql = SqlBuilder::withModel($this)
+			->startWith('DELETE FROM')->add($this->tnAccountPrefs)
+			->startWhereClause()
+			->mustAddParam('auth_id', $aAuthID)
+			->endWhereClause()
+			//->logSqlDebug(__METHOD__, ' [TRACE] ')
+			;
+		try { $theSql->execDML(); }
+		catch( \PDOException $pdox ) {
+			$this->handleDatabaseException($pdox, __METHOD__, null, $theSql);
+		}
+	}
+	
+}//end class
+
+}//end namespace

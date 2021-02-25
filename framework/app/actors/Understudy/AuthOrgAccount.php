@@ -25,6 +25,7 @@ use BitsTheater\costumes\AuthAccountSet;
 use BitsTheater\costumes\AuthGroupList;
 use BitsTheater\costumes\AuthGroupSet;
 use BitsTheater\costumes\AuthOrgSet;
+use BitsTheater\costumes\LogMessage as Logger;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForAuditFields;
 use BitsTheater\costumes\CursorCloset\AuthOrg ;
@@ -88,6 +89,10 @@ class AuthOrgAccount extends BaseActor
 	 */
 	protected function getAuthGroupsModel()
 	{ return $this->getProp(AuthGroupsDB::MODEL_NAME); }
+	
+	/** @return PrefsDB Returns the database model reference. */
+	protected function getAuthPrefsModel()
+	{ return $this->getProp(PrefsDB::MODEL_NAME); }
 	
 	/**
 	 * Fetches an instance of the model usually accessed by this actor, granting
@@ -1454,25 +1459,76 @@ class AuthOrgAccount extends BaseActor
 		$theResponse->is_active = $bActive ;
 		$this->setApiResults($theResponse);
 	}
+	
+	/**
+	 * Delete account data. A transaction will be in place before this method
+	 * is called, so descendants overriding this need not worry about it.
+	 * @param AuthAccount $aAuthAccount - the account to be removed.
+	 * @return $this Returns $this for chaining.
+	 */
+	protected function doDeleteAccount( AuthAccount $aAuthAccount )
+	{
+		$this->deletePermissionData($aAuthAccount->account_id, $aAuthAccount->auth_id);
+		$dbAuthPrefs = $this->getAuthPrefsModel();
+		if ( !empty($dbAuthPrefs) ) {
+			$dbAuthPrefs->deletePreferences($aAuthAccount->auth_id);
+		}
+		$dbAuth = $this->getMyModel();
+		$dbAuth->deleteAuthAccount($aAuthAccount->auth_id);
+
+		$theLogMsg = Logger::withContext($this)->withInfo(array(
+				'action' => 'onAccountDelete',
+				'reason' => 'deletion successful',
+				'auth_id' => $aAuthAccount->auth_id,
+				'account_id' => $aAuthAccount->account_id,
+				'auth_name' => $aAuthAccount->account_name,
+				'auth_email' => $aAuthAccount->email,
+				'auth_imei' => $aAuthAccount->mapped_imei,
+				'deleted_by' => $this->getDirector()->getMyUsername(),
+		));
+		$theLogMsg->log();
+		return $this;
+	}
 
 	/**
 	 * (Override) As ABitsAccount::ajajDelete(), but also deletes data from the
-	 * auth tables.
-	 * @since BitsTheater 3.6
+	 * auth and authprefs tables.
+	 * @param int|string $aAccountIDorAuthID - (OPTIONAL) account_id or auth_id to delete.
+	 * @since BitsTheater 3.6 (auth_id added in 5.2.1)
 	 */
-	public function ajajDelete( $aAccountID=null )
+	public function ajajDelete( $aAccountIDorAuthID=null )
 	{
-		$theAccountID = $this->getRequestData($aAccountID, 'account_id');
-		$this->checkCanDeleteAccount($theAccountID);
-		$dbAuth = $this->getMyModel();
-		$theAuth = $dbAuth->getAuthByAccountID($theAccountID) ;
-		$theAuthID = $theAuth['auth_id'];
-		if ( !empty($theAuthID) ) {
-			// Each part of the chain happens only if the previous one succeeds.
-			$this->deletePermissionData($theAccountID, $theAuthID);
-			$dbAuth->deleteAuthAccount($theAuthID);
+		$theID = $this->getRequestData($aAccountIDorAuthID, 'account_id', false);
+		if ( empty($theID) ) {
+			$theID = $this->getRequestData(null, 'auth_id', false);
 		}
-		$this->scene->results = APIResponse::noContentResponse() ;
+		if ( empty($theID) ) {
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_MISSING_ARGUMENT, 'account_id or auth_id');
+		}
+		$dbAuth = $this->getMyModel();
+		if ( is_numeric($theID) ) {
+			$theAuthRow = $dbAuth->getAuthByAccountID($theID);
+		}
+		else {
+			$theAuthRow = $dbAuth->getAuthByAuthId($theID);
+		}
+		if ( empty($theAuthRow) ) {
+			throw BrokenLeg::toss($this, BrokenLeg::ACT_ENTITY_NOT_FOUND, $theID);
+		}
+		$theAuthAcct = AuthAccount::fetchInstanceFromRow($theAuthRow, $dbAuth, AuthAccount::getDefinedFields());
+		if ( !empty($theAuthAcct) && !empty($theAuthAcct->auth_id) && $this->checkCanDeleteAccount($theAuthAcct->account_id) ) {
+			$theSql = SqlBuilder::withModel($dbAuth);
+			$theSql->beginTransaction();
+			try {
+				$this->doDeleteAccount($theAuthAcct);
+				$theSql->commitTransaction();
+			}
+			catch ( \Exception $x ) {
+				$theSql->rollbackTransaction();
+				throw BrokenLeg::tossException($this, $x);
+			}
+		}
+		$this->setApiResultsAsNoContent();
 	}
 
 	/**
