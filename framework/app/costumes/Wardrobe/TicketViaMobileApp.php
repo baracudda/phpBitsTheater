@@ -1,6 +1,6 @@
 <?php
 namespace BitsTheater\costumes\Wardrobe;
-use BitsTheater\costumes\Wardrobe\TicketViaAuthHeaderBroadway as BaseCostume;
+use BitsTheater\costumes\venue\TicketViaAuthHeaderBroadway as BaseCostume;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\Scene;
 use com\blackmoonit\Strings;
@@ -26,11 +26,11 @@ class TicketViaMobileApp extends BaseCostume
 	 */
 	protected function getAuthHeaderData( Scene $aScene )
 	{
-		//Auth Header IS NOT SET because we do not have an account, yet
-		//  Most of the Auth Header data is in a POST param
-		if ( !empty($aScene->auth_header_data) ) {
-			return $aScene->auth_header_data;
+		$theAuthHdrData = Strings::getHttpHeaderValue('Authorization');
+		if ( empty($theAuthHdrData) && !empty($aScene->auth_header_data) ) {
+			$theAuthHdrData = $aScene->auth_header_data;
 		}
+		return $theAuthHdrData;
 	}
 	
 	/**
