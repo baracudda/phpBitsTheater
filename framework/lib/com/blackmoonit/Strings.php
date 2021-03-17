@@ -1020,6 +1020,19 @@ class Strings {
 		$fragment = isset($aParsedUrl['fragment']) ? "#{$aParsedUrl['fragment']}" : '';
 		return $scheme.$user.$pass.$host.$port.$path.$query.$fragment;
 	}
+	
+	/**
+	 * Many logging routines should redact sensitive info like passwords from curl URLs.
+	 * @param string $aURL - the URL to potentially redact user's password.
+	 * @return string Returns the redacted URL, typically for logging.
+	 */
+	static public function redactURL( $aURL ) {
+		$theParsedURL = parse_url($aURL);
+		if ( !empty($theParsedURL['pass']) ) {
+			$theParsedURL['pass'] = '[-REDACTED-]';
+		}
+		return self::recombineUrl($theParsedURL);
+	}
 
 	/**
 	 * If NULL, returns NULL, else returns the intval().
