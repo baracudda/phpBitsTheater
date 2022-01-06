@@ -103,6 +103,9 @@ class PropsMaster extends BaseCostume
 				$dbAuth = $this->getAuthModel();
 				$theOrg = $dbAuth->getOrganization($theOrgID);
 				$this->returnProp($dbAuth);
+				if ( !empty($theOrg) && !empty($theOrg['disabled_ts']) ) {
+					$theNewDbConnInfo->bIsOrgDisabled = true;
+				}
 				if ( !empty($theOrg) && !empty($theOrg['dbconn']) ) {
 					$theNewDbConnInfo->loadDbConnInfoFromString($theOrg['dbconn']);
 				}

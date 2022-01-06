@@ -83,10 +83,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 *  <li value="4">
 	 *    Add "comments" to accounts table.
 	 *  </li>
+	 *  <li value="5">
+	 *    Add disabled_by and _ts to orgs table.
+	 *  </li>
 	 * </ol>
 	 * @var integer
 	 */
-	const FEATURE_VERSION_SEQ = 4; //always ++ when making db schema changes
+	const FEATURE_VERSION_SEQ = 5; //always ++ when making db schema changes
 
 	const TYPE = 'multitenant';
 	const ALLOW_REGISTRATION = true;
@@ -197,6 +200,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * @see AuthOrgs::getMaxLoginAttempts()
 	 */
 	protected $mMaxLoginAttempts; //cache for config setting value
+	
+	/**
+	 * Ensure SQL is written backwards compatible if no org disabled_* fields exist.
+	 * @var boolean
+	 */
+	protected $bIsOrgDisabledAvailable = false;
 
 	public function setupAfterDbConnected()
 	{
@@ -209,6 +218,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		//backwards compatible aliases
 		$this->tnAccounts = $this->tbl_.static::TABLE_Accounts;
 		$this->tnAuth = $this->tbl_.static::TABLE_Auth;
+		
+		//flags in case code is running before schema has been updated
+		$this->bIsOrgDisabledAvailable = $this->isFieldExists('disabled_ts', $this->tnAuthOrgs);
 	}
 
 	/**
@@ -298,6 +310,8 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 						', parent_org_id ' . CommonMySql::TYPE_UUID . ' NULL' .
 						', parent_authgroup_id ' . CommonMySql::TYPE_UUID . ' NULL' .
 						', dbconn VARCHAR(1020) NULL' .
+						', `disabled_by` ' . CommonMySql::ACCOUNT_NAME_SPEC .
+						', `disabled_ts` timestamp NULL DEFAULT NULL' .
 						', ' . CommonMySql::getAuditFieldsForTableDefSql() .
 						', PRIMARY KEY (org_id)' .
 						', KEY (parent_org_id)' .
@@ -414,6 +428,15 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 				);
 			}
 			case ( $theSeq < 5 ):
+			{
+				$this->addFieldToTable(5, 'disabled_by', $this->tnAuthOrgs,
+						'`disabled_by` ' . CommonMySql::ACCOUNT_NAME_SPEC,
+				);
+				$this->addFieldToTable(5, 'disabled_ts', $this->tnAuthOrgs,
+						'`disabled_ts` timestamp NULL DEFAULT NULL',
+				);
+			}
+			case ( $theSeq < 6 ):
 			{
 				// Next update goes here.
 			}
@@ -766,12 +789,17 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			if ( !empty($theDefaultOrgID) && $theDefaultOrgID != static::ORG_ID_4_ROOT ) {
 				if ( $bCanTranscend || $this->isAccountMappedToOrg($aAuthAccount->auth_id, $theDefaultOrgID) ) {
 					$theOrgRow = $this->getOrganization($theDefaultOrgID);
-					$aAuthAccount->setSeatingSection($theOrgRow);
-					$this->logStuff($aAuthAccount->account_name,
-							' logging in to ORG_ID [', $theDefaultOrgID, ']',
-							', "', $theOrgRow['org_name'], '/', $theOrgRow['org_title'], '"'
-					);
-					return $this;
+					if ( empty($theOrgRow['disabled_ts']) ) {
+						$aAuthAccount->setSeatingSection($theOrgRow);
+						$this->logStuff($aAuthAccount->account_name,
+								' logging in to ORG_ID [', $theDefaultOrgID, ']',
+								', "', $theOrgRow['org_name'], '/', $theOrgRow['org_title'], '"'
+						);
+						return $this;
+					}
+					else {
+						$theDefaultOrgID = null;
+					}
 				}
 			}
 			// No user preference found or not allowed to default to selected org.
@@ -1087,6 +1115,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	public function getOrganization( $aOrgID, $aFieldList=null )
 	{
+		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			$aFieldList = array_diff($aFieldList, array(
+					'disabled_ts',
+					'disabled_by',
+			));
+		}
 		$theSql = SqlBuilder::withModel( $this );
 		$theSql->startWith('SELECT')->addFieldList($aFieldList)
 			->add('FROM')->add($this->tnAuthOrgs)
@@ -1106,6 +1140,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	public function getOrgsCursor( $aFieldList=null )
 	{
+		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			$aFieldList = array_diff($aFieldList, array(
+					'disabled_ts',
+					'disabled_by',
+			));
+		}
 		$theSql = SqlBuilder::withModel( $this );
 		$theSql->startWith('SELECT')->addFieldList($aFieldList)
 			->add('FROM')->add($this->tnAuthOrgs)
@@ -1136,6 +1176,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$this->errorLog( __METHOD__ . ' was called with no org name.' ) ;
 			return false ;
 		}
+		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			$aFieldList = array_diff($aFieldList, array(
+					'disabled_ts',
+					'disabled_by',
+			));
+		}
 		$theSql = SqlBuilder::withModel($this)
 			->startWith( 'SELECT' )->addFieldList( $aFieldList )
 			->add( 'FROM' )->add( $this->tnAuthOrgs )
@@ -1163,6 +1209,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function getOrganizationsToDisplay(ISqlSanitizer $aSqlSanitizer=null,
 			SqlBuilder $aFilter=null, $aFieldList=null)
 	{
+		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			$aFieldList = array_diff($aFieldList, array(
+					'disabled_ts',
+					'disabled_by',
+			));
+		}
 		$theSql = SqlBuilder::withModel($this)->setSanitizer($aSqlSanitizer)
 			->startWith('SELECT')->addFieldList($aFieldList)
 			->add('FROM')->add($this->tnAuthOrgs)
@@ -1206,7 +1258,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
-	 * For a given auth id, return all organizations that are mapped to it.
+	 * For a given auth id, return all organizations that are mapped to it; excludes disabled_ts NOT NULL orgs.
 	 * @param array/string $aAuthId - UUID string for a single auth id or array of several ids.
 	 * @param array/string $aFieldList - (optional) which fields to return, default is all of them.
 	 * @param SqlBuilder $aFilter - (optional) specifies restrictions on data to return
@@ -1218,11 +1270,24 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	{
 		if( empty ($aFieldList ) )
 			$aFieldList = array( 'org.*' );
+		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			$aFieldList = array_diff($aFieldList, array(
+					'disabled_ts',
+					'disabled_by',
+					'org.disabled_ts',
+					'org.disabled_by',
+			));
+		}
 		$theSql = SqlBuilder::withModel( $this )
 			->startWith('SELECT')->addFieldList( $aFieldList )
 			->add('FROM')->add($this->tnAuthOrgs)->add('AS org')
 			->add('JOIN')->add($this->tnAuthOrgMap)->add('AS map USING (org_id)')
-			->startWhereClause(' map.')->mustAddParam('auth_id', $aAuthId)
+			->startWhereClause()->add('WHERE 1')
+			;
+		if ( $this->bIsOrgDisabledAvailable ) {
+			$theSql->setParamPrefix(' AND org.')->mustAddParam('disabled_ts', null);
+		}
+		$theSql->setParamPrefix(' AND map.')->mustAddParam('auth_id', $aAuthId)
 			->setParamPrefix(' AND ')->applyFilter($aFilter)
 			->endWhereClause()
 			;
@@ -1309,6 +1374,14 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			//->mustAddParam('dbconn') immutable since we do not change the dbconn
 			->addParamIfDefined('parent_org_id')
 			->addParamIfDefined('parent_authgroup_id')
+			;
+		if ( $this->bIsOrgDisabledAvailable ) {
+			$theSql
+				->addParamIfDefined('disabled_ts')
+				->addParamIfDefined('disabled_by')
+				;
+		}
+		$theSql
 			->startWhereClause()->mustAddParam('org_id')->endWhereClause()
 			;
 		$this->checkIsNotEmpty('org_id', $theSql->getParam('org_id'));
@@ -1399,6 +1472,12 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function getOrgChildrenForOrgCursor( $aOrgID, $aFieldList=null,
 			$aFilter=null, $aSortList=null )
 	{
+		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			$aFieldList = array_diff($aFieldList, array(
+					'disabled_ts',
+					'disabled_by',
+			));
+		}
 		$theSql = SqlBuilder::withModel($this)
 			->startWith('SELECT')->addFieldList($aFieldList)
 			->add('FROM')->add($this->tnAuthOrgs)
@@ -2693,11 +2772,14 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function isPermissionAllowed( $aNamespace, $aPermission,
 			AccountInfoCache $aAcctInfo=null )
 	{
+		//first, check to see if org is deactivated
+		if ( !empty($aAcctInfo->mSeatingSection) && !empty($aAcctInfo->mSeatingSection->disabled_ts) ) {
+			return false;
+		}
+		
 		if ( empty($this->dbPermissions) )
-		{ $this->dbPermissions = $this->getProp(AuthGroupsDB::MODEL_NAME); }
-		return $this->dbPermissions->isPermissionAllowed($aNamespace,
-				$aPermission, $aAcctInfo
-		);
+		{ $this->dbPermissions = $this->getAuthGroupsProp(); }
+		return $this->dbPermissions->isPermissionAllowed($aNamespace, $aPermission, $aAcctInfo);
 	}
 
 	/**
