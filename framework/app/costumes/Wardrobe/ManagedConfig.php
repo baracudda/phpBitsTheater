@@ -118,6 +118,7 @@ class ManagedConfig extends BaseCostume
 	/**
 	 * Create an instance for use.
 	 * @param IDirected $aContext - the context to use.
+	 * @param $aURI - the URI for the managed config file.
 	 * @return $this Returns a new object for use.
 	 */
 	static public function getInstance( IDirected $aContext, $aURI )
@@ -253,7 +254,11 @@ class ManagedConfig extends BaseCostume
 			$theContentsAsUTF8 = mb_convert_encoding($aFileContents, 'UTF-8',
 					mb_detect_encoding($aFileContents, 'UTF-8, ISO-8859-1', true)
 			);
-			return json_decode($this->handleReplacements($theContentsAsUTF8));
+			$resp = json_decode($this->handleReplacements($theContentsAsUTF8));
+			if ( !$resp ) {
+				$this->logErrors(__METHOD__, ' [', $this->filename, '] JSON decode err: ', json_last_error_msg());
+			}
+			return $resp;
 		}
 		else {
 			return $this->handleReplacements($aFileContents);

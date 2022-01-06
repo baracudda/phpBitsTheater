@@ -208,7 +208,8 @@ class LogMessage extends BaseClass
 	public function toLogObject()
 	{
 		$theLog = new \stdClass() ;
-		$theLog->level = $this->getLevel();
+        $theLog->level_num = $this->getLevel();
+        $theLog->level = Strings::getLogLevelName($theLog->level_num);
 		$theLog->message = $this->getMessage();
 		$theLog->timestamp = $this->mTimestamp;
 		if ( !empty($this->mInfo) ) {
