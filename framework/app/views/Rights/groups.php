@@ -72,8 +72,9 @@ foreach ($v->groups as $theGroupID => $theGroup) {
 	if ($theGroupID==AuthGroupsDB::UNREG_GROUP_ID) {
 		$theGroupDesc = $v->getRes('permissions/display_group_0_desc');
 	}
-	if ( !empty($theGroup['parent_group_id']) ) {
-		$s = Strings::format($v->getRes('permissions/display_parent_group'),
+	if ( !empty($theGroup['parent_group_id']) && !empty($v->groups[$theGroup['parent_group_id']]) ) {
+		$s = Strings::format(
+				$v->getRes('permissions/display_parent_group'),
 				$v->groups[$theGroup['parent_group_id']]['group_name']
 		);
 		if (!empty($theGroupDesc)) {

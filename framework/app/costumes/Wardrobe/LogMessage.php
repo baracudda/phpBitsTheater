@@ -186,7 +186,16 @@ class LogMessage extends BaseClass
 		$theStr = ( $this->getLevel() == LOG_ERR ) ? Strings::errorPrefix() : Strings::debugPrefix();
 		if ( !empty($this->mInfo) ) {
 			foreach( $this->mInfo as $theKey => $theVal ) {
-				$theStr .= $theKey . '=[' . $theVal . '] ';
+				if ( is_string($theVal) || is_numeric($theVal) ) {
+					$theStr .= $theKey . '=[' . $theVal . '] ';
+					
+				}
+				else if ( $theVal == null ) {
+					$theStr .= $theKey . '=NULL ';
+				}
+				else {
+					$theStr .= $theKey . '={@see JSON} ';
+				}
 			}
 		}
 		return trim($theStr);
@@ -199,7 +208,8 @@ class LogMessage extends BaseClass
 	public function toLogObject()
 	{
 		$theLog = new \stdClass() ;
-		$theLog->level = $this->getLevel();
+        $theLog->level_num = $this->getLevel();
+        $theLog->level = Strings::getLogLevelName($theLog->level_num);
 		$theLog->message = $this->getMessage();
 		$theLog->timestamp = $this->mTimestamp;
 		if ( !empty($this->mInfo) ) {

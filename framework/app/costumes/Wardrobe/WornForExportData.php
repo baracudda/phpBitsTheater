@@ -138,13 +138,17 @@ trait WornForExportData
 	 * when specifically asked for and not just when null is passed in.
 	 * This method will remove these "expensive" fields as long as the
 	 * class defines them with RESTRICTED_EXPORT_FIELD_LIST.
+	 * @param string[] $aAddTheseFields - (OPTIONAL) addtional list of fields to get.
 	 * @return string[] Returns the list of default export fields.
 	 */
-	static public function getDefaultExportFieldList()
+	static public function getDefaultExportFieldList( $aAddTheseFields=null )
 	{
 		$theFieldList = static::getDefinedFields();
 		if ( !empty(static::$RESTRICTED_EXPORT_FIELD_LIST) ) {
 			$theFieldList = array_values(array_diff($theFieldList, static::$RESTRICTED_EXPORT_FIELD_LIST));
+		}
+		if ( is_array($aAddTheseFields) ) {
+			$theFieldList = array_merge($theFieldList, $aAddTheseFields);
 		}
 		return $theFieldList;
 	}

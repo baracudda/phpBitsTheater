@@ -184,18 +184,26 @@ Function.prototype.asCB = function(aContext) {
  * Pseudo-UUID, random + time "version 4" generated UUID.
  * @param {string} aGlue - (optional) defaults to "-".
  * @returns {String} v4 UUID.
- * @see http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
+ * @see https://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
  */
 BaseClass.prototype.createUUID = function(aGlue) {
-	var g = this.argOrDefault(aGlue,'-');
-	var d = new Date().getTime();
-	var s = 'xxxxxxxx'+g+'xxxx'+g+'4xxx'+g+'yxxx'+g+'xxxxxxxxxxxx';
-	var uuid = s.replace(/[xy]/g, function(c) {
-		var r = (d + Math.random()*16)%16 | 0;
-		d = Math.floor(d/16);
-		return (c==='x' ? r : (r&0x7|0x8)).toString(16);
-	});
-	return uuid;
+    var g = this.argOrDefault(aGlue, '-');
+    //use crypto module, if available
+    var bIsCryptoAvail = crypto; //crypto.subtle; use of crypto with http still preferred over Math.random()
+    if ( bIsCryptoAvail ) {
+        return ([1e7]+g+1e3+g+4e3+g+8e3+g+1e11).replace(/[018]/g,
+                c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+    }
+    //else use known weak Math.random() like in ancient times
+    var d = new Date().getTime();
+    var s = 'xxxxxxxx'+g+'xxxx'+g+'4xxx'+g+'yxxx'+g+'xxxxxxxxxxxx';
+    var uuid = s.replace(/[xy]/g, function(c) {
+        var r = (d + Math.random()*16)%16 | 0;
+        d = Math.floor(d/16);
+        return (c==='x' ? r : (r&0x7|0x8)).toString(16);
+    });
+    return uuid;
 };
 /*
  * Copyright (C) 2014 Blackmoon Info Tech Services

@@ -523,7 +523,57 @@ class Strings {
 		}
 		self::log(LOG_ERR, self::errorPrefix() . $theLogLine);
 	}
-
+	
+	/** LOG_level constant names. See getLogLevelName() */
+	static public $mLogLevelName = array(
+			LOG_ALERT => 'CRITICAL', //1
+			2, //no constants defined for this level
+			3, //no constants defined for this level
+			LOG_ERR => 'ERROR', //4
+			LOG_WARNING => 'WARNING', //5
+			LOG_INFO => 'INFO', //6, same level as LOG_DEBUG
+	);
+	
+	/**
+	 * Given a log level, get a more human readable name for its INT value.
+	 * @param $aLogLevel - one of the LOG_* level constants for syslog().
+	 * @return string The human readable name for the log level.
+	 */
+	static public function getLogLevelName( $aLogLevel )
+	{
+		if ( !empty($aLogLevel) && !empty(self::$mLogLevelName[$aLogLevel]) ) {
+			return self::$mLogLevelName[$aLogLevel];
+		}
+		else {
+			return 'UNKNOWN';
+		}
+	}
+	
+	/** @var ILogMsgToJSON Interface to object that will encode a JSON string for logging.  */
+	static public $mLogMsgToJSON = null;
+	
+	/**
+	 * Convert the string log message to a JSON string using custom app function or built-in one.
+	 * @param int $aLogLevel - one of the LOG_* level constants.
+	 * @param string $aMsg - the log message.
+	 * @param string $aTimestamp - the timestamp of the log.
+	 * @return string Returns the JSON structure to use.
+	 */
+	static public function logMsgToJSON( $aLogLevel, $aMsg, $aTimestamp )
+	{
+		if ( !empty(self::$mLogMsgToJSON) ) {
+			return self::$mLogMsgToJSON->logMsgToJSON($aLogLevel, $aMsg, $aTimestamp);
+		}
+		else {
+			return json_encode(array(
+					'level_name' => self::getLogLevelName($aLogLevel),
+					'level' => $aLogLevel,
+					'message' => $aMsg,
+					'timestamp' => $aTimestamp,
+			));
+		}
+	}
+	
 	/**
 	 * Writes log messages to the logging destination
 	 * Defaults to syslog unless $_ENV['LOG_PATH'] is set
@@ -574,8 +624,8 @@ class Strings {
 			// do we encode the log as JSON? Add a timestamp either way
 			$ts = gmdate("Y-m-d\TH:i:s\Z");
 			if ( !empty(self::$log_config['JSON']) && is_string($message) ) {
-				$theMsg = json_encode(array('level' => $theLevel, 'message' => $theMsg, 'timestamp' => $ts)) . PHP_EOL;
-			} else if ( !empty(self::$log_config['JSON']) ) {
+				$theMsg = self::logMsgToJSON($theLevel, $theMsg, $ts) . PHP_EOL;
+			} else if ( !empty(self::$log_config['JSON']) && is_callable(array($message, 'toJson')) ) {
 				$theMsg = $message->toJson() . PHP_EOL;;
 			} else {
 				$theMsg = '[' . $ts . ']: ' . $theMsg . PHP_EOL;
@@ -971,6 +1021,8 @@ class Strings {
 					$theHeaders[self::normalizeHttpHeaderName(
 							substr($theKey, 5)
 					)] = $theVal;
+				} else if ( $theKey == 'CONTENT_TYPE' || $theKey == 'CONTENT_LENGTH' ) {
+					$theHeaders[self::normalizeHttpHeaderName($theKey)] = $theVal;
 				}
 		   }
 		   return $theHeaders;
@@ -1019,6 +1071,19 @@ class Strings {
 		$query = isset($aParsedUrl['query']) ? "?{$aParsedUrl['query']}" : '';
 		$fragment = isset($aParsedUrl['fragment']) ? "#{$aParsedUrl['fragment']}" : '';
 		return $scheme.$user.$pass.$host.$port.$path.$query.$fragment;
+	}
+	
+	/**
+	 * Many logging routines should redact sensitive info like passwords from curl URLs.
+	 * @param string $aURL - the URL to potentially redact user's password.
+	 * @return string Returns the redacted URL, typically for logging.
+	 */
+	static public function redactURL( $aURL ) {
+		$theParsedURL = parse_url($aURL);
+		if ( !empty($theParsedURL['pass']) ) {
+			$theParsedURL['pass'] = '[-REDACTED-]';
+		}
+		return self::recombineUrl($theParsedURL);
 	}
 
 	/**
@@ -1165,5 +1230,16 @@ class Strings {
 if (version_compare(PHP_VERSION, '5.3.7') >= 0) {
 	Strings::$crypto_strength = '11';
 }
+
+interface ILogMsgToJSON {
+	/**
+	 * Given a log message, return it encoded as a JSON string.
+	 * @param int $aLogLevel - one of the LOG_* level consts.
+	 * ...
+	 * @return string Returns the director in charge of the website.
+	 */
+	function logMsgToJSON( $aLogLevel, $aMsg, $aTimestamp );
+}
+
 
 }//end namespace

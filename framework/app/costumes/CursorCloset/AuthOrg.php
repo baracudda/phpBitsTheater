@@ -103,6 +103,8 @@ class AuthOrg extends BaseCostume
 	public $org_desc;
 	public $parent_org_id;
 	public $parent_authgroup_id;
+	public $disabled_ts;
+	public $disabled_by;
 	
 	//specifically excluded until we find a reason to include
 	//public $dbconn;

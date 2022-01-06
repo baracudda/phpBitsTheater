@@ -18,6 +18,7 @@
 namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\ABitsCostume as BaseCostume;
 use BitsTheater\costumes\IDirected;
+use BitsTheater\costumes\LogMessage as Logger;
 use BitsTheater\BrokenLeg;
 use com\blackmoonit\Strings;
 {//namespace begin
@@ -497,7 +498,7 @@ class CurlRequestBuilder extends BaseCostume
 	{
 		return array(
 			'[1/2] - ' . $this->mRequestMethod . ' ' .
-				'URL [' . $this->mURL, ']; req headers=[' .
+				'URL [' . Strings::redactURL($this->mURL), ']; req headers=[' .
 				$this->debugStr($this->mHeaders) .
 				']; request data=' .
 				$this->debugStr($this->mData)
@@ -531,6 +532,61 @@ class CurlRequestBuilder extends BaseCostume
 		foreach($theLines as $theLine) {
 			$this->logErrors(__METHOD__, ' ', $theLine);
 		}
+	}
+	
+	/**
+	 * Create a logger message with standard info.
+	 * @param mixed $aResponseData - the response data, if any.
+	 * @param string $aReason - the reaosn for this log message.
+	 * @return Logger Returns the Logger object with pre-set Curl info.
+	 */
+	public function getLogger( $aResponseData=null, $aReason='Curl')
+	{
+		$theRedactedURL = Strings::redactURL($this->mURL);
+		$logger = Logger::withContext($this)->withInfo(array(
+				'action' => "[{$this->mRequestMethod}]{$theRedactedURL}",
+				'reason' => $aReason,
+				'HTTP_code' => $this->mHttpCode,
+		));
+		if ( !empty($this->mHeaders) ) {
+			if ( !empty($this->mHeaders['Authorization']) ) {
+				$theRedactedHeaders = $this->mHeaders;
+				unset($theRedactedHeaders['Authorization']);
+				$logger->setInfo('req_headers', $theRedactedHeaders);
+			}
+			else {
+				$logger->setInfo('req_headers', $this->mHeaders);
+			}
+		}
+		if ( !empty($this->mData) ) {
+			$logger->setInfo('req_data', $this->mData);
+		}
+		if ( !empty($aResponseData) ) {
+			$logger->setInfo('response', $aResponseData);
+			if ( !empty($this->mCurlInfo) ) {
+				if ( !empty($this->mCurlInfo->url) ) {
+					//url is duplicate info and may also need redaction, just remove.
+					$theRedactedInfo = $this->mCurlInfo;
+					unset($theRedactedInfo->url);
+					$logger->setInfo('curl_info', $theRedactedInfo);
+				}
+				else {
+					$logger->setInfo('curl_info', $this->mCurlInfo);
+				}
+			}
+		}
+		if ( !empty($this->mResponseHeaders) ) {
+			$logger->setInfo('resp_headers', $this->mResponseHeaders);
+		}
+		$theAcctInfo = $this->getDirector()->getMyAccountInfo();
+		if ( !empty($theAcctInfo) ) {
+			$logger->withInfo(array(
+				'auth_id' => $theAcctInfo->auth_id,
+				'account_id' => $theAcctInfo->account_id,
+				'auth_name' => $theAcctInfo->account_name,
+			));
+		}
+		return $logger;
 	}
 	
 	/**

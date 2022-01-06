@@ -797,6 +797,15 @@ implements ArrayAccess, IDirected
 	public function freeRes() {
 		array_walk($this->_resMaster, function(&$n) {$n = null;} );
 	}
+	
+	/**
+	 * Method used to get the request Org ID either from a header, GET or POST data or what-have-you.
+	 * @return string Returns the request Org ID, if specified, else an empty string.
+	 */
+	public function getRequestOrgID()
+	{
+		return Strings::getHttpHeaderValue('X-Site-OrgID', (!empty($_GET['oid'])) ? $_GET['oid'] : '');
+	}
 
 	//===========================================================
 	//=                   LOGIN INFO                            =
@@ -813,9 +822,10 @@ implements ArrayAccess, IDirected
 			$this->mChiefUsher = Usher::withContext($this);
 			if ( !empty($this->mChiefUsher) ) {
 				//is an org ID specified and different from current?
-				if ( isset($_GET['oid']) && $_GET['oid'] != $this->getDbConnInfo()->mOrgID) {
-					$this->logStuff('changing org to oid=['.$_GET['oid'].']');
-					$this->mPropsMaster->getAuthModel()->setCurrentOrgByID($_GET['oid']);
+				$theSpecifiedOrgID = $this->getRequestOrgID();
+				if ( !empty($theSpecifiedOrgID) && $theSpecifiedOrgID != $this->getDbConnInfo()->mOrgID) {
+					$this->logStuff('changing org to oid=['.$theSpecifiedOrgID.']');
+					$this->mPropsMaster->getAuthModel()->setCurrentOrgByID($theSpecifiedOrgID);
 				}
 				//ok, now check their ticket
 				try {
@@ -823,9 +833,9 @@ implements ArrayAccess, IDirected
 				}
 				finally {
 					//$this->logStuff(__METHOD__, ' checking oid... current=[', $this->getDbConnInfo()->mOrgID, ']');
-					if ( isset($_GET['oid']) && $_GET['oid'] != $this->getDbConnInfo()->mOrgID) {
-						$this->logStuff('changing org to oid=['.$_GET['oid'].']');
-						$this->mPropsMaster->getAuthModel()->setCurrentOrgByID($_GET['oid']);
+					if ( !empty($theSpecifiedOrgID) && $theSpecifiedOrgID != $this->getDbConnInfo()->mOrgID) {
+						$this->logStuff('changing org to oid=['.$theSpecifiedOrgID.']');
+						$this->mPropsMaster->getAuthModel()->setCurrentOrgByID($theSpecifiedOrgID);
 					}
 				}
 			} else {
@@ -1100,7 +1110,7 @@ implements ArrayAccess, IDirected
 	 *    Returns NULL not logged in.
 	 */
 	public function getMyAccountInfo()
-	{ return $this->account_info; }
+	{ return ( property_exists($this, 'account_info') ) ? $this->account_info : null; }
 	
 	/**
 	 * Cache the non-sensitive account info for the currently

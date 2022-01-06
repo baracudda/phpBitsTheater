@@ -39,6 +39,8 @@ class DbConnInfo extends BaseDbConnInfo
 	public $bDbConnInfoLoaded = false;
 	/** @var string Used to mark a connection for a specific org. */
 	public $mOrgID = null;
+	/** @var boolean Used to determine if org is in a "read-only" state. */
+	public $bIsOrgDisabled = false;
 	
 	/**
 	 * Create the object and set the dbConnName, if not empty.

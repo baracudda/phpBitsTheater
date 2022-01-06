@@ -144,26 +144,31 @@ trait WornForRestService
 		$theRequest = CurlRequestBuilder::withURL($this, $aPostURL, $aAction)
 			->encodeDataAsJSON($aData)->setTimeout($aTimeout)
 			;
-		$theRawResponse = $theRequest->execute();
-		//$theRequest->logReqDebug($theRawResponse); //DEBUG
-		$theRespData = json_decode($theRawResponse) ;
-		if ( $theRequest->isResponseSuccessful() )
-		{ // Success!
-			$theResult->status = APIResponse::STATUS_SUCCESS ;
-			$theResult->data = $theRespData ;
+		try {
+			$theRawResponse = $theRequest->execute();
+			//$theRequest->logReqDebug($theRawResponse); //DEBUG
+			$theRespData = json_decode($theRawResponse) ;
+			if ( $theRequest->isResponseSuccessful() )
+			{ // Success!
+				$theResult->status = APIResponse::STATUS_SUCCESS ;
+				$theResult->data = $theRespData ;
+			}
+			else
+			{ // Failure!
+				$theResult->status = APIResponse::STATUS_FAILURE ;
+				$theResult->data = $theRespData ;
+				$theErrorMessage = $this->getRes('generic/errmsg_failure');
+				if( isset($theRespData->error) && isset($theRespData->error->message) )
+					$theErrorMessage = $theRespData->error->message ;
+				$theFailure = BrokenLeg::pratfall(strtoupper($this->getRes('generic/errmsg_failure')),
+						$theRequest->getResponseCode(), $theErrorMessage ) ;
+				$theResult->error = $theFailure ;
+			}
+			return $theResult ;
 		}
-		else
-		{ // Failure!
-			$theResult->status = APIResponse::STATUS_FAILURE ;
-			$theResult->data = $theRespData ;
-			$theErrorMessage = $this->getRes('generic/errmsg_failure');
-			if( isset($theRespData->error) && isset($theRespData->error->message) )
-				$theErrorMessage = $theRespData->error->message ;
-			$theFailure = BrokenLeg::pratfall(strtoupper($this->getRes('generic/errmsg_failure')),
-					$theRequest->getResponseCode(), $theErrorMessage ) ;
-			$theResult->error = $theFailure ;
+		finally {
+			$theRequest->closeRequest();
 		}
-		return $theResult ;
 	}
 	
 }//end class
