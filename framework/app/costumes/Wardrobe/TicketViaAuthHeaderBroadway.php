@@ -211,11 +211,10 @@ class TicketViaAuthHeaderBroadway extends BaseCostume
 	
 	/**
 	 * Descendants may wish to further scrutinize header information before allowing access.
-	 * @param array $aMobileRow - the mobile row data.
 	 * @param AccountInfoCache $aUserAccount - the user account data.
 	 *   If the account info has <code>is_active=false</code>, auth failed.
 	 */
-	protected function checkMobileCircumstances(AccountInfoCache $aAuthAccount)
+	protected function checkMobileCircumstances( AccountInfoCache $aAuthAccount )
 	{
 		//barring checking circumstances like if the GPS is outside
 		//  pre-determined bounds, we are authenticated!

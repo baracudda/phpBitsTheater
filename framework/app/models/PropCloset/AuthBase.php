@@ -122,9 +122,15 @@ abstract class AuthBase extends BaseModel {
 		//  set the domain attribute. Otherwise, what you end up with is ".domain"
 		//  which allows subdomains access.
 		$theDomain = null; //$_SERVER['SERVER_NAME'];
-		return setcookie($aName, $aValue, $aExpireTS,
-				BITS_URL, $theDomain, null, $bDoNotLetJsReadIt
+		$theCookieOpts = array(
+				'expires' => $aExpireTS,
+				'path' => BITS_URL,
+				'domain' => $theDomain,
+				'secure' => false,
+				'httponly' => $bDoNotLetJsReadIt,
+				'samesite' => 'Lax', //None (but will require secure=true), Lax, Strict
 		);
+		return setcookie($aName, $aValue, $theCookieOpts); //php7.3+ signature
 	}
 	
 	/**
