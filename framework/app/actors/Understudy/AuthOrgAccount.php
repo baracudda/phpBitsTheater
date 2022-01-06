@@ -2201,6 +2201,51 @@ class AuthOrgAccount extends BaseActor
 		return $theIterator->getAccountsToDisplay($theFilter);
 	}
 	
+	/**
+	 * Retrieve permission for given namespace/right (or a set of permissions).
+	 * @param string $aNS - (GET/POST) The namespace of the permission to check.
+	 * @param string $aRight - (GET/POST) The rigth within the namespace to check.
+	 * @return string Return the URL to redirect to, if any.
+	 */
+	public function ajajCheckPermission( $aNS=null, $aRight=null )
+	{
+		// Ensure view set to response in JSON format for this endpoint.
+		$this->viewToRender('results_as_json');
+		$thePerm = $this->getRequestData(null, 'permission', false);
+		$thePermList = null;
+		$thePermNS = $this->getRequestData($aNS, 'namespace', false);
+		$thePermRight = null;
+		if ( !empty($thePermNS) ) {
+			$thePermRight = $this->getRequestData($aRight, 'right', true);
+			$thePerm = $thePermNS.'/'.$thePermRight;
+		}
+		else {
+			$thePermList = $this->getRequestData(null, 'permissions', true);
+			if ( is_string($thePermList) ) {
+				$thePermList = array($thePermList);
+			}
+		}
+		try {
+			$theResults = array();
+			if ( !empty($thePerm) ) {
+				$theResults[$thePermNS] = array();
+				$theResults[$thePermNS][$thePermRight] = $this->isAllowed($thePermNS, $thePermRight);
+			}
+			else if ( !empty($thePermList) ) {
+				foreach ( $thePermList as $thePerm ) {
+					list($thePermNS, $thePermRight) = explode('/', $thePerm, 2);
+					if ( empty($theResults[$thePermNS]) ) {
+						$theResults[$thePermNS] = array();
+					}
+					$theResults[$thePermNS][$thePermRight] = $this->isAllowed($thePermNS, $thePermRight);
+				}
+			}
+			$this->setApiResults($theResults);
+		}
+		catch(Exception $x)
+		{ throw BrokenLeg::tossException($this, $x); }
+	}
+	
 }//end class
 
 }//end namespace
