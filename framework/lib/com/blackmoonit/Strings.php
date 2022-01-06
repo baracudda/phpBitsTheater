@@ -1021,6 +1021,8 @@ class Strings {
 					$theHeaders[self::normalizeHttpHeaderName(
 							substr($theKey, 5)
 					)] = $theVal;
+				} else if ( $theKey == 'CONTENT_TYPE' || $theKey == 'CONTENT_LENGTH' ) {
+					$theHeaders[self::normalizeHttpHeaderName($theKey)] = $theVal;
 				}
 		   }
 		   return $theHeaders;
