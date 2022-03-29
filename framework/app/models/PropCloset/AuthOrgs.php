@@ -1120,6 +1120,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function getOrganization( $aOrgID, $aFieldList=null )
 	{
 		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			if ( is_string($aFieldList) ) {
+				$aFieldList = explode(',', $aFieldList);
+			}
 			$aFieldList = array_diff($aFieldList, array(
 					'disabled_ts',
 					'disabled_by',
@@ -1145,6 +1148,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	public function getOrgsCursor( $aFieldList=null )
 	{
 		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			if ( is_string($aFieldList) ) {
+				$aFieldList = explode(',', $aFieldList);
+			}
 			$aFieldList = array_diff($aFieldList, array(
 					'disabled_ts',
 					'disabled_by',
@@ -1181,6 +1187,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			return false ;
 		}
 		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			if ( is_string($aFieldList) ) {
+				$aFieldList = explode(',', $aFieldList);
+			}
 			$aFieldList = array_diff($aFieldList, array(
 					'disabled_ts',
 					'disabled_by',
@@ -1214,6 +1223,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			SqlBuilder $aFilter=null, $aFieldList=null)
 	{
 		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			if ( is_string($aFieldList) ) {
+				$aFieldList = explode(',', $aFieldList);
+			}
 			$aFieldList = array_diff($aFieldList, array(
 					'disabled_ts',
 					'disabled_by',
@@ -1275,6 +1287,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		if( empty ($aFieldList ) )
 			$aFieldList = array( 'org.*' );
 		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			if ( is_string($aFieldList) ) {
+				$aFieldList = explode(',', $aFieldList);
+			}
 			$aFieldList = array_diff($aFieldList, array(
 					'disabled_ts',
 					'disabled_by',
@@ -1477,6 +1492,9 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$aFilter=null, $aSortList=null )
 	{
 		if ( !$this->bIsOrgDisabledAvailable && !empty($aFieldList) ) {
+			if ( is_string($aFieldList) ) {
+				$aFieldList = explode(',', $aFieldList);
+			}
 			$aFieldList = array_diff($aFieldList, array(
 					'disabled_ts',
 					'disabled_by',
@@ -2900,7 +2918,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 			$this->debugLog( 'Password reset requested for [' . $aEmailAddr
 					. '] but no account for that email was found.' )
 					;
-			return false ;
+			throw PasswordResetException::toss($this->getDirector(), PasswordResetException::ACT_NO_ACCOUNT_OR_AUTH_ID);
 		}
 
 		$theResetUtils->getTokens() ;

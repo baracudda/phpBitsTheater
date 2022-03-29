@@ -91,11 +91,13 @@ class AuthPasswordReset extends BaseCostume
 			))
 			->add('LIMIT 1')
 			;
-		$theAuthRecord = $theSql->getTheRow() ;
-		$this->myEmailAddr = $aEmailAddr;
-		$this->myAccountID = $theAuthRecord['account_id'];
-		$this->myAuthID = $theAuthRecord['auth_id'];
-		return $this->myAccountID;
+		$theAuthRecord = $theSql->getTheRow();
+		if ( !empty($theAuthRecord) ) {
+			$this->myEmailAddr = $aEmailAddr;
+			$this->myAccountID = $theAuthRecord['account_id'];
+			$this->myAuthID = $theAuthRecord['auth_id'];
+			return $this->myAccountID;
+		}
 	}
 	
 	/** accessor */

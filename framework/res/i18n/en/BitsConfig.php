@@ -169,6 +169,7 @@ class BitsConfig extends BaseResources {
 			'pwd' => 'Password',
 			'security' => 'Security',
 			'default_from' => 'Default From: Address',
+			'actionTestEmail' => 'Send Test Email',
 	);
 	public $desc_email_out = array(
 			'host' => 'IP address of the outgoing mail host',
@@ -179,6 +180,7 @@ class BitsConfig extends BaseResources {
 				'Encryption protocol to use for outgoing messages (SSL or TLS)',
 			'default_from' =>
 				'Default email address from which messages are sent',
+			'actionTestEmail' => 'Send an email as a config test.',
 	);
 	public $input_email_out = array(
 			'host' => array(
@@ -215,6 +217,11 @@ class BitsConfig extends BaseResources {
 					'type' => ConfigSettingInfo::INPUT_STRING,
 					'default' => 'do-not-reply@yourdomain.com',
 					'is_editable' => true
+			),
+			'actionTestEmail' => array(
+					'type' => ConfigSettingInfo::INPUT_ACTION,
+					'placeholder' => 'Send Test Email',
+					'default' => '/api/config/testSendEmail',
 			),
 	);
 	
