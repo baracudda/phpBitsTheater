@@ -1604,7 +1604,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->db->beginTransaction() ;
 			try {
 				$nowAsUTC = $this->utc_now();
-				$theVerifiedTS = ($aUserData['verified_timestamp']==='now')
+				$theVerifiedTS = (strtolower(trim($aUserData['verified_timestamp']))=='now')
 						? $nowAsUTC
 						: $aUserData['verified_timestamp']
 				;

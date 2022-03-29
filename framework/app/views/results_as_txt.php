@@ -18,6 +18,7 @@ if (!headers_sent()) {
 	// disposition / encoding on response body
 	header("Content-Disposition: attachment;filename={$v->output_filename}");
 	header("Content-Transfer-Encoding: text");
+	header('X-Content-Type-Options: nosniff'); //IE & Edge only
 }
 if ($v->results) {
 	$theCSV = OutputToCSV::newInstance()->setInput($v->results);

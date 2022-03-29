@@ -371,6 +371,10 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 					return 2;
 				else if ( !$this->isFieldExists('comments', $this->tnAuthAccounts) )
 					return 3;
+				else if ( !$this->isFieldExists('disabled_by', $this->tnAuthOrgs) ||
+						  !$this->isFieldExists('disabled_ts', $this->tnAuthOrgs)
+						)
+					return 4;
 		}//switch
 		return static::FEATURE_VERSION_SEQ ;
 	}
@@ -638,7 +642,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		$this->checkNewAuthAccountInfo($theSql);
 		$theSql->startWith('INSERT INTO')->add($this->tnAuthAccounts);
 		$this->setAuditFieldsOnInsert($theSql);
-		if ( strtolower(trim($theSql->getParam('verified_ts')))=='now' ) {
+		if ( strtolower(trim($theSql->getParamValue('verified_ts')))=='now' ) {
 			$theSql->setParamValue('verified_ts',
 					$theSql->getParamValue('created_ts')
 			);

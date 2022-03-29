@@ -24,6 +24,7 @@ if (!headers_sent()) {
 	header("Content-Disposition: inline;filename={$v->output_filename}");
 	header('Content-type: text/calendar');
 	//header("Content-Transfer-Encoding: binary");
+	header('X-Content-Type-Options: nosniff'); //IE & Edge only
 }
 if ($v->results instanceof ICalendarEntry) {
 	$theICS = OutputToICS::newInstance()->setProductId($v->product_id);
