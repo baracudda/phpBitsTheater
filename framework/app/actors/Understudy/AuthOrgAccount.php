@@ -552,9 +552,7 @@ class AuthOrgAccount extends BaseActor
 		try
 		{
 			$dbAuth->generatePasswordRequestFor( $theResetUtils ) ;
-			$theMailer = MailUtils::buildMailerFromBitsConfig(
-					$this->config, 'email_out' ) ;
-			$theMailer->setFrom( $this->config['email_out/default_from'] ) ;
+			$theMailer = MailUtils::buildMailerFromBitsConfig($this->config, 'email_out');
 			$theResetUtils->dispatchEmailToUser( $theMailer ) ;
 		}
 		catch( PasswordResetException $prx )

@@ -29,6 +29,7 @@ function downloadFile( $aFile, $aMimeType, $aDownloadAsFilename, $aDisposition)
 			header('Content-Type: '.$aMimeType);
 			header('Expires: 0');
 			header('Content-Length: ' . filesize($aFile));
+			header('X-Content-Type-Options: nosniff'); //IE & Edge only
 		}
 		readfile($aFile);
 	}

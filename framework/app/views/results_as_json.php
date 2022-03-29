@@ -9,6 +9,7 @@ if ( !headers_sent() ) {
 	if ( !empty($v->output_filename) ) {
 		// disposition / encoding on response body
 		header("Content-Disposition: attachment;filename={$v->output_filename}");
+		header('X-Content-Type-Options: nosniff'); //IE & Edge only
 	}
 }
 $jsonEncodeOptions = null;

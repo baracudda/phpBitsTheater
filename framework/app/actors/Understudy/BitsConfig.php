@@ -23,7 +23,9 @@ use BitsTheater\costumes\ConfigNamespaceInfo; /* @var $theNamespaceInfo ConfigNa
 use BitsTheater\costumes\ConfigSettingInfo; /* @var $theSettingInfo ConfigSettingInfo */
 use BitsTheater\BrokenLeg;
 use BitsTheater\costumes\APIResponse;
+use com\blackmoonit\MailUtils;
 use Exception;
+use PHPMailer\PHPMailer\PHPMailer;
 {//namespace begin
 
 class BitsConfig extends BaseActor {
@@ -142,6 +144,61 @@ class BitsConfig extends BaseActor {
 			} else {
 				throw BrokenLeg::pratfallRes($this, 'NO_UPDATES', 400, 'config/errmsg_nothing_to_update');
 			}
+		}
+	}
+
+	/**
+	 * This Response objects data is boolean, with true being returned if
+	 * all email parameters needed by this joka instance to send emails are
+	 * set, false otherwise.
+	 * Responds with the standard API response object.
+	 * @return string Return the URL to redirect to, if any.
+	 */
+	public function isEmailSetup()
+	{
+		$this->viewToRender('results_as_json');
+		$isEmailSetup = false;
+		try {
+			$dbConfig = $this->getProp('Config');
+			$theMailer = MailUtils::buildMailerFromBitsConfig($dbConfig, 'email_out');
+			$isEmailSetup = ( !empty($theMailer) );
+		} catch (Exception $e) {}
+		$this->setApiResults($isEmailSetup);
+	}
+	
+	/**
+	 * Dispatches a test email to the user.
+	 * @param PHPMailer $aMailer a MailUtils object that is already configured with
+	 *   the host/port/user/pw necessary to send outgoing mail.
+	 * @throws BrokenLeg if failing to send.
+	 */
+	protected function dispatchTestEmailToUser( $aMailer )
+	{
+		if ( empty($aMailer) ) {
+			throw BrokenLeg::pratfall('EMAIL CONFIG FAIL', BrokenLeg::HTTP_BAD_REQUEST, 'Email configuration not found');
+		}
+		$theUser = $this->getDirector()->getMyAccountInfo();
+		$aMailer->addAddress($theUser->email);
+		$aMailer->Subject =	'== TEST EMAIL CONFIGURATION ==';
+		$aMailer->Body = 'Receiving this email means the configuration is good.';
+		if ( !$aMailer->send() ) {
+			throw BrokenLeg::pratfall('EMAIL_DISPATCH_FAILED', BrokenLeg::HTTP_INTERNAL_SERVER_ERROR, $aMailer->ErrorInfo);
+		}
+	}
+	
+	/**
+	 * Test the email configuration by sending a test email to the currently logged in user clicking the Test Button.
+	 */
+	public function ajajTestSendEmail()
+	{
+		$this->checkAllowed('config', 'modify');
+		try {
+			$theMailer = MailUtils::buildMailerFromBitsConfig($this->getProp('Config'), 'email_out');
+			$this->dispatchTestEmailToUser($theMailer);
+			$this->setApiResults('Email sent!');
+		}
+		catch ( Exception $x ) {
+			throw BrokenLeg::tossException($this, $x);
 		}
 	}
 

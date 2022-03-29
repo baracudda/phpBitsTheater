@@ -1110,7 +1110,7 @@ implements ArrayAccess, IDirected
 	 *    Returns NULL not logged in.
 	 */
 	public function getMyAccountInfo()
-	{ return ( property_exists($this, 'account_info') ) ? $this->account_info : null; }
+	{ return ( !empty($this->account_info) ) ? $this->account_info : null; }
 	
 	/**
 	 * Cache the non-sensitive account info for the currently
