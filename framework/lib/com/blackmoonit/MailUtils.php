@@ -42,7 +42,7 @@ class MailUtils
 	const RFC5322_EMAIL_REGEX = '/[\w\.\-\!\?\#\$\%\^\&\*\(\)\{\}]+@[\w\.\-]+\.(?:com|org|net|edu|gov|mil|biz|info|mobi|name|aero|asia|jobs|museum|[A-Za-z]{2})/' ;
 	
 	protected static $REQUIRED_CONFIGS = array( 'host', 'port', 'user', 'pwd' );
-	protected static $OPTIONAL_CONFIGS = array( 'security' => '' ) ;
+	protected static $OPTIONAL_CONFIGS = array( 'security' => '', 'default_from' => '' );
 	
 	/**
 	 * Discovers all email addresses in a string.
@@ -162,7 +162,11 @@ class MailUtils
 		$theMailer->Username = $aValidatedArray['user'] ;
 		$theMailer->Password = $aValidatedArray['pwd'] ;
 		$theMailer->SMTPSecure = $aValidatedArray['security'] ;
-		return $theMailer ;
+		if ( !empty($aValidatedArray['default_from']) ) {
+			$theMailer->setFrom($aValidatedArray['default_from']);
+		}
+		$theMailer->mEmailConfigUsed = $aValidatedArray;
+		return $theMailer;
 	}
 	
 	/**
@@ -204,6 +208,46 @@ class MailUtils
 	static public function buildMailerFromBitsConfig( $aBitsConfig, $aPath )
 	{
 		$theConfigArray = self::bitsConfigToArray( $aBitsConfig, $aPath ) ;
+		$theEmailServerURL = getenv('EMAIL_SERVER_URL');
+		if ( !empty($theEmailServerURL) ) {
+			$theEnvEmail = parse_url($theEmailServerURL);
+			if ( !empty($theEnvEmail) ) {
+				$theConfigArray['host'] = !empty($theEnvEmail['host']) ? $theEnvEmail['host'] : 'localhost';
+				switch ( $theEnvEmail['scheme'] ) {
+					case 'submission':
+					case 'submit':
+					{
+						$theConfigArray['port'] = !empty($theEnvEmail['port']) ? intval($theEnvEmail['port']) : 587;
+						$theConfigArray['security'] = 'tls';
+						break;
+					}
+					case 'smtp':
+					default:
+					{
+						$theConfigArray['port'] = !empty($theEnvEmail['port']) ? intval($theEnvEmail['port']) : 25;
+						$theConfigArray['security'] = 'ssl';
+						break;
+					}
+				}//end switch
+				$theConfigArray['user'] = !empty($theEnvEmail['user']) ? $theEnvEmail['user'] : '';
+				if ( empty($theConfigArray['user']) ) {
+					$theConfigArray['user'] = getenv('EMAIL_SERVER_ACCT_NAME');
+				}
+				$theConfigArray['pwd'] = !empty($theEnvEmail['pass']) ? $theEnvEmail['pass'] : '';
+				if ( empty($theConfigArray['pwd']) ) {
+					$theConfigArray['pwd'] = getenv('EMAIL_SERVER_ACCT_PSWD');
+				}
+				if ( !empty($theEnvEmail['query']) ) {
+					parse_str($theEnvEmail['query'], $qvars);
+					if ( !empty($qvars['_default_from_email']) ) {
+						$theConfigArray['default_from'] = $qvars['_default_from_email'];
+					}
+				}
+				if ( empty($theConfigArray['default_from']) ) {
+					$theConfigArray['default_from'] = $theConfigArray['user'];
+				}
+			}
+		}
 		return self::buildMailer($theConfigArray) ;
 	}
 	

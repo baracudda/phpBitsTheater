@@ -210,7 +210,7 @@ class SqlBuilder extends BaseCostume {
 	 *   data set by the obtainParamsFrom() method.
 	 * @param string $aDefaultValue - (OPTIONAL) default value if data is null.
 	 * @return mixed Returns the data value.
-	 * @see \BitsTheater\costumes\SqlBuilder::obtainParamsFrom()
+	 * @see \BitsTheater\costumes\SqlBuilder::getParamValue()
 	 */
 	public function getDataValue( $aDataKey, $aDefaultValue=null )
 	{
@@ -222,9 +222,9 @@ class SqlBuilder extends BaseCostume {
 	
 	/**
 	 * Retrieve the data that will be used for a particular param.
+	 * May call the defined param function, unlike the getParam() method.
 	 * @param string $aParamKey - array key or property name used to retrieve
 	 *   data set by the obtainParamsFrom() method.
-	 * @param string $aDefaultValue - (optional) default value if data is null.
 	 * @return mixed Returns the data value.
 	 * @see \BitsTheater\costumes\SqlBuilder::obtainParamsFrom()
 	 */

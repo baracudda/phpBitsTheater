@@ -45,6 +45,7 @@ class BitsConfig extends BaseResources {
 			'pwd',
 			'security',
 			'default_from',
+			'actionTestEmail',
 	);
 	
 	public $enum_auth = array(

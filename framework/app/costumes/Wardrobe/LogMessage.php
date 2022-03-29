@@ -270,7 +270,7 @@ class LogMessage extends BaseClass
 	 * @return $this Returns $this for chaining.
 	 */
 	public function logToError()
-	{ return $this->setLevel(LOG_ERROR)->log(); }
+	{ return $this->setLevel(LOG_ERR)->log(); }
 	
 } //end class
 

@@ -35,6 +35,8 @@ extends BrokenLeg
 	const MSG_REQUEST_DENIED = 'account/msg_pw_request_denied' ;
 	const MSG_TOKEN_GENERATION_FAILED = 'account/err_pw_request_failed' ;
 	const MSG_RESET_REQUEST_NOT_FOUND = 'account/err_pw_request_not_found';
+	
+	const ACT_NO_ACCOUNT_OR_AUTH_ID = 'NO_ACCOUNT_OR_AUTH_ID';
 
 } // end class PasswordResetException
 

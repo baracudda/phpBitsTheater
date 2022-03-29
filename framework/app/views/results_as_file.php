@@ -19,6 +19,7 @@ function downloadFile($aFile) {
 			header('Cache-Control: must-revalidate');
 			header('Pragma: public');
 			header('Content-Length: ' . filesize($aFile));
+			header('X-Content-Type-Options: nosniff'); //IE & Edge only
 		}
 		readfile($aFile);
 	}
