@@ -19,7 +19,6 @@ namespace BitsTheater\models\PropCloset;
 use BitsTheater\Model as BaseModel;
 use BitsTheater\costumes\AuthOrg;
 use BitsTheater\costumes\AuthOrgSet;
-use BitsTheater\costumes\LogMessage as Logger;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\colspecs\CommonMySql ;
 use BitsTheater\costumes\IFeatureVersioning;
@@ -267,6 +266,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 			->getOrganizationsToDisplay()
 			;
 		if ( !empty($theOrgList) && !empty($theModelList) ) {
+			$theCurrOrgID = $this->getDirector()->getPropsMaster()->getDefaultOrgID();
 			foreach ($theOrgList as $theOrg) {
 				/* @var $theOrg AuthOrg */
 				$this->getDirector()->setPropDefaultOrg($theOrg->org_id);
@@ -275,6 +275,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 				$this->callModelMethod($theDirector, $theModelList, 'setupDefaultData', $aScene);
 				$this->getDirector()->getPropsMaster()->closeConnection($theOrg->org_id);
 			}
+			$this->getDirector()->setPropDefaultOrg($theCurrOrgID);
 		}
 
 		$this->callModelMethod($theDirector, $theModelList, 'setupFeatureVersion', $aScene);
@@ -502,35 +503,36 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 							$theNumOrgsLeftToGo = $theOrgList->getPagerTotalRowCount();
 							foreach ($theOrgList as $theOrg) {
 								/* @var $theOrg AuthOrg */
-								$theFeatureLabel = $theOrg->org_name . ' - ' . $theFeatureData['feature_id'];
-								$theLogMsg = Logger::withContext($this)->withInfo(array(
-										'action' => 'onSchemaUpgrade',
-										'reason' => 'starting db schema upgrade',
-										'org' => $theOrg->org_name,
-										'org_id' => $theOrg->org_id,
-										'feature' => $theFeatureLabel,
-										'num_remaining' => $theNumOrgsLeftToGo--,
-								));
-								$theLogMsg->log();
 								try {
 									$this->getDirector()->setPropDefaultOrg($theOrg->org_id);
 									$dbOrgModel = $this->getProp($theFeatureData['model_class']);
+									if ( !empty($dbOrgModel::FEATURE_VERSION_SEQ) ) {
+										$this->getLogger()->withInfo(array(
+												'action' => 'onSchemaUpgrade',
+												'reason' => 'ensure feature db schema at v' . $dbOrgModel::FEATURE_VERSION_SEQ,
+												'feature_id' => $theFeatureData['feature_id'],
+												'feature_ver' => $theFeatureData['version_seq'],
+												'org' => $theOrg->org_name,
+												'org_id' => $theOrg->org_id,
+												'num_remaining' => $theNumOrgsLeftToGo--,
+												'message' => 'start db schema upgrade for ' . $theFeatureData['feature_id']
+														. ' in org ' . $theOrg->org_name
+														. ' from ' . $theFeatureData['version_seq'] . ' to ' . $dbOrgModel::FEATURE_VERSION_SEQ
+												,
+										))->log();
+									}
 									$dbOrgModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
+									$this->getLogger()->withInfo(array(
+											'message' => 'finished db schema upgrade for ' . $theOrg->org_name,
+									))->log();
 									$this->getDirector()->getPropsMaster()->closeConnection($theOrg->org_id);
 								}
 								catch ( \Exception $x ) {
-									$theLogMsg = Logger::withContext($this)->withInfo(array(
-											'action' => 'onSchemaUpgrade',
+									$this->getLogger()->withInfo(array(
 											'reason' => 'exception on db schema upgrade',
-											'org' => $theOrg->org_name,
-											'org_id' => $theOrg->org_id,
-											'feature' => $theFeatureLabel,
-											'ex' => $x->getMessage(),
+											'message' => $x->getMessage(),
 											'model' => $theFeatureData['model_class'],
-											'feature_id' => $theFeatureData['feature_id'],
-											'feature_ver' => $theFeatureData['version_seq'],
-									));
-									$theLogMsg->logToError();
+									))->logToError();
 									$blx = BrokenLeg::tossException($this, $x);
 									$blx->addReasonForUI('Database Scheme Update')
 										->addExtraMsgForUI('org_name=[' . $theOrg->org_name . '] ID=[' . $theOrg->org_id . ']')
@@ -541,23 +543,12 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 										;
 									throw $blx;
 								}
-								$theLogMsg = Logger::withContext($this)->withInfo(array(
-										'action' => 'onSchemaUpgrade',
-										'reason' => 'successful org db schema upgrade',
-										'org' => $theOrg->org_name,
-										'org_id' => $theOrg->org_id,
-										'feature' => $theFeatureLabel,
-										'num_remaining' => $theNumOrgsLeftToGo,
-								));
-								$theLogMsg->log();
 							}
 							//log that we are done upgrading all orgs
-							$theLogMsg = Logger::withContext($this)->withInfo(array(
-									'action' => 'onSchemaUpgrade',
-									'reason' => 'all org db schemas upgraded successfully',
+							$this->getLogger()->withInfo(array(
+									'message' => 'all org db schemas upgraded successfully',
 									'upgraded_by' => $this->getDirector()->getMyUsername(),
-							));
-							$theLogMsg->log();
+							))->log();
 						}
 						finally {
 							$this->getDirector()->setPropDefaultOrg(null);

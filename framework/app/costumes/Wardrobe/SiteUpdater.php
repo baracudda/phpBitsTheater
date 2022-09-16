@@ -80,6 +80,11 @@ class SiteUpdater extends BaseCostume
 		$theFeatureData = $theFeatureList[$dbAuth::FEATURE_ID];
 		unset($theFeatureList[$dbAuth::FEATURE_ID]);
 		array_unshift($theFeatureList, $theFeatureData);
+		
+		$this->getLogger()->withInfo(array(
+				'context' => __METHOD__,
+				'message' => 'start schema upgrades'
+		))->log();
 
 		foreach( $theFeatureList as $theFeatureData )
 		{ // Use remaining entries to upgrade other site features.
@@ -98,11 +103,19 @@ class SiteUpdater extends BaseCostume
 			else if( $this->isRunningUnderCLI() )
 				$this->printFeatureUpToDate( $theFeatureInfo->feature_id ) ;
 		}
+		$this->getLogger()->withInfo(array(
+			'message' => 'existing schema upgrades complete, check for missing'
+		))->log();
+		
 		
 		if ($this->isRunningUnderCLI())
 		{ print( $this->getRes('admin', 'msg_cli_check_for_missing') . PHP_EOL ); }
 		//after updating all known features, create any missing ones.
 		$this->model->setupModels($theData) ;
+
+		$this->getLogger()->withInfo(array(
+			'message' => 'finished schema upgrades and ensured none were missing'
+		))->log();
 	}
 	
 	/**

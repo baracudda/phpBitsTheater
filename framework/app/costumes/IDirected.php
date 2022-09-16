@@ -26,6 +26,12 @@ interface IDirected {
 	public function getDirector();
 	
 	/**
+	 * Getter for our director-wide modern LogMessage instance.
+	 * @return \BitsTheater\costumes\LogMessage Returns the logger instance.
+	 */
+	public function getLogger();
+
+	/**
 	 * Determine if the current logged in user or guest has a permission.
 	 * @param string $aNamespace - namespace of the permission to check.
 	 * @param string $aPermission - permission name to check.

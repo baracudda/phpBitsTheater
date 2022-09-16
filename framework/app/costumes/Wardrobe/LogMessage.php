@@ -29,14 +29,26 @@ use com\blackmoonit\Strings;
  */
 class LogMessage extends BaseClass
 {
+	/** @var int val=1, PHP's LOG_level constants differ by OS, use our own. See Strings::getLogLevelName() */
+	const LOG_CRITICAL = 1;
+	/** @var int val=4, PHP's LOG_level constants differ by OS, use our own. See Strings::getLogLevelName() */
+	const LOG_ERROR = 4;
+	/** @var int val=5, PHP's LOG_level constants differ by OS, use our own. See Strings::getLogLevelName() */
+	const LOG_WARNING = 5;
+	/** @var int val=6, PHP's LOG_level constants differ by OS, use our own. See Strings::getLogLevelName() */
+	const LOG_INFO = 6;
+	/** @var int val=7, PHP's LOG_level constants differ by OS, use our own. See Strings::getLogLevelName() */
+	const LOG_DEBUG = 7;
+	
 	/** @var \BitsTheater\Director The director. */
 	protected $mDirector = null;
-	/** @var int One of the LOG_* consts. */
-	protected $mLevel = LOG_INFO;
+	/** @var int One of system or our LOG_* consts. */
+	protected $mLevel = self::LOG_INFO;
 	/** @var string Timestamp of log. */
 	protected $mTimestamp = null;
 	/** @var string[] key=>value array of log information. */
 	protected $mInfo = array();
+	
 	
 	/**
 	 * Construct this object with default values.
@@ -183,7 +195,7 @@ class LogMessage extends BaseClass
 	 */
 	public function getMessage()
 	{
-		$theStr = ( $this->getLevel() == LOG_ERR ) ? Strings::errorPrefix() : Strings::debugPrefix();
+		$theStr = ( $this->getLevel() == static::LOG_ERROR ) ? Strings::errorPrefix() : Strings::debugPrefix();
 		if ( !empty($this->mInfo) ) {
 			foreach( $this->mInfo as $theKey => $theVal ) {
 				if ( is_string($theVal) || is_numeric($theVal) ) {
@@ -203,12 +215,13 @@ class LogMessage extends BaseClass
 	
 	/**
 	 * Forms the object representing this log statement.
+	 * @param int $aLogLevel - (OPTIONAL) export this log level, not what we currently have defined.
 	 * @return object Returns an object.
 	 */
-	public function toLogObject()
+	public function toLogObject( $aLogLevel=null )
 	{
 		$theLog = new \stdClass() ;
-        $theLog->level_num = $this->getLevel();
+        $theLog->level_num = ( !empty($aLogLevel) ) ? $aLogLevel : $this->getLevel();
         $theLog->level = Strings::getLogLevelName($theLog->level_num);
 		$theLog->message = $this->getMessage();
 		$theLog->timestamp = $this->mTimestamp;
@@ -222,25 +235,34 @@ class LogMessage extends BaseClass
 
 	/**
 	 * Returns the representation of this object that is appropriate to encode.
+	 * @param int $aLogLevel - (OPTIONAL) export this log level, not what we currently have defined.
 	 * @return object Returns the object to encode.
 	 */
-	public function exportData()
-	{ return $this->toLogObject(); }
+	public function exportData( $aLogLevel=null )
+	{ return $this->toLogObject($aLogLevel); }
 
 	/**
 	 * As toLogObject(), but serializes that object to a JSON string.
+	 * @param int $aLogLevel - (OPTIONAL) export this log level, not what we currently have defined.
 	 * @param string $aEncodeOptions - the JSON encoding options
 	 * @return string Returns a JSON serialization of the standard response object.
 	 */
-	public function toJson( $aEncodeOptions=null )
-	{ return json_encode($this->exportData(), $aEncodeOptions); }
+	public function toJson( $aLogLevel=null, $aEncodeOptions=null )
+	{ return json_encode($this->exportData($aLogLevel), $aEncodeOptions); }
 
+	/**
+	 * Log information as a JSON encoded object at level without saving the level.
+	 * @return $this Returns $this for chaining.
+	 */
+	public function logAs( $aLevel )
+	{ Strings::log($aLevel, $this); return $this; }
+	
 	/**
 	 * Log information as a JSON encoded object.
 	 * @return $this Returns $this for chaining.
 	 */
 	public function log()
-	{ Strings::log($this->getLevel(), $this); return $this; }
+	{ return $this->logAs($this->getLevel()); }
 	
 	/**
 	 * Convenience method for combining withInfo()->log().
@@ -251,7 +273,7 @@ class LogMessage extends BaseClass
 	{ return $this->withInfo($aInfo)->log(); }
 	
 	/**
-	 * Log information as a JSON encoded object.
+	 * Set all subsequent log levels to the given value.
 	 * @param int $aLevel - level of log message, one of the LOG_* consts.
 	 * @return $this Returns $this for chaining.
 	 */
@@ -259,18 +281,18 @@ class LogMessage extends BaseClass
 	{ return $this->setLevel($aLevel)->log(); }
 	
 	/**
-	 * Log information as a JSON encoded object to DEBUG level.
+	 * Log information as a JSON encoded object to DEBUG level without saving the level.
 	 * @return $this Returns $this for chaining.
 	 */
 	public function logToDebug()
-	{ return $this->setLevel(LOG_DEBUG)->log(); }
+	{ return $this->logAs(static::LOG_DEBUG); }
 	
 	/**
-	 * Log information as a JSON encoded object to ERROR level.
+	 * Log information as a JSON encoded object to ERROR level without saving the level.
 	 * @return $this Returns $this for chaining.
 	 */
 	public function logToError()
-	{ return $this->setLevel(LOG_ERR)->log(); }
+	{ return $this->logAs(static::LOG_ERROR); }
 	
 } //end class
 

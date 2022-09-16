@@ -22,12 +22,85 @@ use Normalizer ;
 use PDOStatement;
 {//begin namespace
 
+class StringsLogConfig {
+	/** @var int Maximum log level to record, drop all over this value. Set via LOG_LEVEL env var. */
+	public int $level = 6;
+	/** @var string The filepath of the non-syslog() log output. Set via LOG_PATH env var. */
+	public ?string $filepath = null;
+	/** @var if using filepath, should output always be JSON? Set via LOG_JSON env var. */
+	public bool $as_json = true;
+	/** @var string The name of the LOG_LEVEL var, ie. INFO, DEBUG, etc. */
+	public string $level_name = 'INFO';
+}
+
 class Strings {
 
 	private function __construct() {} //do not instantiate
-
-	/** @var array Logging config information */
-	protected static $log_config = array();
+	
+	/** define callback to override debugLog() */
+	static public $callback4log2info;
+	/** define callback to override errorLog() */
+	static public $callback4log2err;
+	
+	/** @var StringsLogConfig logging config information */
+	static protected $log_config;
+	
+	/**
+	 * Get the log config, creating the object if necessary.
+	 * @return \com\blackmoonit\StringsLogConfig
+	 */
+	static protected function getLogConfig()
+	{
+		if ( empty(self::$log_config) ) {
+			self::$log_config = new StringsLogConfig();
+			// Encode all logs as simple JSON structure? accepts 1, 0, true, false, yes, no, etc.
+			self::$log_config->as_json = filter_var(self::getEnvVar('LOG_JSON'), FILTER_VALIDATE_BOOLEAN, array(
+					'options' => array(
+							'default' => true,
+					),
+					'flags' => FILTER_FLAG_NONE,
+			));
+			// Drop any logs greater than a particular log level
+			self::$log_config->level = filter_var(self::getEnvVar('LOG_LEVEL_NUM'), FILTER_VALIDATE_INT, array(
+					'options' => array(
+							'min_range' => 1, //LOG_ALERT
+							'max_range' => 7, //LOG_DEBUG
+							'default' => 6, //LOG_INFO
+					),
+					'flags' => FILTER_FLAG_NONE,
+			));
+			$theRequestedLogLevel = self::getEnvVar('LOG_LEVEL');
+			if ( !empty($theRequestedLogLevel) ) {
+				$theFoundKey = array_search(strtoupper($theRequestedLogLevel), self::$mLogLevelName);
+				if ( $theFoundKey !== false && $theFoundKey >= 0 ) {
+					self::$log_config->level = $theFoundKey;
+				}
+			}
+			self::$log_config->level_name = self::$mLogLevelName[self::$log_config->level];
+			
+			// ensure log path is not too wonky
+			$theLogPath = self::getEnvVar('LOG_PATH');
+			if ( !empty($theLogPath) ) {
+				$theDrive = '';
+				$thePathSegs = explode(DIRECTORY_SEPARATOR, $theLogPath);
+				// if first segment is a Windows drive letter, preserve it
+				if ( preg_match('/^[A-Za-z]:$/', $thePathSegs[0]) ) {
+					$theDrive = strtoupper(array_shift($thePathSegs)) . DIRECTORY_SEPARATOR;
+				}
+				// sanitize each segment of the log path
+				foreach( $thePathSegs as &$theSeg ) {
+					$theSeg = self::sanitizeFilename($theSeg, '');
+					//if the path segment becomes empty after sanitization, remove it
+					if ( empty($theSeg) ) {
+						unset($theSeg);
+					}
+				}
+				// put it all back together
+				self::$log_config->filepath = $theDrive . implode(DIRECTORY_SEPARATOR, $thePathSegs);
+			}
+		}
+		return self::$log_config;
+	}
 
 	/**
 	 * Return everything after $aNeedle is found in $aHaystack.
@@ -231,7 +304,7 @@ class Strings {
 		
 		// Un-comment this line to see the pre-processing logic in action:
 		// self::debugLog( __METHOD__ . ' [DEBUG] Pre-hash processed secret: ' . $thePwInput ) ;
-			
+		
 		/* Security advisory from PHP.net:
 		 * Developers targeting PHP 5.3.7+ should use "$2y$" in preference to "$2a$".
 		 * Full details: http://php.net/security/crypt_blowfish.php
@@ -484,6 +557,10 @@ class Strings {
 	 */
 	static public function debugLog( $_ )
 	{
+		if ( self::$callback4log2info ) {
+			call_user_func_array(self::$callback4log2info, func_get_args());
+			return;
+		}
 		$theLogLine = '';
 		foreach (func_get_args() as $arg)
 		{
@@ -516,6 +593,9 @@ class Strings {
 	 */
 	static public function errorLog( $_ )
 	{
+		if ( self::$callback4log2err ) {
+			call_user_func_array(self::$callback4log2err, func_get_args());
+		}
 		$theLogLine = '';
 		foreach (func_get_args() as $arg)
 		{
@@ -531,7 +611,8 @@ class Strings {
 			3, //no constants defined for this level
 			LOG_ERR => 'ERROR', //4
 			LOG_WARNING => 'WARNING', //5
-			LOG_INFO => 'INFO', //6, same level as LOG_DEBUG
+			LOG_INFO => 'INFO', //6, same level as LOG_DEBUG const
+			7 => 'DEBUG',
 	);
 	
 	/**
@@ -577,72 +658,53 @@ class Strings {
 	/**
 	 * Writes log messages to the logging destination
 	 * Defaults to syslog unless $_ENV['LOG_PATH'] is set
-	 * @param int $level - log level, one of the LOG_* consts.
-	 * @param string|object $message - log message
+	 * @param int $aLevel - log level from 1 to 7, e.g. one of the LOG_* consts.
+	 * @param string|object $aMsgOrObj - log message or obj with getMessage() and getLevel().
+	 * @see $this::mLogLevelName
 	 */
-	static public function log($level, $message)
+	static public function log( $aLevel, $aMsgOrObj )
 	{
-		// init log config if this is our first time through here
-		if (empty(self::$log_config)) {
-			// Encode all logs as simple JSON structure? accepts 1, 0, true, false, yes, no, etc.
-			self::$log_config['JSON'] = filter_var(getenv('LOG_JSON'), FILTER_VALIDATE_BOOLEAN);
-			// Force all logs into a particular log level? //legacy used to use 3, LOG_ERR
-			self::$log_config['LOG_LEVEL'] = filter_var(getenv('LOG_LEVEL'),
-					FILTER_VALIDATE_INT, array("options" => array(
-							'min_range' => 1, //LOG_ALERT
-							'max_range' => 7, //LOG_DEBUG
-					))
-			);
-			// Output logs to a custom file?
-			self::$log_config['PATH'] = false;
-			// ensure log path is not too wonky
-			$theLogPath = getenv('LOG_PATH');
-			if ( !empty($theLogPath) ) {
-				$theDrive = '';
-				$thePathSegs = explode(DIRECTORY_SEPARATOR, $theLogPath);
-				// if first segment is a Windows drive letter, preserve it
-				if ( preg_match('/^[A-Za-z]:$/', $thePathSegs[0]) ) {
-					$theDrive = strtoupper(array_shift($thePathSegs)) . DIRECTORY_SEPARATOR;
-				}
-				// sanitize each segment of the log path
-				foreach( $thePathSegs as &$theSeg ) {
-					$theSeg = self::sanitizeFilename($theSeg, '');
-					//if the path segment becomes empty after sanitization, remove it
-					if ( empty($theSeg) ) {
-						unset($theSeg);
-					}
-				}
-				// put it all back together
-				self::$log_config['PATH'] = $theDrive . implode(DIRECTORY_SEPARATOR, $thePathSegs);
-			}
+		if ( is_string($aMsgOrObj) ) {
+			$bIsMsgStr = true;
+			$theMsg = $aMsgOrObj;
 		}
-
-		$theMsg = is_string($message) ? $message : $message->getMessage();
-		$theLevel = is_string($message) ? $level : $message->getLevel();
+		else {
+			$bIsMsgStr = false;
+			$theMsg = $aMsgOrObj->getMessage();
+		}
+		
+		$theLogConfig = self::getLogConfig();
+		
+		// if we're logging higher than we're set to log, drop it on the floor.
+		if ( $aLevel > $theLogConfig->level ) {
+			return;
+		}
+		
 		// do we use a custom log file?
-		if ( !empty(self::$log_config['PATH']) ) {
+		if ( !empty($theLogConfig->filepath) ) {
 			// do we encode the log as JSON? Add a timestamp either way
 			$ts = gmdate("Y-m-d\TH:i:s\Z");
-			if ( !empty(self::$log_config['JSON']) && is_string($message) ) {
-				$theMsg = self::logMsgToJSON($theLevel, $theMsg, $ts) . PHP_EOL;
-			} else if ( !empty(self::$log_config['JSON']) && is_callable(array($message, 'toJson')) ) {
-				$theMsg = $message->toJson() . PHP_EOL;;
+			if ( !empty($theLogConfig->as_json) && $bIsMsgStr ) {
+				$theMsg = self::logMsgToJSON($aLevel, $theMsg, $ts) . PHP_EOL;
+			} else if ( !empty($theLogConfig->as_json) && is_callable(array($aMsgOrObj, 'toJson')) ) {
+				$theMsg = $aMsgOrObj->toJson($aLevel) . PHP_EOL;
 			} else {
 				$theMsg = '[' . $ts . ']: ' . $theMsg . PHP_EOL;
 			}
 			try {
-				$handle = fopen(self::$log_config['PATH'], 'a');
+				$handle = fopen($theLogConfig->filepath, 'a');
 				fwrite($handle, $theMsg);
-				fclose($handle);
 				return;
 			}
 			catch (\Exception $x) {
 				//eat any error and let code fall through to fallback log
 			}
+			finally {
+				if ( is_resource($handle) ) fclose($handle);
+			}
 		}
-		// if custom log not used or fails, ensure we write to system log at least
-		$theLogLevel = (!empty(self::$log_config['LOG_LEVEL'])) ? self::$log_config['LOG_LEVEL'] : $theLevel;
-		syslog($theLogLevel, $theMsg);
+		// if custom log not used or fails, ensure we write to system log
+		syslog($aLevel, $theMsg);
 	}
 	
 	/**
@@ -1220,7 +1282,7 @@ class Strings {
 	{
 		return getenv($aEnvVarName, true) ?: getenv($aEnvVarName);
 	}
-		
+	
 }//end class
 
 /* increase default crypto strength (04-31) based on PHP version

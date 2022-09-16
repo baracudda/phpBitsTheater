@@ -20,6 +20,7 @@ use com\blackmoonit\AdamEve as BaseDirector;
 use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\AccountInfoCache;
+use BitsTheater\costumes\LogMessage as Logger;
 use BitsTheater\costumes\PropsMaster;
 use BitsTheater\costumes\SiteSettings;
 use BitsTheater\costumes\venue\Usher;
@@ -90,6 +91,9 @@ implements ArrayAccess, IDirected
 	 */
 	protected $dbConfig = null;
 	
+	/** @var Logger the logger instance to use. */
+	public $mLogger = null;
+	
 	/**
 	 * Determine which Director to create for the job.
 	 * @return Director
@@ -150,6 +154,11 @@ implements ArrayAccess, IDirected
 	 */
 	public function setup() {
 		static::setupLogPrefix();
+		$this->mLogger = Logger::withContext($this)->withInfo(array(
+				'context_id' => Strings::createUUID(),
+		));
+		Strings::$callback4log2info = array($this, 'writeToLog');
+		Strings::$callback4log2err = array($this, 'writeToErrorLog');
 		static::removeMagicQuotes();
 		static::unregisterGlobals();
 		register_shutdown_function(array($this, 'onShutdown'));
@@ -204,15 +213,25 @@ implements ArrayAccess, IDirected
 	 */
 	public function onShutdown() {
 		$err = error_get_last();
-		if (!empty($err)) {
-			Strings::errorLog( __METHOD__ . ' ' . Strings::debugStr($err) ) ;
+		if ( !empty($err) ) {
+			$theMsg = __METHOD__ . ' ' . $this->debugStr($err);
+			if ( !empty($this->mLogger) ) {
+				$this->mLogger->logWith(array(
+						'message' => $theMsg,
+						'method' => __METHOD__,
+						'last_err' => $err,
+				))->logToError();
+			}
+			else {
+				$this->errorLog($theMsg);
 // Uncomment the following 6 lines if you need more information.
-//			Strings::debugLog('OOM?: last 3 known new AdamEve-based classes:'
-//					.(static::$lastClassLoaded1 ? ' '. static::$lastClassLoaded1->myClassName : '')
-//					.(static::$lastClassLoaded2 ? ', '.static::$lastClassLoaded2->myClassName : '')
-//					.(static::$lastClassLoaded3 ? ', '.static::$lastClassLoaded3->myClassName : '')
-//			);
-//			Strings::debugLog(Strings::debugStr(static::$lastClassLoaded1));
+//				$this->debugLog('OOM?: last 3 known new AdamEve-based classes:'
+//						.(static::$lastClassLoaded1 ? ' '. static::$lastClassLoaded1->myClassName : '')
+//						.(static::$lastClassLoaded2 ? ', '.static::$lastClassLoaded2->myClassName : '')
+//						.(static::$lastClassLoaded3 ? ', '.static::$lastClassLoaded3->myClassName : '')
+//				);
+//				$this->debugLog($this->debugStr(static::$lastClassLoaded1));
+			}
 		}
 	}
 	
@@ -414,7 +433,9 @@ implements ArrayAccess, IDirected
 		foreach($thePossibleMethodsList as $thePossibleMethod) {
 			try {
 				$thePossibleUrl = $theActorName.'/'.$thePossibleMethod.'/'.$theParamSegments;
-				//$this->logStuff(__METHOD__, ' trying url=', $thePossibleUrl);//DEBUG
+				$this->getLogger()->withInfo(array(
+						'url' => $thePossibleUrl,
+				))->logToDebug();
 				$this->raiseCurtain($thePossibleUrl);
 				break; //if we did not throw an exception, our job is done.
 			}
@@ -531,7 +552,7 @@ implements ArrayAccess, IDirected
 	 */
 	public function cue($aScene, $anActorName, $anAction, $_=null) {
 		$theActorClass = static::getActorClass($anActorName);
-		//Strings::debugLog('rC: class='.$theActorClass.', exist?='.class_exists($theActorClass));
+		//$this->logStuff('rC: class='.$theActorClass.', exist?='.class_exists($theActorClass));
 		if (class_exists($theActorClass)) {
 			$theAction = $theActorClass::getDefaultAction($anAction);
 			try {
@@ -627,6 +648,12 @@ implements ArrayAccess, IDirected
 				$theLogPrefix .= $theNewDbConnInfo->dbName;
 				Strings::debugPrefix($theLogPrefix . '-dbg] ');
 				Strings::errorPrefix($theLogPrefix . '-err] ');
+
+				//add info to our current logger instance
+				$this->getLogger()->withInfo(array(
+						'org_name' => $theNewDbConnInfo->dbName,
+						'org_id' => $theNewDbConnInfo->mOrgID,
+				));
 			}
 		}
 		return $this;
@@ -1287,6 +1314,44 @@ implements ArrayAccess, IDirected
 	 */
 	public function getCallStackAsStr( $bTruncateAtPerformAct=true )
 	{ return $this->formatCallStackAsLogStr(Strings::getStackTrace(), $bTruncateAtPerformAct); }
+	
+	/**
+	 * Getter for our director-wide modern LogMessage instance.
+	 * @return Logger Returns the logger instance.
+	 */
+	public function getLogger()
+	{ return $this->mLogger; }
+
+	/**
+	 * Override legacy INFO level log routine, but uses our modern Logger costume.
+	 * @see Strings::debugLog()
+	 */
+	public function writeToLog( $s )
+	{
+		$this->mLogger->withInfo(array(
+				'message' => $s,
+		))->log();
+		if ( $this->isRunningUnderCLI() ) {
+			print( (is_string($s)) ? $s : $this->debugStr($s) );
+			print(PHP_EOL);
+		}
+	}
+	
+	/**
+	 * Override legacy ERROR level log routine, but uses our modern Logger costume.
+	 * @see Strings::errorLog()
+	 */
+	public function writeToErrorLog( $s )
+	{
+		$this->mLogger->withInfo(array(
+				'message' => $s,
+		))->logToError();
+		if ( $this->isRunningUnderCLI() ) {
+			print( (is_string($s)) ? $s : $this->debugStr($s) );
+			print(PHP_EOL);
+		}
+	}
+
 	
 }//end class
 
