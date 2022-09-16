@@ -219,7 +219,7 @@ class GenericDb extends BaseDbClass {
 			if (!in_array($theFieldname, $aTextIdFieldList, true)) {
 				$theResult .= $theFieldname.'=:'.$theFieldname.', ';
 			} else {
-				$theResult .= $theFieldName.'=UNHEX(:'.$theFieldname.'), ';
+				$theResult .= $theFieldname.'=UNHEX(:'.$theFieldname.'), ';
 			}
 		}
 		if (!empty($theResult))
