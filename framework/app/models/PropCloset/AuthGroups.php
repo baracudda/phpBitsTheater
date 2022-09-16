@@ -1560,12 +1560,13 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	{
 		$theSql = SqlBuilder::withModel($this);
 		$theSql->startWith('DELETE FROM')->add($this->tnGroupMap);
-		$theSql->startWhereClause()
-			->mustAddParam('group_id', $aGroupID)
-			->setParamPrefix(' AND ')
-			->mustAddParam('auth_id', $aAuthID)
-			->endWhereClause()
-			;
+		$theSql->startWhereClause();
+		$theSql->mustAddParam('auth_id', $aAuthID);
+		if ( !empty($aGroupID) ) {
+			$theSql->setParamPrefix(' AND ');
+			$theSql->mustAddParam('group_id', $aGroupID);
+		}
+		$theSql->endWhereClause();
 		try
 		{ return $theSql->execDMLandGetParams(); }
 		catch (PDOException $pdox)
