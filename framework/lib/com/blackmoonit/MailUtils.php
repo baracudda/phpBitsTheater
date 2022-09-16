@@ -230,11 +230,11 @@ class MailUtils
 					}
 				}//end switch
 				$theConfigArray['user'] = !empty($theEnvEmail['user']) ? $theEnvEmail['user'] : '';
-				if ( empty($theConfigArray['user']) ) {
+				if ( empty($theConfigArray['user']) && getenv('EMAIL_SERVER_ACCT_NAME') ) {
 					$theConfigArray['user'] = getenv('EMAIL_SERVER_ACCT_NAME');
 				}
 				$theConfigArray['pwd'] = !empty($theEnvEmail['pass']) ? $theEnvEmail['pass'] : '';
-				if ( empty($theConfigArray['pwd']) ) {
+				if ( empty($theConfigArray['pwd']) && getenv('EMAIL_SERVER_ACCT_PSWD') ) {
 					$theConfigArray['pwd'] = getenv('EMAIL_SERVER_ACCT_PSWD');
 				}
 				if ( !empty($theEnvEmail['query']) ) {
