@@ -34,6 +34,7 @@ use BitsTheater\costumes\DbConnInfo;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\IFeatureVersioning;
 use BitsTheater\costumes\ISqlSanitizer;
+use BitsTheater\costumes\LogMessage as Logger;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornByIDirectedForValidation;
 use BitsTheater\costumes\WornForAuditFields;
@@ -850,11 +851,6 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		if ( !empty($aAuthAccount) && //ensure we have a valid auth & account_id
 				!empty($aAuthAccount->auth_id) && $aAuthAccount->account_id > 0 )
 		{
-			//update last login info
-			$aAuthAccount->last_seen_dt = new \DateTime('now', new \DateTimeZone('UTC'));
-			$aAuthAccount->last_seen_ts = $this->getDateTimeAsDbTimestampFormat(
-					$aAuthAccount->last_seen_dt
-			);
 			$this->getDirector()->setMyAccountInfo($aAuthAccount);
 		}
 	}
@@ -872,6 +868,8 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	{
 		//only update last seen ts every other minute
 		if ( !empty($aAuthAccount) && !empty($aAuthAccount->auth_id) ) {
+			$aAuthAccount->last_seen_dt = new \DateTime('now', new \DateTimeZone('UTC'));
+			$aAuthAccount->last_seen_ts = $this->getDateTimeAsDbTimestampFormat($aAuthAccount->last_seen_dt);
 			$theSql = SqlBuilder::withModel($this)
 				->startWith('UPDATE')->add($this->tnAuthAccounts)->add('SET')
 				->mustAddParam('last_seen_ts', $aAuthAccount->last_seen_ts)
@@ -879,7 +877,11 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 				->mustAddParam('auth_id', $aAuthAccount->auth_id)
 				->endWhereClause()
 				;
-			try { $theSql->execDML(); }
+			try {
+				$theSql->execDML();
+				//once db is updated, ensure the cache is also updated
+				$this->saveAccountToSessionCache($aAuthAccount);
+			}
 			catch (PDOException $pdox)
 			{ $theSql->logSqlFailure('update last_seen_ts', $pdox); }
 		}
@@ -889,7 +891,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 * Event to be called once an account is officially "logged in", after
 	 * onDetermineAuthAccount() and the specific venue's onTicketAccepted() method.
 	 * @param object $aScene - the Scene object in use that holds client input.
-	 * @param AccountInfoCache $aAuthAccount - (optional) the logged in auth account.
+	 * @param AccountInfoCache|null $aAuthAccount - (optional) the logged in auth account.
 	 */
 	public function onSeatTicketHolder( $aScene, AccountInfoCache $aAuthAccount=null )
 	{
@@ -2194,17 +2196,6 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 		if (!empty($delta)) {
 			$this->removeStaleTokens(static::TOKEN_PREFIX_COOKIE.'%', $delta.' DAY');
 		}
-		//NOTE: in order to support multiple simultaneous request ops, each referencing
-		//  the same valid cookie at that time, we don't DELETE cookie tokens immediately.
-		//  Instead we mark them so they will be removed "very soon" so that all the
-		//  simultaneous requests will succeed, at the cost of recycling through several
-		//  cookie tokens. A small price to pay for a better user experience for multi-
-		//  threaded webapps.
-		$theFilter = SqlBuilder::withModel($this)
-			->mustAddParam('account_id', 0, \PDO::PARAM_INT)
-		;
-		//also remove any cookie tokens marked for garbage collection (account_id = 0)
-		$this->removeStaleTokens(static::TOKEN_PREFIX_COOKIE.'%', '5 MINUTE', $theFilter);
 	}
 
 	/**
@@ -2459,8 +2450,31 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	protected function onCheckTicketPollInterval( Scene $aScene )
 	{
-		//only check for stale cookies every other minute
-		$this->removeStaleAuthLockoutTokens() ;
+		try {
+			//only check for stale cookies every other minute
+			$this->removeStaleAuthLockoutTokens() ;
+			
+			//Moving used cookie GC here instead of within removeStaleCookies() to avoid MySQL deadlock (experimental)
+			//NOTE: in order to support multiple simultaneous request ops, each referencing
+			//  the same valid cookie at that time, we don't DELETE cookie tokens immediately.
+			//  Instead we mark them so they will be removed "very soon" so that all the
+			//  simultaneous requests will succeed, at the cost of recycling through several
+			//  cookie tokens. A small price to pay for a better user experience for multi-
+			//  threaded webapps.
+			$theFilter = SqlBuilder::withModel($this)
+				->mustAddParam('account_id', 0, \PDO::PARAM_INT)
+			;
+			//remove any cookie tokens marked for garbage collection (account_id = 0)
+			$this->removeStaleTokens(static::TOKEN_PREFIX_COOKIE.'%', '5 MINUTE', $theFilter);
+		}
+		catch ( \PDOException $pdox ) {
+			$this->getLogger()->withInfo(array(
+					'method' => __METHOD__,
+					'action' => __FUNCTION__,
+					'err_msg' => $pdox->getMessage(),
+					'message' => 'error during GC, warn and try again next time',
+			))->logAs(Logger::LOG_WARNING);
+		}
 	}
 
 	/**
@@ -2517,12 +2531,10 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	{
 		$theAuthAccount = null;
 		if ( $this->getDirector()->canConnectDb() ) try {
-			$bDetermineAuthPollInterval = false;
 			//some routines should only check every other minute
 			$tsNow = time(); //in seconds
 			$tsLastPollCheck = $this->getDirector()['check_ticket_poll_ts'];
 			if ( empty($tsLastPollCheck) || (($tsNow - $tsLastPollCheck) > 100) ) {
-				$bDetermineAuthPollInterval = true;
 				$this->onCheckTicketPollInterval($aScene);
 				$this->getDirector()['check_ticket_poll_ts'] = $tsNow;
 			}
@@ -2534,6 +2546,13 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 				);
 				//$this->logStuff(__METHOD__, ' venue=', $theVenueClass, ' determined=', $theAuthAccount); //DEBUG
 				if ( !empty($theAuthAccount) ) {
+					$now_dt = new \DateTime('now', new \DateTimeZone('UTC'));
+					$update_if_earlier = $now_dt->sub(new \DateInterval('PT3M'));
+					$bDetermineAuthPollInterval = (
+						empty($theAuthAccount->last_seen_dt) ||
+						//update last_seen_ts (et al.) if user last_seen more than 3min ago
+						$theAuthAccount->last_seen_dt < $update_if_earlier
+					);
 					if ( $bDetermineAuthPollInterval ) {
 						$this->onDetermineAuthAccountPollInterval($aScene, $theAuthAccount);
 					}
@@ -2691,7 +2710,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	}
 
 	/**
-	 * Deletes all tokens associated with the specified account ID.
+	 * Deletes all tokens, permissions, etc. associated with the specified account ID.
 	 * @param string $aAuthID - the account ID
 	 * @return $this Returns $this for chaining.
 	 * @since BitsTheater 4.0.0
@@ -3120,7 +3139,7 @@ class AuthOrgs extends BaseModel implements IFeatureVersioning
 	 */
 	public function getMyMobileRow()
 	{ return null; }
-		
+	
 	/**
 	 * Insert the task token into the table.
 	 * @param string $aTaskID - token mapped to a task by this id.

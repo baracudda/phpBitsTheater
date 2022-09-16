@@ -86,8 +86,9 @@ class CacheForAuthAccountInfo extends BaseCostume
 		}
 		$this->account_id = Strings::toInt($this->account_id);
 		$this->external_id = Strings::toInt($this->external_id);
-		if ( !empty($this->last_seen_ts) )
-		{ $this->last_seen_dt = new \DateTime( $this->last_seen_ts ); }
+		if ( !empty($this->last_seen_ts) ) {
+			$this->last_seen_dt = new \DateTime( $this->last_seen_ts, new \DateTimeZone('UTC') );
+		}
 		$this->is_active = boolval($this->is_active);
 		if ( empty($this->account_name) )
 		{ $this->is_active = false; }
