@@ -26,6 +26,7 @@ use BitsTheater\costumes\WornForFeatureVersioning;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\Arrays;
 use BitsTheater\BrokenLeg ;
+use com\blackmoonit\Strings;
 use PDO;
 use PDOException;
 use Exception;
@@ -665,8 +666,8 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 */
 	protected function insertGroupRegCode( $aGroupID, $aRegCode )
 	{
-		$theGroupId = intval($aGroupID);
-		$theRegCode = trim($aRegCode);
+		$theGroupId = Strings::toInt($aGroupID);
+		$theRegCode = Strings::trim($aRegCode);
 		if ( empty($theGroupId) || $theGroupId == static::UNREG_GROUP_ID ||
 				empty($theRegCode) )
 		{ return false; } //trivially reject bad data
@@ -700,7 +701,7 @@ class BitsGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function findGroupIdByRegCode( $aRegCode )
 	{
-		$theRegCode = trim($aRegCode);
+		$theRegCode = Strings::trim($aRegCode);
 		if (!$this->isEmpty($this->tnGroupRegCodes)) {
 			$theSql = SqlBuilder::withModel($this)->obtainParamsFrom(array(
 					'reg_code' => $theRegCode,

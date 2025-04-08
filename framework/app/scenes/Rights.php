@@ -6,8 +6,7 @@ use BitsTheater\scenes\Closet\Permissions as MyScene;
 
 class Rights extends MyScene
 {
-
-	//nothing to extend, yet
+	// nothing to override
 	
 }//end class
 

@@ -13,7 +13,6 @@ class AuthGroupList extends BaseCostume
 	 */
 	const DEFAULT_ITEM_CLASS = AuthGroup::ITEM_CLASS;
 	
-
 }//end class
 
 }//end namespace

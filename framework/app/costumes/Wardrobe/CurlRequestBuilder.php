@@ -36,7 +36,7 @@ class CurlRequestBuilder extends BaseCostume
 	public $mRequestMethod = 'GET';
 	/** @var string[] The headers to be sent. */
 	public $mHeaders = array();
-	/** @var mixed The POST data to sent. */
+	/** @var mixed The POST data to be sent. */
 	public $mData = null;
 	/** @var string The User Agent to send along with the request. */
 	public $mUserAgent = null;
@@ -74,27 +74,31 @@ class CurlRequestBuilder extends BaseCostume
 	public function __destruct()
 	{
 		$this->closeRequest();
-		if ( is_callable('parent::__destruct()') )
-		{ parent::__destruct(); }
+		unset($this->mCurlInfo);
+		unset($this->mResponseHeaders);
+		parent::__destruct();
 	}
 	
 	/**
 	 * Initialize the new object with a URL and context to use.
 	 * @param IDirected $aContext - the context to use.
 	 * @param string $aBaseURL - the base URL that must exist.
-	 * @param string $aAction - (OPTIONAL) the extra URL path.
+	 * @param string|null $aAction - (OPTIONAL) the extra URL path.
 	 * @return $this Returns the created object.
 	 * @throws BrokenLeg::ACT_SERVICE_UNAVAILABLE if $aURL is empty.
 	 */
-	static public function withURL( IDirected $aContext, $aBaseURL, $aAction=null )
+	static public function withURL( IDirected $aContext, string $aBaseURL, string $aAction=null ): self
 	{
 		//$aContext->getDirector()->logStuff(__METHOD__, ' curl=', $aBaseURL);//debug
 		$theClassName = get_called_class();
 		$o = new $theClassName($aContext->getDirector());
-		$o->setURL(trim($aBaseURL));
 		$aAction = ltrim(trim($aAction), '/');
-		if ( !empty($aAction) )
-		{ $o->setURL(rtrim($o->mURL, '/') .'/'. $aAction); }
+		if ( !empty($aAction) ) {
+			$aBaseURL = rtrim($aBaseURL, '/');
+			$o->setURL("{$aBaseURL}/{$aAction}");
+		} else {
+			$o->setURL(trim($aBaseURL));
+		}
 		return $o;
 	}
 	
@@ -187,7 +191,7 @@ class CurlRequestBuilder extends BaseCostume
 	public function addHeaderNameAndValue( $aHeaderName, $aHeaderValue )
 	{
 		$theHeaderName = Strings::normalizeHttpHeaderName($aHeaderName);
-		$theHeaderValue = trim($aHeaderValue);
+		$theHeaderValue = Strings::trim($aHeaderValue);
 		if ( !empty($theHeaderName) )
 		{ $this->mHeaders[] = $theHeaderName . ': ' . $theHeaderValue; }
 		return $this;
@@ -351,7 +355,7 @@ class CurlRequestBuilder extends BaseCostume
 	 */
 	public function onResponseHeader( $aReq, $aHeaderLine )
 	{
-		$theHeader = trim($aHeaderLine);
+		$theHeader = Strings::trim($aHeaderLine);
 		if ( !empty($theHeader) ) {
 			$this->mResponseHeaders[] = $theHeader;
 			if ( !empty($this->mOutputHeadersRoutine) )
@@ -537,10 +541,10 @@ class CurlRequestBuilder extends BaseCostume
 	/**
 	 * Create a logger message with standard info.
 	 * @param mixed $aResponseData - the response data, if any.
-	 * @param string $aReason - the reaosn for this log message.
+	 * @param string $aReason - the reason for this log message.
 	 * @return Logger Returns the Logger object with pre-set Curl info.
 	 */
-	public function getLogger( $aResponseData=null, $aReason='Curl')
+	public function getLogger( $aResponseData=null, $aReason='Curl'): Logger
 	{
 		$theRedactedURL = Strings::redactURL($this->mURL);
 		$logger = Logger::withContext($this)->withInfo(array(
@@ -620,5 +624,5 @@ class CurlRequestBuilder extends BaseCostume
 	}
 	
 }//end class
-	
+
 }//end namespace

@@ -75,7 +75,7 @@ class DbAdmin extends BaseCostume
 		// sanitize the user input for org_name, which will become the dbname
 		//   lacking a "standard dbname" format, if it can be a filename, its good enough
 		$aDbConnInput->{$aInputFieldName} = Strings::sanitizeFilename(
-				strtolower(trim($aDbConnInput->{$aInputFieldName})), null
+				strtolower(Strings::trim($aDbConnInput->{$aInputFieldName})), null
 		);
 		// if empty is not allowed, toss exception if sanitized $aInputFieldName is empty
 		if ( !$bAllowEmpty && empty($aDbConnInput->{$aInputFieldName}) )
@@ -216,7 +216,9 @@ class DbAdmin extends BaseCostume
 			//   which has admin privileges, which go poof at end of method.
 		}
 		$theSql = SqlBuilder::withModel($theModel)->obtainParamsFrom($aDbConnInput);
-		$theSql->beginTransaction();
+		//Atomic DDL means transactions are useless here
+		//@see https://dev.mysql.com/doc/refman/8.3/en/atomic-ddl.html
+		//$theSql->beginTransaction();
 		try {
 			if ( !Strings::beginsWith($aDbConnInput->dbconn, '/') ) {
 				// we are changing more than just making a new database, we need a new user as well
@@ -288,11 +290,11 @@ class DbAdmin extends BaseCostume
 			$this->logStuff(__METHOD__,
 					' created Database [', $aDbConnInput->dbname, '].'
 			);
-			$theSql->commitTransaction();
+			//$theSql->commitTransaction();
 			return $this;
 		}
 		catch (\PDOException $pdox) {
-			$theSql->rollbackTransaction();
+			//$theSql->rollbackTransaction();
 			throw $theSql->newDbException(__METHOD__, $pdox);
 		}
 	}
@@ -303,15 +305,13 @@ class DbAdmin extends BaseCostume
 	 * @param BasicScene $aScene - a Scene object for setupModel() routines.
 	 * @param DbConnInfo $aDbConnInfo - the dbconn info to use.
 	 * @param string $aDbConnName - the filter for which models to setup.
+	 * @throws BrokenLeg
 	 */
-	public function setupNewDb( BasicScene $aScene, DbConnInfo $aDbConnInfo, $aDbConnName)
+	public function setupNewDb( BasicScene $aScene, DbConnInfo $aDbConnInfo, string $aDbConnName): void
 	{
-		if ( empty($aDbConnName) )
-		{ throw new IllegalArgumentException('$aDbConnName cannot be empty'); }
 		/* @var $theModelList \ReflectionClass[] */
 		$theModelList = BasicModel::getAllModelClassInfo(); //gets all non-abstract models
-		$theDbConn = $aDbConnInfo->connect();
-		$theDbConn->beginTransaction();
+		$aDbConnInfo->connect();
 		try {
 			// copy over our Config model/table first
 			$theConfigModelName = ConfigDB::MODEL_NAME;
@@ -371,11 +371,9 @@ class DbAdmin extends BaseCostume
 				}
 				unset($theModel); //recycle for immediate reuse
 			}
-			$theDbConn->commit();
 		}
 		catch ( \Exception $x )
 		{
-			$theDbConn->rollBack();
 			throw BrokenLeg::tossException($this, $x);
 		}
 	}

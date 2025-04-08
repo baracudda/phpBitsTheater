@@ -120,24 +120,24 @@ abstract class KeyValueModel extends BaseModel implements ArrayAccess {
 	
 	//----- methods required for various IMPLEMENTS interfaces
 	
-	public function offsetSet($aNsKey, $aValue) {
-		if (!empty($aNsKey)) {
+	public function offsetSet( mixed $aNsKey, mixed $aValue ): void {
+		if ( !empty($aNsKey) ) {
 			$this->setMapValue($aNsKey,$aValue);
 		} else {
 			throw new IllegalArgumentException('key required, v:'.$aValue);
 		}
 	}
 
-	public function offsetExists($aNsKey) {
+	public function offsetExists( mixed $aNsKey ): bool {
 		$r = $this->getMapValue($aNsKey);
 		return (isset($r));
 	}
 
-	public function offsetUnset($aNsKey) {
+	public function offsetUnset( mixed $aNsKey ): void {
 		$this->setMapValue($aNsKey,null);
 	}
 
-	public function offsetGet($aNsKey) {
+	public function offsetGet( mixed $aNsKey ): mixed {
 		return $this->getMapValue($aNsKey);
 	}
 

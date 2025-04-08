@@ -49,7 +49,7 @@ class Strings {
 	 * Get the log config, creating the object if necessary.
 	 * @return \com\blackmoonit\StringsLogConfig
 	 */
-	static protected function getLogConfig()
+	static public function getLogConfig()
 	{
 		if ( empty(self::$log_config) ) {
 			self::$log_config = new StringsLogConfig();
@@ -101,7 +101,24 @@ class Strings {
 		}
 		return self::$log_config;
 	}
-
+	
+	/**
+	 * strpos cannot handle NULL in haystack param anymore, so this will test it for you.
+	 * @param ?string $aHaystack - the haystack, may be NULL.
+	 * @param ?string $aNeedle - the needle to find, may be NULL.
+	 * @param boolean $bCaseInsensitive
+	 * @return bool Return TRUE if needle is found within the haystack. Special case of NULL
+	 *     haystack with NULL needle = TRUE. NULL needles otherwise return FALSE.
+	 */
+	static public function isInStr( ?string $aHaystack, ?string $aNeedle, bool $bCaseInsensitive=false ): bool
+	{
+		if ( empty($aHaystack) ) return empty($aNeedle);
+		if ( empty($aNeedle) ) return false;
+    	$strposfn = ($bCaseInsensitive) ? 'stripos' : 'strpos';
+	    $thePos = $strposfn($aHaystack, $aNeedle);
+    	return ($thePos !== false);
+	}
+	
 	/**
 	 * Return everything after $aNeedle is found in $aHaystack.
 	 * @param string $aHaystack - string to search through.
@@ -109,10 +126,11 @@ class Strings {
 	 * @param boolean $bCaseInsensitive - (optional) default FALSE.
 	 * @return string|NULL - Returns rest of haystack after needle, else NULL.
 	 */
-	static public function strstr_after($aHaystack, $aNeedle, $bCaseInsensitive=false) {
-    	$strpos = ($bCaseInsensitive) ? 'stripos' : 'strpos';
-	    $thePos = $strpos($aHaystack,$aNeedle);
-    	if (is_int($thePos)) {
+	static public function strstr_after( string $aHaystack, string $aNeedle, bool $bCaseInsensitive=false ): string|null
+	{
+    	$strposfn = ($bCaseInsensitive) ? 'stripos' : 'strpos';
+	    $thePos = $strposfn($aHaystack,$aNeedle);
+    	if ( is_int($thePos) ) {
         	return substr($aHaystack,$thePos+strlen($aNeedle));
     	} else
     		return null;
@@ -353,11 +371,13 @@ class Strings {
 	 * @see Strings::createUUID()
 	 * @see Strings::createTextId()
 	 */
-	static public function createGUID() {
-		if (function_exists('com_create_guid')) {
+	static public function createGUID(): string {
+		if (function_exists('uuid_create')) {
+			return uuid_create();
+		} else if (function_exists('com_create_guid')) {
 			return trim(com_create_guid(), '{}');
 		} else {
-			mt_srand((double)microtime()*10000); //optional for php 4.2.0 and up.
+			mt_srand(intval((double)microtime()*10000)); //optional for php 4.2.0 and up.
 			$charid = strtoupper(md5(uniqid(rand(),true)));
 			$guid = substr($charid, 0, 8).'-'.substr($charid, 8, 4).'-'
 					.substr($charid,12, 4).'-'.substr($charid,16, 4).'-'
@@ -372,7 +392,13 @@ class Strings {
 	 * @see Strings::createTextId()
 	 */
 	static public function createUUID()
-	{ return self::createGUID(); }
+	{
+		if (function_exists('uuid_create')) {
+			return uuid_create();
+		} else {
+			return self::createGUID();
+		}
+	}
 	
 	/**
 	 * Checks a UUID string (36 chars with dashes, no "{}") to see if it is a
@@ -517,12 +543,12 @@ class Strings {
 	 */
 	static public function debugStr($aVar, $aNewLineReplacement=' ') {
 		$s = '';
-		/* I like my own var_dump better now. :)
+		/* I like my own var_dump better now. :) php8 deprecates dynamic obj properties */
 		if (version_compare(phpversion(), "5.6.0", ">=")) {
 			ob_start();
 			var_dump($aVar); //5.6+ takes into account the magic method __debugInfo()
 			$s = ob_get_clean();
-		} else */{
+		} else {
 			$s = self::var_dump($aVar, !isset($aNewLineReplacement));
 			if (isset($aNewLineReplacement)) {
 				$s = str_replace('- ','',$s);
@@ -680,17 +706,18 @@ class Strings {
 			return;
 		}
 		
+		// do we encode the log as JSON? Add a timestamp either way
+		$ts = gmdate("Y-m-d\TH:i:s\Z");
+		if ( !empty($theLogConfig->as_json) && $bIsMsgStr ) {
+			$theMsg = self::logMsgToJSON($aLevel, $theMsg, $ts) . PHP_EOL;
+		} else if ( !empty($theLogConfig->as_json) && is_callable(array($aMsgOrObj, 'toJson')) ) {
+			$theMsg = $aMsgOrObj->toJson($aLevel) . PHP_EOL;
+		} else {
+			$theMsg = '[' . $ts . ']: ' . $theMsg . PHP_EOL;
+		}
+
 		// do we use a custom log file?
 		if ( !empty($theLogConfig->filepath) ) {
-			// do we encode the log as JSON? Add a timestamp either way
-			$ts = gmdate("Y-m-d\TH:i:s\Z");
-			if ( !empty($theLogConfig->as_json) && $bIsMsgStr ) {
-				$theMsg = self::logMsgToJSON($aLevel, $theMsg, $ts) . PHP_EOL;
-			} else if ( !empty($theLogConfig->as_json) && is_callable(array($aMsgOrObj, 'toJson')) ) {
-				$theMsg = $aMsgOrObj->toJson($aLevel) . PHP_EOL;
-			} else {
-				$theMsg = '[' . $ts . ']: ' . $theMsg . PHP_EOL;
-			}
 			try {
 				$handle = fopen($theLogConfig->filepath, 'a');
 				fwrite($handle, $theMsg);
@@ -728,21 +755,21 @@ class Strings {
 	/**
 	 * Converts the name from under_score to CamelCase.
 	 * e.g. "this_class_name" -> "ThisClassName"
-	 * @param string $aName - potential class name.
-	 * @return string Returns the name as a standard Class name.
+	 * @param ?string $aName - potential class name.
+	 * @return ?string Returns the name as a standard Class name.
 	 */
-	static public function getClassName($aName) {
-		return preg_replace_callback('+(?:^|_)(.?)+', array(__CLASS__, 'upperStrMatches'), $aName);
+	static public function getClassName( ?string $aName ): ?string {
+		return ($aName) ? preg_replace_callback('+(?:^|_)(.?)+', array(__CLASS__, 'upperStrMatches'), $aName) : null;
 	}
 
 	/**
 	 * Converts the name from under_score to CamelCase.
 	 * e.g. "this_method_name" -> "thisMethodName"
-	 * @param string $aName - potential method name.
-	 * @return string Returns the name as a standard method name.
+	 * @param ?string $aName - potential method name.
+	 * @return ?string Returns the name as a standard method name.
 	 */
-	static public function getMethodName($aName) {
-		return preg_replace_callback('+_(.?)+', array(__CLASS__, 'upperStrMatches'), $aName);
+	static public function getMethodName( ?string $aName ): ?string {
+		return ($aName) ? preg_replace_callback('+_(.?)+', array(__CLASS__, 'upperStrMatches'), $aName) : null;
 	}
 	
 	/**
@@ -863,8 +890,9 @@ class Strings {
 	 * @param string $aDelimiter - (optional) key=value separator, defaults to '='.
 	 * @return array Returns array(key, value) or array() if none found.
 	 */
-	static public function strToKeyValue($aStr, $aDelimiter='=') {
-		$theResult = array();
+	static public function strToKeyValue( string $aStr, string $aDelimiter='=' ): array
+	{
+		$theResult = [];
 		$thePos = strpos($aStr, $aDelimiter);
 		if (is_int($thePos)) {
 			$theResult[0] = substr($aStr, 0, $thePos);
@@ -1057,7 +1085,7 @@ class Strings {
 	 * @param string $aHeader - the entire header string, "some-name: value".
 	 * @return string Returns the normalized header.
 	 */
-	static public function normalizeHttpHeader( $aHeader )
+	static public function normalizeHttpHeader( string $aHeader ): string
 	{
 		$theNameValueSeparatorPos = strpos($aHeader, ':');
 		return ( $theNameValueSeparatorPos >= 0 ) ?
@@ -1107,13 +1135,17 @@ class Strings {
 	 * @param string $aHeader - the entire header string, "some-name: value".
 	 * @return string[] Returns the raw header name and its raw header value.
 	 */
-	static public function splitHttpHeader( $aHeader )
+	static public function splitHttpHeader( string $aHeader ): array
 	{
 		$theNameValueSeparatorPos = strpos($aHeader, ':');
-		return ( $theNameValueSeparatorPos >= 0 ) ?
-			array( trim(substr($aHeader, 0, $theNameValueSeparatorPos)),
-					trim(substr($aHeader, $theNameValueSeparatorPos+1)) )
-			: trim($aHeader);
+		return ( $theNameValueSeparatorPos >= 0 ) ? [
+				trim(substr($aHeader, 0, $theNameValueSeparatorPos)),
+				trim(substr($aHeader, $theNameValueSeparatorPos+1))
+			] : [
+				trim($aHeader),
+				''
+			]
+		;
 	}
 	
 	/**
@@ -1155,6 +1187,14 @@ class Strings {
 	 */
 	static public function toInt($aVal)
 	{ return ( !is_null($aVal) && $aVal!=='' ) ? intval($aVal) : null; }
+	
+	/**
+	 * If NULL, returns NULL, else returns the trim().
+	 * @param ?string $aStr - a string to trim.
+	 * @return ?string Returns the trim() or NULL, if NULL.
+	 */
+	static public function trim( ?string $aStr ): ?string
+	{ return ( !is_null($aStr) && $aStr!=='' ) ? trim($aStr) : null; }
 	
 	/**
 	 * Sometimes we wish to create a file whose name is based on user input.

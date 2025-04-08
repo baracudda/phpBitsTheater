@@ -18,11 +18,11 @@
 namespace BitsTheater;
 use com\blackmoonit\AdamEve as BaseScene;
 use BitsTheater\costumes\IDirected;
+use BitsTheater\costumes\WornForIDirectedSupport;
 use BitsTheater\costumes\WornForPagerManagement;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Strings;
 use com\blackmoonit\Widgets;
-use Exception;
 use ReflectionClass;
 use ReflectionMethod;
 use Traversable;
@@ -50,7 +50,10 @@ use Traversable;
  */
 class Scene extends BaseScene
 implements IDirected
-{ use WornForPagerManagement;
+{
+	use WornForIDirectedSupport;
+	use WornForPagerManagement;
+	
 	const _SetupArgCount = 2; //number of args required to call the setup() method.
 	
 	/**
@@ -458,101 +461,9 @@ implements IDirected
 	 * Return the director object.
 	 * @return Director Returns the site director object.
 	 */
-	public function getDirector() {
+	public function getDirector(): Director {
 		return $this->_director;
 	}
-	
-	/**
-	 * Getter for our director-wide modern LogMessage instance.
-	 * @return \BitsTheater\costumes\LogMessage Returns the logger instance.
-	 */
-	public function getLogger()
-	{ return $this->getDirector()->getLogger(); }
-
-	/**
-	 * {@inheritDoc}
-	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @see \BitsTheater\costumes\IDirected::isAllowed()
-	 */
-	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
-		return $this->getDirector()->isAllowed($aNamespace, $aPermission, $aAcctInfo);
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @see \BitsTheater\costumes\IDirected::isGuest()
-	 */
-	public function isGuest() {
-		return $this->getDirector()->isGuest();
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @see \BitsTheater\costumes\IDirected::checkAllowed()
-	 */
-	public function checkAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
-		return $this->getDirector()->checkAllowed($aNamespace, $aPermission, $aAcctInfo);
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * @return $this Returns $this for chaining.
-	 * @see \BitsTheater\costumes\IDirected::checkPermission()
-	 */
-	public function checkPermission($aNamespace, $aPermission, $aAcctInfo=null)
-	{
-		$this->getDirector()->checkPermission($aNamespace, $aPermission, $aAcctInfo);
-		return $this;
-	}
-	
-	/**
-	 * Return a Model object for a given org, creating it if necessary.
-	 * @param string $aName - name of the model object.
-	 * @param string $aOrgID - (optional) the org ID whose data we want.
-	 * @return Model Returns the model object.
-	 */
-	public function getProp( $aName, $aOrgID=null )
-	{ return $this->getDirector()->getProp($aName, $aOrgID); }
-	
-	/**
-	 * Let the system know you do not need a Model anymore so it
-	 * can close the database connection as soon as possible.
-	 * @param Model $aProp - the Model object to be returned to the prop closet.
-	 */
-	public function returnProp($aProp) {
-		$this->getDirector()->returnProp($aProp);
-	}
-
-	/**
-	 * Get a resource based on its combined 'namespace/resource_name'.
-	 * Alternatively, you can pass each segment in as its own parameter.
-	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
-	 */
-	public function getRes($aName) {
-		return call_user_func_array(array($this->getDirector(), 'getRes'), func_get_args());
-	}
-	
-	/**
-	 * Returns the URL for this site appended with relative path info.
-	 * @param string[]|string $aRelativeURL - array of path segments
-	 *   OR a bunch of string parameters equating to path segments.
-	 * @return string Returns the site relative path URL.
-	 * @see Director::getSiteUrl()
-	 */
-	public function getSiteUrl($aRelativeURL='') {
-		return call_user_func_array(array($this->getDirector(), 'getSiteUrl'), func_get_args());
-	}
-	
-	/**
-	 * Get the setting from the configuration model.
-	 * @param string $aSetting - setting in form of "namespace/setting"
-	 * @param string $aOrgID - (optional) the org ID whose data we want.
-	 * @throws \Exception
-	 */
-	public function getConfigSetting( $aSetting, $aOrgID=null )
-	{ return $this->getDirector()->getConfigSetting($aSetting, $aOrgID); }
 	
 	/**
 	 * @see Director::getSiteMode()
@@ -946,9 +857,9 @@ implements IDirected
 				$thePager .= $this->getRes('pager/label_next');
 			}
 			$thePager .= '</a>';
-					
+			
 			$thePager .= $theLabelSpacer;
-				
+			
 			$theQueryParams['page'] = $theTotalPages;
 			$thePager .= '<a href="'.$this->getMyUrl($aAction,$theQueryParams).'"';
 			if ($theCurrPage >= $theTotalPages) //hide, but still take up space
@@ -960,7 +871,7 @@ implements IDirected
 				$thePager .= $this->getRes('pager/label_last');
 			}
 			$thePager .= '</a>';
-				
+			
 			$thePager .= "</div>";
 		} else {
 			$thePager = '';

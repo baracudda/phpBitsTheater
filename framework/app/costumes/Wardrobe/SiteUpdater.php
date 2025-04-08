@@ -26,12 +26,12 @@ use BitsTheater\costumes\WornForCLI;
  * Costume to centralize the site upgrade algorithm. This may be called from a
  * REST API actor or from a CLI actor.
  * @since BitsTheater v4.0.0
- * @see BitsTheater\actors\Understudy\BitsAdmin
+ * @see \BitsTheater\actors\Understudy\BitsAdmin
  */
 class SiteUpdater extends BaseCostume
 { use WornByModel, WornForCLI ;
 
-	protected $myUpgradeData ;
+	protected object $myUpgradeData ;
 	
 	/**
 	 * Constructs an instance.
@@ -51,17 +51,16 @@ class SiteUpdater extends BaseCostume
 	 * Mutator for the data to be used as input to the upgrade process. There is
 	 * no corresponding accessor.
 	 * @param array|object $aObject an object from which to draw upgrade data
-	 * @return \BitsTheater\costumes\SiteUpdater $this
+	 * @return $this
 	 */
-	public function setUpgradeData( $aObject )
+	public function setUpgradeData( array|object $aObject ): self
 	{ $this->myUpgradeData = ((object)($aObject)) ; return $this ; }
 	
 	/**
 	 * Upgrades a single site feature.
-	 * @return null (the underlying method has no return statements)
 	 */
-	public function upgradeFeature()
-	{ return $this->model->upgradeFeature( $this->myUpgradeData ) ; }
+	public function upgradeFeature(): void
+	{ $this->model->upgradeFeature( $this->myUpgradeData ) ; }
 	
 	/**
 	 * Upgrades all features of the site.

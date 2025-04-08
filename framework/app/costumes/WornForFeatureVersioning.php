@@ -65,19 +65,34 @@ trait WornForFeatureVersioning
 	 */
 	protected function setupTable( $aTableConst, $aTableName )
 	{
-		$theSql = '' ;
-		try
-		{
-			$theSql = $this->getTableDefSql( $aTableConst ) ;
-			$this->execDML( $theSql ) ;
-			$this->debugLog(
-					$this->getRes( 'install/msg_create_table_x_success/' . $aTableName )
-			) ;
+		$theSql = '';
+		$dbConnInfo = $this->getDbConnInfo();
+		$logger = $this->getLogger()->withInfo([
+			'org_name' => $dbConnInfo->dbName,
+			'org_id' => $dbConnInfo->mOrgID,
+			'table_name' => $aTableName,
+		]);
+		try {
+			$logger->logWith([
+				'message' => 'creating'.$aTableName.'...',
+			]);
+			$theSql = $this->getTableDefSql($aTableConst);
+			if ( $theSql ) {
+				$this->execDML($theSql);
+			} else {
+				throw new PDOException('table returned no SQL to run');
+			}
+			$logger->logWith([
+				'message' => $this->getRes('install/msg_create_table_x_success/' . $aTableName)
+			]);
 		}
-		catch( PDOException $pdox )
-		{
-			$this->errorLog(__METHOD__.' failed: '.$pdox->getMessage().' sql='.$theSql);
-			throw new DbException( $pdox, $theSql ) ;
+		catch( PDOException $pdox ) {
+			$logger->logToError([
+				'method' => __METHOD__,
+				'message' => $pdox->getMessage(),
+				'sql' => $theSql,
+			]);
+			throw new DbException($pdox, $theSql);
 		}
 	}
 

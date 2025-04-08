@@ -153,18 +153,19 @@ abstract class ARecordSet extends BaseCostume
 	
 	/**
 	 * print() out extra properties besides the set of records here, if any.
-	 * @param string $aEncodeOptions options for `json_encode()`
+	 * @param int $aEncodeOptions options for `json_encode()`
 	 */
-	protected function printExtraJsonProperties( $aEncodeOptions ) {
+	protected function printExtraJsonProperties( int $aEncodeOptions=0 ) {
 		//nothing to do, by default
 	}
 	
 	/**
 	 * Prints the entire data set to the output stream, item by item.
-	 * @param string $aEncodeOptions options for `json_encode()`
+	 * @param int $aEncodeOptions - (optional) options for `json_encode()`
 	 * @return $this Returns $this for chaining.
+	 * @throws \Exception if output goes awry.
 	 */
-	public function printAsJson( $aEncodeOptions=null )
+	public function printAsJson( int $aEncodeOptions=0 ): self
 	{
 		print('{');
 		try

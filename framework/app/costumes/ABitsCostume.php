@@ -18,7 +18,6 @@
 namespace BitsTheater\costumes;
 use com\blackmoonit\AdamEve as BaseCostume;
 use BitsTheater\Director;
-use BitsTheater\Model;
 use stdClass as StandardClass;
 use com\blackmoonit\exceptions\IllegalArgumentException;
 use com\blackmoonit\Arrays;
@@ -27,6 +26,8 @@ use com\blackmoonit\Arrays;
 abstract class ABitsCostume extends BaseCostume
 implements IDirected
 {
+	use WornForIDirectedSupport;
+	
 	const _SetupArgCount = 1; //number of args required to call the setup() method.
 	/**
 	 * @var Director
@@ -70,100 +71,9 @@ implements IDirected
 	 * Return the director object.
 	 * @return Director Returns the site director object.
 	 */
-	public function getDirector() {
+	public function getDirector(): Director {
 		return $this->_director;
 	}
-	
-	/**
-	 * Getter for our director-wide modern LogMessage instance.
-	 * @return \BitsTheater\costumes\LogMessage Returns the logger instance.
-	 */
-	public function getLogger()
-	{ return $this->getDirector()->getLogger(); }
-
-	/**
-	 * {@inheritDoc}
-	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @see \BitsTheater\costumes\IDirected::isAllowed()
-	 */
-	public function isAllowed($aNamespace, $aPermission, $acctInfo=null) {
-		return $this->getDirector()->isAllowed($aNamespace,$aPermission,$acctInfo);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @see \BitsTheater\costumes\IDirected::isGuest()
-	 */
-	public function isGuest() {
-		return $this->getDirector()->isGuest();
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @see \BitsTheater\costumes\IDirected::checkAllowed()
-	 */
-	public function checkAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
-		return $this->getDirector()->checkAllowed($aNamespace, $aPermission, $aAcctInfo);
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * @return $this Returns $this for chaining.
-	 * @see \BitsTheater\costumes\IDirected::checkPermission()
-	 */
-	public function checkPermission($aNamespace, $aPermission, $aAcctInfo=null)
-	{
-		$this->getDirector()->checkPermission($aNamespace, $aPermission, $aAcctInfo);
-		return $this;
-	}
-	
-	/**
-	 * Return a Model object for a given org, creating it if necessary.
-	 * @param string $aName - name of the model object.
-	 * @param string $aOrgID - (optional) the org ID whose data we want.
-	 * @return Model Returns the model object.
-	 */
-	public function getProp( $aName, $aOrgID=null )
-	{ return $this->getDirector()->getProp($aName, $aOrgID); }
-	
-	/**
-	 * Let the system know you do not need a Model anymore so it
-	 * can close the database connection as soon as possible.
-	 * @param Model $aProp - the Model object to be returned to the prop closet.
-	 */
-	public function returnProp($aProp) {
-		$this->getDirector()->returnProp($aProp);
-	}
-
-	/**
-	 * Get a resource based on its combined 'namespace/resource_name'.
-	 * Alternatively, you can pass each segment in as its own parameter.
-	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
-	 */
-	public function getRes($aName) {
-		return call_user_func_array(array($this->getDirector(), 'getRes'), func_get_args());
-	}
-	
-	/**
-	 * Returns the relative URL for this site appended with additional path info.
-	 * @param string[]|string $aRelativeURL - array of path segments
-	 *   OR a bunch of string parameters equating to path segments.
-	 * @return string - returns the relative path URL.
-	 */
-	public function getSiteUrl($aRelativeURL='') {
-		return call_user_func_array(array($this->getDirector(), 'getSiteUrl'), func_get_args());
-	}
-	
-	/**
-	 * Get the setting from the configuration model.
-	 * @param string $aSetting - setting in form of "namespace/setting"
-	 * @param string $aOrgID - (optional) the org ID whose data we want.
-	 * @throws \Exception
-	 */
-	public function getConfigSetting( $aSetting, $aOrgID=null )
-	{ return $this->getDirector()->getConfigSetting($aSetting, $aOrgID); }
 	
 	/**
 	 * Copies values into matching property names
@@ -258,9 +168,10 @@ implements IDirected
 	
 	/**
 	 * JSON string for this payload data, minus any metadata the class might have.
+	 * @param int $aJsonEncodeOptions - (optional) JSON encode flags.
 	 * @return string Return self encoded to JSON.
 	 */
-	public function toJson($aJsonEncodeOptions=null) {
+	public function toJson(int $aJsonEncodeOptions=0): string {
 		$o = $this->exportData();
 		$s = json_encode($o, $aJsonEncodeOptions);
 		if ( json_last_error() != JSON_ERROR_NONE ) {

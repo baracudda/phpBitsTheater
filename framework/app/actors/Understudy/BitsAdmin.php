@@ -20,6 +20,7 @@ use BitsTheater\Actor as BaseActor;
 use BitsTheater\costumes\APIResponse;
 use BitsTheater\costumes\SiteUpdater ;
 use BitsTheater\costumes\WornForCLI;
+use BitsTheater\models\SetupDb as MetaModelProp;
 use BitsTheater\BrokenLeg;
 use Exception;
 {//namespace begin
@@ -31,10 +32,10 @@ class BitsAdmin extends BaseActor
 	const DEFAULT_ACTION = 'websiteStatus';
 	
 	/**
-	 * @return \BitsTheater\models\PropCloset\SetupDb Returns the database model reference.
+	 * @return MetaModelProp Returns the database model reference.
 	 */
 	protected function getMetaModel()
-	{ return $this->getProp('SetupDb'); }
+	{ return (fn($model):MetaModelProp=>$model)($this->getProp(MetaModelProp::MODEL_NAME)) ; }
 
 	/**
 	 * Gives the name of the model that should be used to upgrade the site.
@@ -43,26 +44,22 @@ class BitsAdmin extends BaseActor
 	 * @return string the model to be used for site upgrades
 	 * @since BitsTheater v4.0.0
 	 */
-	protected function getUpdateModelName()
-	{
-		$dbMeta = $this->getMetaModel();
-		return $dbMeta::MODEL_NAME ;
-	}
+	protected function getUpdateModelName(): string
+	{ return $this->getMetaModel()::MODEL_NAME; }
 
 	/**
 	 * Webpage endpoint.
 	 */
-	public function websiteStatus() {
-		//shortcut variable $v also in scope in our view php file.
-		$v =& $this->scene;
-		//auth
+	public function websiteStatus()
+	{
 		if (!$this->isAllowed('config', 'modify')) {
 			return $this->getSiteURL();
 		}
-		
-		$v->addUserMsg($v->getRes('admin/msg_warning_backup_db'),$v::USER_MSG_WARNING);
-		$dbMeta = $this->getProp('SetupDb');
-		$dbMeta->refreshFeatureTable($v);
+		//shortcut variable $v also in scope in our view php file.
+		$v = $this->getMyScene();
+		$v->addUserMsg($this->getRes('admin/msg_warning_backup_db'), $v::USER_MSG_WARNING);
+		$dbMeta = $this->getMetaModel();
+		$dbMeta->refreshFeatureTable($this->getMyScene());
 		$v->feature_version_list = $dbMeta->getFeatureVersionList();
 	}
 	
@@ -71,18 +68,14 @@ class BitsAdmin extends BaseActor
 	 */
 	public function ajajUpdateFeature()
 	{
-		$v =& $this->scene ;
-		if( $this->checkAllowed( 'config', 'modify' ) )
+		if ( $this->checkAllowed( 'config', 'modify' ) )
 		{
-			$theUpdater = new SiteUpdater(
-					$this, $v, $this->getUpdateModelName() ) ;
-			try
-			{
-				$v->results = APIResponse::resultsWithData(
-							$theUpdater->upgradeFeature() ) ;
+			$v = $this->getMyScene();
+			$theUpdater = new SiteUpdater($this, $v, $this->getUpdateModelName());
+			try {
+				$this->setApiResults($theUpdater->upgradeFeature());
 			}
-			catch( Exception $x )
-			{
+			catch( Exception $x ) {
 				$v->addUserMsg( $x->getMessage(), $v::USER_MSG_ERROR ) ;
 				throw BrokenLeg::tossException( $this, $x ) ;
 			}
@@ -115,11 +108,10 @@ class BitsAdmin extends BaseActor
 	 * API for getting the feature version list.
 	 */
 	public function ajajGetFeatureVersionList() {
-		$v =& $this->scene;
-		if ($this->checkAllowed('config', 'modify')) {
-			$dbMeta = $this->getProp('SetupDb');
+		if ( $this->checkAllowed('config', 'modify') ) {
+			$dbMeta = $this->getMetaModel();
 			try {
-				$v->results = APIResponse::resultsWithData($dbMeta->getFeatureVersionList());
+				$this->setApiResults($dbMeta->getFeatureVersionList());
 			} catch (Exception $e) {
 				throw BrokenLeg::tossException($this, $e);
 			}
@@ -143,8 +135,7 @@ class BitsAdmin extends BaseActor
 		catch( Exception $x )
 		{ throw BrokenLeg::tossException( $this, $x ) ; }
 	}
-   	
+ 
 }//end class
 
 }//end namespace
-

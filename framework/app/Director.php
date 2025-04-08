@@ -57,48 +57,45 @@ implements ArrayAccess, IDirected
 	
 	/**
 	 * The app ID found in the [cfg]Settings class.
-	 * @var string
 	 */
-	public $app_id = __DIR__;
+	public string $app_id = __DIR__;
 	
 	/**
 	 * Non-sensitive account info of the logged in user.
-	 * @var AccountInfoCache
 	 */
-	public $account_info = null;
+	public ?AccountInfoCache $account_info;
 	/**
-	 * Resource manager class (@var may not apply during installation).
-	 * @var res\ResI18N
+	 * Resource manager class.
 	 */
-	protected $_resManager = null;
+	protected res\ResI18N $_resManager;
 	/**
 	 * Cache of resource classes.
 	 */
-	protected $_resMaster = array();
+	protected array $_resMaster = array();
 	/**
 	 * Cache of log filenames.
 	 * @var string[]
 	 */
-	protected $_logFilenameCache = array();
+	protected array $_logFilenameCache = array();
 	/** @var Usher The authorization costume used for permission checks. */
-	protected $mChiefUsher = null;
+	protected Usher $mChiefUsher;
 	/** @var PropsMaster The models manager. */
-	public $mPropsMaster = null;
+	public PropsMaster $mPropsMaster;
 	/**
 	 * Cache of the config model in use.
 	 * NOTE: If set to FALSE, then model is unavailable, use defined defaults.
-	 * @var \BitsTheater\models\Config
+	 * @var ConfigModel|bool|null
 	 */
 	protected $dbConfig = null;
 	
 	/** @var Logger the logger instance to use. */
-	public $mLogger = null;
+	public Logger $mLogger;
 	
 	/**
 	 * Determine which Director to create for the job.
 	 * @return Director
 	 */
-	static public function requisition()
+	static public function requisition(): Director
 	{
 		$theAppDirectorName = WEBAPP_NAMESPACE . 'AppDirector' ;
 		if( class_exists( $theAppDirectorName ) )
@@ -159,7 +156,6 @@ implements ArrayAccess, IDirected
 		));
 		Strings::$callback4log2info = array($this, 'writeToLog');
 		Strings::$callback4log2err = array($this, 'writeToErrorLog');
-		static::removeMagicQuotes();
 		static::unregisterGlobals();
 		register_shutdown_function(array($this, 'onShutdown'));
 		$this->mPropsMaster = new PropsMaster($this);
@@ -197,13 +193,23 @@ implements ArrayAccess, IDirected
 	 * @see \com\blackmoonit\AdamEve::cleanup()
 	 */
 	public function cleanup() {
-		unset($this->account_info);
-		if ( !empty($this->mPropsMaster) ) {
-			$this->mPropsMaster->closeAllConnections();
+		if ( !$this->bHasBeenCleanup ) {
+			//if no account info, no need for remembering session
+			if ( $this->canCheckTickets() && isset($this->mPropsMaster) &&
+				empty($this[models\Auth::KEY_userinfo])
+			) {
+				$_SESSION = [];
+				if ( session_status() === PHP_SESSION_ACTIVE ) {
+					session_destroy();
+				}
+			}
+			unset($this->account_info);
+			if ( isset($this->mPropsMaster) ) {
+				$this->mPropsMaster->closeAllConnections();
+			}
+			//free all resources
+			$this->freeRes();
 		}
-		//free all resources
-		$this->freeRes();
-		//call parent
 		parent::cleanup();
 	}
 	
@@ -237,20 +243,20 @@ implements ArrayAccess, IDirected
 	
 	//----- methods required for various IMPLEMENTS interfaces
 	//NOTE: $this['key'] works for simple types, but not arrays.  Avoid arrays!
-	public function offsetSet($aOffset, $aValue) {
+	public function offsetSet( mixed $aOffset, mixed $aValue ): void {
 		$_SESSION[$this->app_id][$aOffset] = $aValue;
 	}
 
-	public function offsetExists($aOffset) {
+	public function offsetExists( mixed $aOffset ): bool {
 		return isset($_SESSION[$this->app_id][$aOffset]);
 	}
 
-	public function offsetUnset($aOffset) {
+	public function offsetUnset( mixed $aOffset ): void {
 		unset($_SESSION[$this->app_id][$aOffset]);
 	}
 
-	public function offsetGet($aOffset) {
-		return isset($_SESSION[$this->app_id][$aOffset]) ? $_SESSION[$this->app_id][$aOffset] : null;
+	public function offsetGet( mixed $aOffset ): mixed {
+		return $_SESSION[$this->app_id][$aOffset] ?? null;
 	}
 	
 	//----- IMPLEMENTS handled, get on with being a Director below -----
@@ -328,15 +334,13 @@ implements ArrayAccess, IDirected
 	 */
 	public function regenerateSession()
 	{
-		if (session_status() != PHP_SESSION_NONE) {
+		if (session_status() !== PHP_SESSION_NONE) {
 			//A new_session_id is required to set proper session ID
 			//  when session ID is not set due to unstable network.
 			$theNewID = function_exists('session_create_id') ? session_create_id() : uniqid();
 			$_SESSION['new_session_id'] = $theNewID;
 			//Set destroyed error state timestamp to 1 min from now.
 			$_SESSION['destroyed_ts'] = time()+60;
-			//This can be used by forms to prevent cross-site forgery attempts
-			$_SESSION['nonce'] = bin2hex(openssl_random_pseudo_bytes(32));
 			//Create new session without destroying the old one.
 			session_regenerate_id(false);
 			//Grab current session ID and flush the memory cache.
@@ -377,7 +381,7 @@ implements ArrayAccess, IDirected
 	 * Return the director object.
 	 * @return Director Returns the site director object.
 	 */
-	public function getDirector() {
+	public function getDirector(): Director {
 		return $this;
 	}
 	
@@ -396,6 +400,13 @@ implements ArrayAccess, IDirected
 				Strings::getMethodName('api_' . $aPossibleAction),
 				Strings::getMethodName('ajax_' . $aPossibleAction),
 		);
+	}
+	
+	protected function isDirectorApi( ?string $aPossibleAction ): bool {
+		return false;
+	}
+
+	protected function callDirectorApi( string $aAction, array $aParams ) {
 	}
 	
 	/**
@@ -433,9 +444,9 @@ implements ArrayAccess, IDirected
 		foreach($thePossibleMethodsList as $thePossibleMethod) {
 			try {
 				$thePossibleUrl = $theActorName.'/'.$thePossibleMethod.'/'.$theParamSegments;
-				$this->getLogger()->withInfo(array(
+				$this->getLogger()->withInfo([
 						'url' => $thePossibleUrl,
-				))->logToDebug();
+				])->logToDebug('raising curtain');
 				$this->raiseCurtain($thePossibleUrl);
 				break; //if we did not throw an exception, our job is done.
 			}
@@ -519,6 +530,7 @@ implements ArrayAccess, IDirected
 	 * Render the defined view for the given Actor::method().
 	 * @param string $aUrlPath - the non-empty URL path segments to parse.
 	 * @throws FourOhFourExit if URL does not refer to a valid endpoint.
+	 * @throws BrokenLeg
 	 */
 	public function raiseCurtain( $aUrlPath )
 	{
@@ -527,7 +539,12 @@ implements ArrayAccess, IDirected
 				->setContextMsg('actor not found');
 		}
 		$thePathSegments = explode('/', trim($aUrlPath, '/'));
-		$theActorClass = $this::getActorClass(array_shift($thePathSegments));
+		$theActorName = array_shift($thePathSegments);
+		if ( $this->isDirectorApi($theActorName) ) {
+			$this->callDirectorApi($theActorName, $thePathSegments);
+			return;
+		}
+		$theActorClass = $this::getActorClass($theActorName);
 		if ( !class_exists($theActorClass) ) {
 			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
 				->setContextMsg('actor not found');
@@ -535,6 +552,7 @@ implements ArrayAccess, IDirected
 		$theAction = array_shift($thePathSegments);
 		$theMethodName = $theActorClass::getMethodForAction($theAction);
 		//actor and action exist as public method, call it!
+		/* @var $theActor Actor */
 		$theActor = new $theActorClass($this, $theAction);
 		if ( !$theActor->perform($theMethodName, $thePathSegments) ) {
 			throw (new FourOhFourExit($this->getSiteUrl($aUrlPath)))
@@ -628,10 +646,10 @@ implements ArrayAccess, IDirected
 	
 	/**
 	 * Set the default org all new data models should automatically connect to.
-	 * @param string $aOrgID - the new default org (NULL means Root).
+	 * @param ?string $aOrgID - the new default org (NULL means Root).
 	 * @return $this Returns $this for chaining.
 	 */
-	public function setPropDefaultOrg( $aOrgID )
+	public function setPropDefaultOrg( ?string $aOrgID ): self
 	{
 		$theNewDbConnInfo = $this->mPropsMaster->getDbConnInfoForOrgData($aOrgID);
 		//if no new dbconn info, continue on as if nothing happened
@@ -660,22 +678,23 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * Return a Model object for a given org, creating it if necessary.
-	 * @param string $aName - name of the model object.
-	 * @param string $aOrgID - (optional) the org ID whose data we want.
+	 * @inheritDoc
 	 * @return Model Returns the model object.
+	 * @throws Exception when model cannot be found or there is a connection error.
 	 */
-	public function getProp( $aModelClass, $aOrgID=null )
-	{ return $this->mPropsMaster->getPropFromRoom($aModelClass, $aOrgID); }
+	public function getProp( string|\ReflectionClass $aModelClassName, string $aOrgID=null ): Model
+	{ return $this->mPropsMaster->getPropFromRoom($aModelClassName, $aOrgID); }
 	
 	/**
-	 * Let the system know you do not need a Model anymore so it
-	 * can close the database connection as soon as possible.
-	 * @param Model $aProp - the Model object to be returned to the prop closet.
+	 * @inheritDoc
 	 * @return $this Returns $this for chaining.
+	 * @see IDirected::returnProp()
 	 */
-	public function returnProp( $aModel )
-	{ $this->mPropsMaster->returnPropToRoom($aModel); return $this; }
+	public function returnProp( ?Model $aProp ): self
+	{
+		$this->mPropsMaster->returnPropToRoom($aProp);
+		return $this;
+	}
 
 	/**
 	 * Calls methodName for every model class that matches the class patern and returns an array of results.
@@ -733,11 +752,11 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * Get a resource based on its combined 'namespace/resource_name'.
-	 * Alternatively, you can pass each segment in as its own parameter.
-	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
+	 * @inheritDoc
+	 * @return mixed Returns the language resource desired.
+	 * @throws ResException
 	 */
-	public function getRes($aResName) {
+	public function getRes( string $aResName ): mixed {
 		if (empty($this->_resManager)) {
 			if ($this->canGetRes()) {
 				//TODO create a user config for "en/US" and pass that into the constructor. (lang/region)
@@ -873,14 +892,11 @@ implements ArrayAccess, IDirected
 	}
 	
 	/**
-	 * Determine if the current logged in user has a permission.
-	 * @param string $aNamespace - namespace of the permission to check.
-	 * @param string $aPermission - permission name to check.
-	 * @param array|NULL $aAcctInfo - (optional) check specified account instead of
-	 *   currently logged in user.
+	 * {@inheritDoc}
 	 * @return boolean Returns TRUE if allowed, FALSE if not.
+	 * @see IDirected::isAllowed()
 	 */
-	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null)
+	public function isAllowed( string $aNamespace, string $aPermission, array $aAcctInfo=null ): bool
 	{
 		if ( !empty($this->mChiefUsher) ) {
 			$theAcctInfo = ( empty($aAcctInfo) ) ? $this->getMyAccountInfo()
@@ -896,7 +912,7 @@ implements ArrayAccess, IDirected
 	 * Determine if there is even a user logged into the system or not.
 	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 */
-	public function isGuest()
+	public function isGuest(): bool
 	{
 		if ( !empty($this->mChiefUsher) ) {
 			return $this->mChiefUsher->isGuestAccount(
@@ -910,9 +926,9 @@ implements ArrayAccess, IDirected
 	/**
 	 * {@inheritDoc}
 	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @see \BitsTheater\costumes\IDirected::checkAllowed()
+	 * @see IDirected::checkAllowed()
 	 */
-	public function checkAllowed($aNamespace, $aPermission, $aAcctInfo=null)
+	public function checkAllowed( string $aNamespace, string $aPermission, array $aAcctInfo=null ): bool
 	{
 		if ( $this->isAllowed($aNamespace, $aPermission, $aAcctInfo) )
 			return true;
@@ -923,9 +939,9 @@ implements ArrayAccess, IDirected
 	/**
 	 * {@inheritDoc}
 	 * @return $this Returns $this for chaining.
-	 * @see \BitsTheater\costumes\IDirected::checkPermission()
+	 * @see IDirected::checkPermission()
 	 */
-	public function checkPermission($aNamespace, $aPermission, $aAcctInfo=null)
+	public function checkPermission( string $aNamespace, string $aPermission, array $aAcctInfo=null ): self
 	{
 		if ( ! $this->isAllowed($aNamespace, $aPermission, $aAcctInfo) )
 			throw BrokenLeg::toss( $this, BrokenLeg::ACT_PERMISSION_DENIED );
@@ -935,12 +951,12 @@ implements ArrayAccess, IDirected
 	/**
 	 * Convenience method for checking if any of a set of permissions is allowed.
 	 * @param string[] $aPermList - array of "namespace/permission" strings to check.
-	 * @param array|NULL $acctInfo - (optional) check specified account instead of
+	 * @param array|null $aAcctInfo - (optional) check specified account instead of
 	 *     currently logged in user.
-	 * @return $this Returns $this for chaining purposes.
+	 * @return bool Returns TRUE if any of the permissions is allowed.
 	 * @throws BrokenLeg 403 if not allowed and logged in or 401 if not allowed and guest.
 	 */
-	public function checkIfAnyAllowed($aPermList, $aAcctInfo=null)
+	public function checkIfAnyAllowed( array $aPermList, array $aAcctInfo=null)
 	{
 		foreach ($aPermList as $thePerm) {
 			list($theNamespace, $thePermission) = explode('/', $thePerm, 2);
@@ -961,6 +977,7 @@ implements ArrayAccess, IDirected
 		}
 		//remove our session cache as well
 		unset($_SESSION[$this->app_id]);
+		session_commit();
 		//return to our landing page
 		return BITS_URL;
 	}
@@ -973,7 +990,7 @@ implements ArrayAccess, IDirected
 	 */
 	protected function convertArgsToPath( $aArgs )
 	{
-		if ( empty($aArgs) ) return; //trivial
+		if ( empty($aArgs) ) return ''; //trivial
 		$theResult = '';
 		//do not want to use implode() as params might be ('/foo/bar', '#blah')
 		foreach ($aArgs as $pathPart) {
@@ -992,7 +1009,8 @@ implements ArrayAccess, IDirected
 	 * @return string Returns the site relative path URL.
 	 * @see Director::getFullUrl()
 	 */
-	public function getSiteUrl($aRelativeURL='') {
+	public function getSiteUrl( array|string $aRelativeURL='' ): string
+	{
 		$theResult = BITS_URL;
 		if ( !empty($aRelativeURL) ) {
 			$theArgs = ( is_array($aRelativeURL) ) ? $aRelativeURL : func_get_args();
@@ -1073,12 +1091,11 @@ implements ArrayAccess, IDirected
 	}
 
 	/**
-	 * Get the setting from the configuration model.
-	 * @param string $aSetting - setting in form of "namespace/setting"
-	 * @param string $aOrgID - (optional) the org ID whose data we want.
-	 * @throws \Exception
+	 * @inheritDoc
+	 * @return mixed Returns the configuration of the desired setting.
+	 * @throws Exception when the config model cannot be found or there is a connection error.
 	 */
-	public function getConfigSetting( $aSetting, $aOrgID=null )
+	public function getConfigSetting( string $aSetting, string $aOrgID=null ): mixed
 	{
 		//ensure our dbConfig is always defined as current
 		if ( empty($this->dbConfig) || $this->dbConfig->getDbConnInfo()->mOrgID != $this->getDbConnInfo()->mOrgID ) {
@@ -1272,7 +1289,7 @@ implements ArrayAccess, IDirected
 		$theSettingsClass = $this->getSiteSettingsClass();
 		return $this->getSiteUrl($theSettingsClass::getLandingPage());
 	}
-		
+	
 	/**
 	 * Helper function for debugging code to format an abbreviated stack trace.
 	 * @param string $aStackTrace - the stack trace.
@@ -1285,7 +1302,7 @@ implements ArrayAccess, IDirected
 		$theStr = str_replace("\n", '#012', $aStackTrace);
 		$bSnippedGenStack = false;
 		//strip the Strings::getStackTrace() and this method call from stack.
-		if ( strpos($aStackTrace, 'getCallStackAsStr') !== false ) {
+		if ( Strings::isInStr($aStackTrace, 'getCallStackAsStr') ) {
 			$bSnippedGenStack = true;
 			$theStr = '#2 ' . Strings::strstr_after($theStr, '#012#2 ');
 		}
@@ -1319,7 +1336,7 @@ implements ArrayAccess, IDirected
 	 * Getter for our director-wide modern LogMessage instance.
 	 * @return Logger Returns the logger instance.
 	 */
-	public function getLogger()
+	public function getLogger(): Logger
 	{ return $this->mLogger; }
 
 	/**
@@ -1352,7 +1369,6 @@ implements ArrayAccess, IDirected
 		}
 	}
 
-	
 }//end class
 
 }//end namespace

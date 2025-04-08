@@ -18,20 +18,19 @@
 namespace BitsTheater\costumes\CursorCloset;
 use BitsTheater\costumes\CursorCloset\ARecord as BaseCostume;
 use BitsTheater\costumes\IDirected;
+use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\models\Auth as AuthModel;
 use BitsTheater\models\AuthGroups as AuthGroupsModel;
 {//namespace begin
 
 /**
- * AuthBasic accounts can use this costume to wrap account info.
+ * AuthOrgsBase accounts can use this costume to wrap account info.
  * PDO statements can fetch data directly into this class.
  */
-class AuthAccount extends BaseCostume
+class AuthOrgsBase extends BaseCostume
 {
 	/** @var string My fully qualified classname. */
 	const ITEM_CLASS = __CLASS__;
-	/** @var string The separator used between hardware IDs list as string. */
-	const HARDWARE_IDS_SEPARATOR = ', ';
 	
 	public $account_id;
 	public $account_name;
@@ -41,35 +40,34 @@ class AuthAccount extends BaseCostume
 	//public $pwhash; do not export!
 	public $verified_ts;
 	public $is_active;
+	public $last_seen_ts;
 	/** @var string */
 	public $comments;
-	public $hardware_ids;
 	public $created_by;
 	public $updated_by;
 	public $created_ts;
 	public $updated_ts;
 	
 	//extended info (optional - must be explicitly asked for via mExportTheseFields)
-
+	
 	/** @var string[] The list of fields "with_map_info" will expand to become. */
 	static protected $mapInfoFields = array(
 			'groups',
 			'lockout_count',
-			'hardware_ids',
+			'org_ids',
+			'currOrgRoles',
 	);
 	
 	/** @var string[] Array of group_id values the account belongs to. */
 	public $groups;
 	/**
 	 * Used to know if onFetch() should load authgroup information or not.
-	 * @var boolean
 	 */
-	protected $bLoadAuthGroupInfo = false;
+	protected bool $bLoadAuthGroupInfo = false;
 	/**
 	 * Model for retrieving authgroup mapping information.
-	 * @var AuthGroupsModel
 	 */
-	protected $dbAuthGroups = null;
+	protected ?AuthGroupsModel $dbAuthGroups = null;
 	
 	/** @var int The number of lockout tokens this account has accrued. */
 	public $lockout_count;
@@ -77,23 +75,27 @@ class AuthAccount extends BaseCostume
 	public $is_locked;
 	/**
 	 * Used to know if onFetch() should load lockout information or not.
-	 * @var boolean
 	 */
-	protected $bLoadLockoutInfo = false;
-	/**
-	 * Used to know if onFetch() should load hardware_ids or not.
-	 * @var boolean
-	 */
-	protected $bLoadHardwareIDs = false;
+	protected bool $bLoadLockoutInfo = false;
+	
+	public $org_ids;
+	/** @var string[] Lists only roles for current org as opposed to all in groups. */
+	public $currOrgRoles;
+	/** @var string Used to limit what groups are returned. */
+	protected $mCurrOrgID = null;
+	/** @var boolean Used to limit what org_ids are returned. */
+	protected $mLimitedOrgs = null;
+	/** @var AuthModel */
+	protected $dbAuth;
 	
 	/**
-	 * Constructor for an AuthAccount entails a Model reference, a fieldset
+	 * Constructor for an AuthAcctBasic entails a Model reference, a fieldset
 	 * to return, and a set of options to load extra info.
 	 * @param AuthModel $aDbModel - the db model to use.
 	 * @param string[] $aFieldList - the field list to return.
-	 * @param string[] $aOptions - (OPTIONAL) options like bLoadHardwareIDs=true.
+	 * @param string[]|null $aOptions - (OPTIONAL) options like bLoadHardwareIDs=true.
 	 */
-	public function __construct($aDbModel, $aFieldList, $aOptions=null )
+	public function __construct($aDbModel, $aFieldList, array $aOptions=null )
 	{
 		parent::__construct($aDbModel, $aFieldList);
 		$this->parseOptions($aOptions);
@@ -129,7 +131,12 @@ class AuthAccount extends BaseCostume
 		if ( is_array($aOptions) ) {
 			$this->bLoadAuthGroupInfo = !empty($aOptions['bLoadAuthGroupInfo']);
 			$this->bLoadLockoutInfo = !empty($aOptions['bLoadLockoutInfo']);
-			$this->bLoadHardwareIDs = !empty($aOptions['bLoadHardwareIDs']);
+			if ( !empty($aOptions['mCurrOrgID']) ) {
+				$this->mCurrOrgID = $aOptions['mCurrOrgID'];
+			}
+			if ( !empty($aOptions['mLimitedOrgs']) ) {
+				$this->mLimitedOrgs = $aOptions['mLimitedOrgs'];
+			}
 		}
 	}
 	
@@ -142,10 +149,6 @@ class AuthAccount extends BaseCostume
 	static public function getExportFieldListUsingShorthand( $aMetaFieldList )
 	{
 		$theFieldList = static::appendFieldListWithMapInfo($aMetaFieldList, static::$mapInfoFields);
-		$theIndex = array_search('load_hardware_ids', $theFieldList);
-		if ( $theIndex !== false ) {
-			$theFieldList[$theIndex] = 'hardware_ids';
-		}
 		return $theFieldList;
 	}
 	
@@ -166,11 +169,12 @@ class AuthAccount extends BaseCostume
 		if ( in_array('lockout_count', $aExportFieldList) ) {
 			$theOptions['bLoadLockoutInfo'] = true;
 		}
-		if ( in_array('hardware_ids', $aExportFieldList) ) {
-			$theOptions['bLoadHardwareIDs'] = true;
-		}
-		if ( !empty($aMetaOptions['load_hardware_ids']) ) {
-			$theOptions['bLoadHardwareIDs'] = true;
+		$theOptions['mCurrOrgID'] = $aContext->getDirector()->getPropsMaster()->getDefaultOrgID();
+		if ( !empty($aMetaOptions['limited_orgs']) ) {
+			if ( !empty($theOptions['mCurrOrgID']) && $theOptions['mCurrOrgID'] != AuthModel::ORG_ID_4_ROOT ) {
+				$theOptions['mLimitedOrgs'] = $aContext->getProp(AuthModel::MODEL_NAME)
+					->getOrgAndAllChildrenIDs($theOptions['mCurrOrgID']);
+			}
 		}
 		return $theOptions;
 	}
@@ -195,6 +199,15 @@ class AuthAccount extends BaseCostume
 	}
 
 	/** @return AuthModel */
+	protected function getAuthProp()
+	{
+		if ( empty($this->dbAuth ) ) {
+			$this->dbAuth = $this->getModel()->getProp( 'Auth' );
+		}
+		return $this->dbAuth;
+	}
+	
+	/** @return AuthModel */
 	protected function getMyModel()
 	{ return $this->getModel(); }
 	
@@ -212,26 +225,25 @@ class AuthAccount extends BaseCostume
 	 */
 	protected function getGroupsList()
 	{
-		if ( !empty($this->account_id) ) try {
+		if ( !empty($this->auth_id) ) try {
 			//check to see if the initial SQL result has the data we need already
 			if ( is_string($this->groups) ) {
 				$this->groups = ( !empty($this->groups) ) ? explode(',', $this->groups) : null;
 			}
 			else {
-				$this->groups = $this->getAuthGroupsProp()->getAcctGroups($this->account_id);
+				$dbAuthGroups = $this->getAuthGroupsProp();
+				$this->groups = $dbAuthGroups->getAcctGroupsForOrg(
+						$this->auth_id, $this->mCurrOrgID
+				);
 			}
-			//if one of the groups has a numeric ID, convert them all to be int types
-			if ( !empty($this->groups) && is_numeric($this->groups[0]) ) {
-				foreach ($this->groups as &$theGroupID) {
-					if ( is_numeric($theGroupID) ) {
-						$theGroupID = strval($theGroupID);
-					}
-				}
+			if ( is_string($this->currOrgRoles) ) {
+				$this->currOrgRoles = ( !empty($this->currOrgRoles) ) ? explode(',', $this->currOrgRoles) : null;
 			}
 		}
-		catch (\Exception $x)
+		catch ( \Exception $x )
 		{ $this->getModel()->logErrors(__METHOD__, $x->getMessage()); }
 	}
+	
 	
 	/**
 	 * Sometimes we need to reload the groups list after loading the account
@@ -242,28 +254,6 @@ class AuthAccount extends BaseCostume
 	{
 		$this->getGroupsList();
 		return $this;
-	}
-	
-	/**
-	 * Parse any info retrieved via onFetch() for hardware_ids property.
-	 */
-	protected function parseHardwareIDs()
-	{
-		if ( !empty($this->hardware_ids) ) {
-			//convert string field to a proper list of items
-			$theList = explode($this::HARDWARE_IDS_SEPARATOR, $this->hardware_ids);
-			foreach ($theList as &$theToken) {
-				list($thePrefix, $theHardwareId, $theUUID) = explode(':', $theToken);
-				if ( !empty($thePrefix) && !empty($theHardwareId) && !empty($theUUID) ) {
-					$theToken = $theHardwareId;
-				}
-			}
-			//ensure it is just a string, not an array
-			$this->hardware_ids = implode(',', $theList);
-		}
-		else {
-			$this->hardware_ids = null;
-		}
 	}
 	
 	/**
@@ -280,27 +270,27 @@ class AuthAccount extends BaseCostume
 	}
 	
 	/**
-	 * Hardware IDs were requested, this method fills in that property.
+	 * groups ID list was requested, this method fills in that property.
 	 */
-	protected function getHardwareIDs()
+	protected function getOrgsList()
 	{
 		if ( !empty($this->auth_id) ) try {
-			//check to see if the initial SQL result has the data we need already
-			if ( is_string($this->hardware_ids) ) {
-				$this->hardware_ids = ( !empty($this->hardware_ids) ) ? $this->hardware_ids : null;
-				$this->parseHardwareIDs();
-			}
-			else {
-				$dbAuth = $this->getMyModel();
-				$theTokens = $dbAuth->getAuthTokens($this->auth_id, $this->account_id,
-						$dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ":%", true
-				);
-				if ( !empty($theTokens) ) {
-					$this->hardware_ids = implode(static::HARDWARE_IDS_SEPARATOR,
-							array_column($theTokens, 'token')
-					);
-					$this->parseHardwareIDs();
+			if ( in_array('org_ids', $this->getExportFieldList()) ) {
+				$dbAuth = $this->getAuthProp();
+				$theFilter = null;
+				if ( !empty($this->mLimitedOrgs) ) {
+					//instead of returning all the orgs the account belongs to, restrict it to
+					//  only returning the orgs based on current org and its children.
+					$theFilter = SqlBuilder::withModel($dbAuth)
+						->startFilter(' AND map.')
+						->setParamValue('showonlythese_orgs', $this->mLimitedOrgs)
+						->addParamForColumn('showonlythese_orgs', 'org_id')
+						;
 				}
+				$this->org_ids = $dbAuth
+					->getOrgsForAuthCursor($this->auth_id, 'org_id', $theFilter)
+					->fetchAll(\PDO::FETCH_COLUMN)
+					;
 			}
 		}
 		catch (\Exception $x)
@@ -318,8 +308,17 @@ class AuthAccount extends BaseCostume
 		if ( $this->bLoadLockoutInfo ) {
 			$this->getLockoutCount();
 		}
-		if ( $this->bLoadHardwareIDs ) {
-			$this->getHardwareIDs();
+		if ( is_string($this->org_ids) ) {
+			$theList = ( !empty($this->org_ids) ) ? explode(',', $this->org_ids) : null;
+			if ( !empty($theList) && !empty($this->mLimitedOrgs) ) {
+				$this->org_ids = array_values(array_intersect($this->mLimitedOrgs, $theList));
+			}
+			else {
+				$this->org_ids = $theList;
+			}
+		}
+		else {
+			$this->getOrgsList();
 		}
 	}
 	
@@ -358,6 +357,7 @@ class AuthAccount extends BaseCostume
 		return array(
 				'account_name',
 				'email',
+				'comments',
 				'created_by',
 				'updated_by',
 				//NOTE: not sure how to "text search" date fields, yet
@@ -367,34 +367,6 @@ class AuthAccount extends BaseCostume
 		);
 	}
 	
-	/**
-	 * Ensure we get the "hardware_ids" field in such a way as we can decode it later.
-	 * @param AuthModel $dbAuth - the auth model.
-	 * @param string $aAuthIDAlias - the auth_id value to match against.
-	 * @return string Returns the SQL used for defining the "hardware_ids" field.
-	 */
-	static public function sqlForHardwareIDs( $dbAuth, $aAuthIDAlias )
-	{
-		if ( empty($dbAuth) ) {
-			throw new \InvalidArgumentException('$dbAuth cannot be empty');
-		}
-		if ( empty($aAuthIDAlias) ) {
-			throw new \InvalidArgumentException('$aAuthIDAlias cannot be empty');
-		}
-		$theSeparator = "'" . static::HARDWARE_IDS_SEPARATOR . "'";
-		switch ( $dbAuth->dbType() ) {
-			case $dbAuth::DB_TYPE_MYSQL:
-			default:
-				$theSqlStr = '(SELECT'
-					. " IFNULL(GROUP_CONCAT(__AuthTknsAlias.token SEPARATOR {$theSeparator}), '')"
-					. " FROM {$dbAuth->tnAuthTokens} AS __AuthTknsAlias"
-					. " WHERE {$aAuthIDAlias}=__AuthTknsAlias.auth_id"
-					. "   AND __AuthTknsAlias.token LIKE '" . $dbAuth::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT . ":%'"
-					. ") AS hardware_ids"
-					;
-		}//switch
-		return $theSqlStr;
-	}
 	
 	/**
 	 * Ensure we get the lockout count for an account.
@@ -444,6 +416,44 @@ class AuthAccount extends BaseCostume
 					" FROM {$dbAuthGroups->tnGroupMap} AS __RoleMapAlias" .
 					" WHERE {$aAuthIDAlias}=__RoleMapAlias.auth_id" .
 					") AS `groups`" ;
+				$theOrgIDWhere = ' IS NULL';
+				$theOrgID = $dbAuthGroups->getDirector()->getPropsMaster()->getDefaultOrgID();
+				if ( !empty($theOrgID) && $theOrgID != AuthModel::ORG_ID_4_ROOT ) {
+					$theOrgIDWhere = "='{$theOrgID}'";
+				}
+				$theSqlStr .= ', (SELECT' .
+					" IFNULL(GROUP_CONCAT(__CurrOrgRoleMapAlias.group_id SEPARATOR ','), '')" .
+					" FROM {$dbAuthGroups->tnGroupMap} AS __CurrOrgRoleMapAlias" .
+					" JOIN {$dbAuthGroups->tnGroups} AS __CurrOrgRolesAlias USING (group_id)" .
+					" WHERE {$aAuthIDAlias}=__CurrOrgRoleMapAlias.auth_id" .
+					"   AND __CurrOrgRolesAlias.org_id" . $theOrgIDWhere .
+					") AS currOrgRoles" ;
+		}//switch
+		return $theSqlStr;
+	}
+	
+	/**
+	 * Ensure we get the org list for an account.
+	 * @param AuthModel $dbAuth - the auth model.
+	 * @param string $aAuthIDAlias - the auth_id value to match against.
+	 * @return string Returns the SQL used for defining the "org_ids" field.
+	 */
+	static public function sqlForOrgList( $dbAuth, $aAuthIDAlias )
+	{
+		if ( empty($dbAuth) ) {
+			throw new \InvalidArgumentException('$dbAuth cannot be empty');
+		}
+		if ( empty($aAuthIDAlias) ) {
+			throw new \InvalidArgumentException('$aAuthIDAlias cannot be empty');
+		}
+		switch ( $dbAuth->dbType() ) {
+			case $dbAuth::DB_TYPE_MYSQL:
+			default:
+				$theSqlStr = '(SELECT' .
+					" IFNULL(GROUP_CONCAT(__AuthOrgAlias.org_id SEPARATOR ','), '')" .
+					" FROM {$dbAuth->tnAuthOrgMap} AS __AuthOrgAlias" .
+					" WHERE {$aAuthIDAlias}=__AuthOrgAlias.auth_id" .
+					") AS org_ids" ;
 		}//switch
 		return $theSqlStr;
 	}

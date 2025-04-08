@@ -235,7 +235,7 @@ class AuthGroups extends BaseActor
 	{
 		$this->viewToRender('results_as_json');
 		$this->checkAllowed( 'auth', 'modify' );
-		$this->scene->group_id = trim($this->getRequestData( $aGroupID, 'group_id', true));
+		$this->scene->group_id = Strings::trim($this->getRequestData( $aGroupID, 'group_id', true));
 		$this->setApiResults($this->modifyGroupData($this->scene));
 	}
 
@@ -248,7 +248,7 @@ class AuthGroups extends BaseActor
 	 */
 	public function ajajSaveGroup( $aGroupID=null )
 	{
-		$theGroupID = trim($this->getRequestData( $aGroupID, 'group_id', false));
+		$theGroupID = Strings::trim($this->getRequestData( $aGroupID, 'group_id', false));
 		if ( empty($theGroupID) )
 		{ $this->ajajInsertGroup(); }
 		else
@@ -354,7 +354,7 @@ class AuthGroups extends BaseActor
 				'auth/modify',
 				'auth_orgs/create',
 		));
-				
+		
 		// check to see if caller realllly wants UNKNOWN role (not logged in)
 		$bIncludeSystemGroups = filter_var($v->include_system_groups, FILTER_VALIDATE_BOOLEAN);
 		$theFieldList = $v->getRequestedFieldList(array(

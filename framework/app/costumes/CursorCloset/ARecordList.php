@@ -168,9 +168,9 @@ abstract class ARecordList extends BaseCostume
 	 * Event called after fetching from $this->mDataSet.
 	 * Sets $this->mCurrent and updates $this->mFetchedCount.
 	 * @param object $aRow - the fetched data.
-	 * @return object Returns the row data fetched.
+	 * @return object|false Returns the row data fetched.
 	 */
-	protected function onFetch($aRow)
+	protected function onFetch($aRow): object|false
 	{
 		//List functions by taking a chunk off the list, fetching until there's nothing left
 		//  then taking another chunk off the list, repeat until nothing is left of the mIdList.
@@ -199,10 +199,11 @@ abstract class ARecordList extends BaseCostume
 
 	/**
 	 * Prints the entire data set to the output stream, item by item.
-	 * @param string $aEncodeOptions options for `json_encode()`
-	 * @return ARecordList $this
+	 * @param int $aEncodeOptions - (optional) options for `json_encode()`
+	 * @return $this for chaining.
+	 * @throws \Exception if output goes awry.
 	 */
-	public function printAsJson( $aEncodeOptions=null )
+	public function printAsJson( int $aEncodeOptions=0 ): self
 	{
 		$this->total_count = count( $this->mIdList );
 		return $this->printAsJsonObjectWithIdKey( $this->getIdFieldName(), $aEncodeOptions );

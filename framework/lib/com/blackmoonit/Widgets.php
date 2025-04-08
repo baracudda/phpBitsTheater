@@ -318,7 +318,7 @@ class Widgets
 	 *  enclosed in an HTML comment tag
 	 */
 	static public function createFileUploadControl( $aWidgetName, $aAttrs=null,
-		$aAcceptArray, $aMinSize=0, $aMaxSize=-1, $isRequired=false, $aLimit=1 )
+		$aAcceptArray=null, $aMinSize=0, $aMaxSize=-1, $isRequired=false, $aLimit=1 )
 	{
 		if( !isset($aWidgetName) ) return self::FILE_WIDGET_RENDERING_ERROR ;
 		$theTag = '<input type="file" name="' . $aWidgetName . '" id="'
