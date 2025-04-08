@@ -73,6 +73,13 @@ implements IDirected
 	public function getDirector() {
 		return $this->_director;
 	}
+	
+	/**
+	 * Getter for our director-wide modern LogMessage instance.
+	 * @return \BitsTheater\costumes\LogMessage Returns the logger instance.
+	 */
+	public function getLogger()
+	{ return $this->getDirector()->getLogger(); }
 
 	/**
 	 * {@inheritDoc}

@@ -132,8 +132,7 @@ class AdamEve extends BaseClass {
 	static protected function debugOutput( $_ )
 	{
 		$theLogLine = '';
-		foreach (func_get_args() as $arg)
-		{
+		foreach ( func_get_args() as $arg ) {
 			$theLogLine .= ( is_string($arg) ) ? $arg : Strings::debugStr($arg);
 		}
 		Strings::debugLog( $theLogLine );
@@ -145,11 +144,11 @@ class AdamEve extends BaseClass {
 	 * @param string $s - string parameter to print out
 	 * @see Strings::debugLog($s)
 	 */
-	public function debugPrint($s) {
+	public function debugPrint( $s ) {
 		if ($this->isDebugging())
 			print $s;
 		else
-			Strings::debugLog($s);
+			$this->debugOutput($s);
 	}
 	
 	/**
@@ -158,8 +157,8 @@ class AdamEve extends BaseClass {
 	 * @see Strings::debugLog()
 	 * @see AdamEve::debugStr()
 	 */
-	public function debugLog($s) {
-		Strings::debugLog($s);
+	public function debugLog( $s ) {
+		$this->debugOutput($s);
 	}
 	
 	/**

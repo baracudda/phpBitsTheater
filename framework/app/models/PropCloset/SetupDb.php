@@ -266,6 +266,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 			->getOrganizationsToDisplay()
 			;
 		if ( !empty($theOrgList) && !empty($theModelList) ) {
+			$theCurrOrgID = $this->getDirector()->getPropsMaster()->getDefaultOrgID();
 			foreach ($theOrgList as $theOrg) {
 				/* @var $theOrg AuthOrg */
 				$this->getDirector()->setPropDefaultOrg($theOrg->org_id);
@@ -274,6 +275,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 				$this->callModelMethod($theDirector, $theModelList, 'setupDefaultData', $aScene);
 				$this->getDirector()->getPropsMaster()->closeConnection($theOrg->org_id);
 			}
+			$this->getDirector()->setPropDefaultOrg($theCurrOrgID);
 		}
 
 		$this->callModelMethod($theDirector, $theModelList, 'setupFeatureVersion', $aScene);
@@ -489,19 +491,48 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					if ($dbModel::DB_CONN_NAME == APP_DB_CONN_NAME) {
 						$theOrgList = AuthOrgSet::withContextAndColumns($this)
 							->setPagerEnabled(false)
-							->getOrganizationsToDisplay();
+							->setOrderByDefinition(array(
+									'parent_org_id' => true,
+									'org_name' => true,
+									'org_id' => true,
+							))
+							->setTotalRowsDesired(true)
+							->getOrganizationsToDisplay()
+							;
 						if ( !empty($theOrgList) ) try {
+							$theNumOrgsLeftToGo = $theOrgList->getPagerTotalRowCount();
 							foreach ($theOrgList as $theOrg) {
 								/* @var $theOrg AuthOrg */
-								$theFeatureLabel = $theOrg->org_name . ' - ' . $theFeatureData['feature_id'];
-								$this->logStuff("Attempting feature upgrade: ", $theFeatureLabel);
 								try {
 									$this->getDirector()->setPropDefaultOrg($theOrg->org_id);
 									$dbOrgModel = $this->getProp($theFeatureData['model_class']);
+									if ( !empty($dbOrgModel::FEATURE_VERSION_SEQ) ) {
+										$this->getLogger()->withInfo(array(
+												'action' => 'onSchemaUpgrade',
+												'reason' => 'ensure feature db schema at v' . $dbOrgModel::FEATURE_VERSION_SEQ,
+												'feature_id' => $theFeatureData['feature_id'],
+												'feature_ver' => $theFeatureData['version_seq'],
+												'org' => $theOrg->org_name,
+												'org_id' => $theOrg->org_id,
+												'num_remaining' => $theNumOrgsLeftToGo--,
+												'message' => 'start db schema upgrade for ' . $theFeatureData['feature_id']
+														. ' in org ' . $theOrg->org_name
+														. ' from ' . $theFeatureData['version_seq'] . ' to ' . $dbOrgModel::FEATURE_VERSION_SEQ
+												,
+										))->log();
+									}
 									$dbOrgModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
+									$this->getLogger()->withInfo(array(
+											'message' => 'finished db schema upgrade for ' . $theOrg->org_name,
+									))->log();
 									$this->getDirector()->getPropsMaster()->closeConnection($theOrg->org_id);
 								}
 								catch ( \Exception $x ) {
+									$this->getLogger()->withInfo(array(
+											'reason' => 'exception on db schema upgrade',
+											'message' => $x->getMessage(),
+											'model' => $theFeatureData['model_class'],
+									))->logToError();
 									$blx = BrokenLeg::tossException($this, $x);
 									$blx->addReasonForUI('Database Scheme Update')
 										->addExtraMsgForUI('org_name=[' . $theOrg->org_name . '] ID=[' . $theOrg->org_id . ']')
@@ -512,9 +543,12 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 										;
 									throw $blx;
 								}
-
-								$this->logStuff("Successful feature upgrade: ", $theFeatureLabel);
 							}
+							//log that we are done upgrading all orgs
+							$this->getLogger()->withInfo(array(
+									'message' => 'all org db schemas upgraded successfully',
+									'upgraded_by' => $this->getDirector()->getMyUsername(),
+							))->log();
 						}
 						finally {
 							$this->getDirector()->setPropDefaultOrg(null);

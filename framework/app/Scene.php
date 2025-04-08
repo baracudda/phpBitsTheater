@@ -463,6 +463,13 @@ implements IDirected
 	}
 	
 	/**
+	 * Getter for our director-wide modern LogMessage instance.
+	 * @return \BitsTheater\costumes\LogMessage Returns the logger instance.
+	 */
+	public function getLogger()
+	{ return $this->getDirector()->getLogger(); }
+
+	/**
 	 * {@inheritDoc}
 	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 * @see \BitsTheater\costumes\IDirected::isAllowed()

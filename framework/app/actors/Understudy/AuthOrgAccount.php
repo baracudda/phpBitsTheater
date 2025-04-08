@@ -839,7 +839,7 @@ class AuthOrgAccount extends BaseActor
 		//AuthOrg info
 		$theOrgList = (isset($v->account_org_ids)) ? $v->account_org_ids : null;
 		//limit org list to only ones I belong to, unless I have permission
-		if ( !$this->isAllowed('auth_orgs', 'transcend') ) {
+		if ( !$this->isAllowed('auth_orgs', 'transcend') && !empty($theOrgList) ) {
 			$myOrgList = $dbAuth->getOrgsForAuthCursor(
 					$this->getDirector()->account_info->auth_id
 			)->fetchAll();

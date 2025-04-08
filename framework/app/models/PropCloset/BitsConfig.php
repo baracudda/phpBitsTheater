@@ -182,10 +182,17 @@ class BitsConfig extends BaseModel implements IFeatureVersioning
 	 * @return boolean Returns TRUE if inserted, FALSE if already exists.
 	 */
 	public function defineMapValue($aMapInfo) {
+		$theConfigLabel = $this->implodeKeyName($aMapInfo);
 		if (parent::defineMapValue($aMapInfo)) {
-			$this->debugLog(__FUNCTION__.' config inserted: '.$this->implodeKeyName($aMapInfo));
+			$this->getLogger()->withInfo(array(
+					'config' => $theConfigLabel,
+					'message' => "config [{$theConfigLabel}] inserted",
+			))->logToDebug();
 		} else {
-			$this->debugLog(__FUNCTION__.' config already exists: '.$this->implodeKeyName($aMapInfo));
+			$this->getLogger()->withInfo(array(
+					'config' => $theConfigLabel,
+					'message' => "config [{$theConfigLabel}] already exists",
+			))->logToDebug();
 		}
 	}
 	

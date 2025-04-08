@@ -605,6 +605,13 @@ implements IDirected
 	}
 	
 	/**
+	 * Getter for our director-wide modern LogMessage instance.
+	 * @return \BitsTheater\costumes\LogMessage Returns the logger instance.
+	 */
+	public function getLogger()
+	{ return $this->getDirector()->getLogger(); }
+
+	/**
 	 * {@inheritDoc}
 	 * @return boolean Returns TRUE if allowed, FALSE if not.
 	 * @see \BitsTheater\costumes\IDirected::isAllowed()
@@ -734,34 +741,6 @@ implements IDirected
 		}
 	}
 
-	/**
-	 * Send string out to the debug log (or std log as [dbg]).
-	 * @param $s - parameter to print out (non-strings converted with debugStr()).
-	 * @see Strings::debugLog()
-	 * @see \com\blackmoonit\AdamEve::debugStr()
-	 */
-	public function debugLog($s) {
-		parent::debugLog($s);
-		if ($this->isRunningUnderCLI()) {
-			print( (is_string($s)) ? $s : $this->debugStr($s) );
-			print(PHP_EOL);
-		}
-	}
-	
-	/**
-	 * Send string out to the error log prepended with the defined error prefix.
-	 * @param $s - parameter to print out (non-strings converted with debugStr()).
-	 * @see Strings::errorLog($s)
-	 * @see \com\blackmoonit\AdamEve::debugStr()
-	 */
-	public function errorLog($s) {
-		parent::errorLog($s);
-		if ($this->isRunningUnderCLI()) {
-			print( (is_string($s)) ? $s : $this->debugStr($s) );
-			print(PHP_EOL);
-		}
-	}
-	
 	/**
 	 * Certain fields need to store JSON-serialized data in the database. These
 	 * can sometimes be inadvertently processed as objects when they arrive in

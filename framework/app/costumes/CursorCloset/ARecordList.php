@@ -182,7 +182,9 @@ abstract class ARecordList extends BaseCostume
 					$this->mIdList, 0, $theChunkSize, static::ID_IS_NUMERIC
 			);
 			//remove the chunck we're processing from the list
-			$this->mIdList = array_slice($this->mIdList, $theChunkSize, static::ID_IS_NUMERIC);
+			$this->mIdList = array_slice(
+					$this->mIdList, $theChunkSize, null, static::ID_IS_NUMERIC
+			);
 			//create our new mDataSet to iterate through
 			$theSql = $this->createSqlQuery( array_keys($theBiteSizeChunkOfIds) );
 			$this->setDataFromPDO( $theSql->query() );
