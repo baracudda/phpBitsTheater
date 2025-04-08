@@ -1,7 +1,7 @@
 <?php
 
 namespace BitsTheater\models;
-use BitsTheater\models\PropCloset\AuthOrgs as BaseModel;
+use BitsTheater\models\PropCloset\AuthOrgsBase as BaseModel;
 {//namespace begin
 
 class Auth extends BaseModel

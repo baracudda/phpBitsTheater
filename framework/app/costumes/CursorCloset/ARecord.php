@@ -54,7 +54,7 @@ class ARecord extends BaseCostume
 		$aStmt->setFetchMode( \PDO::FETCH_CLASS | \PDO::FETCH_PROPS_LATE,
 				$theClassName, array( $aModel, $aFieldList ) ) ;
 		$o = $aStmt->fetch();
-		if ( method_exists($o, 'onFetch') ) {
+		if ( $o !== false && method_exists($o, 'onFetch') ) {
 			$o->onFetch();
 		}
 		return $o;
@@ -201,7 +201,7 @@ class ARecord extends BaseCostume
 	 * /
 	public function onFetch()
 	{
-		
+	
 	}
 	*/
 

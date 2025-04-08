@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+/** @noinspection PhpUnused */
 namespace BitsTheater\models\PropCloset;
 use BitsTheater\models\PropCloset\ANonDbModel as BaseModel ;
 use BitsTheater\BrokenLeg;
@@ -26,9 +27,11 @@ use Aws\Exception\AwsException;
 use Aws\CommandPool;
 use Aws\CommandInterface;
 use Aws\ResultInterface;
-use GuzzleHttp\Stream\StreamInterface as IGuzzleStream;
-use GuzzleHttp\Stream\Stream as GuzzleStream;
 use GuzzleHttp\Promise\PromiseInterface;
+use DirectoryIterator;
+use Exception;
+use Iterator;
+
 {//begin namespace
 
 /**
@@ -37,57 +40,53 @@ use GuzzleHttp\Promise\PromiseInterface;
  */
 class BitsAmazonS3 extends BaseModel
 {
-	protected $mConfigNamespaceForAmazonS3 = 'aws_s3';
-	protected $mConfigNameForAPIKey = 'api_key';
-	protected $mConfigNameForSecretKey = 'secret_key';
-	protected $mConfigNameForRegion = 'region_name';
-	protected $mConfigNameForBucket = 'bucket_name';
-	protected $mConfigNameForRootPath = 'root_path';
+	protected string $mConfigNamespaceForAmazonS3 = 'aws_s3';
+	protected string $mConfigNameForAPIKey = 'api_key';
+	protected string $mConfigNameForSecretKey = 'secret_key';
+	protected string $mConfigNameForRegion = 'region_name';
+	protected string $mConfigNameForBucket = 'bucket_name';
+	protected string $mConfigNameForRootPath = 'root_path';
 	
 	/** @var string The default region to use if none is supplied. */
 	const DEFAULT_REGION = 'us-east-1'; //Amazon's default region
 	
 	/**
 	 * The Amazon S3 client.
-	 * @var S3Client
 	 */
-	protected $mS3Client = null;
-	/** @var string The default Amazon Region to use. */
-	protected $mRegionName = self::DEFAULT_REGION;
+	protected ?S3Client $mS3Client = null;
+	/** The default Amazon Region to use. */
+	protected string $mRegionName = self::DEFAULT_REGION;
 	/**
 	 * Bucket to use when accessing S3.
-	 * @var string
 	 */
-	protected $mBucketName = null;
+	protected string $mBucketName;
 	/**
 	 * Path to use as a part of every S3 interaction.
-	 * @var string
 	 */
-	protected $mPathPrefix = '';
+	protected string $mPathPrefix;
 	
 	/**
 	 * Return the config setting using our defined namespace.
 	 * @param string $aConfigKeyName - one of the $mConfigNameFor* properties.
-	 * @return string Returns the config setting value.
+	 * @param string $aDefault - default value if not set.
+	 * @return string Returns the config setting value or NULL if not found.
+	 * @throws Exception when the config model cannot be found or there is a connection error.
 	 */
-	protected function getSettingFor( $aConfigKeyName )
+	protected function getSettingFor( string $aConfigKeyName, string $aDefault ): string
 	{
-		$theResult = trim($this->getConfigSetting(
+		$theResult = Strings::trim($this->getConfigSetting(
 				$this->mConfigNamespaceForAmazonS3 . '/' . $aConfigKeyName
 		));
-		if ( !empty($theResult) )
-			return $theResult;
-		else
-			return null;
+		return ( !empty($theResult) ) ? $theResult : $aDefault;
 	}
 	
 	/**
 	 * If the config settings are not fully defined, you may toss this
 	 * generic exception if desired.
 	 * @param string $aConfigNamespace - the namespace of the config settings.
-	 * @throws \BitsTheater\BrokenLeg
+	 * @throws BrokenLeg
 	 */
-	public function tossWhenNotDefined( $aConfigNamespace )
+	public function tossWhenNotDefined( string $aConfigNamespace ): BrokenLeg
 	{
 		$theCondition = strtoupper($aConfigNamespace) . '_NOT_DEFINED';
 		throw BrokenLeg::pratfallRes($this, $theCondition, 412,
@@ -98,27 +97,34 @@ class BitsAmazonS3 extends BaseModel
 	
 	/**
 	 * Retrieve the settings and create the S3 client.
-	 * @return S3Client
+	 * @throws BrokenLeg on any exceptions getting the config settings.
 	 */
-	protected function createClient()
+	protected function createClient(): ?S3Client
 	{
-		$theAccountKey = $this->getSettingFor( $this->mConfigNameForAPIKey );
-		$theSecretKey = $this->getSettingFor( $this->mConfigNameForSecretKey );
-		$this->mRegionName = $this->getSettingFor( $this->mConfigNameForRegion );
-		$this->mBucketName = $this->getSettingFor( $this->mConfigNameForBucket );
-		$this->mPathPrefix = $this->getSettingFor( $this->mConfigNameForRootPath );
-		
-		$theOptions = array( 'version' => 'latest' );
-		if ( empty($this->mRegionName) )
-		{ $this->mRegionName = static::DEFAULT_REGION; }
-		if ( !empty($theAccountKey) && !empty($theSecretKey) )
-		{
-			$theOptions['credentials'] = array(
+		try {
+			$theAccountKey = $this->getSettingFor($this->mConfigNameForAPIKey, '');
+			$theSecretKey = $this->getSettingFor($this->mConfigNameForSecretKey, '');
+			$this->mRegionName = $this->getSettingFor($this->mConfigNameForRegion, static::DEFAULT_REGION);
+			$this->mBucketName = $this->getSettingFor($this->mConfigNameForBucket, '');
+			$this->mPathPrefix = $this->getSettingFor($this->mConfigNameForRootPath, '');
+	
+			if ( empty($this->mBucketName) )
+			{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_MISSING_VALUE, 'S3 Bucket' ); }
+	
+			$theOptions = array('version' => 'latest');
+			if (!empty($theAccountKey) && !empty($theSecretKey)) {
+				$theOptions['credentials'] = array(
 					'key' => $theAccountKey,
 					'secret' => $theSecretKey,
-			);
-			$theOptions['region'] = $this->mRegionName;
-			return S3Client::factory( $theOptions );
+				);
+				$theOptions['region'] = $this->mRegionName;
+				$theClient = new S3Client($theOptions);
+				$theClient->registerStreamWrapper();
+				return $theClient;
+			}
+		}
+		catch ( Exception $ex ) {
+			throw BrokenLeg::tossException($this, $ex);
 		}
 		return null;
 	}
@@ -128,6 +134,7 @@ class BitsAmazonS3 extends BaseModel
 	 * instance.
 	 * {@inheritDoc}
 	 * @see BaseModel::setupNonDbModel() (this overrides)
+	 * @throws BrokenLeg on connection error.
 	 */
 	public function setupNonDbModel()
 	{
@@ -143,31 +150,32 @@ class BitsAmazonS3 extends BaseModel
 	{ return ( !empty($this->mS3Client) ) ; }
 	
 	/** @return string Returns the Amazon Region in use. */
-	public function getS3Region()
+	public function getS3Region(): string
 	{ return $this->mRegionName; }
 	
 	/**
-	 * @return S3Client|NULL Return the client object.
+	 * @return ?S3Client Return the client object.
 	 */
-	public function getS3Client()
+	public function getS3Client(): ?S3Client
 	{ return $this->mS3Client; }
 	
 	/**
-	 * @return string|NULL Return the name of the bucket to use.
+	 * @return ?string Return the name of the bucket to use.
 	 */
-	public function getS3Bucket()
+	public function getS3Bucket(): ?string
 	{ return $this->mBucketName; }
 	
 	/**
 	 * Get the file info from a particular bucket. If no bucket name is
 	 * supplied, the one defined in Config Settings will be used.
 	 * @param string $aKeyPath - key path inside the bucket to retrieve.
-	 * @param string $aBucketName - (optional) bucket name to retrieve listing.
-	 * @return AmazonS3Item Returns an AmazonS3Item object.
-	 * @throws BrokenLeg::DB_CONNECTION_FAILED on failure to connect.
-	 * @throws BrokenLeg::MISSING_VALUE on failure to find a bucket name to use.
+	 * @param ?string $aBucketName - (optional) bucket name to retrieve listing.
+	 * @return ?AmazonS3Item Returns an AmazonS3Item object.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
+	 * - MISSING_VALUE on failure to find a bucket name to use.
 	 */
-	public function getFileInfo( $aKeyPath, $aBucketName=null )
+	public function getFileInfo( string $aKeyPath, ?string $aBucketName=null ): ?AmazonS3Item
 	{
 		if ( !$this->isConnected() )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
@@ -181,8 +189,17 @@ class BitsAmazonS3 extends BaseModel
 		return ( !empty($theResults) ) ? $theResults[0] : null;
 	}
 	
-	
-	public function getS3ObjStream( $aKeyPath, $aBucketName=null )
+	/**
+	 * Get the file stream from a particular bucket. If no bucket name is
+	 * supplied, the one defined in Config Settings will be used.
+	 * @param string $aKeyPath - key path inside the bucket to retrieve.
+	 * @param ?string $aBucketName - (optional) bucket name to retrieve listing.
+	 * @return resource|false Returns a stream.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
+	 * - MISSING_VALUE on failure to find a bucket name to use.
+	 */
+	public function getS3ObjStream( string $aKeyPath, ?string $aBucketName=null ): mixed
 	{
 		if ( !$this->isConnected() )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
@@ -190,24 +207,25 @@ class BitsAmazonS3 extends BaseModel
 		$theBucketName = (!empty($aBucketName)) ? $aBucketName : $this->getS3Bucket();
 		if ( empty($theBucketName) )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_MISSING_VALUE, 'S3 Bucket' ); }
-		$theKeyToUse = trim($aKeyPath);
-		
-		$theResults = $this->getS3Client()->getObject( array(
-				'Bucket'     => $theBucketName,
-				'Key'        => $theKeyToUse,
-		));
-		if ( !empty($theResults) )
-			return $theResults['Body'];
+		$theKeyToUse = Strings::trim($aKeyPath);
+
+		$context = stream_context_create([
+		    's3' => ['seekable' => true]
+		]);
+		return fopen('s3://'.$theBucketName.'/'.$theKeyToUse, 'r', false, $context);
 	}
 	
 	/**
 	 * Get the file list in a particular bucket. If no bucket name is
 	 * supplied, the one defined in Config Settings will be used.
-	 * @param string $aKeyPath - (optional) key path inside the bucket to list.
-	 * @param string $aBucketName - (optional) bucket name to retrieve listing.
-	 * @return AmazonS3Item[]|NULL Returns an array of AmazonS3Item objects.
+	 * @param string $aKeyPath - key path inside the bucket to list.
+	 * @param ?string $aBucketName - (optional) bucket name to retrieve listing.
+	 * @return ?AmazonS3Item[] Returns an array of AmazonS3Item objects.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
+	 * - MISSING_VALUE on failure to find a bucket name to use.
 	 */
-	public function getFileList( $aKeyPath='', $aBucketName=null )
+	public function getFileList( string $aKeyPath='', ?string $aBucketName=null ): ?array
 	{
 		if ( !$this->isConnected() )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
@@ -217,7 +235,7 @@ class BitsAmazonS3 extends BaseModel
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_MISSING_VALUE, 'S3 Bucket' ); }
 		//$this->logStuff(__METHOD__, ' req=', $aKeyPath, 'buk=', $theBucketName); //DEBUG
 		
-		/*
+		/* TODO, Guzzle may have changed since this was written
 		(Guzzle\Service\Resource\Model)|O-1|{
 		- Name -> "ryan7405-test-123"
 		- Prefix -> ""
@@ -241,7 +259,7 @@ class BitsAmazonS3 extends BaseModel
 		}
 		*/
 		/* @ var $theResults \Guzzle\Service\Resource\Model */
-		/*
+		/* TODO Guzzle return type may have changed since this was written
 		$theResults = $this->getS3Client()->listObjects(array(
 				'Bucket' => $theBucketName,
 				'Key' => $aKeyPath,
@@ -261,17 +279,19 @@ class BitsAmazonS3 extends BaseModel
 	
 	/**
 	 * Create a bucket in our S3 account.
-	 * @param strings $aBucketName - the bucket name to use.
+	 * @param string $aBucketName - the bucket name to use.
 	 * @return $this Returns $this for chaining.
 	 * @see Strings::sanitizeFilename() for name limitations.
 	 * @throws AwsException if S3 fails for some reason.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
 	 */
-	public function createBucket( $aBucketName )
+	public function createBucket( string $aBucketName ): self
 	{
 		if ( !$this->isConnected() )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
 		
-		$theBucketName = Strings::sanitizeFilename(trim($aBucketName));
+		$theBucketName = Strings::sanitizeFilename(Strings::trim($aBucketName));
 		if ( !empty($theBucketName) )
 		{
 			try {
@@ -290,10 +310,12 @@ class BitsAmazonS3 extends BaseModel
 	
 	/**
 	 * Get the list of bucket names.
-	 * @return string[]|false Returns the list of bucket names or FALSE if not connected.
+	 * @return string[] Returns the list of bucket names.
 	 * @throws AwsException if S3 fails for some reason.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
 	 */
-	public function getBucketListOfNames()
+	public function getBucketListOfNames(): array
 	{
 		if ( !$this->isConnected() )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
@@ -312,64 +334,50 @@ class BitsAmazonS3 extends BaseModel
 	 * @param string $aKeyPathToUse - base keypath to append $aName onto.
 	 * @return string Returns the key path with base name of $aName.
 	 */
-	public function localNameAsKeyPath( $aName, $aKeyPathToUse )
+	public function localNameAsKeyPath( string $aName, string $aKeyPathToUse ): string
 	{
-		$theKeyToUse = Strings::sanitizeFilename(trim($aKeyPathToUse));
-		if ( !Strings::endsWith($theKeyToUse, '/') )
+		$theKeyToUse = Strings::sanitizeFilename(Strings::trim($aKeyPathToUse));
+		if ( !Strings::endsWith($theKeyToUse, '/') ) {
 			$theKeyToUse .= '/';
+		}
 		$theKeyToUse .= basename($aName);
 		return $theKeyToUse;
-	}
-	
-	/**
-	 * Uploads a stream to S3 using the key as the new filename.
-	 * @param IGuzzleStream $aGuzzleStreamToCopy - a Guzzle stream.
-	 * @param string $aKeyToUse - full destination path and name.
-	 * @param string $aBucketName - (optional) specify another bucket to use.
-	 * @return \Aws\Result Returns the S3 results.
-	 * @throws AwsException if S3 fails for some reason.
-	 */
-	public function uploadGuzzleStreamAsKey( $aGuzzleStream, $aKeyToUse, $aBucketName=null )
-	{
-		if ( !$this->isConnected() )
-		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
-		
-		$theKeyToUse = trim($aKeyToUse);
-		$theBucketToUse = ( !empty($aBucketName) ) ? $aBucketName : $this->getS3Bucket();
-		$theOptions = array(
-				'Bucket' => $theBucketToUse,
-				'Key' => $theKeyToUse,
-				'Body' => $aGuzzleStream,
-		);
-		//$this->logStuff(__METHOD__, ' upload=', $theOptions); //DEBUG
-		$theResult = $this->getS3Client()->putObject( $theOptions );
-		//$this->logStuff(__METHOD__, ' ', $theResult); //DEBUG
-		return $theResult;
 	}
 	
 	/**
 	 * Uploads a file to S3 using the key as the new filename.
 	 * @param resource $aFileStreamToUpload - the file resource stream.
 	 * @param string $aKeyToUse - full destination path and name.
-	 * @param string $aBucketName - (optional) specify another bucket to use.
-	 * @return \Aws\Result Returns the S3 results.
+	 * @param ?string $aBucketName - (optional) specify another bucket to use.
+	 * @return ResultInterface Returns the S3 results.
 	 * @throws AwsException if S3 fails for some reason.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
 	 */
-	public function uploadFileStreamAsKey( $aFileStreamToUpload, $aKeyToUse, $aBucketName=null )
+	public function uploadFileStreamAsKey( mixed $aFileStreamToUpload, string $aKeyToUse, ?string $aBucketName=null ): ResultInterface
 	{
 		if ( !$this->isConnected() )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
 		
-		$theKeyToUse = trim($aKeyToUse);
+		$theKeyToUse = Strings::trim($aKeyToUse);
 		$theBucketToUse = ( !empty($aBucketName) ) ? $aBucketName : $this->getS3Bucket();
 		$theOptions = array(
 				'Bucket' => $theBucketToUse,
 				'Key' => $theKeyToUse,
-				'Body' => new GuzzleStream($aFileStreamToUpload),
+				'Body' => $aFileStreamToUpload,
 		);
-		//$this->logStuff(__METHOD__, ' upload=', $theOptions); //DEBUG
+		$logger = $this->getLogger();
+		$logger->logToDebug([
+			'message' => 'uploading file to S3',
+			'method' => __METHOD__,
+			'options' => $theOptions,
+		]);
 		$theResult = $this->getS3Client()->putObject( $theOptions );
-		//$this->logStuff(__METHOD__, ' ', $theResult); //DEBUG
+		$logger->logToDebug([
+			'message' => 'sent file to S3',
+			'method' => __METHOD__,
+			'result' => $theResult,
+		]);
 		return $theResult;
 	}
 	
@@ -377,20 +385,22 @@ class BitsAmazonS3 extends BaseModel
 	 * Uploads a file to S3 using the key as the new filename.
 	 * @param string $aFileToUpload - full path to the file.
 	 * @param string $aKeyToUse - full destination path and name.
-	 * @param string $aBucketName - (optional) specify another bucket to use.
-	 * @return \Aws\Result Returns the result of the putObject operation.
+	 * @param ?string $aBucketName - (optional) specify another bucket to use.
+	 * @return ResultInterface Returns the result of the putObject operation.
 	 * @throws AwsException if S3 fails for some reason.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
 	 */
-	public function uploadFileAsKey( $aFileToUpload, $aKeyToUse, $aBucketName=null )
+	public function uploadFileAsKey( string $aFileToUpload, string $aKeyToUse, ?string $aBucketName=null ): ResultInterface
 	{
 		if ( !$this->isConnected() )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
 		
-		$theFileToUpload = trim($aFileToUpload);
+		$theFileToUpload = Strings::trim($aFileToUpload);
 		if ( !file_exists($theFileToUpload) || is_dir($theFileToUpload) )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_FILE_NOT_FOUND, $theFileToUpload ); }
 		
-		$theKeyToUse = Strings::sanitizeFilename(trim($aKeyToUse));
+		$theKeyToUse = Strings::sanitizeFilename(Strings::trim($aKeyToUse));
 		
 		$theBucketToUse = ( !empty($aBucketName) ) ? $aBucketName : $this->getS3Bucket();
 		
@@ -437,11 +447,13 @@ class BitsAmazonS3 extends BaseModel
 	 * Uploads a file to S3 maintaining the original file name.
 	 * @param string $aFileToUpload - full path to the file.
 	 * @param string $aKeyPathToUse - full destination path.
-	 * @param string $aBucketName - (optional) specify another bucket to use.
-	 * @return $this Returns $this for chaining.
+	 * @param ?string $aBucketName - (optional) specify another bucket to use.
+	 * @return ResultInterface Returns the result of the putObject operation.
 	 * @throws AwsException if S3 fails for some reason.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
 	 */
-	public function uploadFileToKey( $aFileToUpload, $aKeyPathToUse=null, $aBucketName=null)
+	public function uploadFileToKey( string $aFileToUpload, string $aKeyPathToUse, ?string $aBucketName=null): ResultInterface
 	{
 		$theKeyToUse = $this->localNameAsKeyPath( $aFileToUpload, $aKeyPathToUse );
 		return $this->uploadFileAsKey( $aFileToUpload, $theKeyToUse, $aBucketName );
@@ -452,33 +464,35 @@ class BitsAmazonS3 extends BaseModel
 	 * <code><b>NOTE: SUBFOLDERS ARE NOT TRAVERSED!</b></code>
 	 * @param string $aFolderToUpload - full path to the folder.
 	 * @param string $aKeyToUse - full destination path and name.
-	 * @param string $aBucketName - (optional) specify another bucket to use.
+	 * @param ?string $aBucketName - (optional) specify another bucket to use.
 	 * @return PromiseInterface Returns the promise interface.
 	 * @throws AwsException if S3 fails for some reason.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
 	 */
-	public function uploadFolderAsKey( $aFolderToUpload, $aKeyToUse, $aBucketName=null )
+	public function uploadFolderAsKey( string $aFolderToUpload, string $aKeyToUse, ?string $aBucketName=null ): PromiseInterface
 	{
 		if ( !$this->isConnected() )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
 		
-		$theFolderToUpload = trim($aFolderToUpload);
+		$theFolderToUpload = Strings::trim($aFolderToUpload);
 		if ( !file_exists($theFolderToUpload) || !is_dir($theFolderToUpload) )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_FILE_NOT_FOUND, $theFolderToUpload ); }
 		
-		$theBaseKeyToUse = Strings::sanitizeFilename(trim($aKeyToUse));
+		$theBaseKeyToUse = Strings::sanitizeFilename(Strings::trim($aKeyToUse));
 		if ( !Strings::endsWith($theBaseKeyToUse, '/') )
 			$theBaseKeyToUse .= '/';
 		
 		$theBucketToUse = ( !empty($aBucketName) ) ? $aBucketName : $this->getS3Bucket();
 
 		// Create an iterator that yields files from a directory.
-		$theFiles = new \DirectoryIterator($theFolderToUpload);
+		$theFiles = new DirectoryIterator($theFolderToUpload);
 		
 		// Create a generator that converts the SplFileInfo objects into
 		// Aws\CommandInterface objects. This generator accepts the iterator that
 		// yields files and the name of the bucket to upload the files to.
 		$theS3Client = $this->getS3Client();
-		$theCommandGenerator = function (\Iterator $aFiles, $aBucket) use ($theBaseKeyToUse, $theS3Client) {
+		$theCommandGenerator = function (Iterator $aFiles, $aBucket) use ($theBaseKeyToUse, $theS3Client) {
 			foreach ($aFiles as $theFileInfo) {
 				// @var $theFileInfo \SplFileInfo
 				// Skip "." and ".." files and folders.
@@ -543,11 +557,13 @@ class BitsAmazonS3 extends BaseModel
 	 * Uploads a folder to S3 maintaining the original folder name.
 	 * @param string $aFolderToUpload - full path to the folder.
 	 * @param string $aKeyPathToUse - full destination path.
-	 * @param string $aBucketName - (optional) specify another bucket to use.
+	 * @param ?string $aBucketName - (optional) specify another bucket to use.
 	 * @return PromiseInterface Returns the promise interface.
 	 * @throws AwsException if S3 fails for some reason.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
 	 */
-	public function uploadFolderToKey( $aFolderToUpload, $aKeyPathToUse, $aBucketName=null )
+	public function uploadFolderToKey( string $aFolderToUpload, string $aKeyPathToUse, string $aBucketName=null ): PromiseInterface
 	{
 		$theKeyToUse = $this->localNameAsKeyPath( $aFolderToUpload, $aKeyPathToUse );
 		return $this->uploadFolderAsKey( $aFolderToUpload, $theKeyToUse, $aBucketName );
@@ -556,22 +572,23 @@ class BitsAmazonS3 extends BaseModel
 	/**
 	 * Delete a file from S3.
 	 * @param string $aS3Key - full destination path and name.
-	 * @param string $aBucketName - (optional) specify another bucket to use.
-	 * @return \Aws\Result Returns the result of the operation.
+	 * @param ?string $aBucketName - (optional) specify another bucket to use.
+	 * @return ResultInterface Returns the result of the operation.
 	 * @throws AwsException if S3 fails for some reason.
+	 * @throws BrokenLeg
+	 * - DB_CONNECTION_FAILED on failure to connect.
 	 */
-	public function deleteKey( $aS3Key, $aBucketName=null )
+	public function deleteKey( string $aS3Key, ?string $aBucketName=null ): ResultInterface
 	{
 		if ( !$this->isConnected() )
 		{ throw BrokenLeg::toss( $this, BrokenLeg::ACT_DB_CONNECTION_FAILED ); }
 		
-		$theKeyToUse = Strings::sanitizeFilename(trim($aS3Key));
+		$theKeyToUse = Strings::sanitizeFilename(Strings::trim($aS3Key));
 		$theBucketToUse = ( !empty($aBucketName) ) ? $aBucketName : $this->getS3Bucket();
-		$theResult = $this->getS3Client()->deleteObject(array(
+		return $this->getS3Client()->deleteObject(array(
 				'Bucket'     => $theBucketToUse,
 				'Key'        => $theKeyToUse,
 		));
-		return $theResult;
 	}
 	
 }//end class

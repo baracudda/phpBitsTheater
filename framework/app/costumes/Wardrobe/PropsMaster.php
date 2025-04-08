@@ -34,42 +34,43 @@ class PropsMaster extends BaseCostume
 	const DB_CONN_NAME_FOR_AUTH = 'webapp';
 	const DB_CONN_NAME_FOR_DATA = APP_DB_CONN_NAME;
 	
-	/** @var DbConnInfoInUse The Auth data db connection info. */
-	public $mDbConnInfoForAuth;
+	/** @var ?DbConnInfoInUse The Auth data db connection info. */
+	public ?DbConnInfoInUse $mDbConnInfoForAuth;
 
-	/** @var DbConnInfoInUse The Org data db connection info. */
-	public $mDbConnInfoForOrg = array(AuthModel::ORG_ID_4_ROOT => null);
+	/** @var DbConnInfoInUse[] The Org data db connection info. */
+	public array $mDbConnInfoForOrg = [
+		AuthModel::ORG_ID_4_ROOT => null
+	];
 	
 	/** @var array $[orgID][$theModelClass]['model'|'ref_count']; model=DbConnInfoInUse */
-	public $mPropRooms = [];
+	public array $mPropRooms = [];
 	
 	/** @var string The default Org ID to use when not specified. */
-	protected $mDefaultOrgID = AuthModel::ORG_ID_4_ROOT;
+	protected string $mDefaultOrgID = AuthModel::ORG_ID_4_ROOT;
 
-	/** @return AuthModel */
-	public function getAuthModel()
-	{ return $this->getPropFromRoom(AuthModel::MODEL_NAME); }
+	public function getAuthModel(): AuthModel
+	{ return (fn($model):AuthModel=>$model)($this->getPropFromRoom(AuthModel::MODEL_NAME)); }
 	
 	/**
 	 * Construct and return our new object.
 	 * @return $this Returns $this for chaining.
 	 */
-	static public function withContext( IDirected $aContext )
+	static public function withContext( IDirected $aContext ): self
 	{
 		$theCalledClass = get_called_class();
 		return new $theCalledClass($aContext);
 	}
 	
 	/** @return string Returns the current default org ID. */
-	public function getDefaultOrgID()
+	public function getDefaultOrgID(): string
 	{ return $this->mDefaultOrgID; }
 	
 	/**
 	 * Set the default org ID, NULL means Root.
-	 * @param string $aOrgID - the ID of the new default org.
+	 * @param ?string $aOrgID - the ID of the new default org.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function setDefaultOrgID( $aOrgID )
+	public function setDefaultOrgID( ?string $aOrgID ): self
 	{
 		$this->mDefaultOrgID = ( !empty($aOrgID) ) ? $aOrgID : AuthModel::ORG_ID_4_ROOT;
 		return $this;
@@ -79,7 +80,7 @@ class PropsMaster extends BaseCostume
 	 * Retrieve the connection information for auth data.
 	 * @return DbConnInfoInUse
 	 */
-	public function getDbConnInfoForAuthData()
+	public function getDbConnInfoForAuthData(): DbConnInfoInUse
 	{
 		if ( empty($this->mDbConnInfoForAuth) ) {
 			$this->mDbConnInfoForAuth = new DbConnInfoInUse(static::DB_CONN_NAME_FOR_AUTH);
@@ -89,14 +90,15 @@ class PropsMaster extends BaseCostume
 	
 	/**
 	 * Retrieve the connection information for a specific org connection.
-	 * @param string $aOrgID - the org ID which will define what connection we use.
+	 * @param ?string $aOrgID - the org ID which will define what connection we use.
 	 * @return DbConnInfoInUse Returns the connection to use.
 	 * @throws DbException if db connection fails.
 	 */
-	public function getDbConnInfoForOrgData( $aOrgID )
+	public function getDbConnInfoForOrgData( ?string $aOrgID ): DbConnInfoInUse
 	{
 		$theOrgID = ( !empty($aOrgID) ) ? $aOrgID : $this->mDefaultOrgID;
 		if ( empty($this->mDbConnInfoForOrg[$theOrgID]) ) {
+			$logger = $this->getLogger();
 			$theNewDbConnInfo = new DbConnInfoInUse(APP_DB_CONN_NAME);
 			$theNewDbConnInfo->mOrgID = $theOrgID;
 			if ( $theOrgID != AuthModel::ORG_ID_4_ROOT ) try {
@@ -110,13 +112,20 @@ class PropsMaster extends BaseCostume
 					$theNewDbConnInfo->loadDbConnInfoFromString($theOrg['dbconn']);
 				}
 				else {
-					$this->logStuff('WARNING: org ID [', $theOrgID, '] does not define "dbconn".');
+					$logger->withInfo([
+						'message' => "WARNING: org ID [{$theOrgID}] does not define 'dbconn'.",
+						'org_id' => $theOrgID,
+						'org_name' => $theOrg['name'],
+					])->logTo(LOG_WARNING);
 				}
 			}
 			catch ( \InvalidArgumentException $iax ) {
-				$theOrgName = isset($theOrg['org_name']) ? $theOrg['org_name'] : 'Root';
-				$theErrMsg = 'db connect failed. org_name [' . $theOrgName . ']';
-				$this->logErrors(__METHOD__, ' ', $theErrMsg);
+				$theOrgName = $theOrg['org_name'] ?? 'Root';
+				$theErrMsg = "db connect failed. org_name [{$theOrgName}]";
+				$logger->withInfo([
+					'method' => __METHOD__,
+					'ex' => $iax->getMessage(),
+				])->logToError($theErrMsg);
 				throw new DbException($iax, $theErrMsg);
 			}
 			$this->mDbConnInfoForOrg[$theOrgID] = $theNewDbConnInfo;
@@ -135,9 +144,11 @@ class PropsMaster extends BaseCostume
 	 *   ReflectionClass of model in question.
 	 * @return string Returns the model class name with correct namespace.
 	 */
-	static public function getModelClass( $aModelName )
+	static public function getModelClass( string|\ReflectionClass $aModelName ): string
 	{
-		if ( is_string($aModelName) ) {
+		if ( $aModelName instanceof \ReflectionClass ) {
+			return $aModelName->getName();
+		} else {
 			$theModelSegPos = strpos($aModelName, 'models\\');
 			if ( class_exists($aModelName) && !empty($theModelSegPos) ) {
 				return $aModelName;
@@ -147,17 +158,15 @@ class PropsMaster extends BaseCostume
 			if ( !class_exists($theModelClass) ) {
 				$theModelClass = WEBAPP_NAMESPACE . 'models\\' . $theModelName;
 			}
-		} else if ( $aModelName instanceof \ReflectionClass ) {
-			$theModelClass = $aModelName->getName();
+			return $theModelClass;
 		}
-		return $theModelClass;
 	}
 	
-	static public function getModelDbConnName( $aModelClass )
+	static public function getModelDbConnName( $aModelClass ): string|null
 	{
 		$theDbConnName = ( !empty($aModelClass::DB_CONN_NAME) ) ? $aModelClass::DB_CONN_NAME : null;
 		if ( empty($theDbConnName) && property_exists($aModelClass, 'dbConnName') ) {
-			//check proir non-static property for dbConnName
+			//check prior non-static property for dbConnName
 			try {
 				//do not pass in director so we just get bare minimum object with no db connection attempted
 				$o = new $aModelClass();
@@ -174,17 +183,22 @@ class PropsMaster extends BaseCostume
 	
 	/**
 	 * Retrieve the singleton Model object for a given model class and org.
-	 * @param string $aModelClass - the model class to retrieve.
-	 * @param string $aOrgID - (optional) the org ID of the data desired.
+	 * @param string|\ReflectionClass $aModelClass - the model class to retrieve.
+	 * @param string|null $aOrgID - (optional) the org ID of the data desired.
 	 * @throws \Exception when the model fails to connect or is not found.
 	 * @return Model Returns the model class requested connected appropriately.
 	 */
-	public function getPropFromRoom( $aModelClass, $aOrgID=null )
+	public function getPropFromRoom( string|\ReflectionClass $aModelClass, string $aOrgID=null ): Model
 	{
 		$theModelClass = static::getModelClass($aModelClass);
 		if ( !class_exists($theModelClass) ) {
-			$theErrMsg = 'Model class: [' . $aModelClass . '] not found.';
-			$this->logErrors(__METHOD__, ' ', $theErrMsg);
+			$theClassToFind = (is_string($aModelClass))
+				? substr($aModelClass, 0, 50)
+				: $aModelClass->getName();
+			$theErrMsg = "Model class: [{$theClassToFind}] not found.";
+			$this->getLogger()->withInfo([
+				'stacktrace' => Strings::getStackTrace(),
+			])->logToError($theErrMsg);
 			throw new \Exception($theErrMsg);
 		}
 		$theDbConnName = static::getModelDbConnName($theModelClass);
@@ -241,16 +255,18 @@ class PropsMaster extends BaseCostume
 		}
 		catch ( \Exception $x ) {
 			$this->mPropRooms[$theOrgID][$theModelClass] = null;
-			$this->logErrors(__METHOD__, ' ', $x->getMessage());
+			$this->getLogger()->withInfo([
+				'stacktrace' => Strings::getStackTrace(),
+			])->logToError($x->getMessage());
 			throw $x;
 		}
 	}
 	
 	/**
 	 * Given a model instance, decrement its usage counter, only freeing if 0.
-	 * @param Model $aModel - a model instance.
+	 * @param ?Model $aModel - a model instance.
 	 */
-	public function returnPropToRoom( Model $aModel=null )
+	public function returnPropToRoom( ?Model $aModel ): void
 	{
 		if ( !empty($aModel) && !empty($aModel->myDbConnInfo) ) {
 			$theModelClass = get_class($aModel);
@@ -269,10 +285,10 @@ class PropsMaster extends BaseCostume
 	
 	/**
 	 * Close all models associated with a specific org connection.
-	 * @param string $aOrgID - the org ID of the connection to close.
-	 * $return $this Returns $this for chaining.
+	 * @param ?string $aOrgID - the org ID of the connection to close.
+	 * @return $this Returns $this for chaining.
 	 */
-	public function closeConnection( $aOrgID )
+	public function closeConnection( ?string $aOrgID ): self
 	{
 		$theOrgID = ( !empty($aOrgID) ) ? $aOrgID : $this->mDefaultOrgID;
 		if ( !empty($this->mDbConnInfoForOrg[$theOrgID]) ) {
@@ -286,14 +302,14 @@ class PropsMaster extends BaseCostume
 				unset($this->mDbConnInfoForOrg[$theOrgID]);
 			}
 		}
-		
+		return $this;
 	}
 	
 	/**
 	 * Close out all our cached models and connections.
-	 * $return $this Returns $this for chaining.
+	 * @return $this Returns $this for chaining.
 	 */
-	public function closeAllConnections()
+	public function closeAllConnections(): self
 	{
 		foreach( $this->mDbConnInfoForOrg as $theOrgID => $theDbConnInfo) {
 			if ( !empty($theDbConnInfo) ) {
@@ -304,6 +320,7 @@ class PropsMaster extends BaseCostume
 			$this->mDbConnInfoForAuth->disconnect();
 			$this->mDbConnInfoForAuth = null;
 		}
+		return $this;
 	}
 	
 }//end class

@@ -88,10 +88,10 @@ class APIResponse extends BaseCostume
 	/**
 	 * Prints the data set first, then the success and error fields, in case
 	 * something goes wrong while we're in the act of serializing the data.
-	 * @param string $aEncodeOptions options for `json_encode()`
+	 * @param int $aEncodeOptions - (optional) options for `json_encode()`
 	 * @return $this Returns $this for chaining.
 	 */
-	public function printAsJson( $aEncodeOptions=null )
+	public function printAsJson( int $aEncodeOptions=0 )
 	{
 		if ( !empty($this->data) && is_object($this->data) && method_exists($this->data, 'printAsJson') )
 		{

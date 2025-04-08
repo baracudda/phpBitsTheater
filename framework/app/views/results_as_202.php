@@ -33,7 +33,7 @@ set_time_limit(0);
  */
 function printResponse202( MyScene $v, $aProcessor )
 {
-	$jsonEncodeOptions = null;
+	$jsonEncodeOptions = 0;
 	if ( filter_var($v->UseJsonPrettyPrint, FILTER_VALIDATE_BOOLEAN) || filter_var($v->pretty, FILTER_VALIDATE_BOOLEAN) ) {
 		$jsonEncodeOptions = $jsonEncodeOptions | JSON_PRETTY_PRINT;
 	}

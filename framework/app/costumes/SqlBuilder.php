@@ -297,7 +297,7 @@ class SqlBuilder extends BaseCostume {
 	 * Set a value for a param when its data value is empty(). e.g. null|""|0
 	 * @param string $aParamKey - array key or property name used to retrieve
 	 *   data set by the obtainParamsFrom() method.
-	 * @param string $aNewValue - new value to use.
+	 * @param string|string[] $aNewValue - new value to use.
 	 * @return $this Returns $this for chaining.
 	 * @see \BitsTheater\costumes\SqlBuilder::obtainParamsFrom()
 	 */
@@ -1250,7 +1250,9 @@ class SqlBuilder extends BaseCostume {
 	public function commitTransaction()
 	{
 		if ( $this->myTransactionFlag>0 ) {
-			if ( --$this->myTransactionFlag == 0 ) {
+			//Atomic DDL may means transactions may have been implicit, check for inTrans
+			//@see https://dev.mysql.com/doc/refman/8.3/en/atomic-ddl.html
+			if ( --$this->myTransactionFlag == 0 && $this->myModel->db->inTransaction() ) {
 				$this->myModel->db->commit();
 			}
 		}
@@ -1264,7 +1266,9 @@ class SqlBuilder extends BaseCostume {
 	public function rollbackTransaction()
 	{
 		if ( $this->myTransactionFlag>0 ) {
-			if ( --$this->myTransactionFlag == 0 ) {
+			//Atomic DDL may means transactions may have been implicit, check for inTrans
+			//@see https://dev.mysql.com/doc/refman/8.3/en/atomic-ddl.html
+			if ( --$this->myTransactionFlag == 0 && $this->myModel->db->inTransaction() ) {
 				$this->myModel->db->rollBack();
 			}
 		}
@@ -1333,5 +1337,5 @@ class SqlBuilder extends BaseCostume {
 	}
 	
 }//end class
-	
+
 }//end namespace

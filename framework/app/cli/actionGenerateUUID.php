@@ -11,5 +11,5 @@ require_once(__DIR__ . DIRECTORY_SEPARATOR . 'cli_bootstrap.php');
 
 print(Strings::createUUID());
 
-//end output with an EOL so CLI prompt will alway appear correctly on a fresh line
+//end output with an EOL so CLI prompt will always appear correctly on a fresh line
 print(PHP_EOL);

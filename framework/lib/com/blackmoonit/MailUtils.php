@@ -33,6 +33,8 @@ class MailUtils
 	/** @var string The fully qualified name of the object class we use. */
 	const CLASS_OF_MAILER = PHPMailer::class;
 	
+	public static array $mEmailConfigUsed;
+	
 	/**
 	 * PCRE regex pattern to recognize an email address. This is actually a
 	 * narrowing of http://tools.ietf.org/html/rfc5322#section-3.4 which limits
@@ -136,13 +138,11 @@ class MailUtils
 	}
 	
 	/** Consumed by bitsConfigToArray() */
-	private static function canAssignFromBitsConfig($aBitsConfig, $aSettingPath)
+	private static function canAssignFromBitsConfig($aBitsConfig, $aSettingPath): bool
 	{
-		$theValue = null ;
 		try { $theValue = $aBitsConfig[$aSettingPath] ; }
 		catch( \Exception $x ) { return false ; }
-		
-		return( isset($theValue) && !empty($theValue) ) ;
+		return( !empty($theValue) ) ;
 	}
 	
 	/**
@@ -151,7 +151,7 @@ class MailUtils
 	 *  has been processed by either validateMailerConfig() or objectToArray().
 	 * @return PHPMailer Returns the newly constructed and initialized object.
 	 */
-	static protected function buildMailer( $aValidatedArray )
+	static protected function buildMailer( array $aValidatedArray ): PHPMailer
 	{
 		$theMailer = new PHPMailer ;
 		$theMailer->isSMTP() ;
@@ -165,7 +165,7 @@ class MailUtils
 		if ( !empty($aValidatedArray['default_from']) ) {
 			$theMailer->setFrom($aValidatedArray['default_from']);
 		}
-		$theMailer->mEmailConfigUsed = $aValidatedArray;
+		self::$mEmailConfigUsed = $aValidatedArray;
 		return $theMailer;
 	}
 	
@@ -207,8 +207,15 @@ class MailUtils
 	 */
 	static public function buildMailerFromBitsConfig( $aBitsConfig, $aPath )
 	{
-		$theConfigArray = self::bitsConfigToArray( $aBitsConfig, $aPath ) ;
 		$theEmailServerURL = getenv('EMAIL_SERVER_URL');
+		try {
+			$theConfigArray = self::bitsConfigToArray($aBitsConfig, $aPath);
+		}
+		catch (\Exception $x) {
+			if ( empty($theEmailServerURL) ) {
+				return null;
+			}
+		}
 		if ( !empty($theEmailServerURL) ) {
 			$theEnvEmail = parse_url($theEmailServerURL);
 			if ( !empty($theEnvEmail) ) {
@@ -251,6 +258,23 @@ class MailUtils
 		return self::buildMailer($theConfigArray) ;
 	}
 	
+	/**
+	 * Return the config value used for the mailer object.
+	 * @param string $aKey - the config key name.
+	 * @return mixed
+	 */
+	public static function getEmailConfigUsed( string $aKey ): mixed
+	{
+		$theResult = null;
+		if ( !empty(self::$mEmailConfigUsed) && !empty(self::$mEmailConfigUsed[$aKey]) ) {
+			$theResult = self::$mEmailConfigUsed[$aKey];
+			if ( $aKey == 'port' ) {
+				$theResult = intval($theResult);
+			}
+		}
+		return $theResult;
+	}
+	
 } // end MailUtils class
 
 class MailUtilsException extends \Exception
@@ -259,9 +283,7 @@ class MailUtilsException extends \Exception
 	
 	static public function exceptMissingConfig( $aSetting )
 	{
-		$theMessage = 'Mailer was not given the required setting ['
-				. $aSetting . '].'
-				;
+		$theMessage = "Mailer was not given the required setting [{$aSetting}].";
 		return new MailUtilsException( $theMessage, self::ERR_MISSING_SETTING );
 	}
 } // end MailUtilsException class

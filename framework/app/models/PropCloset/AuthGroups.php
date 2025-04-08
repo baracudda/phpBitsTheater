@@ -1440,7 +1440,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function del( $aGroupID )
 	{
-		$theGroupID = trim($aGroupID);
+		$theGroupID = Strings::trim($aGroupID);
 		$theSql = SqlBuilder::withModel($this);
 		//prevent delete if any child group found
 		$theParentCheck = $theSql->startWith('SELECT group_id')
@@ -1622,8 +1622,8 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function addRegCode($aGroupID, $aRegCode)
 	{
-		$theGroupID = trim($aGroupID);
-		$theRegCode = trim($aRegCode);
+		$theGroupID = Strings::trim($aGroupID);
+		$theRegCode = Strings::trim($aRegCode);
 		if ( empty($theGroupID) ||
 				$theGroupID == static::UNREG_GROUP_ID ||
 				empty($theRegCode)
@@ -1858,7 +1858,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	public function createGroup( $aGroupName, $aGroupParentID=null, $aGroupNum=null,
 			$aGroupRegCode=null, $aGroupCopyID=null )
 	{
-		$theGroupParentId = trim($aGroupParentID);
+		$theGroupParentId = Strings::trim($aGroupParentID);
 		if ( $theGroupParentId == static::UNREG_GROUP_ID )
 		{ $theGroupParentId = null; }
 		$theGroupNum = filter_var($aGroupNum, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
@@ -1981,7 +1981,7 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 	 */
 	public function findGroupIdByRegCode( $aRegCode )
 	{
-		$theRegCode = trim($aRegCode);
+		$theRegCode = Strings::trim($aRegCode);
 		if ( empty($theRegCode) ) return static::UNREG_GROUP_ID; //trivial
 		$theSql = SqlBuilder::withModel($this)
 			->startWith('SELECT group_id FROM')->add($this->tnGroupRegCodes)
@@ -2183,12 +2183,11 @@ class AuthGroups extends BaseModel implements IFeatureVersioning
 		$theSql = SqlBuilder::withModel($this);
 		try
 		{
-			$theRowSet = $theSql
-				->startWith('SELECT')->addFieldList($aFieldList)
+			$theSql->startWith('SELECT')
+				->addFieldList($aFieldList)
 				->add('FROM')->add($this->tnGroups)
 				;
-			if( !empty($aGroupIDorList) )
-			{
+			if( !empty($aGroupIDorList) ) {
 				$theSql->startWhereClause()
 					->mustAddParam('group_id', $aGroupIDorList)
 					->endWhereClause()

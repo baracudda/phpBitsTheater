@@ -17,6 +17,7 @@
 
 namespace BitsTheater\costumes\Wardrobe;
 use stdClass as BaseClass;
+use BitsTheater\Director;
 use BitsTheater\costumes\AuthOrg;
 use BitsTheater\costumes\IDirected;
 use BitsTheater\models\Auth as AuthModel;
@@ -40,19 +41,21 @@ class LogMessage extends BaseClass
 	/** @var int val=7, PHP's LOG_level constants differ by OS, use our own. See Strings::getLogLevelName() */
 	const LOG_DEBUG = 7;
 	
-	/** @var \BitsTheater\Director The director. */
-	protected $mDirector = null;
+	/** @var Director The director. */
+	protected Director $mDirector;
 	/** @var int One of system or our LOG_* consts. */
-	protected $mLevel = self::LOG_INFO;
+	protected int $mLevel = self::LOG_INFO;
 	/** @var string Timestamp of log. */
-	protected $mTimestamp = null;
+	protected string $mTimestamp;
 	/** @var string[] key=>value array of log information. */
-	protected $mInfo = array();
+	protected array $mInfo = [];
+	/** @var string[][] non-associative array of an array of keys for log info to easily push/pop. */
+	protected array $mInfoKeyStack = [];
 	
 	
 	/**
 	 * Construct this object with default values.
-	 * @param IDirected $aContext - the context to use.
+	 * @param IDirected|null $aContext - the context to use.
 	 */
 	public function __construct( IDirected $aContext=null )
 	{
@@ -109,7 +112,7 @@ class LogMessage extends BaseClass
 	 * @param IDirected $aContext - the context to use.
 	 * @return $this Returns the newly created object.
 	 */
-	static public function withContext( IDirected $aContext )
+	static public function withContext( IDirected $aContext ): self
 	{
 		$theClass = get_called_class();
 		return (new $theClass($aContext));
@@ -120,18 +123,18 @@ class LogMessage extends BaseClass
 	 * withContext() is preferred, but not always possible.
 	 * @return $this Returns the newly created object.
 	 */
-	static public function withGlobalContext()
+	static public function withGlobalContext(): self
 	{
 		$theClass = get_called_class();
 		return (new $theClass());
 	}
 	
-	/** @return \BitsTheater\Director Returns the Director. */
-	public function getDirector()
+	/** @return Director Returns the Director. */
+	public function getDirector(): Director
 	{ return $this->mDirector; }
 	
 	/** @return int Accessor for the condition token. */
-	public function getLevel()
+	public function getLevel(): int
 	{ return $this->mLevel; }
 	
 	/**
@@ -139,15 +142,15 @@ class LogMessage extends BaseClass
 	 * @param int $aLevel - level of log message, one of the LOG_* consts.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function setLevel( $aLevel )
+	public function setLevel( int $aLevel ): self
 	{ $this->mLevel = $aLevel; return $this; }
 	
 	/**
 	 * Get the log info if it has been assigned.
-	 * @param string $aKey - the key for the data.
+	 * @param string|null $aKey - the key for the data.
 	 * @return mixed Returns the value of the key.
 	 */
-	public function getInfo( $aKey )
+	public function getInfo( ?string $aKey ): mixed
 	{
 		if ( $aKey == null ) return $this->mInfo;
 		$theVal = null;
@@ -159,13 +162,12 @@ class LogMessage extends BaseClass
 	
 	/**
 	 * Flesh out what information should be logged in a structured manner.
-	 * @param string $aKey - the data key
+	 * @param string|null $aKey - the data key
 	 * @param mixed $aValue - the data value
 	 * @return $this Returns $this for chaining.
 	 */
-	public function setInfo( $aKey, $aValue )
+	public function setInfo( ?string $aKey, mixed $aValue ): self
 	{
-		if ( $aValue == null ) return $this; //trivial
 		if ( $aKey == null && is_array($aValue) ) {
 			$this->mInfo = array_merge($this->mInfo, $aValue);
 		}
@@ -181,19 +183,27 @@ class LogMessage extends BaseClass
 		return $this;
 	}
 	
+	public function unsetInfo( string $aKey ): self
+	{
+		if ( in_array($aKey, $this->mInfo) ) {
+			unset($this->mInfo[$aKey]);
+		}
+		return $this;
+	}
+	
 	/**
 	 * Alias for setInfo(null, $aInfo), cleaner readability.
-	 * @param string|string[]|object $aInfo - the info set to use.
+	 * @param string|string[]|object|null $aInfo - the info set to use.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function withInfo( $aInfo )
+	public function withInfo( array|object|string|null $aInfo ): self
 	{ return $this->setInfo(null, $aInfo); }
 	
 	/**
 	 * Simple smashing all info as one string.
 	 * @return string Returns all the info as one message.
 	 */
-	public function getMessage()
+	public function getMessage(): string
 	{
 		$theStr = ( $this->getLevel() == static::LOG_ERROR ) ? Strings::errorPrefix() : Strings::debugPrefix();
 		if ( !empty($this->mInfo) ) {
@@ -210,15 +220,30 @@ class LogMessage extends BaseClass
 				}
 			}
 		}
-		return trim($theStr);
+		return Strings::trim($theStr);
+	}
+	
+	public function pushInfoKeys(): self {
+		$this->mInfoKeyStack[] = array_keys($this->mInfo);
+		return $this;
+	}
+	
+	public function popInfoKeys(): self {
+		if ( !empty($this->mInfoKeyStack) ) {
+			$theKeysToKeep = array_pop($this->mInfoKeyStack);
+			$this->mInfo = array_filter($this->mInfo, function($theKey) use ($theKeysToKeep) {
+				return in_array($theKey, $theKeysToKeep);
+			}, ARRAY_FILTER_USE_KEY);
+		}
+		return $this;
 	}
 	
 	/**
 	 * Forms the object representing this log statement.
-	 * @param int $aLogLevel - (OPTIONAL) export this log level, not what we currently have defined.
+	 * @param int|null $aLogLevel - (OPTIONAL) export this log level, not what we currently have defined.
 	 * @return object Returns an object.
 	 */
-	public function toLogObject( $aLogLevel=null )
+	public function toLogObject( int $aLogLevel=null ): object
 	{
 		$theLog = new \stdClass() ;
         $theLog->level_num = ( !empty($aLogLevel) ) ? $aLogLevel : $this->getLevel();
@@ -235,41 +260,46 @@ class LogMessage extends BaseClass
 
 	/**
 	 * Returns the representation of this object that is appropriate to encode.
-	 * @param int $aLogLevel - (OPTIONAL) export this log level, not what we currently have defined.
+	 * @param int|null $aLogLevel - (OPTIONAL) export this log level, not what we currently have defined.
 	 * @return object Returns the object to encode.
 	 */
-	public function exportData( $aLogLevel=null )
+	public function exportData( int $aLogLevel=null ): object
 	{ return $this->toLogObject($aLogLevel); }
 
 	/**
 	 * As toLogObject(), but serializes that object to a JSON string.
-	 * @param int $aLogLevel - (OPTIONAL) export this log level, not what we currently have defined.
-	 * @param string $aEncodeOptions - the JSON encoding options
+	 * @param int|null $aLogLevel - (OPTIONAL) export this log level, not what we currently have defined.
+	 * @param int $aEncodeOptions - (optional) the JSON encoding options
 	 * @return string Returns a JSON serialization of the standard response object.
 	 */
-	public function toJson( $aLogLevel=null, $aEncodeOptions=null )
+	public function toJson( int $aLogLevel=null, int $aEncodeOptions=0 ): string
 	{ return json_encode($this->exportData($aLogLevel), $aEncodeOptions); }
 
 	/**
 	 * Log information as a JSON encoded object at level without saving the level.
+	 * @param int $aLevel - level of log message, one of the LOG_* consts.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function logAs( $aLevel )
-	{ Strings::log($aLevel, $this); return $this; }
+	public function logAs( int $aLevel ): self
+	{
+		$this->mTimestamp = gmdate("Y-m-d\TH:i:s\Z");
+		Strings::log($aLevel, $this);
+		return $this;
+	}
 	
 	/**
 	 * Log information as a JSON encoded object.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function log()
+	public function log(): self
 	{ return $this->logAs($this->getLevel()); }
 	
 	/**
 	 * Convenience method for combining withInfo()->log().
-	 * @param string|string[]|object $aInfo - the info set to use.
+	 * @param string|string[]|object|null $aInfo - the info set to use.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function logWith( $aInfo )
+	public function logWith( array|object|string|null $aInfo ): self
 	{ return $this->withInfo($aInfo)->log(); }
 	
 	/**
@@ -277,22 +307,24 @@ class LogMessage extends BaseClass
 	 * @param int $aLevel - level of log message, one of the LOG_* consts.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function logTo( $aLevel )
+	public function logTo( int $aLevel ): self
 	{ return $this->setLevel($aLevel)->log(); }
 	
 	/**
 	 * Log information as a JSON encoded object to DEBUG level without saving the level.
+	 * @param string|string[]|object|null $aInfo - (optional) the info set to use.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function logToDebug()
-	{ return $this->logAs(static::LOG_DEBUG); }
+	public function logToDebug( array|object|string $aInfo=null ): self
+	{ return $this->withInfo($aInfo)->logAs(static::LOG_DEBUG); }
 	
 	/**
 	 * Log information as a JSON encoded object to ERROR level without saving the level.
+	 * @param string|string[]|object|null $aInfo - (optional) the info set to use.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function logToError()
-	{ return $this->logAs(static::LOG_ERROR); }
+	public function logToError( array|object|string $aInfo=null ): self
+	{ return $this->withInfo($aInfo)->logAs(static::LOG_ERROR); }
 	
 } //end class
 

@@ -15,6 +15,9 @@ class SetupDb extends BaseModel
 	 */
 	const MODEL_NAME = __CLASS__ ;
 	
+	/** @return AuthModel */
+	protected function getAuthProp() { return $this->getProp('Auth'); }
+	
 	/**
 	 * Connect to a different org by its ID.
 	 * @param string $aOrgID - org_id with the dbconn info to connect to.
@@ -41,10 +44,11 @@ class SetupDb extends BaseModel
 	 * @param string $aModelName - the simple name of the model class.
 	 * @return boolean Returns TRUE if the model is to be used.
 	 */
-	static protected function isModelClassAllowed($aModelName) {
-		$theOrphans = array(
-		);
-		return (array_search($aModelName, $theOrphans)===false);
+	static protected function isModelClassAllowed( string $aModelName ): bool
+	{
+		$theOrphans = [
+		];
+		return (!in_array($aModelName, $theOrphans));
 	}
 	
 }//end class

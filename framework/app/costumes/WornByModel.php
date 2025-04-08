@@ -27,9 +27,8 @@ trait WornByModel
 {
 	/**
 	 * The model instance to which this costume is bound.
-	 * @var Model
 	 */
-	protected $model = null ;
+	protected ?Model $model = null ;
 	
 	/**
 	 * Static builder method to return an instance of the costume pre-bound to a
@@ -45,9 +44,9 @@ trait WornByModel
 	
 	/**
 	 * Accessor.
-	 * @return Model Returns the model object.
+	 * @return ?Model Returns the model object.
 	 */
-	public function getModel()
+	public function getModel(): ?Model
 	{ return $this->model ; }
 	
 	/**

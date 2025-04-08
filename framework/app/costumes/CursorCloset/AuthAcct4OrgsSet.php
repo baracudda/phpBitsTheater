@@ -41,10 +41,10 @@ class AuthAcct4OrgsSet extends BaseCostume
 	
 	/**
 	 * Sets the construction arguments for our Item Class.
-	 * @param mixed $_ - arguments to pass to the class's constructor.
+	 * @param mixed $args - arguments to pass to the class's constructor.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function setItemClassArgs( ...$args )
+	public function setItemClassArgs( ...$args ): self
 	{
 		// check field list argument of MyRecord for extended info we need to retrieve.
 		if ( !empty($args[1]) ) {
@@ -62,9 +62,9 @@ class AuthAcct4OrgsSet extends BaseCostume
 	/**
 	 * Event called after fetching from $this->mDataSet.
 	 * @param \BitsTheater\costumes\AuthAccount $aRow - the fetched data.
-	 * @return object Returns the row data fetched.
+	 * @return object|false Returns the row data fetched.
 	 */
-	protected function onFetch($aRow)
+	protected function onFetch($aRow): object|false
 	{
 		if ( !empty($aRow) && !empty($this->mOrgList) ) {
 			$this->mOrgList->addListOfIds($aRow->org_ids);
@@ -74,9 +74,9 @@ class AuthAcct4OrgsSet extends BaseCostume
 	
 	/**
 	 * print() out extra properties besides the set of records here, if any.
-	 * @param string $aEncodeOptions options for `json_encode()`
+	 * @param int $aEncodeOptions options for `json_encode()`
 	 */
-	protected function printExtraJsonProperties( $aEncodeOptions )
+	protected function printExtraJsonProperties( int $aEncodeOptions=0 )
 	{
 		if (!empty($this->mOrgList)) {
 			print( ',"authorgs":');

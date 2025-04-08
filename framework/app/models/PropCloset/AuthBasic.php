@@ -721,12 +721,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 
 	/**
 	 * Return the $delta to add to time() to generate the expiration date.
-	 * @param string $aDuration - (optional) one of the config settings, NULL for what is
+	 * @param string|null $aDuration - (optional) one of the config settings, NULL for what is
 	 * stored in configuration.
 	 * @return void|number Returns the $delta needed to add to time() to get the
 	 * cookie expiration date; NULL = no end date, 0 means do not use cookies.
 	 */
-	public function getCookieDurationInDays($aDuration=null) {
+	public function getCookieDurationInDays( string $aDuration=null ): int|null
+	{
 		//check cookie duration
 		$delta = 1; //multiplication factor, which is why it is not 0.
 		try {
@@ -750,13 +751,13 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 				break;
 			case 'duration_0': // => 'Do not use cookies!',
 				$delta = 0;
-				return;
+				break;
 		}//switch
 		return $delta;
 	}
 
 	/**
-	 * Return the cookie expriation time based on Config settings.
+	 * Return the cookie expiration time based on Config settings.
 	 * @return number|null Returns the cookie expiration timestamp parameter.
 	 */
 	public function getCookieStaleTimestamp() {
@@ -1318,8 +1319,8 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 		//$this->debugLog(__METHOD__.' v='.$this->debugStr($aScene));
 		$theResult = array();
 		//was there a login attempt, or are we just a guest browsing the site?
-		$theUserInput = trim($aScene->{self::KEY_userinfo});
-		$theAuthInput = trim($aScene->{self::KEY_pwinput});
+		$theUserInput = Strings::trim($aScene->{self::KEY_userinfo});
+		$theAuthInput = Strings::trim($aScene->{self::KEY_pwinput});
 		if (!empty($theUserInput) && !empty($theAuthInput)) {
 			//we do indeed have a login attempt that failed
 			$theResult['auth_id'] = $theUserInput;
@@ -1604,7 +1605,7 @@ class AuthBasic extends BaseModel implements IFeatureVersioning
 			$this->db->beginTransaction() ;
 			try {
 				$nowAsUTC = $this->utc_now();
-				$theVerifiedTS = (strtolower(trim($aUserData['verified_timestamp']))=='now')
+				$theVerifiedTS = (strtolower(Strings::trim($aUserData['verified_timestamp']))=='now')
 						? $nowAsUTC
 						: $aUserData['verified_timestamp']
 				;

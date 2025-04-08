@@ -32,29 +32,27 @@ class DbConnInfo
 	
 	/**
 	 * Used to name the object to differentiate it from other connections.
-	 * @var string
 	 */
-	public $myDbConnName;
+	public string $myDbConnName;
 
-	/**
-	 * @var DbConnOptions
-	 */
-	public $dbConnOptions;
+	public DbConnOptions $dbConnOptions;
 	
-	/**
-	 * @var DbConnSettings
-	 */
-	public $dbConnSettings;
+	public DbConnSettings $dbConnSettings;
 	
-	public $dns;
-	public $username;
-	public $password;
+	public ?string $dns;
+	public ?string $username;
+	public ?string $password;
 	
 	/**
 	 * Standard constructor takes a name and defaults some properties based on the name.
-	 * @param string $aDbConnName - the name to use (should be unique if you have more objects).
+	 * @param ?string $aDbConnName - the name to use (should be unique if you have more objects).
+	 * @param ?DbConnOptions $aDbConnOptions - the db options
+	 * @param ?DbConnSettings $aDbConnSettings - the connection settings
 	 */
-	public function __construct($aDbConnName=null, DbConnOptions $aDbConnOptions=null, DbConnSettings $aDbConnSettings=null) {
+	public function __construct( ?string $aDbConnName=null,
+	                             ?DbConnOptions $aDbConnOptions=null,
+	                             ?DbConnSettings $aDbConnSettings=null
+	) {
 		$this->myDbConnName = (!empty($aDbConnName)) ? $aDbConnName : 'id-'.Strings::createUUID();
 		if (!empty($aDbConnOptions)) {
 			$this->dbConnOptions = $aDbConnOptions;
@@ -224,11 +222,9 @@ class DbConnInfo
 	 * @throws InvalidArgumentException if various data points are missing
 	 * @throws RuntimeException if unable to import the file.
 	 */
-	static public function readDbConnInfo($aIniFilePath) {
+	static public function readDbConnInfo( string $aIniFilePath ) {
 		$theClass = get_called_class();
 		$o = new $theClass();
-		if (empty($aIniFilePath))
-			$aIniFilePath = $this->dbConnOptions->ini_filename;
 		$o->loadDbConnInfoFromIniFile($aIniFilePath);
 		return $o;
 	}
@@ -238,8 +234,7 @@ class DbConnInfo
 	 * @return PDO Returns the PDO connection.
 	 * @throws \PDOException if connection fails.
 	 */
-	public function getPDOConnection() {
-		$theResult = null;
+	public function getPDOConnection(): PDO {
 		try {
 			if (!empty($this->username) && !empty($this->password))
 				$theResult = new PDO($this->dns, $this->username, base64_decode($this->password));
@@ -247,6 +242,7 @@ class DbConnInfo
 				$theResult = new PDO($this->dns);
 			$theResult->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 			$theResult->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+			//$theResult->setAttribute(PDO::ATTR_AUTOCOMMIT, 0);
 		} catch ( \PDOException $pdox ) {
 			Strings::errorLog('DbConnection failure for [', $this->dns, ']: ', $pdox->getMessage());
 			throw $pdox;

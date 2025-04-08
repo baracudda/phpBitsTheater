@@ -18,6 +18,8 @@
 namespace BitsTheater\scenes\Closet;
 use BitsTheater\Scene as MyScene;
 use BitsTheater\costumes\MenuItemResEntry;
+use com\blackmoonit\Strings;
+
 {//namespace begin
 
 class Menus extends MyScene {
@@ -32,7 +34,7 @@ class Menus extends MyScene {
 	}
 	
 	public function getMenuDisplay(MenuItemResEntry $aMenuItem) {
-		$theResult = trim($this->getMenuIcon($aMenuItem).' '.$aMenuItem->getLabel());
+		$theResult = Strings::trim($this->getMenuIcon($aMenuItem).' '.$aMenuItem->getLabel());
 		$theSubtext = $aMenuItem->getSubtext();
 		if (self::IS_SUBTEXT_SUPPORTED && !empty($theSubtext))
 			$theResult .= '<span class="subtext">'.$theSubtext.'</span>';
@@ -54,7 +56,7 @@ class Menus extends MyScene {
 		if ($isLast)
 			$theClasses .= 'last ';
 		if (!empty($theClasses))
-			$theClasses = ' class="'.trim($theClasses).'"';
+			$theClasses = ' class="'.Strings::trim($theClasses).'"';
 		
 		$theItem = sprintf('<a href="%1$s" %3$s><span>%2$s</span></a>',
 				$theLink,$this->getMenuDisplay($aMenuItem),$theClasses);
@@ -67,7 +69,7 @@ class Menus extends MyScene {
 		if ($aMenuKey==$this->_director['current_menu_key'])
 			$theClasses .= 'current ';
 		if (!empty($theClasses))
-			$theClasses = ' class="'.trim($theClasses).'"';
+			$theClasses = ' class="'.Strings::trim($theClasses).'"';
 		return str_repeat("\t",$aSubLevel).'<li'.$theClasses.'>'.$theItem."</li>\n";
 	}
 	

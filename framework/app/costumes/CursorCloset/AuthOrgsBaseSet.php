@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (C) 2017 Blackmoon Info Tech Services
+ * Copyright (C) 2023 Blackmoon Info Tech Services
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,20 +23,21 @@ use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\models\Auth as MyModel;
 use BitsTheater\costumes\AuthAccount as MyRecord;
 use BitsTheater\costumes\AuthGroupList;
+use BitsTheater\costumes\AuthOrgList;
 use BitsTheater\models\AuthGroups as AuthGroupsProp;
 use com\blackmoonit\Strings;
 {//namespace begin
 
 /**
- * Acts as a container for, and iterator over, a set of AuthAccounts.
+ * Acts as a container for, and iterator over, a set of AuthOrgsBase.
  *
  * <pre>
- * $theSet = AuthAccountSet::create($this)
+ * $theSet = AuthOrgsBaseSet::create($this)
  *     ->setDataFromPDO($pdo)
  *     ;
  * </pre>
  */
-class AuthAccountSet extends BaseCostume
+class AuthOrgsBaseSet extends BaseCostume
 implements ISqlSanitizer
 { use WornForSqlSanitize;
 
@@ -76,6 +77,12 @@ implements ISqlSanitizer
 	{ return $this->getProp(AuthGroupsProp::MODEL_NAME); }
 
 	/**
+	 * Org data to be returned.
+	 * @var AuthOrgList
+	 */
+	public $mOrgList = null;
+	
+	/**
 	 * Sets the construction arguments for our Item Class.
 	 * @param mixed $args - arguments to pass to the class's constructor.
 	 * @return $this Returns $this for chaining.
@@ -91,6 +98,9 @@ implements ISqlSanitizer
 			if ( $bAddAllMaps || array_search('groups', $theFieldList)!==false ) {
 				$this->mGroupList = AuthGroupList::create($this->getModel());
 			}
+			if ( $bAddAllMaps || array_search('org_ids', $theFieldList)!==false ) {
+				$this->mOrgList = AuthOrgList::create($this->getMyModel());
+			}
 		}
 		return parent::setItemClassArgs(...$args);
 	}
@@ -105,6 +115,9 @@ implements ISqlSanitizer
 		if ( !empty($aRow) && !empty($this->mGroupList) ) {
 			$this->mGroupList->addListOfIds($aRow->groups);
 		}
+		if ( !empty($aRow) && !empty($this->mOrgList) ) {
+			$this->mOrgList->addListOfIds($aRow->org_ids);
+		}
 		return parent::onFetch($aRow);
 	}
 	
@@ -117,6 +130,10 @@ implements ISqlSanitizer
 		if ( !empty($this->mGroupList) ) {
 			print(',"authgroups":');
 			$this->mGroupList->printAsJson( $aEncodeOptions );
+		}
+		if (!empty($this->mOrgList)) {
+			print( ',"authorgs":');
+			$this->mOrgList->printAsJson( $aEncodeOptions );
 		}
 		parent::printExtraJsonProperties($aEncodeOptions);
 	}
@@ -152,9 +169,6 @@ implements ISqlSanitizer
 		if ( is_array($theExportList) && in_array('groups', $theExportList) ) {
 			$theFieldsToGet[] = 'groups';
 		}
-		if ( is_array($theExportList) && in_array('hardware_ids', $theExportList) ) {
-			$theFieldsToGet[] = 'hardware_ids';
-		}
 		if ( is_array($theExportList) && in_array('lockout_count', $theExportList) ) {
 			$theFieldsToGet[] = 'lockout_count';
 		}
@@ -185,9 +199,19 @@ implements ISqlSanitizer
 					'group_name',
 			));
 		}
+		if ( !empty($this->mOrgList) )
+		{
+			$theList = array_merge($theList, array(
+					'org_id',
+					'org_name',
+					'org_title',
+					'org_desc',
+					'parent_org_id',
+			));
+		}
 		return $theList;
 	}
-	
+
 	/**
 	 * Given the filter and fieldname, apply the proper query filter.
 	 * @param SqlBuilder $aFilter - the filter object.
@@ -199,32 +223,37 @@ implements ISqlSanitizer
 			case 'is_active':
 				$aFilter->addParamOfType($aFieldname, \PDO::PARAM_INT);
 				break;
-			case 'hardware_ids':
-			case 'mapped_imei':
-				$theSavedPrefix = $aFilter->myParamPrefix;
-				$dbAuth = $this->getMyModel();
-				$aFilter->add($aFilter->myParamPrefix . 'auth_id IN (');
-				$aFilter->endWhereClause()
-					->add('SELECT auth_id FROM')->add($dbAuth->tnAuthTokens)
-					;
-				$aFilter->startWhereClause()->setParamOperator(' LIKE ')
-					->addParamForColumn('mapped_imei', 'token')
-					->setParamOperator('=')
-					;
-				$aFilter->add(')');
-				$aFilter->setParamPrefix($theSavedPrefix);
-				break;
 			case 'group_id':
 			case 'group_name':
 				$theSavedPrefix = $aFilter->myParamPrefix;
 				$dbAuthGroups = $this->getAuthGroupsProp();
-				$aFilter->add($aFilter->myParamPrefix . 'account_id IN (');
+				$aFilter->add($aFilter->myParamPrefix . 'auth_id IN (');
 				$aFilter->endWhereClause()
-					->add('SELECT account_id FROM')->add($dbAuthGroups->tnGroupMap)
+					->add('SELECT auth_id FROM')->add($dbAuthGroups->tnGroupMap)
 					;
 				if ( $aFieldname!=='group_id') {
 					$aFilter->add('INNER JOIN')->add($dbAuthGroups->tnGroups)
 						->add('USING(group_id)')
+						;
+				}
+				$aFilter	->startWhereClause()->addParam($aFieldname);
+				$aFilter->add(')');
+				$aFilter->setParamPrefix($theSavedPrefix);
+				break;
+			case 'org_id':
+			case 'org_name':
+			case 'org_title':
+			case 'org_desc':
+			case 'parent_org_id':
+				$theSavedPrefix = $aFilter->myParamPrefix;
+				$dbAuth = $this->getMyModel();
+				$aFilter->add($aFilter->myParamPrefix . 'auth_id IN (');
+				$aFilter->endWhereClause()
+					->add('SELECT auth_id FROM')->add($dbAuth->tnAuthOrgMap)
+					;
+				if ( $aFieldname!=='org_id') {
+					$aFilter->add('INNER JOIN')->add($dbAuth->tnAuthOrgs)
+						->add('USING(org_id)')
 						;
 				}
 				$aFilter->startWhereClause()->addParam($aFieldname);
@@ -248,6 +277,8 @@ implements ISqlSanitizer
 		{ $theList = array(); }
 		if ( !empty($this->mGroupList) )
 		{ $theList[] = 'group_name'; }
+		if ( !empty($this->mOrgList) )
+		{ $theList[] = 'org_title'; }
 		return $theList;
 	}
 	
@@ -260,28 +291,29 @@ implements ISqlSanitizer
 	protected function handleSearchField( SqlBuilder $aFilter, $aFieldname, $aSearchText )
 	{
 		switch ( $aFieldname ) {
-			case 'mapped_imei':
+			case 'group_name':
 				$theSavedPrefix = $aFilter->myParamPrefix;
-				$dbAuth = $this->getMyModel();
+				$dbAuthGroups = $this->getAuthGroupsProp();
 				$aFilter->add($aFilter->myParamPrefix . 'auth_id IN (');
 				$aFilter->endWhereClause()
-					->add('SELECT auth_id FROM')->add($dbAuth->tnAuthTokens)
+					->add('SELECT auth_id FROM')->add($dbAuthGroups->tnGroupMap)
+					->add('INNER JOIN')->add($dbAuthGroups->tnGroups)->add('USING(group_id)')
 					;
 				$aFilter->startWhereClause()->setParamOperator(' LIKE ')
-					->setParamValueIfEmpty('mapped_imei', $aSearchText)
-					->addParamForColumn('mapped_imei', 'token')
+					->setParamValueIfEmpty($aFieldname, $aSearchText)
+					->addParam($aFieldname)
 					->setParamOperator('=')
 					;
 				$aFilter->add(')');
 				$aFilter->setParamPrefix($theSavedPrefix);
 				break;
-			case 'group_name':
+			case 'org_title':
 				$theSavedPrefix = $aFilter->myParamPrefix;
-				$dbAuthGroups = $this->getAuthGroupsProp();
-				$aFilter->add($aFilter->myParamPrefix . 'account_id IN (');
+				$dbAuth = $this->getMyModel();
+				$aFilter->add($aFilter->myParamPrefix . 'auth_id IN (');
 				$aFilter->endWhereClause()
-					->add('SELECT account_id FROM')->add($dbAuthGroups->tnGroupMap)
-					->add('INNER JOIN')->add($dbAuthGroups->tnGroups)->add('USING(group_id)')
+					->add('SELECT auth_id FROM')->add($dbAuth->tnAuthOrgMap)
+					->add('INNER JOIN')->add($dbAuth->tnAuthOrgs)->add('USING(org_id)')
 					;
 				$aFilter->startWhereClause()->setParamOperator(' LIKE ')
 					->setParamValueIfEmpty($aFieldname, $aSearchText)
@@ -326,27 +358,6 @@ implements ISqlSanitizer
 			//$this->logStuff(__METHOD__, ' search=', $theSearchFieldList);//DEBUG
 			$theFilter->add('AND (0')
 				->setParamOperator(' LIKE ')->setParamPrefix(' OR ')
-				//mapped_imei field becomes a simple matter with a data handler
-				->setParamDataHandler('mapped_imei',
-						function($thisSqlBuilder, $paramKey, $currentParamValue) {
-							if ( empty($currentParamValue) ) return null;
-							$theModel = $thisSqlBuilder->myModel;
-							//remove the outer wildcards, then build up the proper filter.
-							$currentParamValue = Strings::stripEnclosure(
-									$currentParamValue, '%'
-							);
-							//if we want to enforce real IMEI's, pad to 15 chars
-							/*
-							if ( $theModel->dbType()!=$theModel::DB_TYPE_SQLSRV )
-							{ $theValue = str_pad($currentParamValue, 15, '_'); }
-							else
-							{ $theValue = str_pad($currentParamValue, 15, '?'); }
-							*/
-							$theValue = '%' . $currentParamValue . '%';
-							return $theModel::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT
-									. ':' . $theValue . ':%';
-						}
-					)
 				;
 			foreach ($theSearchFieldList as $theField) {
 				$this->handleSearchField($theFilter, $theField, $aSearchText);
@@ -366,23 +377,6 @@ implements ISqlSanitizer
 			else
 			{ $theFilter->add(' AND (1'); }
 			$theFilter->obtainParamsFrom($aFieldFilter)->setParamPrefix(' AND ')
-				//mapped_imei field becomes a simple matter with a data handler
-				->setParamDataHandler('mapped_imei',
-						function($thisSqlBuilder, $paramKey, $currentParamValue) {
-							if ( empty($currentParamValue) ) return null;
-							$theModel = $thisSqlBuilder->myModel;
-							//if we want to enforce real IMEI's, pad to 15 chars
-							/*
-							if ( $theModel->dbType()!=$theModel::DB_TYPE_SQLSRV )
-							{ $theValue = str_pad($currentParamValue, 15, '_'); }
-							else
-							{ $theValue = str_pad($currentParamValue, 15, '?'); }
-							*/
-							$theValue = '%' . $currentParamValue . '%';
-							return $theModel::TOKEN_PREFIX_HARDWARE_ID_TO_ACCOUNT
-									. ':' . $theValue . ':%';
-						}
-					)
 				;
 			$theFilterFieldList = $this->getItemFieldListForFilters();
 			foreach ($theFilterFieldList as $theField) {

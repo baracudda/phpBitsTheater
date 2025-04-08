@@ -133,9 +133,10 @@ abstract class ASimpleCostume extends BaseCostume {
 	
 	/**
 	 * JSON string for this payload data, minus any metadata the class might have.
+	 * @param int $aJsonEncodeOptions - (optional) JSON encode flags.
 	 * @return string Return self encoded to JSON.
 	 */
-	public function toJson($aJsonEncodeOptions=null) {
+	public function toJson( int $aJsonEncodeOptions=0 ): string {
 		return json_encode($this->exportData(), $aJsonEncodeOptions);
 	}
 	
@@ -179,5 +180,5 @@ abstract class ASimpleCostume extends BaseCostume {
 	}
 	
 }//end class
-	
+
 }//end namespace

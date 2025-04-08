@@ -42,7 +42,7 @@ interface ILongRunning202Task
 	 * @throws \Exception if the setTaskInfo() was not called prior to this.
 	 */
 	function finishProcessTask( Scene $v );
-		
+	
 	/**
 	 * Get the object we should be encoding for a quick response.
 	 * @param Scene $v - the Scene object in use.
@@ -55,7 +55,7 @@ interface ILongRunning202Task
 	 * @param Scene $v - the actor's scene in use.
 	 * @param int $jsonEncodeOptions - the JSON encoding options.
 	 */
-	function printResponse202( Scene $v, $jsonEncodeOptions );
+	function printResponse202( Scene $v, int $jsonEncodeOptions=0 );
 
 	/**
 	 * Once the quick response has been returned, continue processing.

@@ -159,7 +159,7 @@ class CommonMySql
 	 * Insert standard audit fields into a table definition.
 	 * @return string
 	 */
-	static public function getAuditFieldsForTableDefSql() {
+	static public function getAuditFieldsForTableDefSql(): string {
 		return
 				self::CREATED_BY_SPEC.', '.
 				self::UPDATED_BY_SPEC.', '.
@@ -171,7 +171,7 @@ class CommonMySql
 	 * Insert standard versioning fileds into a table definition.
 	 * @return string
 	 */
-	static public function getVersioningFieldsForTableDefSql()
+	static public function getVersioningFieldsForTableDefSql(): string
 	{
 		return
 				self::VERSION_NUM_SPEC.', '.
@@ -185,8 +185,9 @@ class CommonMySql
 	 * @param string $aFieldName - the field name.
 	 * @return string Returns the SQL necessary to get the currently defined field size.
 	 */
-	static public function getFieldSizeSql($aDb, $aTableName, $aFieldName)
-	{
+	static public function getFieldSizeSql(
+		string $aDb, string $aTableName, string $aFieldName
+	): string {
 		return 'SELECT COLUMN_NAME AS name, (IfNull(CHARACTER_MAXIMUM_LENGTH,0)+IfNull(NUMERIC_PRECISION,0)) AS size'.
 				' FROM information_schema.COLUMNS'.
 				" WHERE TABLE_SCHEMA = '{$aDb}'".
@@ -249,8 +250,8 @@ class CommonMySql
 	
 	/**
 	 * Takes a MySQL timestamp and converts it to a ISO 8601 compliant format.
-	 * @param string $sqlTimestamp The timestamp from MySQL.
-	 * @return string the timestamp in ISO 8601 compliant format.
+	 * @param ?string $sqlTimestamp The timestamp from MySQL.
+	 * @return ?string the timestamp in ISO 8601 compliant format.
 	 * @see https://en.wikipedia.org/wiki/ISO_8601
 	 *
 	 * Example in:  "2015-09-09 17:55:51"
@@ -258,14 +259,15 @@ class CommonMySql
 	 * Example out: "2015-11-12T20:57:10Z"
 	 *
 	 */
-	static public function convertSQLTimestampToISOFormat($sqlTimestamp) {
+	static public function convertSQLTimestampToISOFormat( ?string $sqlTimestamp ): ?string
+	{
 		//Let's use PHP 5 'c' format for ISO 8601 conversion.
 		//  More information: http://php.net/manual/en/function.date.php
 		//return date('c', strtotime( $sqlTimestamp ) );
 		//NOTE: the above uses the server's timezone to perform date conversion
 		//  we need to always convert assuming UTC and not be reliant upon
 		//  server timezone.
-		if (strlen($sqlTimestamp)>10)
+		if ( !empty($sqlTimestamp) && strlen($sqlTimestamp) > 10 )
 		{
 			$sqlTimestamp[10] = 'T';
 			//If the time is in UTC, add a Z directly after the time without a space.
@@ -389,13 +391,13 @@ class CommonMySql
 	
 	/**
 	 * Mirror method for convertSQLTimestampToISOFormat().
-	 * @param string $aDateTimeISO8601 - a datetime string using ISO8601 format.
-	 * @return string Returns the string MySQL needs for it's SQL dialect.
+	 * @param ?string $aDateTimeISO8601 - a datetime string using ISO8601 format.
+	 * @return ?string Returns the string MySQL needs for it's SQL dialect.
 	 * @since BitsTheater 4.3.1
 	 */
-	static public function convertISO8601DateTimeToMySQLFormat( $aDateTimeISO8601 )
+	static public function convertISO8601DateTimeToMySQLFormat( ?string $aDateTimeISO8601 ): ?string
 	{
-		if (strlen($aDateTimeISO8601)>10)
+		if ( !empty($aDateTimeISO8601) && strlen($aDateTimeISO8601) > 10 )
 		{
 			$aDateTimeISO8601[10] = ' ';
 			$aDateTimeISO8601 = rtrim($aDateTimeISO8601, 'Z');
@@ -412,8 +414,9 @@ class CommonMySql
 	 * @return string Returns the SQL necessary to get the index
 	 *   definition record(s).
 	 */
-	static public function getFieldIndexesSql($aTableName, $aFieldName)
-	{
+	static public function getFieldIndexesSql(
+		string $aTableName, string $aFieldName
+	): string {
 		/* Another possibility, but SHOW KEYS is easier to work with.
 		SELECT * FROM information_schema.statistics
 		WHERE table_schema = [DATABASE NAME]
@@ -429,13 +432,14 @@ class CommonMySql
 	 *   'Non_unique' (0/1), 'Key_name' (index name),
 	 *   'Seq_in_index' (col order), 'Column_name', and 'Null' ('YES'/'NO')
 	 * @param string $aTableName - the table name (database prefix is optional).
-	 * @param string $aIndexName - (optional) the index name,
+	 * @param ?string $aIndexName - (optional) the index name,
 	 *   NULL for all of them (default)
 	 * @return string Returns the SQL necessary to get the index
 	 *   definition record(s).
 	 */
-	static public function getIndexDefinitionSql($aTableName, $aIndexName=null)
-	{
+	static public function getIndexDefinitionSql(
+		string $aTableName, ?string $aIndexName=null
+	): string {
 		$theSql = 'SHOW KEYS FROM ' . $aTableName;
 		if ( !empty($aIndexName) )
 			$theSql .= " WHERE Key_name='" . $aIndexName. "'";
@@ -448,8 +452,9 @@ class CommonMySql
 	 * @param string $aOldTableName - the old table name.
 	 * @return string Returns the SQL used to copy a table structure.
 	 */
-	static public function getCreateNewTableAsOldTableSql($aNewTableName, $aOldTableName)
-	{
+	static public function getCreateNewTableAsOldTableSql(
+		string $aNewTableName, string $aOldTableName
+	): string {
 		//Oracle, and others use AS instead of LIKE
 		return "CREATE TABLE {$aNewTableName} LIKE {$aOldTableName}";
 	}
@@ -459,12 +464,11 @@ class CommonMySql
 	 * @param string $aFieldName - the referenced column/field name.
 	 * @return string Returns the SQL to be used in WHERE clause.
 	 */
-	static public function getIsUnicodeValueSQLWhereClause( $aFieldName )
+	static public function getIsUnicodeValueSQLWhereClause( string $aFieldName ): string
 	{
 		//a value converted to ASCII and compared to itself will differ if Unicode.
 		return $aFieldName . ' <> CONVERT(' . $aFieldName . ' USING ASCII)';
 	}
-	
 	
 }//end class
 
