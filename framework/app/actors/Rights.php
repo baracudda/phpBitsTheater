@@ -25,4 +25,3 @@ class Rights extends BaseActor
 }//end class
 
 }//end namespace
-
