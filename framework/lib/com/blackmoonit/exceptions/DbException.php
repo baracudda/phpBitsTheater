@@ -31,10 +31,10 @@ class DbException extends PDOException implements IDebuggableException
 	/**
 	 * Construct our PDOException wrapper so it will implement our
 	 * IDebuggableException interface.
-	 * @param PDOException $e - (OPTIONAL) the PDOException to wrap or NULL.
+	 * @param \Exception|null $e - (OPTIONAL) the PDOException to wrap or NULL.
 	 * @param string $aMsg - (OPTIONAL) the context for the error message.
 	 */
-	public function __construct(PDOException $e=null, $aMsg='')
+	public function __construct( \Exception $e=null, $aMsg='' )
 	{
 		$this->mDebuggableExceptionTrait = new DebuggableExceptionTrait($this);
 		if ( isset($e) ) {

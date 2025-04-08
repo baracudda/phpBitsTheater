@@ -342,8 +342,8 @@ class AuthBasicAccount extends BaseActor
 		if ($dbAuth->isCallable('cudo') && $dbAuth->cudo($theAcctId, $this->scene->$pwKeyOld) && $bPostKeyOk && $bPostKeyOldEnough) {
 			//if current pw checked out ok, see if its our own acct or have rights to modify other's accounts.
 			if ($theAcctId==$this->director->account_info->account_id || $this->isAllowed('account','modify')) {
-				$theOldEmail = trim($this->scene->ticket_email);
-				$theNewEmail = trim($this->scene->email);
+				$theOldEmail = Strings::trim($this->scene->ticket_email);
+				$theNewEmail = Strings::trim($this->scene->email);
 				/* !== returned TRUE, === returned FALSE, but strcmp() returned 0 (meaning they are the same) O.o
 				$b1 = ($theOldEmail!==$theNewEmail);
 				$b2 = ($theOldEmail===$theNewEmail);
@@ -411,8 +411,8 @@ class AuthBasicAccount extends BaseActor
 		if ($bCurrentPwMatch && $bAuthorized) {
 			try {
 				//update EMAIL
-				$theOldEmail = trim($v->email_old);
-				$theNewEmail = trim($v->email_new);
+				$theOldEmail = Strings::trim($v->email_old);
+				$theNewEmail = Strings::trim($v->email_new);
 				if (strcmp($theOldEmail,$theNewEmail)!=0) {
 					//Strings::debugLog('email is not 0:'.strcmp($theOldEmail,$theNewEmail));
 					if ($dbAuth->getAuthByEmail($theNewEmail)) {
@@ -1076,7 +1076,7 @@ class AuthBasicAccount extends BaseActor
 		// sort_by is an alias for orderby in this endpoint
 		$theOrderByList = $this->getRequestData($v->orderby, 'sort_by', false);
 		// Parse given request parameters.
-		$theSearchText = Strings::stripEnclosure(trim(
+		$theSearchText = Strings::stripEnclosure(Strings::trim(
 				$this->getRequestData($aSearchText, 'search', false)
 		));
 		if ( !empty($theSearchText) )

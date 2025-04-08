@@ -17,10 +17,12 @@
 
 namespace BitsTheater\costumes\Wardrobe;
 use BitsTheater\costumes\APIResponse as APIResponseInUse;
+use BitsTheater\costumes\colspecs\CommonMySql;
 use BitsTheater\costumes\DbConnInfo as DbConnInfoInUse;
 use BitsTheater\costumes\PropsMaster as PropsMasterInUse;
 use BitsTheater\models\Auth as AuthModel;
 use BitsTheater\Scene;
+use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\Strings;
 {//begin namespace
 
@@ -131,6 +133,8 @@ trait WornForLongRunningTask
 			$theTaskRow = $dbTask->getAuthTokenRow($this->mTaskID, $this->mTaskToken);
 			if ( !empty($theTaskRow) ) {
 				$this->mTaskAmtRemaining = $theTaskRow['account_id']+0;
+			} else {
+				$this->mTaskAmtRemaining = false;
 			}
 			return !empty($theTaskRow);
 		}
@@ -138,28 +142,38 @@ trait WornForLongRunningTask
 	
 	/**
 	 * Get the object we should be encoding for a quick response.
-	 * @return array|object Return the data to be encoded for response.
+	 * @return array|object|null Return the data to be encoded for response.
 	 */
 	protected function getResponse202ForTask()
 	{
+		$updated_ts = DbUtils::utc_now(true);
 		if ( empty($this->mTaskAmtRemaining) ) {
 			$dbTask = $this->getTaskModel();
-			$this->mTaskAmtRemaining = $dbTask->getTaskAmountRemaining($this->mTaskID, $this->mTaskToken);
+			//$this->mTaskAmtRemaining = $dbTask->getTaskAmountRemaining($this->mTaskID, $this->mTaskToken);
+			$taskMeta = $dbTask->getTaskMeta($this->mTaskID, $this->mTaskToken);
+			if ( $taskMeta !== false ) {
+				$this->mTaskAmtRemaining = $taskMeta['amount_remaining'];
+				$updated_ts = CommonMySql::convertSQLTimestampToISOFormat($taskMeta['updated_ts']);
+			} else {
+				$updated_ts = null;
+			}
 		}
 		return array(
+				'task_id' => $this->mTaskID,
 				'task_org_id' => $this->mTaskOrgID,
 				'task_token' => $this->mTaskToken,
 				'task_remaining' => !empty($this->mTaskAmtRemaining) ? intval($this->mTaskAmtRemaining) : 0,
 				'delay_in_seconds' => !empty($this->mTaskAmtRemaining) ? intval($this->mTaskAmtRemaining) : 0,
+				'updated_ts' => $updated_ts,
 		);
 	}
 	
 	/**
 	 * Default view print method.
 	 * @param Scene $v - the actor's scene in use.
-	 * @param int $jsonEncodeOptions - the JSON encoding options.
+	 * @param int $jsonEncodeOptions - (optional) the JSON encoding options.
 	 */
-	public function printResponse202( Scene $v, $jsonEncodeOptions )
+	public function printResponse202( Scene $v, int $jsonEncodeOptions=0 )
 	{
         //standard APIResponse with data returned via getResponse202() method
         $theResponse = APIResponseInUse::resultsWithData($this->getResponse202($v));
@@ -180,7 +194,7 @@ trait WornForLongRunningTask
 			$v->getActor()->setView('results_as_json');
 		}
 		$theResponse = $this->getResponse202($v);
-		if ( $this->mTaskAmtRemaining !== false ) {
+		if ( !empty($this->mTaskAmtRemaining) ) {
 			//task is still ongoing, just return back the request data
 			$v->results = APIResponseInUse::resultsWithData($theResponse, 202);
 		}

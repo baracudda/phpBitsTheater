@@ -6,6 +6,8 @@
 // Run this script from the command line to see if your system is able to run
 // the AWS SDK for PHP
 
+use com\blackmoonit\Strings;
+
 class CompatibilityTest
 {
 	protected $isCli;
@@ -94,7 +96,7 @@ class CompatibilityTest
 				var_export($expected, true)
 				) . ' ' . $help;
 				
-				$this->check($info, $cb, trim($message), $required);
+				$this->check($info, $cb, Strings::trim($message), $required);
 	}
 	
 	public function extCheck($ext, $required = true, $help = '')
@@ -141,19 +143,19 @@ if (function_exists('curl_version')) {
 $c->addRequire('Ensuring that file_get_contents works', function () {
 	return function_exists('file_get_contents');
 }, 'file_get_contents has been disabled');
-	
+
 $c->title('System recommendations');
 
 $c->addRecommend('Checking if you are running on a 64-bit platform', function () {
 	return PHP_INT_MAX === 9223372036854775807;
 }, 'You are not running on a 64-bit installation of PHP. You may run into issues uploading or downloading files larger than 2GB.');
-	
+
 $c->iniCheck('Ensuring that zend.enable_gc is enabled', 'zend.enable_gc', true, false);
 
 $c->check('Ensuring that date.timezone is set', function () {
 	return (bool) ini_get('date.timezone');
 }, 'The date.timezone PHP ini setting has not been set in ' . php_ini_loaded_file(), false);
-	
+
 if (extension_loaded('xdebug')) {
 	$c->addRecommend('Checking if Xdebug is installed', function () { return false; }, 'Xdebug is installed. Consider uninstalling Xdebug to make the SDK run much faster.');
 	$c->iniCheck('Ensuring that Xdebug\'s infinite recursion detection does not erroneously cause a fatal error', 'xdebug.max_nesting_level', 0, false);

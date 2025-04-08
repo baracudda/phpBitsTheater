@@ -443,7 +443,7 @@ class AuthAccount extends BaseCostume
 					" IFNULL(GROUP_CONCAT(__RoleMapAlias.group_id SEPARATOR ','), '')" .
 					" FROM {$dbAuthGroups->tnGroupMap} AS __RoleMapAlias" .
 					" WHERE {$aAuthIDAlias}=__RoleMapAlias.auth_id" .
-					") AS groups" ;
+					") AS `groups`" ;
 		}//switch
 		return $theSqlStr;
 	}

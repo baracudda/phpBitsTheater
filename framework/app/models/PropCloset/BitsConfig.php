@@ -183,17 +183,19 @@ class BitsConfig extends BaseModel implements IFeatureVersioning
 	 */
 	public function defineMapValue($aMapInfo) {
 		$theConfigLabel = $this->implodeKeyName($aMapInfo);
+		$logger = $this->getLogger();
 		if (parent::defineMapValue($aMapInfo)) {
-			$this->getLogger()->withInfo(array(
+			$logger->withInfo(array(
 					'config' => $theConfigLabel,
 					'message' => "config [{$theConfigLabel}] inserted",
 			))->logToDebug();
 		} else {
-			$this->getLogger()->withInfo(array(
+			$logger->withInfo(array(
 					'config' => $theConfigLabel,
 					'message' => "config [{$theConfigLabel}] already exists",
 			))->logToDebug();
 		}
+		$logger->setInfo('config', null);
 	}
 	
 	/**
@@ -290,12 +292,11 @@ class BitsConfig extends BaseModel implements IFeatureVersioning
 	/**
 	 * Get the setting from the configuration model.
 	 * @param string $aSetting - setting in form of "namespace/setting"
-	 * @param string $aDummyArg - IDirected interface uses this for
+	 * @param string|null $aDummyArg - (optional) IDirected interface uses this for
 	 *   org ID, but here we just ignore it as this is the ultimate
 	 *   call for the getConfigSetting() chain of methods.
-	 * @throws \Exception
 	 */
-	public function getConfigSetting($aSetting, $aDummyArg=null)
+	public function getConfigSetting( string $aSetting, string $aDummyArg=null ): mixed
 	{ return $this[$aSetting]; }
 	
 	/**

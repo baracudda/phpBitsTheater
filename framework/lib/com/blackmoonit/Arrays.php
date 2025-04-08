@@ -23,19 +23,16 @@ class Arrays {
 	private function __construct() {} //do not instantiate
 
 	/**
-	 * Circularly shifts an array
-	 *
+	 * Circularly shifts an array.
 	 * Shifts to right for $steps > 0. Shifts to left for $steps < 0. Keys are
 	 * preserved.
 	 *
-	 * @param array $aArray - array to shift
+	 * @param array $anArray - array to shift
 	 * @param int $aSteps - # of steps to shift array
 	 * @return array Resulting array
 	 */
-	static public function array_shift_circular(array $anArray, $aSteps = 1) {
-		if (!is_int($aSteps)) {
-			throw new \InvalidArgumentException('steps has to be an (int)');
-		}
+	static public function array_shift_circular( array $anArray, int $aSteps = 1 ): array
+	{
 		$len = count($anArray);
 		if ($len === 0 || $aSteps === 0) {
 			return $anArray;
@@ -46,20 +43,22 @@ class Arrays {
 
 	/**
 	 * Prepends all args after the first to the first arg (which is an array).
-	 * @param array $aArray - array to prepend all other args
+	 * @param array $anArray - array to prepend all other args
 	 * @return array Resulting array.
 	 */
-	static public function array_prepend(array &$anArray) {
-		return array_merge(array_slice(func_get_args(),1),$anArray);
+	static public function array_prepend( array &$anArray ): array
+	{
+		return array_merge(array_slice(func_get_args(), 1), $anArray);
 	}
 	
 	/**
 	 * Appends all args after the first to the first arg (which is an array).
-	 * @param array $aArray - array to append all other args
+	 * @param array $anArray - array to append all other args
 	 * @return array Resulting array.
 	 */
-	static public function array_append(array &$anArray) {
-		return array_merge($anArray,array_slice(func_get_args(),1));
+	static public function array_append( array &$anArray ): array
+	{
+		return array_merge($anArray, array_slice(func_get_args(), 1));
 	}
 	
 	/**
@@ -70,7 +69,8 @@ class Arrays {
 	 * @return array Returns a one dimensional array of just $anArray[$subArray[$aKey]] values.
 	 * @link http://www.php.net//manual/en/function.array-column.php array_column()
 	 */
-	static public function array_column($anArray, $aKey) {
+	static public function array_column( array $anArray, int|string $aKey ): array
+	{
 		if (function_exists('array_column')) {
 			return array_column($anArray, $aKey);
 		} else {
@@ -85,8 +85,9 @@ class Arrays {
 	 * @param string $aKey - index of column to make as keys
 	 * @return array Returns an array re-indexed using $aKey column.
 	 */
-	static public function array_column_as_key($anArray, $aKey) {
-		return array_combine(self::array_column($anArray,$aKey), $anArray);
+	static public function array_column_as_key( array $anArray, string $aKey ): array
+	{
+		return array_combine(self::array_column($anArray, $aKey), $anArray);
 	}
 	
 	/**
@@ -98,7 +99,8 @@ class Arrays {
 	 * @param string $aDelimiter - the glue used to put arrays back together again.
 	 * @return array('values','diff','delimiter') Return the values and mask arrays.
 	 */
-	static public function computeDiff($aV1, $aV2, $aDelimiter='') {
+	static public function computeDiff( array $aV1, array $aV2, string $aDelimiter='' ): array
+	{
 		$theValues = array();
 		$theDiff = array();
 		$dm = array();
@@ -154,22 +156,22 @@ class Arrays {
 	/**
 	 * Convert a given two dimensional array into a csv.
 	 * @param array $aInput - array to convert, returns FALSE if this is empty.
-	 * @param array $aHeaderRow - (optional) single dimension array of header
+	 * @param array|bool $aHeaderRow - (optional) single dimension array of header
 	 *   values or TRUE to grab 1st row keys.
 	 * @param mixed $aStream - (optional) output directed to a stream,
 	 *   else a string is returned.
 	 * @param string $aDelimiter - (optional) defaults to ",", but it can be
 	 *   <span style="font-family:monospace;">TAB</span> or whatever.
-	 * @param callable[] $aCallbacks - (optional) callback functions keyed by
+	 * @param callable[]|null $aCallbacks - (optional) callback functions keyed by
 	 *   column names for alternate output; Callbacks are of the form
 	 *   <span style="font-family:monospace;">myCallback($col, $row)</span>.
-	 * @return string - Returns a string if no output stream is given,
+	 * @return string|bool - Returns a string if no output stream is given,
 	 *   else <span style="font-family:monospace;">!empty($aInput)</span>.
 	 * @see StackOverflow.com http://stackoverflow.com/a/21858025
 	 * @see OutputToCSV.
 	 */
-	static public function array_to_csv_string(array &$aInput, $aHeaderRow=null,
-			$aStream=null, $aDelimiter=',', $aCallbacks)
+	static public function array_to_csv_string( array &$aInput, array|bool $aHeaderRow=false,
+			mixed $aStream=null, string $aDelimiter=',', array $aCallbacks=null ): string|bool
 	{
 		if (empty($aInput))
 			return false;
@@ -269,7 +271,7 @@ class Arrays {
 					return $theResult;
 				}
 		}, $aCsvString);
-				
+		
 		//remove the very last newline to prevent a 0-field array for the last line
 		$theCsvToParse = preg_replace('/\n$/', '', $theCsvToParse);
 	

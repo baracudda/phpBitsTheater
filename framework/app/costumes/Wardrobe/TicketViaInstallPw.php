@@ -20,6 +20,8 @@ use BitsTheater\costumes\Wardrobe\ATicketForVenue as BaseCostume;
 use BitsTheater\costumes\AccountInfoCache;
 use BitsTheater\Scene;
 use BitsTheater\models\AuthGroups as AuthGroupsDB;
+use com\blackmoonit\Strings;
+
 {//namespace begin
 
 /**
@@ -59,7 +61,7 @@ class TicketViaInstallPw extends BaseCostume
 	static public function checkInstallPwVsInput( $aInput )
 	{
 		$theInstallPw = static::getInstallPw();
-		$theInputPw = trim($aInput);
+		$theInputPw = Strings::trim($aInput);
 		return ( $theInstallPw == $theInputPw );
 	}
 	

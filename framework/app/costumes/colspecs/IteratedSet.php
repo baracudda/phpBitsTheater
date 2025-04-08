@@ -40,22 +40,19 @@ implements \Countable, \IteratorAggregate
 {
 	/**
 	 * The data set to be iterated. Could be a PDOStatement, an array, whatever.
-	 * @var mixed
 	 */
-	public $mDataSet = null ;
+	public mixed $mDataSet = null ;
 
 	/**
 	 * A persistent reference to the last-fetched item in the result set.
 	 * If this value is ever equal to `false`, we've reached the end of the set.
-	 * @var mixed
 	 */
-	public $mCurrent = null ;
+	public mixed $mCurrent = null ;
 	
 	/**
 	 * The count of what has been fetched so far.
-	 * @var number
 	 */
-	public $mFetchedCount = 0;
+	public int $mFetchedCount = 0;
 
 	/**
 	 * The name of the class that will be used by default to contain items of
@@ -68,29 +65,26 @@ implements \Countable, \IteratorAggregate
 	 * The name of a class which can contain members of the set.
 	 * By default, `\stdClass` will be used. When passing in custom values, use
 	 * fully-qualified class names.
-	 * @var string
 	 */
-	public $mItemClass = self::DEFAULT_ITEM_CLASS;
+	public string $mItemClass = self::DEFAULT_ITEM_CLASS;
 
 	/**
 	 * Optional arguments for the constructor of the class that contains a
 	 * member of the set.
-	 * @var array
 	 */
-	public $mItemClassArgs = null ;
+	public ?array $mItemClassArgs = null ;
 	
 	/**
 	 * Optional print out as associative array vs. standard array by using
 	 * this field name as the key.
-	 * @var string
 	 */
-	public $mPrintAsJsonObjectWithIdKey = null;
+	public ?string $mPrintAsJsonObjectWithIdKey = null;
 	
 	/**
 	 * Required to implement Countable.
-	 * @return number Return the number of items in our set.
+	 * @return int Return the number of items in our set.
 	 */
-	public function count()
+	public function count(): int
 	{
 		//if our dataset is a query, ask it for the count
 		if ( $this->mDataSet instanceof \PDOStatement )
@@ -107,7 +101,7 @@ implements \Countable, \IteratorAggregate
 	 * in a foreach() statement.
 	 * @return \Traversable Returns the thing to use in a foreach statement.
 	 */
-	public function getIterator()
+	public function getIterator(): \Traversable
 	{
 		for ( $theItem=$this->fetch(); $theItem !== false; $theItem=$this->fetch() ) {
 			yield $theItem;
@@ -119,13 +113,13 @@ implements \Countable, \IteratorAggregate
 	 * @param callable $theCallback - the callback.
 	 * @return \Generator Returns the generated data.
 	 */
-	public function map(callable $theCallback)
+	public function map(callable $theCallback): \Generator
 	{
 		foreach($this as $key => $item) {
 			yield $key => $theCallback($item);
 		}
 	}
-		
+	
 	/**
 	 * Magic PHP method to limit what var_dump() shows.
 	 */
@@ -158,11 +152,9 @@ implements \Countable, \IteratorAggregate
 	/**
 	 * Sets the underlying data set from an already-obtained PDOStatement.
 	 * @param PDOStatement $aRowSet the data set
-	 * @param string $aItemClass (optional) the name of a class which can
-	 *  contain items of the set
 	 * @return $this Returns $this for chaining.
 	 */
-	public function setDataFromPDO( PDOStatement $aRowSet )
+	public function setDataFromPDO( PDOStatement $aRowSet ): self
 	{
 		$this->mDataSet = $aRowSet ;
 		return $this->setPDOFetchMode() ;
@@ -171,11 +163,11 @@ implements \Countable, \IteratorAggregate
 	/**
 	 * Sets the name of a class which can contain a member of the set.
 	 * @param string $aItemClass the name of a class
-	 * @param array $aItemClassArgs (optional) an array of arguments to the
+	 * @param array|null $aItemClassArgs - (optional) an array of arguments to the
 	 *  class's constructor
-	 * @return \BitsTheater\costumes\colspecs\IteratedSet $this
+	 * @return $this Returns $this for chaining.
 	 */
-	public function setItemClass( $aItemClass, $aItemClassArgs=null )
+	public function setItemClass( string $aItemClass, array $aItemClassArgs=null ): self
 	{
 		$this->mItemClass = $aItemClass ;
 		return $this->setItemClassArgs(...$aItemClassArgs) ;
@@ -183,10 +175,10 @@ implements \Countable, \IteratorAggregate
 
 	/**
 	 * Sets the construction arguments for our Item Class.
-	 * @param mixed $_ - arguments to pass to the class's constructor.
+	 * @param mixed $args - arguments to pass to the class's constructor.
 	 * @return $this Returns $this for chaining.
 	 */
-	public function setItemClassArgs( ...$args )
+	public function setItemClassArgs( ...$args ): self
 	{
 		$this->mItemClassArgs = $args ;
 		return $this->setPDOFetchMode() ;
@@ -196,9 +188,9 @@ implements \Countable, \IteratorAggregate
 	 * If our data set is already declared as a PDOStatement, this will set the
 	 * set's fetch mode such that fetched items will be created as instances of
 	 * our item class.
-	 * @return IteratedSet $this
+	 * @return $this Returns $this for chaining.
 	 */
-	protected function setPDOFetchMode()
+	protected function setPDOFetchMode(): self
 	{
 		if( $this->mDataSet instanceof PDOStatement )
 		{
@@ -214,7 +206,7 @@ implements \Countable, \IteratorAggregate
 	 * @param IDirected $aContext the context in which to create the object
 	 * @return $this Returns a new instance
 	 */
-	public static function create( IDirected $aContext )
+	public static function create( IDirected $aContext ): self
 	{
 		$theClassName = get_called_class() ;
 		return new $theClassName($aContext) ;
@@ -223,10 +215,10 @@ implements \Countable, \IteratorAggregate
 	/**
 	 * Event called after fetching from $this->mDataSet.
 	 * Sets $this->mCurrent and updates $this->mFetchedCount.
-	 * @param object $aRow - the fetched data.
-	 * @return object Returns the row data fetched.
+	 * @param object|false $aRow - the fetched data.
+	 * @return object|false Returns the row data fetched.
 	 */
-	protected function onFetch($aRow)
+	protected function onFetch( object|false $aRow ): object|false
 	{
 		$this->mCurrent = $aRow ;
 		if ($aRow !== false)
@@ -237,10 +229,10 @@ implements \Countable, \IteratorAggregate
 	/**
 	 * Fetches the next item in the data set. The iterator's `current` field
 	 * will also contain the object that is fetched.
-	 * @return object|boolean - the next item in the set, or `false` if anything
+	 * @return object|false - the next item in the set, or `false` if anything
 	 *  goes wrong, or if we're off the end of the set.
 	 */
-	public function fetch()
+	public function fetch(): object|false
 	{
 		if( $this->mDataSet instanceof PDOStatement ) {
 			$theRow = $this->mDataSet->fetch();
@@ -254,15 +246,15 @@ implements \Countable, \IteratorAggregate
 
 	/**
 	 * Fetches all of the data as an array.
-	 * @param int $aFetchStyle - (OPTIONAL) the fetch style const.
+	 * @param int|null $aFetchStyle - (OPTIONAL) the fetch style const.
 	 * @param mixed $aFetchArg - (OPTIONAL) some fetch styles may use an arg.
-	 * @param array $ctor_args - (OPTIONAL) some fetch styles need more args.
-	 * @return array
+	 * @param array|null $ctor_args - (OPTIONAL) some fetch styles need more args.
+	 * @return array|false
 	 * @see PDOStatement::fetchAll()
 	 */
-	public function fetchAll($aFetchStyle=null, $aFetchArg=null, $ctor_args=null)
+	public function fetchAll( int $aFetchStyle=null, mixed $aFetchArg=null, array $ctor_args=null): array|false
 	{
-		if ( !($this->mDataSet instanceof PDOStatement) ) return; //trivial
+		if ( !($this->mDataSet instanceof PDOStatement) ) return false; //trivial
 		$theResults = $this->mDataSet->fetchAll(...func_get_args());
 		if ( !empty($theResults) ) {
 			foreach ($theResults as $theRow) {
@@ -279,10 +271,11 @@ implements \Countable, \IteratorAggregate
 
 	/**
 	 * Prints the entire data set to the output stream, item by item as array.
-	 * @param string $aEncodeOptions options for `json_encode()`
-	 * @return IteratedSet $this
+	 * @param int $aEncodeOptions - (optional) options for `json_encode()`
+	 * @return $this Returns $this for chaining.
+	 * @throws Exception if output goes awry.
 	 */
-	protected function printAsJsonArray( $aEncodeOptions=null )
+	protected function printAsJsonArray( int $aEncodeOptions=0 ): self
 	{
 		$this->mCurrent = null ;
 		$this->mFetchedCount = 0 ;
@@ -316,10 +309,11 @@ implements \Countable, \IteratorAggregate
 	/**
 	 * Prints the entire data set to the output stream, item by item as object.
 	 * @param string $aItemIdFieldName - the Item Object's field name to use for the ID.
-	 * @param string $aEncodeOptions - options for `json_encode()`
-	 * @return IteratedSet $this
+	 * @param int $aEncodeOptions - (optional) options for `json_encode()`
+	 * @return $this Returns $this for chaining.
+	 * @throws Exception if output goes awry.
 	 */
-	protected function printAsJsonObjectWithIdKey( $aItemIdFieldName, $aEncodeOptions=null )
+	protected function printAsJsonObjectWithIdKey( string $aItemIdFieldName, int $aEncodeOptions=0 ): self
 	{
 		$this->mCurrent = null ;
 		$this->mFetchedCount = 0 ;
@@ -353,10 +347,11 @@ implements \Countable, \IteratorAggregate
 
 	/**
 	 * Prints the entire data set to the output stream, item by item.
-	 * @param string $aEncodeOptions options for `json_encode()`
-	 * @return IteratedSet $this
+	 * @param int $aEncodeOptions - (optional) options for `json_encode()`
+	 * @return $this Returns $this for chaining.
+	 * @throws Exception if output goes awry.
 	 */
-	public function printAsJson( $aEncodeOptions=null )
+	public function printAsJson( int $aEncodeOptions=0 ): self
 	{
 		if( ! empty($this->mDataSet) )
 			if ( empty($this->mPrintAsJsonObjectWithIdKey ) )

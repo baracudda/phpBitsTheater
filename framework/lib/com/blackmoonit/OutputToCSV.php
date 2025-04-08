@@ -313,7 +313,7 @@ class OutputToCSV {
 	
 	protected function isColumnPrependEqual( $aColName, $aColValue )
 	{
-		if ( strpos($aColValue, ',') !== false ) return false; //do not need if contains a comma.
+		if ( Strings::isInStr($aColValue, ',') ) return false; //do not need if contains a comma.
 		if ( !empty($this->mColNamesToPrependEqual) ) {
 			if ( in_array($aColName, $this->mColNamesToPrependEqual) ) {
 				return true;
@@ -354,12 +354,12 @@ class OutputToCSV {
 				if (!empty($this->mCallbacks[$theColName])) {
 					$theColValue = $this->mCallbacks[$theColName]($theColValue, $theRow);
 				}
-				$theColValue = str_replace($this->mEnclosureLeft,$this->mReplaceEnclosureLeft,$theColValue);
-				if ($this->mEnclosureLeft != $this->mEnclosureRight)
-					$theColValue = str_replace($this->mEnclosureRight,$this->mReplaceEnclosureRight,$theColValue);
-				// Carriage Return and/or New Line converted to the literal '\n'
-				$theColValue = str_replace(array("\r\n", "\n", "\r"),'\n',$theColValue);
 				if ( !empty($theColValue) ) {
+					$theColValue = str_replace($this->mEnclosureLeft, $this->mReplaceEnclosureLeft, $theColValue);
+					if ($this->mEnclosureLeft != $this->mEnclosureRight)
+						$theColValue = str_replace($this->mEnclosureRight, $this->mReplaceEnclosureRight, $theColValue);
+					// Carriage Return and/or New Line converted to the literal '\n'
+					$theColValue = str_replace(array("\r\n", "\n", "\r"), '\n', $theColValue);
 					//to prevent Excel from converting value to formula, prepend with '=' before enclosure.
 					if ( $this->isColumnPrependEqual($theColName, $theColValue) ) {
 						$this->csv .= '=';

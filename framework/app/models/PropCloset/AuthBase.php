@@ -115,21 +115,22 @@ abstract class AuthBase extends BaseModel {
 	 *   (when the browser closes).
 	 * @param boolean $bDoNotLetJsReadIt - (optional) HTTPOnly flag, defaults TRUE.
 	 * @return boolean Returns FALSE if output exists prior to calling this function.
-	 *   Returns TRUE if successfull, but does not mean the user accepted the cookie.
+	 *   Returns TRUE if successful, but does not mean the user accepted the cookie.
 	 */
-	public function setMySiteCookie($aName, $aValue=null, $aExpireTS=0, $bDoNotLetJsReadIt=true) {
+	public function setMySiteCookie(string $aName, string $aValue='', int $aExpireTS=0, bool $bDoNotLetJsReadIt=true): bool
+	{
 		//RFC 6265: the only proper way to create a "host-only" cookie is to NOT
 		//  set the domain attribute. Otherwise, what you end up with is ".domain"
 		//  which allows subdomains access.
 		$theDomain = null; //$_SERVER['SERVER_NAME'];
-		$theCookieOpts = array(
+		$theCookieOpts = [
 				'expires' => $aExpireTS,
 				'path' => BITS_URL,
 				'domain' => $theDomain,
 				'secure' => false,
 				'httponly' => $bDoNotLetJsReadIt,
-				'samesite' => 'Lax', //None (but will require secure=true), Lax, Strict
-		);
+				'samesite' => 'Lax', //opts: None (but will require secure=true), Lax, Strict
+		];
 		return setcookie($aName, $aValue, $theCookieOpts); //php7.3+ signature
 	}
 	

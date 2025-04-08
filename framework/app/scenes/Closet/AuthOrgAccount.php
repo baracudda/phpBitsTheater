@@ -35,13 +35,13 @@ implements ISqlSanitizer
 	{ return AuthDB::KEY_userinfo; }
 	
 	public function getUsername()
-	{ return $this->{$this->getUsernameKey()}; }
+	{ return $this?->{$this->getUsernameKey()}; }
 	
 	public function getPwInputKey()
 	{ return AuthDB::KEY_pwinput; }
 	
 	public function getPwInput()
-	{ return $this->{$this->getPwInputKey()}; }
+	{ return $this?->{$this->getPwInputKey()}; }
 	
 	public function getUseCookieKey()
 	{ return AuthDB::KEY_cookie; }

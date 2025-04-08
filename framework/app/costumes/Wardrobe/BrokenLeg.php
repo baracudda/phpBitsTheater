@@ -525,11 +525,11 @@ class BrokenLeg extends BaseException
 
 	/**
 	 * As toResponseObject(), but serializes that object to a JSON string.
-	 * @param string $aEncodeOptions the JSON encoding options
+	 * @param int $aEncodeOptions - (optional) the JSON encoding options
 	 * @return string Returns a JSON serialization of the standard response object.
 	 * @since BitsTheater 3.6
 	 */
-	public function toJson( $aEncodeOptions=null )
+	public function toJson( int $aEncodeOptions=0 ): string
 	{ return json_encode( $this->exportData(), $aEncodeOptions ) ; }
 
 	/**

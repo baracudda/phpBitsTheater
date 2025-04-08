@@ -27,20 +27,20 @@ use PDO;
 
 class DbConnInfo extends BaseDbConnInfo
 {
-	/** @var string The connection name. */
-	public $dbConnName = PropsMasterInUse::DB_CONN_NAME_FOR_AUTH;
-	/** @var string The database name used by the connection. */
-	public $dbName = null;
-	/** @var string Prefix for every table used by this connection */
-	public $table_prefix = '';
-	/** @var PDO The actual, open connection. */
-	public $dbConn = null;
-	/** @var boolean Have we successfully loaded our dbconn info yet? */
-	public $bDbConnInfoLoaded = false;
-	/** @var string Used to mark a connection for a specific org. */
-	public $mOrgID = null;
-	/** @var boolean Used to determine if org is in a "read-only" state. */
-	public $bIsOrgDisabled = false;
+	/** The connection name. */
+	public string $dbConnName = PropsMasterInUse::DB_CONN_NAME_FOR_AUTH;
+	/** The database name used by the connection. */
+	public ?string $dbName = null;
+	/** Prefix for every table used by this connection */
+	public string $table_prefix = '';
+	/** The actual, open connection. */
+	public ?PDO $dbConn = null;
+	/** Have we successfully loaded our dbconn info yet? */
+	public bool $bDbConnInfoLoaded = false;
+	/** Used to mark a connection for a specific org. */
+	public ?string $mOrgID = null;
+	/** Used to determine if org is in a "read-only" state. */
+	public bool $bIsOrgDisabled = false;
 	
 	/**
 	 * Create the object and set the dbConnName, if not empty.
@@ -91,7 +91,7 @@ class DbConnInfo extends BaseDbConnInfo
 	
 	/**
 	 * {@inheritDoc}
-	 * @see \com\blackmoonit\database\DbConnInfo::calcPDOparams()
+	 * @see DbConnInfo::calcPDOparams()
 	 */
 	protected function calcPDOparams()
 	{
@@ -106,7 +106,7 @@ class DbConnInfo extends BaseDbConnInfo
 	
 	/**
 	 * {@inheritDoc}
-	 * @see \com\blackmoonit\database\DbConnInfo::loadDbConnInfoFromString()
+	 * @see DbConnInfo::loadDbConnInfoFromString()
 	 */
 	public function loadDbConnInfoFromString($aDbConnString)
 	{
@@ -145,7 +145,7 @@ class DbConnInfo extends BaseDbConnInfo
 	 * Connects to the database and returns the connection.
 	 * @return PDO|boolean Returns the connection when successful, FALSE if the attempt failed.
 	 */
-	public function connect()
+	public function connect(): PDO|bool
 	{
 		//if PDO connection is empty, attempt to create one
 		if ( empty($this->dbConn) ) {

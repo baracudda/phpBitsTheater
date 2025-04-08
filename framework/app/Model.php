@@ -22,10 +22,11 @@ use BitsTheater\costumes\IDirected;
 use BitsTheater\costumes\PropsMaster;
 use BitsTheater\costumes\SqlBuilder;
 use BitsTheater\costumes\WornForCLI;
+use BitsTheater\costumes\WornForIDirectedSupport;
 use com\blackmoonit\database\DbUtils;
 use com\blackmoonit\exceptions\DbException;
 use com\blackmoonit\OutputToCSV;
-use com\blackmoonit\Strings;
+use Exception;
 use ReflectionClass;
 use PDOException;
 use PDOStatement;
@@ -37,6 +38,7 @@ use PDOStatement;
 class Model extends BaseModel
 implements IDirected
 {
+	use WornForIDirectedSupport;
 	use WornForCLI;
 	
 	/**
@@ -499,7 +501,8 @@ implements IDirected
 	 * @param string $aModelName - the simple name of the model class.
 	 * @return boolean Returns TRUE if the model is to be used.
 	 */
-	static protected function isModelClassAllowed($aModelName) {
+	static protected function isModelClassAllowed( string $aModelName ): bool
+	{
 		return true;
 	}
 	
@@ -526,6 +529,7 @@ implements IDirected
 			$classInfo = new ReflectionClass($theModelClass);
 			if ($bIncludeAbstracts || !$classInfo->isAbstract()) {
 			    $theModels[] = $classInfo;
+				//Strings::debugLog(__METHOD__.' add2list: '.$classInfo);
 			}
 			unset($classInfo);
 		}
@@ -597,103 +601,10 @@ implements IDirected
 	}
 	
 	/**
-	 * Return the director object.
-	 * @return Director Returns the site director object.
+	 * @inheritDoc
+	 * @throws Exception when the config model cannot be found or there is a connection error.
 	 */
-	public function getDirector() {
-		return $this->director;
-	}
-	
-	/**
-	 * Getter for our director-wide modern LogMessage instance.
-	 * @return \BitsTheater\costumes\LogMessage Returns the logger instance.
-	 */
-	public function getLogger()
-	{ return $this->getDirector()->getLogger(); }
-
-	/**
-	 * {@inheritDoc}
-	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @see \BitsTheater\costumes\IDirected::isAllowed()
-	 */
-	public function isAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
-		return $this->getDirector()->isAllowed($aNamespace, $aPermission, $aAcctInfo);
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @see \BitsTheater\costumes\IDirected::isGuest()
-	 */
-	public function isGuest() {
-		return $this->getDirector()->isGuest();
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * @return boolean Returns TRUE if allowed, FALSE if not.
-	 * @see \BitsTheater\costumes\IDirected::checkAllowed()
-	 */
-	public function checkAllowed($aNamespace, $aPermission, $aAcctInfo=null) {
-		return $this->getDirector()->checkAllowed($aNamespace, $aPermission, $aAcctInfo);
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 * @return $this Returns $this for chaining.
-	 * @see \BitsTheater\costumes\IDirected::checkPermission()
-	 */
-	public function checkPermission($aNamespace, $aPermission, $aAcctInfo=null)
-	{
-		$this->getDirector()->checkPermission($aNamespace, $aPermission, $aAcctInfo);
-		return $this;
-	}
-	
-	/**
-	 * Return a Model object for a given org, creating it if necessary.
-	 * @param string $aName - name of the model object.
-	 * @param string $aOrgID - (optional) the org ID whose data we want.
-	 * @return Model Returns the model object.
-	 */
-	public function getProp( $aName, $aOrgID=null )
-	{ return $this->getDirector()->getProp($aName, $aOrgID); }
-	
-	/**
-	 * Let the system know you do not need a Model anymore so it
-	 * can close the database connection as soon as possible.
-	 * @param Model $aProp - the Model object to be returned to the prop closet.
-	 */
-	public function returnProp($aProp) {
-		$this->getDirector()->returnProp($aProp);
-	}
-
-	/**
-	 * Get a resource based on its combined 'namespace/resource_name'.
-	 * Alternatively, you can pass each segment in as its own parameter.
-	 * @param string $aName - The 'namespace/resource[/extras]' name to retrieve.
-	 */
-	public function getRes($aName) {
-		return call_user_func_array(array($this->getDirector(), 'getRes'), func_get_args());
-	}
-	
-	/**
-	 * Returns the URL for this site appended with relative path info.
-	 * @param string[]|string $aRelativeURL - array of path segments
-	 *   OR a bunch of string parameters equating to path segments.
-	 * @return string Returns the site relative path URL.
-	 * @see Director::getSiteUrl()
-	 */
-	public function getSiteUrl($aRelativeURL='') {
-		return call_user_func_array(array($this->getDirector(), 'getSiteUrl'), func_get_args());
-	}
-	
-	/**
-	 * Get the setting from the configuration model.
-	 * @param string $aSetting - setting in form of "namespace/setting"
-	 * @param string $aOrgID - (optional) the org ID whose data we want.
-	 * @throws \Exception
-	 */
-	public function getConfigSetting( $aSetting, $aOrgID=null )
+	public function getConfigSetting( string $aSetting, string $aOrgID=null ): mixed
 	{
 		//if the model is specific to a particular org, default our
 		//  config query to using that org ID rather than the system

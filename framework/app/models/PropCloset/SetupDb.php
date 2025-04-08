@@ -48,7 +48,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	 */
 	const FEATURE_ID = 'BitsTheater/framework';
 	const FEATURE_VERSION_SEQ = 9; //always ++ when making db schema changes
-		
+	
 	/**
 	 * Add our database name before the defined table prefix so we can work
 	 * with multiple databases at once.
@@ -255,9 +255,15 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 		$this->setupModel($aScene);
 		$this->setupDefaultData($aScene);
 		
+		$logger = $this->getLogger();
+		
 		$theModelList = self::getAllModelClassInfo();
 		
-		$this->logStuff('Create missing tables on org: Root');
+		$logger->logWith([
+			'message' => 'Create missing tables on org: Root',
+			'model_list' => $theModelList,
+		]);
+		$logger->setInfo('model_list', null);
 		$this->callModelMethod($theDirector, $theModelList, 'setupModel', $aScene);
 		$this->callModelMethod($theDirector, $theModelList, 'setupDefaultData', $aScene);
 
@@ -270,7 +276,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 			foreach ($theOrgList as $theOrg) {
 				/* @var $theOrg AuthOrg */
 				$this->getDirector()->setPropDefaultOrg($theOrg->org_id);
-				$this->logStuff('Create missing tables on org: ', $theOrg->org_name);
+				$logger->logWith("Create missing tables on org: {$theOrg->org_name}");
 				$this->callModelMethod($theDirector, $theModelList, 'setupModel', $aScene);
 				$this->callModelMethod($theDirector, $theModelList, 'setupDefaultData', $aScene);
 				$this->getDirector()->getPropsMaster()->closeConnection($theOrg->org_id);
@@ -324,13 +330,14 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	}
 	
 	/**
-	 * @param string $aFieldList - which fields to return, default is all of them.
+	 * @param string|null $aFieldList - which fields to return, default is all of them.
 	 * @return array Returns all rows as an array.
 	 */
-	public function getFeatureVersionList($aFieldList=null) {
+	public function getFeatureVersionList( string $aFieldList=null ): array
+	{
 		$theWebsiteFeatureId = $this->getRes('website/getFeatureId');
 		$theResultSet = null;
-		if ($this->getDirector()->isInstalled() && $this->exists()) {
+		if ( $this->getDirector()->isInstalled() && $this->exists() ) {
 			try {
 				$theSql = SqlBuilder::withModel($this);
 				$theSql->startWith('SELECT')->addFieldList($aFieldList);
@@ -341,7 +348,9 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					$theFeatures = $ps->fetchAll();
 					foreach($theFeatures as &$theFeatureRow) {
 						$theFeatureRow['version_seq'] += 0;
-						try { $dbModel = $this->getProp($theFeatureRow['model_class']); }
+						try {
+							$dbModel = $this->getProp($theFeatureRow['model_class']);
+						}
 						catch (\Exception $x) { $dbModel = null; }
 						if (empty($dbModel)) {
 							$this->removeFeature($theFeatureRow['feature_id']);
@@ -379,16 +388,17 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 				throw new DbException($pdoe,  __METHOD__.' failed.');
 			}
 		} else {
-			$theResultSet = array( self::FEATURE_ID => array(
+			$theResultSet = [ self::FEATURE_ID => [
 					'feature_id' => self::FEATURE_ID,
 					'model_class' => $this->mySimpleClassName,
-					'version_display' => $this->getRes('website/getFrameworkVersion/1'),
-					'version_display_new' => $this->getRes('website/getFrameworkVersion/'.self::FEATURE_VERSION_SEQ),
-			));
+					'version_display' => $this->getRes('website', 'getFrameworkVersion', '1'),
+					'version_display_new' => $this->getRes('website',
+						'getFrameworkVersion', self::FEATURE_VERSION_SEQ),
+			]];
 		}
 		//webapp version may be missing, specifically check and add if so
 		$theWebappFeatureId = $this->getRes('website/getFeatureId');
-		if (empty($theResultSet[$theWebappFeatureId])) {
+		if ( empty($theResultSet[$theWebappFeatureId]) ) {
 			$theResultSet[$theWebappFeatureId]['feature_id'] = $theWebappFeatureId;
 			$theResultSet[$theWebappFeatureId]['model_class'] = $this->mySimpleClassName;
 			$theResultSet[$theWebappFeatureId]['version_seq'] = null;
@@ -463,12 +473,29 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	/**
 	 * Using the data given, update the feature described.
 	 * @param $aDataObject - object containing data to be used.
+	 * @throws BrokenLeg
 	 */
-	public function upgradeFeature($aDataObject) {
-		//$this->debugLog('v='.$this->debugStr($aDataObject->feature_id));
-		if (!empty($aDataObject) && $this->exists()) {
+	public function upgradeFeature( $aDataObject ): void {
+		$logger = $this->getLogger();
+		if ( is_object($aDataObject) ) {
+			$logger->withInfo([
+				'feature_id' => $aDataObject?->feature_id,
+				'feature_data' => $aDataObject?->feature_data,
+			])->logToDebug();
+		}
+		else if ( is_array($aDataObject) ) {
+			$logger->withInfo([
+				'feature_id' => $aDataObject['feature_id'],
+			])->logToDebug();
+		}
+		else {
+			$logger->withInfo([
+				'feature_id' => $aDataObject,
+			])->logToDebug();
+		}
+		if ( !empty($aDataObject) && $this->exists() ) {
 			$theFeatureData = null;
-			if (is_string($aDataObject)) {
+			if ( is_string($aDataObject) ) {
 				$theFeatureData = $this->getFeature($aDataObject);
 			} else if (is_object($aDataObject)) {
 				if (!empty($aDataObject->feature_data))
@@ -481,7 +508,11 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 				else
 					$theFeatureData = $this->getFeature($aDataObject['feature_id']);
 			}
-			//$this->debugLog('feature='.$this->debugStr($theFeatureData));
+			$logger->withInfo([
+				'message' => 'upgrade requested',
+				'feature' => $theFeatureData,
+				'upgraded_by' => $this->getDirector()->getMyUsername(),
+			])->log();
 			if (!empty($theFeatureData)) {
 				try {
 					$dbModel = $this->getProp($theFeatureData['model_class'], AuthModel::ORG_ID_4_ROOT);
@@ -507,7 +538,7 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 									$this->getDirector()->setPropDefaultOrg($theOrg->org_id);
 									$dbOrgModel = $this->getProp($theFeatureData['model_class']);
 									if ( !empty($dbOrgModel::FEATURE_VERSION_SEQ) ) {
-										$this->getLogger()->withInfo(array(
+										$logger->withInfo([
 												'action' => 'onSchemaUpgrade',
 												'reason' => 'ensure feature db schema at v' . $dbOrgModel::FEATURE_VERSION_SEQ,
 												'feature_id' => $theFeatureData['feature_id'],
@@ -519,20 +550,20 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 														. ' in org ' . $theOrg->org_name
 														. ' from ' . $theFeatureData['version_seq'] . ' to ' . $dbOrgModel::FEATURE_VERSION_SEQ
 												,
-										))->log();
+										])->log();
 									}
 									$dbOrgModel->upgradeFeatureVersion($theFeatureData, $aDataObject);
-									$this->getLogger()->withInfo(array(
+									$logger->withInfo([
 											'message' => 'finished db schema upgrade for ' . $theOrg->org_name,
-									))->log();
+									])->log();
 									$this->getDirector()->getPropsMaster()->closeConnection($theOrg->org_id);
 								}
 								catch ( \Exception $x ) {
-									$this->getLogger()->withInfo(array(
+									$logger->withInfo([
 											'reason' => 'exception on db schema upgrade',
 											'message' => $x->getMessage(),
 											'model' => $theFeatureData['model_class'],
-									))->logToError();
+									])->logToError();
 									$blx = BrokenLeg::tossException($this, $x);
 									$blx->addReasonForUI('Database Scheme Update')
 										->addExtraMsgForUI('org_name=[' . $theOrg->org_name . '] ID=[' . $theOrg->org_id . ']')
@@ -545,10 +576,9 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 								}
 							}
 							//log that we are done upgrading all orgs
-							$this->getLogger()->withInfo(array(
+							$logger->withInfo([
 									'message' => 'all org db schemas upgraded successfully',
-									'upgraded_by' => $this->getDirector()->getMyUsername(),
-							))->log();
+							])->log();
 						}
 						finally {
 							$this->getDirector()->setPropDefaultOrg(null);
@@ -560,12 +590,18 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 					$theMsg = $this->getRes('admin', 'msg_update_success',
 							$theFeatureData['feature_id']
 					);
+					$logger->withInfo([
+						'message' => $theMsg,
+					])->log();
 					$this->outputUserMsg($aDataObject, $theMsg, Scene::USER_MSG_NOTICE);
 				} catch (Exception $e) {
 					$theMsg = $this->getRes('admin', 'msg_update_error',
 							$theFeatureData['feature_id'], $e->getMessage()
 					);
-					$this->errorLog($theMsg);
+					$logger->withInfo([
+						'ex' => $e->getMessage(),
+						'message' => $theMsg,
+					])->logToError();
 					$this->outputUserMsg($aDataObject, $theMsg, Scene::USER_MSG_ERROR);
 					throw $e;
 				}
@@ -595,13 +631,13 @@ class SetupDb extends BaseModel implements IFeatureVersioning
 	
 	/**
 	 * Update the features table in case there's new ones since last time it was run.
-	 * Ususally performed on framework/website update.
+	 * Usually performed on framework/website update.
 	 * @param $aDataObject
 	 */
-	public function refreshFeatureTable($aDataObject) {
+	public function refreshFeatureTable( $aDataObject ): void {
 		//update the feature table
 		$theModels = self::getAllModelClassInfo();
-		$this->callModelMethod($this->director, $theModels, 'setupFeatureVersion', $aDataObject);
+		$this->callModelMethod($this->getDirector(), $theModels, 'setupFeatureVersion', $aDataObject);
 		array_walk($theModels, function(&$n) { unset($n); } );
 		unset($theModels);
 	}
